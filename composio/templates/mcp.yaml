@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mcp
+  labels:
+    app: mcp
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.mcp.replicaCount }}
+  selector:
+    matchLabels:
+      app: mcp
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: mcp
+        release: {{ .Release.Name }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: mcp
+          image: "{{ .Values.mcp.image.repository }}:{{ .Values.mcp.image.tag }}"
+          imagePullPolicy: {{ .Values.mcp.image.pullPolicy }}
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: AUTH_SECRET
+            - name: COMPOSIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: COMPOSIO_API_KEY
+            - name: APOLLO_COMPOSIO_BASE_URL
+              value: {{ .Values.apollo.baseUrl | quote }}
+            - name: APOLLO_SPEC_PATH
+              value: "http://composio.apollo.vpc/api/v3/mcp-experimental-openapi.json"
+            - name: COMPOSIO_BASE_URL
+              value: {{ .Values.apollo.baseUrl | quote }}
+            - name: SELF_HOSTED
+              value: "true"
+            - name: MCP_BASE_URL
+              value: {{ .Values.mcp.baseUrl | quote }}
+            - name: SERVICE_NAME
+              value: "mcp-server-next"
+            - name: NEXT_PUBLIC_COMPOSIO_BASE_URL
+              value: {{ .Values.apollo.baseUrl | quote }}
+            - name: APOLLO_URL
+              value: {{ .Values.apollo.baseUrl | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            {{- if .Values.mcp.env }}
+            {{- toYaml .Values.mcp.env | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mcp
+  labels:
+    app: mcp
+    release: {{ .Release.Name }}
+spec:
+  type: {{ .Values.mcp.service.type }}
+  ports:
+    - port: {{ .Values.mcp.service.port }}
+      targetPort: 3000
+      protocol: TCP
+  selector:
+    app: mcp
+    release: {{ .Release.Name }} 

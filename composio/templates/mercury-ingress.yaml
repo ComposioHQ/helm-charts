@@ -1,0 +1,35 @@
+{{- if and .Values.mercury.enabled .Values.mercury.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "composio.fullname" . }}-mercury-ingress
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mercury-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    {{- with .Values.mercury.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.mercury.ingress.className }}
+  ingressClassName: {{ .Values.mercury.ingress.className }}
+  {{- end }}
+  rules:
+  - host: {{ .Values.mercury.ingress.host | default (printf "mercury.%s" .Values.global.domain) }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "composio.fullname" . }}-mercury
+            port:
+              number: 80
+  {{- if .Values.mercury.ingress.tls }}
+  tls:
+    {{- toYaml .Values.mercury.ingress.tls | nindent 4 }}
+  {{- end }}
+{{- end }} 

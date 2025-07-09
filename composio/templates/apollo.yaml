@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-apollo
+  labels:
+    app: apollo
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.apollo.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: apollo
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: apollo
+        release: {{ .Release.Name }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: apollo
+          image: "{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
+          imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - containerPort: 9900
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 9900
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 9900
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: PORT
+              value: "9900"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: NODE_ENV
+              value: "production"
+            - name: AWS_REGION
+              value: {{ .Values.aws.region | quote }}
+            - name: COMPOSIO_ENV
+              value: "production"
+            - name: USE_CLICKHOUSE_FOR_LOGS
+              value: "false"
+            - name: SELF_HOSTED
+              value: "true"
+            - name: THERMOS_URL
+              value: {{ .Values.thermos.baseUrl | quote }}
+            - name: MCP_BASE_URL
+              value: {{ .Values.mcp.baseUrl | quote }}
+            - name: OVERWRITE_APOLLO_URL
+              value: {{ .Values.apollo.baseUrl | quote }}
+            - name: OAUTH2_REDIRECT_URI_OVERRIDE
+              value: {{ printf "%s/api/v3/toolkits/auth/callback" .Values.apollo.baseUrl | quote }}
+            - name: MERCURY_URL
+              value: "https://mercury.composio.dev"
+            - name: SERVICE_NAME
+              value: "apollo"
+            - name: OVERWRITE_THERMOS_TOOLS
+              value: "true"
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: REDIS_URL
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: ENCRYPTION_KEY
+            - name: APOLLO_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: APOLLO_ADMIN_TOKEN
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            {{- if .Values.apollo.env }}
+            {{- toYaml .Values.apollo.env | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-apollo
+  labels:
+    app: apollo
+    release: {{ .Release.Name }}
+spec:
+  type: {{ .Values.apollo.service.type }}
+  ports:
+    - port: {{ .Values.apollo.service.port }}
+      targetPort: 9900
+      protocol: TCP
+      {{- if and (eq .Values.apollo.service.type "NodePort") .Values.apollo.service.nodePort }}
+      nodePort: {{ .Values.apollo.service.nodePort }}
+      {{- end }}
+  selector:
+    app: apollo
+    release: {{ .Release.Name }}

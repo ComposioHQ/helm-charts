@@ -1,0 +1,162 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-thermos
+  labels:
+    app: thermos
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.thermos.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: thermos
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: thermos
+        release: {{ .Release.Name }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: thermos
+          image: "{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
+          imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
+          command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
+          workingDir: "/tmp"
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - containerPort: 8180
+          livenessProbe:
+            httpGet:
+              path: /api
+              port: 8180
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api
+              port: 8180
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: PORT
+              value: "8180"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: APOLLO_ENDPOINT
+              value: {{ .Values.apollo.baseUrl | quote }}
+            - name: COMPOSIO_ENV
+              value: "production"
+            - name: APOLLO_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: APOLLO_ADMIN_TOKEN
+            - name: LOG_ENCODING
+              value: "json"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: OPENAPI
+              value: "false"
+            - name: POLLING_TRIGGER_SLEEP
+              value: "60"
+            - name: REGISTRY_LOOKUP_CACHE_DIR
+              value: "/tmp/.lookup"
+            - name: SELF_HOSTED
+              value: "true"
+            - name: TEMPORAL_CLOUD_HOST_PORT
+              value: 
+              value: "temporal-stack-frontend:7233"
+            - name: TEMPORAL_CLOUD_NAMESPACE
+              value: "default"
+            - name: DISABLE_TEMPORAL_TLS
+              value: "true"
+            - name: LAMBDA_USE_HTTP
+              value: "true"
+            - name: LAMBDA_USE_HTTP_ENDPOINT
+              value: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
+            - name: AWS_LAMBDA_REGION
+              value: {{ .Values.aws.region | quote }}
+            - name: AWS_S3_REGION
+              value: {{ .Values.aws.region | quote }}
+            - name: AWS_S3_LAMBDA_BUCKET_NAME
+              value: {{ .Values.aws.s3.lambdaBucketName | quote }}
+            - name: LAMBDA_FUNCTION_NAME
+              value: {{ .Values.aws.lambda.functionName | quote }}
+            # Minio credentials as AWS S3 environment variables
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: MINIO_ROOT_USER
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: AWS_S3_ENDPOINT
+              value: "http://{{ .Release.Name }}-minio:9000"
+            - name: AWS_S3_FORCE_PATH_STYLE
+              value: "true"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            - name: THERMOS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            {{- if .Values.thermos.env }}
+            {{- toYaml .Values.thermos.env | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+          volumeMounts:
+            - name: cache-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+      volumes:
+        - name: cache-volume
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-thermos
+  labels:
+    app: thermos
+    release: {{ .Release.Name }}
+spec:
+  type: {{ .Values.thermos.service.type }}
+  ports:
+    - port: {{ .Values.thermos.service.port }}
+      targetPort: 8180
+      protocol: TCP
+  selector:
+    app: thermos
+    release: {{ .Release.Name }} 

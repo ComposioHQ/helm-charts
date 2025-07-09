@@ -1,0 +1,385 @@
+# Development values for Composio
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Namespace configuration
+# If create is true, the chart will create namespaces needed by services
+# If create is false, you need to create namespaces externally before deploying
+namespace:
+  create: true
+  # Name of the namespace where Composio services will be deployed
+  # If not specified, defaults to "composio"
+  name: "composio"
+
+global:
+  environment: development
+  domain: localhost
+  imagePullSecrets:
+    - name: ecr-secret
+  # Add global security defaults for GKE Autopilot
+
+# External secrets configuration
+# Pass these during helm install using --set flags:
+# --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)"
+# --set externalSecrets.postgres.url="postgresql://user:pass@host:port/db"
+externalSecrets:
+  # ECR authentication
+  ecr:
+    token: ""
+    server: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
+    username: "AWS"
+  
+  # PostgreSQL configuration  
+  postgres:
+    url: ""
+
+# Global secrets configuration for development
+# All secrets will be auto-generated for security
+secrets:
+  # Auto-generated secrets (leave empty for random generation)
+  adminToken: ""
+  encryptionKey: ""
+  temporalEncryptionKey: ""
+  bootstrapApiKey: ""
+  # Optional OpenAI API key for LLM functionality
+  openaiApiKey: ""
+  # Additional auto-generated secrets
+  authSecret: ""
+  composioApiKey: ""
+
+externalPostgreSQL:
+  enabled: true
+  urlSecret:
+    name: "external-postgres-secret"
+    key: "url"
+
+# Disable built-in databases since we're using external PostgreSQL
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: "postgres123"
+    username: "composio"
+    password: "composio123"
+    database: "composio"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "2"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+  
+  # Create additional databases for temporal
+  initdb:
+    scripts:
+      init.sql: |
+        CREATE DATABASE temporal;
+        CREATE DATABASE temporal_visibility;
+        GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
+        GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
+
+redis:
+  auth:
+    enabled: true
+    password: "redis123"
+  architecture: standalone
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "2"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+    # Disable privileged sysctls for GKE Autopilot
+    sysctlImage:
+      enabled: false
+    sysctl:
+      enabled: false
+
+
+# Apollo service configuration - Development
+apollo:
+  replicaCount: 2
+  image:
+    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
+    tag: "v2.5"
+    pullPolicy: Always
+  
+  service:
+    type: NodePort
+    port: 9900
+    nodePort: 30900
+  
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  
+  database:
+    urlSecret:
+      name: "external-postgres-secret"
+      key: "url"
+  
+  # Note: Secrets are now managed globally in the 'secrets' section
+  
+  baseUrl: "http://composio-apollo:9900"
+
+# MCP service configuration - Development
+mcp:
+  replicaCount: 2
+  image:
+    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
+    tag: "dc481d7"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 3000
+  
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  
+  database:
+    urlSecret:
+      name: "external-postgres-secret"
+      key: "url"
+  
+  # Note: Secrets are now managed globally in the 'secrets' section
+  
+  baseUrl: "http://composio-mcp:3000"
+
+# Thermos service configuration - Development
+thermos:
+  replicaCount: 2
+  image:
+    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
+    tag: "v2.5"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 8180
+  
+  baseUrl: "http://composio-thermos:8180"
+  
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  
+  # Note: Secrets are now managed globally in the 'secrets' section
+
+# DB Init - Enabled for development
+dbInit:
+  image:
+    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
+    tag: "v2.5"
+    pullPolicy: Always
+  adminEmail: "hello@composio.dev"
+  database:
+    urlSecret:
+      name: "external-postgres-secret"
+      key: "url"
+
+# Temporal configuration - Using official helm chart with external PostgreSQL
+# Note: This will be installed as a separate chart, not as a dependency
+
+# Enable development monitoring
+prometheus:
+  enabled: false
+  nodeExporter:
+    enabled: false
+  # Fix imagePullSecrets format for GKE Autopilot compatibility
+  imagePullSecrets: []
+
+grafana:
+  enabled: false
+  replicas: 1
+
+testFramework:
+  enabled: false
+
+rbac:
+  create: false
+  pspEnabled: false
+  namespaced: true
+
+# Explicitly disable Elasticsearch and ensure no privileged containers
+elasticsearch:
+  enabled: false
+  # If you need to enable Elasticsearch later, uncomment and use these Autopilot-compatible settings:
+  # sysctlVmMaxMapCount: 262144
+  # sysctlImage:
+  #   enabled: false
+  # sysctl:
+  #   enabled: false
+  # initContainer:
+  #   sysctlVmMaxMapCount:
+  #     enabled: false
+  # master:
+  #   securityContext:
+  #     runAsNonRoot: true
+  #     runAsUser: 1000
+  #     allowPrivilegeEscalation: false
+  #     capabilities:
+  #       drop:
+  #       - ALL
+  #     seccompProfile:
+  #       type: RuntimeDefault
+
+cassandra:
+  enabled: false
+
+# Ingress disabled for development (use port-forward)
+ingress:
+  enabled: false
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity - disabled for development
+affinity: {}
+
+# AWS configuration - disabled for development
+aws:
+  region: us-east-1
+  s3:
+    lambdaBucketName: "tools"
+  lambda:
+    functionName: "mercury"
+    #image: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury:7cb50ee086171b7f07fe109be2cf2d2f1afa14e1"
+
+# Minio configuration - Development
+minio:
+  replicaCount: 1
+  image:
+    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
+    tag: "latest"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+  
+  auth:
+    rootUser: "minioadmin"
+    rootPassword: "minioadmin123"
+  
+  persistence:
+    enabled: true
+    size: 8Gi
+    accessMode: ReadWriteOnce
+    storageClass: ""
+  
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  
+  livenessProbe:
+    httpGet:
+      path: /minio/health/live
+      port: 9000
+    initialDelaySeconds: 120
+    periodSeconds: 30
+  
+  readinessProbe:
+    httpGet:
+      path: /minio/health/ready
+      port: 9000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  
+  extraEnvVars: []
+
+# Mercury service configuration - Development
+mercury:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
+    tag: "2786de095eb279b1677bed3bb32cce119a04c6e5"
+    pullPolicy: Always
+  
+  # Let the container use its default entrypoint
+  # command: []
+  # args: []
+  
+  service:
+    type: ClusterIP
+    port: 8080
+  
+  autoscaling:
+    minScale: 1
+    maxScale: 10
+    target: 80
+  
+  containerConcurrency: 0
+  timeoutSeconds: 300
+  
+  resources:
+    requests:
+      memory: "8Gi"
+      cpu: "4"
+    limits:
+      memory: "16Gi"
+      cpu: "8"
+  knative:
+    minReplicas: 3
+    replicas: 10
+    maxReplicas: 20
+    # Add Knative-specific security context for GKE Autopilot
+
+  # Add security context to ensure proper user permissions
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: ""
+    tls: []
+  
+  # Environment variables are now configured directly in templates/mercury-service.yaml
+  volumeMounts: []
+  volumes: []
+  
+

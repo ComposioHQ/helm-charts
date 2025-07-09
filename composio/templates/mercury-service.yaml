@@ -1,0 +1,108 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: {{ include "composio.fullname" . }}-mercury
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mercury
+  annotations:
+    # Configure the custom domain for this service
+    serving.knative.dev/visibility: cluster-local
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-4"
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mercury
+      annotations:
+        autoscaling.knative.dev/minScale: "{{ .Values.mercury.autoscaling.minScale | default "1" }}"
+        autoscaling.knative.dev/maxScale: "{{ .Values.mercury.autoscaling.maxScale | default "10" }}"
+        autoscaling.knative.dev/target: "{{ .Values.mercury.autoscaling.target | default "80" }}"
+        # Force new revision only when image changes
+        composio.dev/image-tag: "{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containerConcurrency: {{ .Values.mercury.containerConcurrency | default 0 }}
+      timeoutSeconds: {{ .Values.mercury.timeoutSeconds | default 300 }}
+      containers:
+        - name: mercury
+          image: "{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
+          {{- if and .Values.mercury.command (gt (len .Values.mercury.command) 0) }}
+          command:
+            {{- toYaml .Values.mercury.command | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.mercury.args (gt (len .Values.mercury.args) 0) }}
+          args:
+            {{- toYaml .Values.mercury.args | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.mercury.service.port | default 8080 }}
+          securityContext:
+            {{- toYaml .Values.mercury.securityContext | nindent 12 }}
+          env:
+            # AWS S3 Configuration (using Minio) - matching your reference configuration
+            - name: AWS_S3_REGION_NAME
+              value: "us-east-1"
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: AWS_S3_LAMBDA_BUCKET
+              value: "tools"
+            - name: AWS_S3_CUSTOM_TOOLS_BUCKET
+              value: "tools"
+            - name: SELF_HOSTED
+              value: "true"
+            - name: BACKEND_URL
+              value: "http://composio-apollo:9900"
+            # Minio credentials - using your reference variable names
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: MINIO_ROOT_USER
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: AWS_LAMBDA_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: MINIO_ROOT_USER
+            - name: AWS_LAMBDA_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: AWS_S3_ENDPOINT
+              value: "http://{{ .Release.Name }}-minio:9000"
+            - name: AWS_S3_ENDPOINT_URL
+              value: "http://{{ .Release.Name }}-minio:9000"
+            - name: AWS_S3_FORCE_PATH_STYLE
+              value: "true"
+            # OpenAI API Key - strip any trailing whitespace that might cause HTTP header issues
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: OPENAI_API_KEY
+          resources:
+            {{- toYaml .Values.mercury.resources | nindent 12 }}
+          {{- with .Values.mercury.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.mercury.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+ 

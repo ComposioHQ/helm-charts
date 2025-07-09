@@ -1,0 +1,85 @@
+{{- if not .Values.secrets.adminToken }}
+🔐 AUTO-GENERATED SECRETS:
+All sensitive credentials have been automatically generated for security:
+- APOLLO_ADMIN_TOKEN (32 characters)
+- ENCRYPTION_KEY (32 characters) 
+- TEMPORAL_TRIGGER_ENCRYPTION_KEY (32 characters)
+- BOOTSTRAP_API_KEY_VALUE (32 characters)
+- MINIO credentials
+
+These secrets are persistent across upgrades. To view generated secrets:
+  kubectl get secret {{ .Release.Name }}-secrets -o yaml
+
+To retrieve a specific secret (e.g., admin token):
+  kubectl get secret {{ .Release.Name }}-secrets -o jsonpath="{.data.APOLLO_ADMIN_TOKEN}" | base64 -d
+
+{{- end }}
+
+1. Get the application URL by running these commands:
+{{- if contains "NodePort" .Values.apollo.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "composio.fullname" . }}-apollo)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.apollo.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "composio.fullname" . }}-apollo'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "composio.fullname" . }}-apollo --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.apollo.service.port }}
+{{- else if contains "ClusterIP" .Values.apollo.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "composio.name" . }},app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=apollo" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. Access Composio services:
+
+   Apollo (Main API):
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-apollo 8080:{{ .Values.apollo.service.port }}
+   Then visit: http://127.0.0.1:8080
+
+   MCP (Management Portal):
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-mcp 8081:{{ .Values.mcp.service.port }}
+   Then visit: http://127.0.0.1:8081
+
+   Temporal Web UI:
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-temporal-web 8082:8080
+   Then visit: http://127.0.0.1:8082
+
+3. Get admin credentials:
+   {{- if .Values.secrets.adminToken }}
+   Admin Token: {{ .Values.secrets.adminToken }}
+   {{- else }}
+   Admin Token: Auto-generated (retrieve using kubectl command above)
+   {{- end }}
+
+4. Verify installation:
+   kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+   All pods should be in 'Running' status.
+
+5. For production use:
+   - Configure external databases (PostgreSQL, Redis)
+   - Set up proper ingress with SSL certificates
+   - Configure monitoring and logging
+   - Review security settings and secrets management
+
+For more information:
+- Documentation: https://docs.composio.dev
+- GitHub: https://github.com/composio/self-hosted
+- Support: https://discord.gg/composio
+
+{{- if not .Values.secrets.adminToken }}
+
+INFO: Admin token has been auto-generated for security. Retrieve it using the kubectl commands shown above.
+{{- end }}
+
+{{- if and .Values.postgresql.enabled (not .Values.postgresql.auth.password) }}
+
+INFO: PostgreSQL password will be auto-managed by the chart for security.
+{{- end }}
+
+{{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
+
+INFO: Redis password will be auto-managed by the chart for security.
+{{- end }} 

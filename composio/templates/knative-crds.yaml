@@ -1,0 +1,142 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: knative-setup-{{ .Release.Name }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-8"
+    "helm.sh/hook-delete-policy": hook-succeeded
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "services", "endpoints", "configmaps", "secrets", "serviceaccounts"]
+  verbs: ["get", "list", "create", "patch", "update", "delete"]
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "create", "patch", "update"]
+- apiGroups: ["serving.knative.dev"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["operator.knative.dev"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "create", "patch", "update", "delete"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
+  verbs: ["get", "list", "create", "patch", "update", "delete"]
+- apiGroups: ["networking.istio.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
+  verbs: ["get", "list", "create", "patch", "update", "delete"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "create", "patch", "update", "delete"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["get", "list", "create", "patch", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: knative-setup-{{ .Release.Name }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-7"
+    "helm.sh/hook-delete-policy": hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: knative-setup-{{ .Release.Name }}
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: {{ include "composio.namespace" . }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: knative-serving-setup-{{ .Release.Revision }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: knative-setup
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-6"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      # Use default ServiceAccount which always exists
+      containers:
+      - name: knative-setup
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Setting up Knative (install/upgrade compatible)..."
+          
+          # Function to apply resource with retry and idempotency
+          apply_with_retry() {
+            local url=$1
+            local resource_type=$2
+            echo "Applying $resource_type from $url..."
+            
+            # Apply the resource (idempotent operation)
+            if kubectl apply -f "$url"; then
+              echo "✅ Successfully applied $resource_type"
+            else
+              echo "⚠️  Failed to apply $resource_type, retrying..."
+              sleep 5
+              kubectl apply -f "$url"
+            fi
+          }
+          
+          # Install Knative Operator CRDs first
+          apply_with_retry "https://github.com/knative/operator/releases/download/knative-v1.15.0/operator.yaml" "Knative Operator"
+          
+          # Wait for Knative Operator CRDs to be ready
+          echo "Waiting for Knative Operator CRDs to be ready..."
+          kubectl wait --for condition=established --timeout=300s crd/knativeservings.operator.knative.dev || {
+            echo "Knative Operator CRDs not ready, checking if they exist..."
+            kubectl get crd knativeservings.operator.knative.dev && echo "CRD exists, continuing..."
+          }
+          
+          # Install Knative Serving CRDs  
+          apply_with_retry "https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml" "Knative Serving CRDs"
+          
+          # Wait for Knative Serving CRDs to be ready
+          echo "Waiting for Knative Serving CRDs to be ready..."
+          kubectl wait --for condition=established --timeout=300s crd/services.serving.knative.dev || {
+            echo "Knative Serving CRDs not ready, checking if they exist..."
+            kubectl get crd services.serving.knative.dev && echo "CRD exists, continuing..."
+          }
+          
+          # Install Kourier networking
+          apply_with_retry "https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml" "Kourier Networking"
+          
+          echo "✅ Knative setup completed successfully!"
+          echo "📊 Checking Knative installation status..."
+          
+          # Verify installation
+          kubectl get crd | grep knative || echo "⚠️  No Knative CRDs found"
+          kubectl get pods -n knative-serving || echo "ℹ️  Knative serving namespace not yet created"
+          
+          echo "🎉 Knative setup job finished!"
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 128Mi
+            cpu: 100m

@@ -1,0 +1,55 @@
+{{- if .Values.namespace.create }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: knative-serving
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-6"
+{{- end }}
+---
+apiVersion: operator.knative.dev/v1beta1
+kind: KnativeServing
+metadata:
+  name: knative-serving
+  namespace: knative-serving
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: knative-serving
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-5"
+spec:
+  # Use Kourier as the networking layer (easier than Istio)
+  ingress:
+    kourier:
+      enabled: true
+  config:
+    network:
+      ingress-class: "kourier.ingress.networking.knative.dev"
+    # Configure domain for Knative services
+    domain:
+      "{{ .Values.global.domain | default "example.com" }}": ""
+  # High availability configuration
+  high-availability:
+    replicas: {{ .Values.mercury.knative.replicas | default 2 }}
+  # Resource configuration
+  deployments:
+    - name: controller
+      env:
+        - container: controller
+          envVars:
+            - name: METRICS_DOMAIN
+              value: knative.dev/internal/serving
+    - name: webhook
+      env:
+        - container: webhook
+          envVars:
+            - name: METRICS_DOMAIN
+              value: knative.dev/internal/serving
