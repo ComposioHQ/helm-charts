@@ -10,14 +10,12 @@ https://composio.dev
 
 # Installation
 
-
-
-
-```helm install composio-stg ./composio \
+```
+helm install composio ./composio \
   --create-namespace \
   --namespace composio \
   --set namespace.name=composio \
   --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
-  --set externalSecrets.postgres.url="postgresql://<postgres>:<password>@<host_ip>:5432/postgres?sslmode=require"
+  --set externalSecrets.postgres.url="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
 ```
 
