@@ -110,7 +110,7 @@ apollo:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "v2.5"
+    tag: "010da28"
     pullPolicy: Always
   
   service:
@@ -165,7 +165,7 @@ thermos:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "v2.5"
+    tag: "010da28"
     pullPolicy: Always
   
   service:
@@ -186,7 +186,7 @@ thermos:
 dbInit:
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
-    tag: "v2.5"
+    tag: "010da28"
     pullPolicy: Always
   adminEmail: "hello@composio.dev"
   database:
@@ -410,11 +410,11 @@ mercury:
   # Choose deployment method:
   # - useKnative: true  = Serverless with auto-scaling (requires Knative installation)
   # - useKnative: false = Standard Kubernetes deployment
-  useKnative: false  # Set to true to enable Knative serverless deployment
+  useKnative: true
   replicaCount: 1
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
-    tag: "2786de095eb279b1677bed3bb32cce119a04c6e5"
+    tag: "latest"
     pullPolicy: Always
   
   # Let the container use its default entrypoint
