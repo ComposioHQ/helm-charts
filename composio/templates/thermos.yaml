@@ -60,7 +60,7 @@ spec:
             - name: HOST
               value: "0.0.0.0"
             - name: APOLLO_ENDPOINT
-              value: {{ .Values.apollo.baseUrl | quote }}
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: COMPOSIO_ENV
               value: "production"
             - name: APOLLO_ADMIN_TOKEN

@@ -45,21 +45,21 @@ spec:
                   name: {{ .Release.Name }}-secrets
                   key: COMPOSIO_API_KEY
             - name: APOLLO_COMPOSIO_BASE_URL
-              value: {{ .Values.apollo.baseUrl | quote }}
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_SPEC_PATH
-              value: "http://composio.apollo.vpc/api/v3/mcp-experimental-openapi.json"
+              value: {{ printf "http://%s-apollo:9900/api/v3/mcp-experimental-openapi.json" .Release.Name | quote }}
             - name: COMPOSIO_BASE_URL
-              value: {{ .Values.apollo.baseUrl | quote }}
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: SELF_HOSTED
               value: "true"
             - name: MCP_BASE_URL
-              value: {{ .Values.mcp.baseUrl | quote }}
+              value: {{ printf "http://%s-mcp:3000" .Release.Name | quote }}
             - name: SERVICE_NAME
               value: "mcp-server-next"
             - name: NEXT_PUBLIC_COMPOSIO_BASE_URL
-              value: {{ .Values.apollo.baseUrl | quote }}
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_URL
-              value: {{ .Values.apollo.baseUrl | quote }}
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
