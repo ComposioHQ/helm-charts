@@ -24,6 +24,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'gke' }}
+    env:
+      USE_GKE_GCLOUD_AUTH_PLUGIN: True
     
     steps:
       - name: Checkout
@@ -39,8 +41,13 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Install GKE gcloud auth plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+
       - name: Set up kubectl for GKE
         run: |
+          export USE_GKE_GCLOUD_AUTH_PLUGIN=True
           gcloud container clusters get-credentials tsuro \
             --region us-central1
 
