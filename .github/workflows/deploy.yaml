@@ -29,7 +29,7 @@ jobs:
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Helm
         uses: azure/setup-helm@v4.2.0
@@ -41,15 +41,16 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Install GKE gcloud auth plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
 
-      - name: Set up kubectl for GKE
+      - name: Configure kubectl for GKE
         run: |
-          export USE_GKE_GCLOUD_AUTH_PLUGIN=True
           gcloud container clusters get-credentials tsuro \
-            --region us-central1
+            --region us-central1 \
+            --project self-host-kubernetes
 
       - name: Add dependency repos
         run: |
@@ -57,21 +58,30 @@ jobs:
           helm repo add temporal https://go.temporal.io/helm-charts
           helm repo update
 
+      - name: Check if chart directory exists
+        run: |
+          if [ ! -d "composio" ]; then
+            echo "Error: composio directory not found"
+            echo "Available directories:"
+            ls -la
+            exit 1
+          fi
+
       - name: Deploy Helm Chart
         run: |
-          cd composio
-          helm dependency update
-          helm upgrade --install composio ./composio \
-            --namespace 'composio' \
+          cd composio          
+          # Deploy with helm upgrade --install
+          helm upgrade --install composio . \
+            --namespace composio \
             --create-namespace \
             --wait \
-            --timeout 5m \
-            --values ./composio/values.yaml \
+            --timeout 10m \
+            $VALUES_FLAG \
             --set global.imageTag=${{ github.event.inputs.image_tag || 'latest' }} \
             --set apollo.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
             --set mercury.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
             --set thermos.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
-                        --set mcp.image.tag=${{ github.event.inputs.image_tag || 'latest' }}
+            --set mcp.image.tag=${{ github.event.inputs.image_tag || 'latest' }}
 
       - name: Verify Helm deployment status
         run: |
@@ -86,11 +96,19 @@ jobs:
         run: |
           echo "⏳ Waiting for all deployments to be ready..."
           
-          # Wait for each deployment to complete rollout
-          kubectl rollout status deployment/composio-apollo -n composio --timeout=300s
-          kubectl rollout status deployment/composio-mercury -n composio --timeout=300s  
-          kubectl rollout status deployment/composio-thermos -n composio --timeout=300s
-          kubectl rollout status deployment/composio-mcp -n composio --timeout=300s
+          # Get all deployments in the namespace
+          DEPLOYMENTS=$(kubectl get deployments -n composio -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+          
+          if [ -z "$DEPLOYMENTS" ]; then
+            echo "No deployments found in composio namespace"
+            kubectl get all -n composio
+          else
+            # Wait for each deployment to complete rollout
+            for deployment in $DEPLOYMENTS; do
+              echo "Waiting for deployment: $deployment"
+              kubectl rollout status deployment/$deployment -n composio --timeout=300s
+            done
+          fi
 
       - name: Verify pod health
         run: |
@@ -172,5 +190,3 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             text: "💥 ❌ Deployment FAILED for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*. Check GitHub Actions for details."
-
-         
