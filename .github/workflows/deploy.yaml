@@ -75,6 +75,46 @@ jobs:
             exit 1
           fi
 
+      - name: Cleanup failed pre-upgrade hooks
+        run: |
+          echo "🧹 Checking for existing pre-upgrade hook jobs..."
+          
+          # Check for existing db-init job
+          if kubectl get job composio-db-init -n composio 2>/dev/null; then
+            JOB_STATUS=$(kubectl get job composio-db-init -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+            
+            if [[ "$JOB_STATUS" != "True" ]]; then
+              echo "⚠️  Found existing composio-db-init job that is not completed. Deleting..."
+              kubectl delete job composio-db-init -n composio
+              echo "✅ Deleted failed composio-db-init job"
+            else
+              echo "✅ composio-db-init job already exists and is completed"
+            fi
+          else
+            echo "✅ No existing composio-db-init job found"
+          fi
+          
+          # Check for any other potential hook jobs that might cause conflicts
+          HOOK_JOBS=$(kubectl get jobs -n composio -l "app.kubernetes.io/managed-by=Helm" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+          
+          if [[ -n "$HOOK_JOBS" ]]; then
+                         for job in $HOOK_JOBS; do
+               JOB_STATUS=$(kubectl get job $job -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+               if [[ "$JOB_STATUS" != "True" ]]; then
+                 echo "⚠️  Found failed Helm hook job: $job. Deleting..."
+                 kubectl delete job $job -n composio
+                 echo "✅ Deleted failed job: $job"
+               fi
+             done
+           fi
+           
+           # Clean up any orphaned pods from deleted jobs
+           echo "🧹 Cleaning up any orphaned job pods..."
+           kubectl delete pods -n composio -l "job-name=composio-db-init" --ignore-not-found=true
+           
+           # Wait a moment for cleanup to complete
+           sleep 2
+
       - name: Deploy Helm Chart
         run: |
           cd composio
@@ -112,7 +152,9 @@ jobs:
           fi
           
           # Deploy with helm upgrade --install
-          helm upgrade --install composio . \
+          echo "🚀 Starting Helm deployment..."
+          
+          if ! helm upgrade --install composio . \
             --namespace composio \
             --create-namespace \
             --wait \
@@ -122,7 +164,31 @@ jobs:
             --set apollo.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
             --set mercury.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
             --set thermos.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
-            --set mcp.image.tag=${{ github.event.inputs.image_tag || 'latest' }}
+            --set mcp.image.tag=${{ github.event.inputs.image_tag || 'latest' }}; then
+            
+            echo "❌ Helm deployment failed"
+            
+            # Check if this was an upgrade (not initial install)
+            if helm list -n composio | grep -q composio; then
+              echo "🔄 Attempting to rollback to previous revision..."
+              
+              # Get previous revision
+              CURRENT_REV=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio") | .revision')
+              PREVIOUS_REV=$((CURRENT_REV - 1))
+              
+              if [[ $PREVIOUS_REV -gt 0 ]]; then
+                echo "⏪ Rolling back from revision $CURRENT_REV to $PREVIOUS_REV"
+                helm rollback composio $PREVIOUS_REV -n composio
+                echo "✅ Rollback completed"
+              else
+                echo "⚠️ No previous revision to rollback to"
+              fi
+            fi
+            
+            exit 1
+          fi
+          
+          echo "✅ Helm deployment completed successfully"
 
       - name: Verify Helm deployment status
         run: |
