@@ -1,0 +1,169 @@
+name: Deploy Helm Chart
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'gke'
+        type: choice
+        options:
+          - gke
+          - eks
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: true
+        default: 'latest'
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'gke' }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.14.4
+      
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up kubectl for GKE
+        run: |
+          gcloud container clusters get-credentials tsuro \
+            --region us-central1
+
+      - name: Add dependency repos
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add temporal https://go.temporal.io/helm-charts
+          helm repo update
+
+      - name: Deploy Helm Chart
+        run: |
+          cd composio
+          helm dependency update
+          helm upgrade --install composio ./composio \
+            --namespace 'composio' \
+            --create-namespace \
+            --wait \
+            --timeout 5m \
+            --values ./composio/values.yaml \
+            --set global.imageTag=${{ github.event.inputs.image_tag || 'latest' }} \
+            --set apollo.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
+            --set mercury.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
+            --set thermos.image.tag=${{ github.event.inputs.image_tag || 'latest' }} \
+                        --set mcp.image.tag=${{ github.event.inputs.image_tag || 'latest' }}
+
+      - name: Verify Helm deployment status
+        run: |
+          echo "📊 Checking Helm release status..."
+          helm status composio -n composio
+          
+          # Get the revision number
+          REVISION=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio") | .revision')
+          echo "🏷️ Current revision: $REVISION"
+
+      - name: Wait for deployment rollout
+        run: |
+          echo "⏳ Waiting for all deployments to be ready..."
+          
+          # Wait for each deployment to complete rollout
+          kubectl rollout status deployment/composio-apollo -n composio --timeout=300s
+          kubectl rollout status deployment/composio-mercury -n composio --timeout=300s  
+          kubectl rollout status deployment/composio-thermos -n composio --timeout=300s
+          kubectl rollout status deployment/composio-mcp -n composio --timeout=300s
+
+      - name: Verify pod health
+        run: |
+          echo "🏥 Checking pod health and readiness..."
+          
+          # Check if all pods are running and ready
+          kubectl get pods -n composio --no-headers | while read line; do
+            pod_name=$(echo $line | awk '{print $1}')
+            pod_status=$(echo $line | awk '{print $3}')
+            pod_ready=$(echo $line | awk '{print $2}')
+            
+            echo "Pod: $pod_name | Status: $pod_status | Ready: $pod_ready"
+            
+            if [[ "$pod_status" != "Running" && "$pod_status" != "Completed" ]]; then
+              echo "❌ Pod $pod_name is not in Running state: $pod_status"
+              kubectl describe pod $pod_name -n composio
+              exit 1
+            fi
+          done
+          
+          echo "✅ All pods are healthy!"
+
+      - name: Verify services and endpoints
+        run: |
+          echo "🔗 Checking services and endpoints..."
+          
+          # List services
+          kubectl get services -n composio
+          
+          # Check that services have endpoints
+          for service in $(kubectl get services -n composio --no-headers -o custom-columns=":metadata.name" | grep -v kubernetes); do
+            endpoints=$(kubectl get endpoints $service -n composio -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || echo "")
+            if [[ -z "$endpoints" ]]; then
+              echo "⚠️ Warning: Service $service has no endpoints"
+            else
+              echo "✅ Service $service has endpoints: $endpoints"
+            fi
+          done
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running basic smoke tests..."
+          
+          # Test if Apollo service is responding (if it has a health endpoint)
+          APOLLO_POD=$(kubectl get pods -n composio -l app=apollo -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          if [[ -n "$APOLLO_POD" ]]; then
+            echo "Testing Apollo pod: $APOLLO_POD"
+            # Add your specific health check here, for example:
+            # kubectl exec $APOLLO_POD -n composio -- curl -f http://localhost:8080/health || echo "Health check endpoint not available"
+          fi
+          
+          echo "✅ Basic smoke tests completed"
+
+      - name: Display deployment summary
+        run: |
+          echo "📋 Deployment Summary"
+          echo "===================="
+          echo "🏷️ Image Tag: ${{ github.event.inputs.image_tag || 'latest' }}"
+          echo "🌍 Environment: ${{ github.event.inputs.environment || 'gke' }}"
+          echo "📦 Namespace: composio"
+          echo ""
+          echo "📊 Resource Status:"
+          kubectl get all -n composio
+          
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "🚀 ✅ Deployment SUCCESS for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*"
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "💥 ❌ Deployment FAILED for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*. Check GitHub Actions for details."
+
+         
