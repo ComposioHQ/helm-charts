@@ -33,12 +33,16 @@ jobs:
         uses: azure/setup-helm@v4.2.0
         with:
           version: v3.14.4
-
-      - name: Set up kubectl
-        uses: azure/k8s-set-context@v1
+      
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/auth@v2
         with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBECONFIG }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up kubectl for GKE
+        run: |
+          gcloud container clusters get-credentials tsuro \
+            --region us-central1
 
       - name: Add dependency repos
         run: |
