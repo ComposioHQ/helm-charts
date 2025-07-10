@@ -7,9 +7,8 @@ metadata:
   labels:
     {{- include "composio.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "-8"
-    "helm.sh/hook-delete-policy": hook-succeeded
 rules:
 - apiGroups: ["*"]
   resources: ["*"]
@@ -22,9 +21,8 @@ metadata:
   labels:
     {{- include "composio.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "-7"
-    "helm.sh/hook-delete-policy": hook-succeeded
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -43,7 +41,7 @@ metadata:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: knative-setup
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "-6"
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
