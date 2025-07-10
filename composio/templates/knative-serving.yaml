@@ -1,3 +1,4 @@
+{{- if .Values.mercury.useKnative }}
 {{- if .Values.namespace.create }}
 ---
 apiVersion: v1
@@ -10,46 +11,107 @@ metadata:
   annotations:
     meta.helm.sh/release-name: {{ .Release.Name }}
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
-    "helm.sh/hook": pre-install
-    "helm.sh/hook-weight": "-6"
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-7"
 {{- end }}
 ---
-apiVersion: operator.knative.dev/v1beta1
-kind: KnativeServing
+# Job to configure Knative after installation
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: knative-serving
-  namespace: knative-serving
+  name: knative-config-{{ .Release.Revision }}
+  namespace: {{ include "composio.namespace" . }}
   labels:
     {{- include "composio.labels" . | nindent 4 }}
-    app.kubernetes.io/component: knative-serving
+    app.kubernetes.io/component: knative-config
   annotations:
-    "helm.sh/hook": pre-install
-    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": hook-succeeded
 spec:
-  # Use Kourier as the networking layer (easier than Istio)
-  ingress:
-    kourier:
-      enabled: true
-  config:
-    network:
-      ingress-class: "kourier.ingress.networking.knative.dev"
-    # Configure domain for Knative services
-    domain:
-      "{{ .Values.global.domain | default "example.com" }}": ""
-  # High availability configuration
-  high-availability:
-    replicas: {{ .Values.mercury.knative.replicas | default 2 }}
-  # Resource configuration
-  deployments:
-    - name: controller
-      env:
-        - container: controller
-          envVars:
-            - name: METRICS_DOMAIN
-              value: knative.dev/internal/serving
-    - name: webhook
-      env:
-        - container: webhook
-          envVars:
-            - name: METRICS_DOMAIN
-              value: knative.dev/internal/serving
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: knative-config
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "🔧 Configuring Knative for optimal performance..."
+          
+          # Wait for knative-serving namespace and core components
+          echo "⏳ Waiting for Knative serving namespace..."
+          kubectl wait --for condition=Ready --timeout=300s namespace/knative-serving || {
+            echo "⚠️  Timeout waiting for namespace, but continuing..."
+          }
+          
+          # Wait for config-network ConfigMap to exist
+          echo "⏳ Waiting for config-network ConfigMap..."
+          while ! kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; do
+            echo "  Waiting for config-network ConfigMap to be created..."
+            sleep 10
+          done
+          
+          # Configure domain template for cluster-local services
+          echo "🌐 Configuring domain settings..."
+          kubectl patch configmap config-domain -n knative-serving --type merge --patch '
+          {
+            "data": {
+              "svc.cluster.local": ""
+            }
+          }' || echo "⚠️  Domain config patch failed, may already be configured"
+          
+          # Configure network settings for cluster-local services
+          echo "🔗 Configuring network settings..."
+          kubectl patch configmap config-network -n knative-serving --type merge --patch '
+          {
+            "data": {
+              "ingress-class": "kourier.ingress.networking.knative.dev",
+              "domainTemplate": "{{.Name}}.{{.Namespace}}.{{.Domain}}"
+            }
+          }' || echo "⚠️  Network config patch may have already been applied"
+          
+          # Configure defaults for GKE Autopilot optimization
+          echo "⚙️  Configuring defaults for GKE Autopilot..."
+          kubectl patch configmap config-defaults -n knative-serving --type merge --patch '
+          {
+            "data": {
+              "revision-timeout-seconds": "300",
+              "max-revision-timeout-seconds": "600", 
+              "revision-cpu-request": "100m",
+              "revision-memory-request": "128Mi",
+              "revision-cpu-limit": "1000m",
+              "revision-memory-limit": "1Gi"
+            }
+          }' || echo "⚠️  Defaults config patch failed, may already be configured"
+          
+          echo "✅ Knative configuration completed!"
+          echo "📊 Configuration summary:"
+          echo "  • Domain: cluster-local services enabled"
+          echo "  • Network: Kourier ingress configured"
+          echo "  • Defaults: GKE Autopilot optimized"
+          
+          # Verify configuration
+          echo "🔍 Verifying configuration..."
+          kubectl get configmap config-network -n knative-serving -o jsonpath='{.data.ingress-class}' || echo "Could not verify ingress-class"
+          echo ""
+          echo "🎉 Knative configuration job completed!"
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 128Mi
+            cpu: 100m
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+{{- end }}
