@@ -68,13 +68,13 @@ spec:
             - name: SELF_HOSTED
               value: "true"
             - name: THERMOS_URL
-              value: {{ .Values.thermos.baseUrl | quote }}
+              value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
             - name: MCP_BASE_URL
-              value: {{ .Values.mcp.baseUrl | quote }}
+              value: {{ printf "http://%s-mcp:3000" .Release.Name | quote }}
             - name: OVERWRITE_APOLLO_URL
-              value: {{ .Values.apollo.baseUrl | quote }}
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: OAUTH2_REDIRECT_URI_OVERRIDE
-              value: {{ printf "%s/api/v3/toolkits/auth/callback" .Values.apollo.baseUrl | quote }}
+              value: {{ printf "http://%s-apollo:9900/api/v3/toolkits/auth/callback" .Release.Name | quote }}
             - name: MERCURY_URL
               value: "https://mercury.composio.dev"
             - name: SERVICE_NAME
