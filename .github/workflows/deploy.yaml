@@ -52,6 +52,14 @@ jobs:
             --region us-central1 \
             --project self-host-kubernetes
 
+      - name: Validate AWS Account ID secret
+        run: |
+          if [ -z "${{ secrets.AWS_ACCOUNT_ID }}" ]; then
+            echo "❌ Error: AWS_ACCOUNT_ID secret is not set"
+            exit 1
+          fi
+          echo "✅ AWS Account ID secret is available"
+
       - name: Add dependency repos
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -89,12 +97,18 @@ jobs:
             fi
           fi
           
-          # Check if values.yaml exists
+          # Check if values.yaml exists and substitute AWS_ACCOUNT_ID
           if [ ! -f "values.yaml" ]; then
             echo "Warning: values.yaml not found, proceeding without custom values"
             VALUES_FLAG=""
           else
-            VALUES_FLAG="--values ./values.yaml"
+            echo "Substituting AWS_ACCOUNT_ID in values.yaml..."
+            # Create a temporary values file with AWS_ACCOUNT_ID substituted
+            sed "s/AWS_ACCOUNT_ID/${{ secrets.AWS_ACCOUNT_ID }}/g" values.yaml > values-substituted.yaml
+            VALUES_FLAG="--values ./values-substituted.yaml"
+            
+            # Show what was substituted for verification (without exposing the secret)
+            echo "Image repositories updated with AWS Account ID (***$(echo '${{ secrets.AWS_ACCOUNT_ID }}' | tail -c 5))"
           fi
           
           # Deploy with helm upgrade --install
@@ -217,3 +231,12 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             text: "💥 ❌ Deployment FAILED for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*. Check GitHub Actions for details."
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          # Remove temporary values file if it was created
+          if [ -f "composio/values-substituted.yaml" ]; then
+            rm composio/values-substituted.yaml
+            echo "🧹 Cleaned up temporary values file"
+          fi
