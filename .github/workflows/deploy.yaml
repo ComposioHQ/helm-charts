@@ -80,18 +80,18 @@ jobs:
           echo "🧹 Checking for existing pre-upgrade hook jobs..."
           
           # Check for existing db-init job
-          if kubectl get job composio-db-init -n composio 2>/dev/null; then
-            JOB_STATUS=$(kubectl get job composio-db-init -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+          if kubectl get job composio-test-db-init -n composio 2>/dev/null; then
+            JOB_STATUS=$(kubectl get job composio-test-db-init -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
             
             if [[ "$JOB_STATUS" != "True" ]]; then
-              echo "⚠️  Found existing composio-db-init job that is not completed. Deleting..."
-              kubectl delete job composio-db-init -n composio
-              echo "✅ Deleted failed composio-db-init job"
+              echo "⚠️  Found existing composio-test-db-init job that is not completed. Deleting..."
+              kubectl delete job composio-test-db-init -n composio
+              echo "✅ Deleted failed composio-test-db-init job"
             else
-              echo "✅ composio-db-init job already exists and is completed"
+              echo "✅ composio-test-db-init job already exists and is completed"
             fi
           else
-            echo "✅ No existing composio-db-init job found"
+            echo "✅ No existing composio-test-db-init job found"
           fi
           
           # Check for any other potential hook jobs that might cause conflicts
@@ -108,9 +108,9 @@ jobs:
              done
            fi
            
-           # Clean up any orphaned pods from deleted jobs
-           echo "🧹 Cleaning up any orphaned job pods..."
-           kubectl delete pods -n composio -l "job-name=composio-db-init" --ignore-not-found=true
+                     # Clean up any orphaned pods from deleted jobs
+          echo "🧹 Cleaning up any orphaned job pods..."
+          kubectl delete pods -n composio -l "job-name=composio-test-db-init" --ignore-not-found=true
            
            # Wait a moment for cleanup to complete
            sleep 2
@@ -154,7 +154,7 @@ jobs:
           # Deploy with helm upgrade --install
           echo "🚀 Starting Helm deployment..."
           
-          if ! helm upgrade --install composio . \
+          if ! helm upgrade --install composio-test . \
             --namespace composio \
             --create-namespace \
             --wait \
@@ -169,16 +169,16 @@ jobs:
             echo "❌ Helm deployment failed"
             
             # Check if this was an upgrade (not initial install)
-            if helm list -n composio | grep -q composio; then
+            if helm list -n composio | grep -q composio-test; then
               echo "🔄 Attempting to rollback to previous revision..."
               
               # Get previous revision
-              CURRENT_REV=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio") | .revision')
+              CURRENT_REV=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio-test") | .revision')
               PREVIOUS_REV=$((CURRENT_REV - 1))
               
               if [[ $PREVIOUS_REV -gt 0 ]]; then
                 echo "⏪ Rolling back from revision $CURRENT_REV to $PREVIOUS_REV"
-                helm rollback composio $PREVIOUS_REV -n composio
+                helm rollback composio-test $PREVIOUS_REV -n composio
                 echo "✅ Rollback completed"
               else
                 echo "⚠️ No previous revision to rollback to"
@@ -193,10 +193,10 @@ jobs:
       - name: Verify Helm deployment status
         run: |
           echo "📊 Checking Helm release status..."
-          helm status composio -n composio
+          helm status composio-test -n composio
           
           # Get the revision number
-          REVISION=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio") | .revision')
+          REVISION=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio-test") | .revision')
           echo "🏷️ Current revision: $REVISION"
 
       - name: Wait for deployment rollout
@@ -275,6 +275,7 @@ jobs:
           echo "===================="
           echo "🏷️ Image Tag: ${{ github.event.inputs.image_tag || 'latest' }}"
           echo "🌍 Environment: ${{ github.event.inputs.environment || 'gke' }}"
+          echo "📦 Release: composio-test"
           echo "📦 Namespace: composio"
           echo ""
           echo "📊 Resource Status:"
@@ -287,7 +288,7 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "🚀 ✅ Deployment SUCCESS for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*"
+            text: "🚀 ✅ Deployment SUCCESS for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio-test* release in *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*"
 
       - name: Notify Slack on failure
         if: failure()
@@ -296,7 +297,7 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "💥 ❌ Deployment FAILED for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*. Check GitHub Actions for details."
+            text: "💥 ❌ Deployment FAILED for *${{ github.event.inputs.image_tag || 'latest' }}* to *composio-test* release in *composio* namespace on *${{ github.event.inputs.environment || 'gke' }}*. Check GitHub Actions for details."
 
       - name: Cleanup temporary files
         if: always()
