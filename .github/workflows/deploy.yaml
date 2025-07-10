@@ -48,7 +48,7 @@ jobs:
 
       - name: Configure kubectl for GKE
         run: |
-          gcloud container clusters get-credentials gke-io \
+          gcloud container clusters get-credentials gke-autopilot \
             --region us-central1 \
             --project self-host-kubernetes
 
