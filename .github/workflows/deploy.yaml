@@ -50,7 +50,7 @@ jobs:
         run: |
           gcloud container clusters get-credentials tsuro \
             --region us-central1 \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+            --project self-host-kubernetes
 
       - name: Add dependency repos
         run: |
