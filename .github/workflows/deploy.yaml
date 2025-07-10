@@ -50,7 +50,7 @@ jobs:
         run: |
           gcloud container clusters get-credentials tsuro \
             --region us-central1 \
-            --project self-host-kubernetes
+            --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Add dependency repos
         run: |
@@ -69,7 +69,34 @@ jobs:
 
       - name: Deploy Helm Chart
         run: |
-          cd composio          
+          cd composio
+          
+          # Handle dependencies if Chart.yaml exists
+          if [ -f "Chart.yaml" ]; then
+            echo "Found Chart.yaml, handling dependencies..."
+            
+            # Check if dependencies are defined
+            if grep -q "dependencies:" Chart.yaml; then
+              echo "Dependencies found in Chart.yaml"
+              
+              # Try dependency update first, then build
+              helm dependency update || {
+                echo "dependency update failed, trying dependency build..."
+                helm dependency build
+              }
+            else
+              echo "No dependencies defined in Chart.yaml"
+            fi
+          fi
+          
+          # Check if values.yaml exists
+          if [ ! -f "values.yaml" ]; then
+            echo "Warning: values.yaml not found, proceeding without custom values"
+            VALUES_FLAG=""
+          else
+            VALUES_FLAG="--values ./values.yaml"
+          fi
+          
           # Deploy with helm upgrade --install
           helm upgrade --install composio . \
             --namespace composio \
