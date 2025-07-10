@@ -132,8 +132,6 @@ apollo:
       key: "url"
   
   # Note: Secrets are now managed globally in the 'secrets' section
-  
-  baseUrl: "http://composio-apollo:9900"
 
 # MCP service configuration - Development
 mcp:
@@ -161,8 +159,6 @@ mcp:
       key: "url"
   
   # Note: Secrets are now managed globally in the 'secrets' section
-  
-  baseUrl: "http://composio-mcp:3000"
 
 # Thermos service configuration - Development
 thermos:
@@ -175,8 +171,6 @@ thermos:
   service:
     type: ClusterIP
     port: 8180
-  
-  baseUrl: "http://composio-thermos:8180"
   
   resources:
     requests:
@@ -200,8 +194,96 @@ dbInit:
       name: "external-postgres-secret"
       key: "url"
 
-# Temporal configuration - Using official helm chart with external PostgreSQL
-# Note: This will be installed as a separate chart, not as a dependency
+# Temporal configuration - Using official helm chart as dependency with external PostgreSQL
+temporal:
+  fullnameOverride: "temporal-stack"
+  
+  server:
+    enabled: true
+    replicaCount: 1
+    
+    config:
+      logLevel: "info"
+      numHistoryShards: 512
+      
+      # Configure persistence to use PostgreSQL from external secret
+      persistence:
+        defaultStore: default
+        
+        # Main temporal database  
+        default:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            host: "10.120.128.3"
+            port: 5432
+            database: "temporal"
+            user: "postgres"
+            existingSecret: "external-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+        
+        # Visibility database (will be created by schema setup)
+        visibility:
+          driver: "sql" 
+          sql:
+            driver: "postgres12"
+            host: "10.120.128.3"
+            port: 5432
+            database: "temporal_visibility"
+            user: "postgres"
+            existingSecret: "external-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+
+    # Frontend service configuration
+    frontend:
+      service:
+        type: ClusterIP
+        port: 7233
+        membershipPort: 6933
+        httpPort: 7243
+
+  # Enable schema setup to create temporal databases
+  schema:
+    createDatabase:
+      enabled: true
+    setup:
+      enabled: true
+      backoffLimit: 100
+    update:
+      enabled: true
+      backoffLimit: 100
+
+  # Enable web UI
+  web:
+    enabled: true
+    replicaCount: 1
+    service:
+      type: ClusterIP
+      port: 8080
+
+  # Enable admin tools
+  admintools:
+    enabled: true
+
+  # Disable built-in databases (using external PostgreSQL)
+  cassandra:
+    enabled: false
+  mysql:
+    enabled: false
+  elasticsearch:
+    enabled: false
+    
+  # Disable additional monitoring for now
+  prometheus:
+    enabled: false
+    nodeExporter:
+      enabled: false
+  grafana:
+    enabled: false
 
 # Enable development monitoring
 prometheus:
@@ -325,6 +407,10 @@ minio:
 # Mercury service configuration - Development
 mercury:
   enabled: true
+  # Choose deployment method:
+  # - useKnative: true  = Serverless with auto-scaling (requires Knative installation)
+  # - useKnative: false = Standard Kubernetes deployment
+  useKnative: false  # Set to true to enable Knative serverless deployment
   replicaCount: 1
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
@@ -339,6 +425,7 @@ mercury:
     type: ClusterIP
     port: 8080
   
+  # Knative-specific configuration (used when useKnative: true)
   autoscaling:
     minScale: 1
     maxScale: 10
@@ -354,11 +441,12 @@ mercury:
     limits:
       memory: "16Gi"
       cpu: "8"
+      
+  # Knative high-availability settings (used when useKnative: true)
   knative:
-    minReplicas: 3
-    replicas: 10
-    maxReplicas: 20
-    # Add Knative-specific security context for GKE Autopilot
+    minReplicas: 1
+    replicas: 2
+    maxReplicas: 5
 
   # Add security context to ensure proper user permissions
   securityContext:
