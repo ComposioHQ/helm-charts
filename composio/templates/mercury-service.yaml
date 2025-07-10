@@ -1,3 +1,4 @@
+{{- if and .Values.mercury.enabled .Values.mercury.useKnative }}
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -61,7 +62,7 @@ spec:
             - name: SELF_HOSTED
               value: "true"
             - name: BACKEND_URL
-              value: "http://composio-apollo:9900"
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             # Minio credentials - using your reference variable names
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
@@ -89,12 +90,7 @@ spec:
               value: "http://{{ .Release.Name }}-minio:9000"
             - name: AWS_S3_FORCE_PATH_STYLE
               value: "true"
-            # OpenAI API Key - strip any trailing whitespace that might cause HTTP header issues
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: OPENAI_API_KEY
+
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
           {{- with .Values.mercury.volumeMounts }}
@@ -105,4 +101,5 @@ spec:
       volumes:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}
  
