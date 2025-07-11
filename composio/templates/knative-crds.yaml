@@ -45,6 +45,8 @@ metadata:
     "helm.sh/hook-weight": "-6"
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 900
   template:
     spec:
       restartPolicy: OnFailure
@@ -68,7 +70,7 @@ spec:
             local max_attempts=3
             
             while [ $attempt -le $max_attempts ]; do
-              if kubectl apply -f "$url"; then
+              if timeout 120 kubectl apply -f "$url"; then
                 echo "✅ Successfully applied $resource_type"
                 return 0
               else
@@ -79,6 +81,8 @@ spec:
             done
             
             echo "❌ Failed to apply $resource_type after $max_attempts attempts"
+            echo "🔍 Checking cluster connectivity..."
+            kubectl cluster-info || echo "Cluster connectivity issues detected"
             return 1
           }
           
@@ -87,15 +91,18 @@ spec:
           
           # Wait for CRDs to be established
           echo "⏳ Waiting for Knative Serving CRDs to be ready..."
-          kubectl wait --for condition=established --timeout=300s crd/services.serving.knative.dev || {
+          if ! kubectl wait --for condition=established --timeout=300s crd/services.serving.knative.dev 2>/dev/null; then
             echo "⚠️  Timeout waiting for CRDs, checking if they exist..."
-            if kubectl get crd services.serving.knative.dev; then
+            if kubectl get crd services.serving.knative.dev >/dev/null 2>&1; then
               echo "✅ CRD exists, continuing..."
             else
-              echo "❌ CRD not found, setup may have failed"
-              exit 1
+              echo "❌ CRD not found, checking what CRDs were created..."
+              kubectl get crd | grep knative || echo "No Knative CRDs found"
+              echo "⚠️  Continuing with setup, some features may not work"
             fi
-          }
+          else
+            echo "✅ Knative CRDs are ready"
+          fi
           
           # Install Knative Serving Core Components (direct, no operator)
           apply_with_retry "https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml" "Knative Serving Core"

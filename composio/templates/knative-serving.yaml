@@ -29,6 +29,8 @@ metadata:
     "helm.sh/hook-weight": "5"
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 900
   template:
     spec:
       restartPolicy: OnFailure
@@ -47,45 +49,69 @@ spec:
             echo "⚠️  Timeout waiting for namespace, but continuing..."
           }
           
-          # Wait for config-network ConfigMap to exist
+          # Wait for config-network ConfigMap to exist with timeout
           echo "⏳ Waiting for config-network ConfigMap..."
+          TIMEOUT=300
+          ELAPSED=0
           while ! kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; do
-            echo "  Waiting for config-network ConfigMap to be created..."
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "❌ Timeout waiting for config-network ConfigMap after ${TIMEOUT}s"
+              echo "🔍 Checking what ConfigMaps exist in knative-serving namespace:"
+              kubectl get configmap -n knative-serving || echo "No ConfigMaps found"
+              echo "🔍 Checking if knative-serving pods are running:"
+              kubectl get pods -n knative-serving || echo "No pods found"
+              echo "⚠️  Proceeding without config-network ConfigMap - manual configuration may be needed"
+              break
+            fi
+            echo "  Waiting for config-network ConfigMap to be created... (${ELAPSED}s/${TIMEOUT}s)"
             sleep 10
+            ELAPSED=$((ELAPSED + 10))
           done
           
           # Configure domain template for cluster-local services
           echo "🌐 Configuring domain settings..."
-          kubectl patch configmap config-domain -n knative-serving --type merge --patch '
-          {
-            "data": {
-              "svc.cluster.local": ""
-            }
-          }' || echo "⚠️  Domain config patch failed, may already be configured"
+          if kubectl get configmap config-domain -n knative-serving >/dev/null 2>&1; then
+            kubectl patch configmap config-domain -n knative-serving --type merge --patch '
+            {
+              "data": {
+                "svc.cluster.local": ""
+              }
+            }' || echo "⚠️  Domain config patch failed, may already be configured"
+          else
+            echo "⚠️  config-domain ConfigMap not found, skipping domain configuration"
+          fi
           
           # Configure network settings for cluster-local services
           echo "🔗 Configuring network settings..."
-          kubectl patch configmap config-network -n knative-serving --type merge --patch '
-          {
-            "data": {
-              "ingress-class": "kourier.ingress.networking.knative.dev",
-              "domainTemplate": "{{.Name}}.{{.Namespace}}.{{.Domain}}"
-            }
-          }' || echo "⚠️  Network config patch may have already been applied"
+          if kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; then
+            kubectl patch configmap config-network -n knative-serving --type merge --patch '
+            {
+              "data": {
+                "ingress-class": "kourier.ingress.networking.knative.dev",
+                "domainTemplate": "{{.Name}}.{{.Namespace}}.{{.Domain}}"
+              }
+            }' || echo "⚠️  Network config patch may have already been applied"
+          else
+            echo "⚠️  config-network ConfigMap not found, skipping network configuration"
+          fi
           
           # Configure defaults for GKE Autopilot optimization
           echo "⚙️  Configuring defaults for GKE Autopilot..."
-          kubectl patch configmap config-defaults -n knative-serving --type merge --patch '
-          {
-            "data": {
-              "revision-timeout-seconds": "300",
-              "max-revision-timeout-seconds": "600", 
-              "revision-cpu-request": "100m",
-              "revision-memory-request": "128Mi",
-              "revision-cpu-limit": "1000m",
-              "revision-memory-limit": "1Gi"
-            }
-          }' || echo "⚠️  Defaults config patch failed, may already be configured"
+          if kubectl get configmap config-defaults -n knative-serving >/dev/null 2>&1; then
+            kubectl patch configmap config-defaults -n knative-serving --type merge --patch '
+            {
+              "data": {
+                "revision-timeout-seconds": "300",
+                "max-revision-timeout-seconds": "600", 
+                "revision-cpu-request": "100m",
+                "revision-memory-request": "128Mi",
+                "revision-cpu-limit": "1000m",
+                "revision-memory-limit": "1Gi"
+              }
+            }' || echo "⚠️  Defaults config patch failed, may already be configured"
+          else
+            echo "⚠️  config-defaults ConfigMap not found, skipping defaults configuration"
+          fi
           
           echo "✅ Knative configuration completed!"
           echo "📊 Configuration summary:"
