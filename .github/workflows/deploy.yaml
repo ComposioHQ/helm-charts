@@ -14,6 +14,11 @@ on:
         options:
           - gke
           - eks
+      db_init_image_tag:
+        description: 'DB Init Docker image tag'
+        required: true
+        default: 'latest'
+        type: string
       apollo_image_tag:
         description: 'Apollo Docker image tag'
         required: true
@@ -184,8 +189,8 @@ jobs:
             --set thermos.image.tag=${{ github.event.inputs.thermos_image_tag || 'latest' }} \
             --set mcp.image.tag=${{ github.event.inputs.mcp_image_tag || 'latest' }} \
             --set mercury.image.tag=${{ github.event.inputs.mercury_image_tag || 'latest' }} \
-            --set minio.image.tag=${{ github.event.inputs.minio_image_tag || 'latest' }}; then
-            
+            --set minio.image.tag=${{ github.event.inputs.minio_image_tag || 'latest' }} \
+            --set dbInit.image.tag=${{ github.event.inputs.db_init_image_tag || 'latest' }}; then
             echo "❌ Helm deployment failed"
             
             # Check if this was an upgrade (not initial install)
@@ -299,6 +304,7 @@ jobs:
           echo "  • MCP: ${{ github.event.inputs.mcp_image_tag || 'latest' }}"
           echo "  • Mercury: ${{ github.event.inputs.mercury_image_tag || 'latest' }}"
           echo "  • Minio: ${{ github.event.inputs.minio_image_tag || 'latest' }}"
+          echo "  • DB Init: ${{ github.event.inputs.db_init_image_tag || 'latest' }}"
           echo "🌍 Environment: ${{ github.event.inputs.environment || 'gke' }}"
           echo "📦 Release: composio"
           echo "📦 Namespace: composio"
