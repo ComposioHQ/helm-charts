@@ -39,27 +39,7 @@ spec:
               - ALL
             seccompProfile:
               type: RuntimeDefault
-          command: ["/bin/sh"]
-          args:
-            - -c
-            - |
-              echo "🚀 Starting database initialization..."
-              echo "📊 Database URL: ${DATABASE_URL%/*}/***"
-              
-              # Test database connectivity
-              echo "🔍 Testing database connectivity..."
-              if ! timeout 30 sh -c 'until pg_isready -d "$DATABASE_URL"; do sleep 1; done'; then
-                echo "❌ Database connection failed after 30 seconds"
-                echo "🔍 Checking database URL format..."
-                echo "Database URL pattern: ${DATABASE_URL%@*}@***"
-                exit 1
-              fi
-              
-              echo "✅ Database connection successful"
-              
-              # Run the actual initialization
-              echo "🔧 Running database initialization..."
-              exec /usr/local/bin/composio-init
+
           env:
             - name: DATABASE_URL
               valueFrom:
