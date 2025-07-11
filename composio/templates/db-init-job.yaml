@@ -48,6 +48,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: COMPOSIO_API_KEY
+            - name: BOOTSTRAP_API_KEY_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: BOOTSTRAP_API_KEY_VALUE
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
           resources:
