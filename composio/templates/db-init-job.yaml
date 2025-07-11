@@ -11,6 +11,8 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 
 spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
   template:
     metadata:
       labels:
@@ -37,6 +39,7 @@ spec:
               - ALL
             seccompProfile:
               type: RuntimeDefault
+
           env:
             - name: DATABASE_URL
               valueFrom:
@@ -48,6 +51,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: COMPOSIO_API_KEY
+            - name: BOOTSTRAP_API_KEY_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: BOOTSTRAP_API_KEY_VALUE
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
           resources:

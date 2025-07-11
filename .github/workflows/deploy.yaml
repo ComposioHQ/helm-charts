@@ -104,41 +104,57 @@ jobs:
         run: |
           echo "🧹 Checking for existing pre-upgrade hook jobs..."
           
-          # Check for existing db-init job
-          if kubectl get job composio-db-init -n composio 2>/dev/null; then
-            JOB_STATUS=$(kubectl get job composio-db-init -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+          # Function to check and cleanup a job
+          cleanup_job() {
+            local job_name=$1
+            local job_pattern=$2
             
-            if [[ "$JOB_STATUS" != "True" ]]; then
-              echo "⚠️  Found existing composio-db-init job that is not completed. Deleting..."
-              kubectl delete job composio-db-init -n composio
-              echo "✅ Deleted failed composio-db-init job"
+            if kubectl get job $job_name -n composio 2>/dev/null; then
+              JOB_STATUS=$(kubectl get job $job_name -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+              
+              if [[ "$JOB_STATUS" != "True" ]]; then
+                echo "⚠️  Found existing $job_name job that is not completed. Deleting..."
+                kubectl delete job $job_name -n composio --ignore-not-found=true
+                echo "✅ Deleted failed $job_name job"
+              else
+                echo "✅ $job_name job already exists and is completed"
+              fi
             else
-              echo "✅ composio-db-init job already exists and is completed"
+              echo "✅ No existing $job_name job found"
             fi
-          else
-            echo "✅ No existing composio-db-init job found"
-          fi
+            
+            # Clean up any orphaned pods from deleted jobs
+            if [[ -n "$job_pattern" ]]; then
+              kubectl delete pods -n composio -l "job-name=$job_pattern" --ignore-not-found=true
+            fi
+          }
+          
+          # Cleanup specific hook jobs
+          cleanup_job "composio-db-init" "composio-db-init"
+          
+          # Cleanup any knative-config jobs (they can get stuck)
+          KNATIVE_JOBS=$(kubectl get jobs -n composio -l "app.kubernetes.io/component=knative-config" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+          for job in $KNATIVE_JOBS; do
+            echo "🧹 Cleaning up knative-config job: $job"
+            kubectl delete job $job -n composio --ignore-not-found=true
+          done
           
           # Check for any other potential hook jobs that might cause conflicts
           HOOK_JOBS=$(kubectl get jobs -n composio -l "app.kubernetes.io/managed-by=Helm" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
           
           if [[ -n "$HOOK_JOBS" ]]; then
-                         for job in $HOOK_JOBS; do
-               JOB_STATUS=$(kubectl get job $job -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
-               if [[ "$JOB_STATUS" != "True" ]]; then
-                 echo "⚠️  Found failed Helm hook job: $job. Deleting..."
-                 kubectl delete job $job -n composio
-                 echo "✅ Deleted failed job: $job"
-               fi
-             done
-           fi
-           
-                     # Clean up any orphaned pods from deleted jobs
-          echo "🧹 Cleaning up any orphaned job pods..."
-          kubectl delete pods -n composio -l "job-name=composio-db-init" --ignore-not-found=true
-           
-           # Wait a moment for cleanup to complete
-           sleep 2
+            for job in $HOOK_JOBS; do
+              JOB_STATUS=$(kubectl get job $job -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+              if [[ "$JOB_STATUS" != "True" ]]; then
+                echo "⚠️  Found failed Helm hook job: $job. Deleting..."
+                kubectl delete job $job -n composio --ignore-not-found=true
+                echo "✅ Deleted failed job: $job"
+              fi
+            done
+          fi
+          
+          # Wait a moment for cleanup to complete
+          sleep 5
 
       - name: Deploy Helm Chart
         run: |
@@ -179,38 +195,57 @@ jobs:
           # Deploy with helm upgrade --install
           echo "🚀 Starting Helm deployment..."
           
-          if ! helm upgrade --install composio . \
-            --namespace composio \
-            --create-namespace \
-            --wait \
-            --timeout 10m \
-            $VALUES_FLAG \
-            --set apollo.image.tag=${{ github.event.inputs.apollo_image_tag || 'latest' }} \
-            --set thermos.image.tag=${{ github.event.inputs.thermos_image_tag || 'latest' }} \
-            --set mcp.image.tag=${{ github.event.inputs.mcp_image_tag || 'latest' }} \
-            --set mercury.image.tag=${{ github.event.inputs.mercury_image_tag || 'latest' }} \
-            --set minio.image.tag=${{ github.event.inputs.minio_image_tag || 'latest' }} \
-            --set dbInit.image.tag=${{ github.event.inputs.db_init_image_tag || 'latest' }}; then
-            echo "❌ Helm deployment failed"
+          # Function to perform helm deployment with retry
+          deploy_helm() {
+            helm upgrade --install composio . \
+              --namespace composio \
+              --create-namespace \
+              --wait \
+              --timeout 20m \
+              --wait-for-jobs \
+              $VALUES_FLAG \
+              --set apollo.image.tag=${{ github.event.inputs.apollo_image_tag || 'latest' }} \
+              --set thermos.image.tag=${{ github.event.inputs.thermos_image_tag || 'latest' }} \
+              --set mcp.image.tag=${{ github.event.inputs.mcp_image_tag || 'latest' }} \
+              --set mercury.image.tag=${{ github.event.inputs.mercury_image_tag || 'latest' }} \
+              --set minio.image.tag=${{ github.event.inputs.minio_image_tag || 'latest' }} \
+              --set dbInit.image.tag=${{ github.event.inputs.db_init_image_tag || 'latest' }}
+          }
+          
+          # Try deployment with retry on timeout
+          if ! deploy_helm; then
+            echo "❌ Helm deployment failed on first attempt"
+            echo "🔍 Checking for stuck jobs..."
+            kubectl get jobs -n composio
             
-            # Check if this was an upgrade (not initial install)
-            if helm list -n composio | grep -q composio; then
-              echo "🔄 Attempting to rollback to previous revision..."
+            echo "🧹 Cleaning up any stuck hook jobs..."
+            kubectl delete jobs -n composio -l "app.kubernetes.io/component=knative-config" --ignore-not-found=true
+            
+            echo "🔄 Retrying deployment..."
+            sleep 30
+            
+            if ! deploy_helm; then
+              echo "❌ Helm deployment failed on retry"
               
-              # Get previous revision
-              CURRENT_REV=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio") | .revision')
-              PREVIOUS_REV=$((CURRENT_REV - 1))
-              
-              if [[ $PREVIOUS_REV -gt 0 ]]; then
-                echo "⏪ Rolling back from revision $CURRENT_REV to $PREVIOUS_REV"
-                helm rollback composio $PREVIOUS_REV -n composio
-                echo "✅ Rollback completed"
-              else
-                echo "⚠️ No previous revision to rollback to"
+              # Check if this was an upgrade (not initial install)
+              if helm list -n composio | grep -q composio; then
+                echo "🔄 Attempting to rollback to previous revision..."
+                
+                # Get previous revision
+                CURRENT_REV=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio") | .revision')
+                PREVIOUS_REV=$((CURRENT_REV - 1))
+                
+                if [[ $PREVIOUS_REV -gt 0 ]]; then
+                  echo "⏪ Rolling back from revision $CURRENT_REV to $PREVIOUS_REV"
+                  helm rollback composio $PREVIOUS_REV -n composio
+                  echo "✅ Rollback completed"
+                else
+                  echo "⚠️ No previous revision to rollback to"
+                fi
               fi
+              
+              exit 1
             fi
-            
-            exit 1
           fi
           
           echo "✅ Helm deployment completed successfully"
@@ -223,6 +258,34 @@ jobs:
           # Get the revision number
           REVISION=$(helm list -n composio -o json | jq -r '.[] | select(.name=="composio") | .revision')
           echo "🏷️ Current revision: $REVISION"
+          
+          # Verify hook jobs completed successfully
+          echo "🔍 Verifying hook jobs completion..."
+          
+          # Check db-init job
+          if kubectl get job composio-db-init -n composio 2>/dev/null; then
+            DB_INIT_STATUS=$(kubectl get job composio-db-init -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+            if [[ "$DB_INIT_STATUS" == "True" ]]; then
+              echo "✅ Database initialization completed successfully"
+            else
+              echo "⚠️  Database initialization may not have completed"
+              kubectl logs job/composio-db-init -n composio --tail=10 || echo "No logs available"
+            fi
+          fi
+          
+          # Check knative-config jobs
+          KNATIVE_JOBS=$(kubectl get jobs -n composio -l "app.kubernetes.io/component=knative-config" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+          if [[ -n "$KNATIVE_JOBS" ]]; then
+            for job in $KNATIVE_JOBS; do
+              JOB_STATUS=$(kubectl get job $job -n composio -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null || echo "")
+              if [[ "$JOB_STATUS" == "True" ]]; then
+                echo "✅ Knative configuration job $job completed successfully"
+              else
+                echo "⚠️  Knative configuration job $job may not have completed"
+                kubectl logs job/$job -n composio --tail=10 || echo "No logs available"
+              fi
+            done
+          fi
 
       - name: Wait for deployment rollout
         run: |
