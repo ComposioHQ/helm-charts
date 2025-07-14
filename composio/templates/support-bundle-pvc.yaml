@@ -1,0 +1,19 @@
+{{- if and .Values.supportBundle.enabled .Values.supportBundle.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "myapp.fullname" . }}-support-bundle-pvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: support-bundle
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.supportBundle.persistence.size | default "1Gi" }}
+  {{- if .Values.supportBundle.persistence.storageClass }}
+  storageClassName: {{ .Values.supportBundle.persistence.storageClass }}
+  {{- end }}
+{{- end }}
