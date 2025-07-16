@@ -14,7 +14,7 @@ Production-ready Helm charts to deploy Composio on any Kubernetes cluster.
 - AWS ECR access (or equivalent container registry)
 
 
-## Quick start installation
+## Quick installation
 ```
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
 
@@ -24,7 +24,6 @@ kubectl apply -f https://github.com/knative/net-kourier/releases/download/knativ
 
 kubectl patch configmap/config-network --namespace knative-serving --type merge --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
 
-#helm command
 helm install composio ./composio \
   --create-namespace \
   --namespace composio \
@@ -32,7 +31,6 @@ helm install composio ./composio \
   --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
   --set externalSecrets.postgres.url="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
 ```
-
 
 ### Verify Installation
 
@@ -77,7 +75,7 @@ kubectl get ksvc -n composio
 
 ## 🔍 Service Access
 
-### Port Forwarding (Development)
+### Port Forwarding (Development/Debugging)
 
 ```bash
 # Apollo (Main API)
@@ -89,8 +87,6 @@ kubectl port-forward -n composio svc/composio-mcp 8081:3000
 # Temporal Web UI
 kubectl port-forward -n composio svc/composio-temporal-web 8082:8080
 
-# Mercury (Knative service)
-kubectl port-forward -n composio svc/composio-mercury 8083:8080
 ```
 
 ### Access URLs
@@ -98,7 +94,6 @@ kubectl port-forward -n composio svc/composio-mercury 8083:8080
 - **Apollo API**: http://localhost:8080
 - **MCP Portal**: http://localhost:8081  
 - **Temporal UI**: http://localhost:8082
-- **Mercury**: http://localhost:8083
 
 ## 🔐 Retrieving Secrets
 
@@ -110,26 +105,6 @@ kubectl get secret composio-secrets -n composio -o jsonpath="{.data.APOLLO_ADMIN
 
 # Get all secrets
 kubectl get secret composio-secrets -n composio -o yaml
-```
-
-## 🔄 Upgrading
-
-### Standard to Knative Migration
-
-```bash
-helm upgrade composio ./composio \
-  --namespace composio \
-  --set mercury.useKnative=true \
-  --reuse-values
-```
-
-### Knative to Standard Migration
-
-```bash
-helm upgrade composio ./composio \
-  --namespace composio \
-  --set mercury.useKnative=false \
-  --reuse-values
 ```
 
 ## 🛠️ Troubleshooting
@@ -233,13 +208,11 @@ kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/com
 - **Recommended**: 8 CPUs, 16GB RAM
 - **Storage**: 20GB minimum for persistent volumes
 
-## 📚 Documentation
+### 📚 Documentation
 
 - **Composio Docs**: https://docs.composio.dev
 - **GitHub**: https://github.com/composio/helm-charts
 - **Support**: https://discord.gg/composio
-
-## 🏗️ Architecture
 
 ### Uninstall Composio
 
