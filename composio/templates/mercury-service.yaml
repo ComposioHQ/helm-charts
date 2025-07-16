@@ -63,7 +63,12 @@ spec:
               value: "true"
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            # Minio credentials - using your reference variable names
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: OPENAI_API_KEY
+            # Minio credentials - with AWS key names to be aws sdk compatible
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
