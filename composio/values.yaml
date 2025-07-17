@@ -41,16 +41,7 @@ externalSecrets:
 # Global secrets configuration for development
 # All secrets will be auto-generated for security
 secrets:
-  # Auto-generated secrets (leave empty for random generation)
-  adminToken: ""
-  encryptionKey: ""
-  temporalEncryptionKey: ""
-  bootstrapApiKey: ""
-  # Optional OpenAI API key for LLM functionality
   openaiApiKey: ""
-  # Additional auto-generated secrets
-  authSecret: ""
-  composioApiKey: ""
 
 externalPostgreSQL:
   enabled: true
@@ -98,7 +89,6 @@ postgresql:
         GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
         GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
 
-# Redis configuration - automatically disabled when externalRedis.enabled is true
 redis:
   # Note: Set enabled to false when using external Redis (externalRedis.enabled: true)
   enabled: true
@@ -129,7 +119,7 @@ apollo:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "010da28"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
   service:
@@ -157,7 +147,7 @@ mcp:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
-    tag: "dc481d7"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
   service:
@@ -184,7 +174,7 @@ thermos:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "010da28"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
   service:
@@ -205,7 +195,7 @@ thermos:
 dbInit:
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
-    tag: "010da28"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   adminEmail: "hello@composio.dev"
   database:
@@ -234,7 +224,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "10.120.128.3"
+            host: "external-postgres-secret"
             port: 5432
             database: "temporal"
             user: "postgres"
@@ -248,7 +238,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "10.120.128.3"
+            host: "external-postgres-secret"
             port: 5432
             database: "temporal_visibility"
             user: "postgres"
@@ -283,12 +273,10 @@ temporal:
     service:
       type: ClusterIP
       port: 8080
-
-  # Enable admin tools
+  
   admintools:
     enabled: true
 
-  # Disable built-in databases (using external PostgreSQL)
   cassandra:
     enabled: false
   mysql:
@@ -296,7 +284,6 @@ temporal:
   elasticsearch:
     enabled: false
     
-  # Disable additional monitoring for now
   prometheus:
     enabled: false
     nodeExporter:
@@ -304,12 +291,10 @@ temporal:
   grafana:
     enabled: false
 
-# Enable development monitoring
 prometheus:
   enabled: false
   nodeExporter:
     enabled: false
-  # Fix imagePullSecrets format for GKE Autopilot compatibility
   imagePullSecrets: []
 
 grafana:
@@ -324,49 +309,24 @@ rbac:
   pspEnabled: false
   namespaced: true
 
-# Explicitly disable Elasticsearch and ensure no privileged containers
 elasticsearch:
   enabled: false
-  # If you need to enable Elasticsearch later, uncomment and use these Autopilot-compatible settings:
-  # sysctlVmMaxMapCount: 262144
-  # sysctlImage:
-  #   enabled: false
-  # sysctl:
-  #   enabled: false
-  # initContainer:
-  #   sysctlVmMaxMapCount:
-  #     enabled: false
-  # master:
-  #   securityContext:
-  #     runAsNonRoot: true
-  #     runAsUser: 1000
-  #     allowPrivilegeEscalation: false
-  #     capabilities:
-  #       drop:
-  #       - ALL
-  #     seccompProfile:
-  #       type: RuntimeDefault
 
 cassandra:
   enabled: false
 
-# Ingress disabled for development (use port-forward)
 ingress:
   enabled: false
 
-# Service Account
 serviceAccount:
   create: true
   annotations: {}
   name: ""
 
-# Node selector
 nodeSelector: {}
 
-# Tolerations
 tolerations: []
 
-# Affinity - disabled for development
 affinity: {}
 
 # AWS configuration - disabled for development
@@ -376,8 +336,7 @@ aws:
     lambdaBucketName: "tools"
   lambda:
     functionName: "mercury"
-    #image: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury:7cb50ee086171b7f07fe109be2cf2d2f1afa14e1"
-
+    
 # Minio configuration - Development
 minio:
   replicaCount: 1
@@ -426,9 +385,6 @@ minio:
 # Mercury service configuration - Development
 mercury:
   enabled: true
-  # Choose deployment method:
-  # - useKnative: true  = Serverless with auto-scaling (requires Knative installation)
-  # - useKnative: false = Standard Kubernetes deployment
   useKnative: true
   replicaCount: 1
   image:
@@ -444,7 +400,6 @@ mercury:
     type: ClusterIP
     port: 8080
   
-  # Knative-specific configuration (used when useKnative: true)
   autoscaling:
     minScale: 1
     maxScale: 10
@@ -461,13 +416,11 @@ mercury:
       memory: "16Gi"
       cpu: "8"
       
-  # Knative high-availability settings (used when useKnative: true)
   knative:
     minReplicas: 1
     replicas: 2
     maxReplicas: 5
 
-  # Add security context to ensure proper user permissions
   securityContext:
     allowPrivilegeEscalation: false
     runAsNonRoot: true
@@ -485,7 +438,6 @@ mercury:
     host: ""
     tls: []
   
-  # Environment variables are now configured directly in templates/mercury-service.yaml
   volumeMounts: []
   volumes: []
   
