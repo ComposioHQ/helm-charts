@@ -211,9 +211,14 @@ composio: database
 Validate Redis configuration
 */}}
 {{- define "composio.validateValues.redis" -}}
-{{- if and (not .Values.redis.enabled) (or (not .Values.apollo.secrets.redisUrl) (not .Values.mcp.secrets.redisUrl) (not .Values.thermos.secrets.redisUrl)) -}}
+{{- if and .Values.externalRedis.enabled (not .Values.externalSecrets.redis.url) -}}
 composio: redis
-    You must provide Redis URLs when Redis is disabled.
-    Please set apollo.secrets.redisUrl, mcp.secrets.redisUrl, and thermos.secrets.redisUrl
+    You must provide a Redis URL when external Redis is enabled.
+    Please set externalSecrets.redis.url
+{{- end -}}
+{{- if and .Values.externalRedis.enabled .Values.redis.enabled -}}
+composio: redis
+    You cannot enable both external Redis and built-in Redis.
+    Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
 {{- end -}} 

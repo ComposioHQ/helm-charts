@@ -22,6 +22,7 @@ global:
 # Pass these during helm install using --set flags:
 # --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)"
 # --set externalSecrets.postgres.url="postgresql://user:pass@host:port/db"
+# --set externalSecrets.redis.url="redis://user:pass@host:port"
 externalSecrets:
   # ECR authentication
   ecr:
@@ -31,6 +32,10 @@ externalSecrets:
   
   # PostgreSQL configuration  
   postgres:
+    url: ""
+  
+  # Redis configuration
+  redis:
     url: ""
 
 # Global secrets configuration for development
@@ -51,6 +56,17 @@ externalPostgreSQL:
   enabled: true
   urlSecret:
     name: "external-postgres-secret"
+    key: "url"
+
+# External Redis configuration
+# To use external Redis:
+# 1. Set externalRedis.enabled: true
+# 2. Set redis.enabled: false
+# 3. Provide Redis URL via: --set externalSecrets.redis.url="redis://user:pass@host:port/db"
+externalRedis:
+  enabled: false
+  urlSecret:
+    name: "external-redis-secret"
     key: "url"
 
 # Disable built-in databases since we're using external PostgreSQL
@@ -82,7 +98,10 @@ postgresql:
         GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
         GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
 
+# Redis configuration - automatically disabled when externalRedis.enabled is true
 redis:
+  # Note: Set enabled to false when using external Redis (externalRedis.enabled: true)
+  enabled: true
   auth:
     enabled: true
     password: "redis123"
