@@ -61,6 +61,11 @@ spec:
               value: "tools"
             - name: SELF_HOSTED
               value: "true"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: OPENAI_API_KEY
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: OPENAI_API_KEY
