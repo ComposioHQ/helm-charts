@@ -62,6 +62,30 @@ kubectl get ksvc -n composio
 |-----------|-------------|----------|
 | `externalSecrets.postgres.url` | PostgreSQL connection URL | ✅ Yes |
 | `externalSecrets.ecr.token` | AWS ECR authentication token | ✅ Yes |
+| `externalSecrets.redis.url` | External Redis connection URL | ⚠️ Optional* |
+
+*Required when `externalRedis.enabled: true`
+
+#### External Redis Configuration
+
+To use an external Redis instance instead of the built-in Redis:
+
+```bash
+helm install composio ./composio \
+  --create-namespace \
+  --namespace composio \
+  --set namespace.name=composio \
+  --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
+  --set externalSecrets.postgres.url="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require" \
+  --set externalSecrets.redis.url="redis://<username>:<password>@<redis_host>:6379/<database_number>" \
+  --set externalRedis.enabled=true \
+  --set redis.enabled=false
+```
+
+**Redis URL Format Examples:**
+- With authentication: `redis://username:password@host:6379/0`
+- Without authentication: `redis://host:6379/0`
+- With SSL: `rediss://username:password@host:6380/0`
 
 ### Knative-Specific Configuration
 

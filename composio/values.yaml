@@ -22,6 +22,7 @@ global:
 # Pass these during helm install using --set flags:
 # --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)"
 # --set externalSecrets.postgres.url="postgresql://user:pass@host:port/db"
+# --set externalSecrets.redis.url="redis://user:pass@host:port"
 externalSecrets:
   # ECR authentication
   ecr:
@@ -31,6 +32,10 @@ externalSecrets:
   
   # PostgreSQL configuration  
   postgres:
+    url: ""
+  
+  # Redis configuration
+  redis:
     url: ""
 
 # Global secrets configuration for development
@@ -44,7 +49,49 @@ externalPostgreSQL:
     name: "external-postgres-secret"
     key: "url"
 
+# External Redis configuration
+# To use external Redis:
+# 1. Set externalRedis.enabled: true
+# 2. Set redis.enabled: false
+# 3. Provide Redis URL via: --set externalSecrets.redis.url="redis://user:pass@host:port/db"
+externalRedis:
+  enabled: false
+  urlSecret:
+    name: "external-redis-secret"
+    key: "url"
+
+# Disable built-in databases since we're using external PostgreSQL
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: "postgres123"
+    username: "composio"
+    password: "composio123"
+    database: "composio"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "2"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+  
+  # Create additional databases for temporal
+  initdb:
+    scripts:
+      init.sql: |
+        CREATE DATABASE temporal;
+        CREATE DATABASE temporal_visibility;
+        GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
+        GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
+
 redis:
+  # Note: Set enabled to false when using external Redis (externalRedis.enabled: true)
+  enabled: true
   auth:
     enabled: true
     password: "redis123"
@@ -226,12 +273,10 @@ temporal:
     service:
       type: ClusterIP
       port: 8080
-
-  # Enable admin tools
+  
   admintools:
     enabled: true
 
-  # Disable built-in databases (using external PostgreSQL)
   cassandra:
     enabled: false
   mysql:
@@ -239,7 +284,6 @@ temporal:
   elasticsearch:
     enabled: false
     
-  # Disable additional monitoring for now
   prometheus:
     enabled: false
     nodeExporter:
@@ -247,12 +291,10 @@ temporal:
   grafana:
     enabled: false
 
-# Enable development monitoring
 prometheus:
   enabled: false
   nodeExporter:
     enabled: false
-  # Fix imagePullSecrets format for GKE Autopilot compatibility
   imagePullSecrets: []
 
 grafana:
@@ -267,49 +309,24 @@ rbac:
   pspEnabled: false
   namespaced: true
 
-# Explicitly disable Elasticsearch and ensure no privileged containers
 elasticsearch:
   enabled: false
-  # If you need to enable Elasticsearch later, uncomment and use these Autopilot-compatible settings:
-  # sysctlVmMaxMapCount: 262144
-  # sysctlImage:
-  #   enabled: false
-  # sysctl:
-  #   enabled: false
-  # initContainer:
-  #   sysctlVmMaxMapCount:
-  #     enabled: false
-  # master:
-  #   securityContext:
-  #     runAsNonRoot: true
-  #     runAsUser: 1000
-  #     allowPrivilegeEscalation: false
-  #     capabilities:
-  #       drop:
-  #       - ALL
-  #     seccompProfile:
-  #       type: RuntimeDefault
 
 cassandra:
   enabled: false
 
-# Ingress disabled for development (use port-forward)
 ingress:
   enabled: false
 
-# Service Account
 serviceAccount:
   create: true
   annotations: {}
   name: ""
 
-# Node selector
 nodeSelector: {}
 
-# Tolerations
 tolerations: []
 
-# Affinity - disabled for development
 affinity: {}
 
 # AWS configuration - disabled for development
@@ -368,9 +385,6 @@ minio:
 # Mercury service configuration - Development
 mercury:
   enabled: true
-  # Choose deployment method:
-  # - useKnative: true  = Serverless with auto-scaling (requires Knative installation)
-  # - useKnative: false = Standard Kubernetes deployment
   useKnative: true
   replicaCount: 1
   image:
@@ -386,7 +400,6 @@ mercury:
     type: ClusterIP
     port: 8080
   
-  # Knative-specific configuration (used when useKnative: true)
   autoscaling:
     minScale: 1
     maxScale: 10
@@ -403,13 +416,11 @@ mercury:
       memory: "16Gi"
       cpu: "8"
       
-  # Knative high-availability settings (used when useKnative: true)
   knative:
     minReplicas: 1
     replicas: 2
     maxReplicas: 5
 
-  # Add security context to ensure proper user permissions
   securityContext:
     allowPrivilegeEscalation: false
     runAsNonRoot: true
@@ -427,7 +438,6 @@ mercury:
     host: ""
     tls: []
   
-  # Environment variables are now configured directly in templates/mercury-service.yaml
   volumeMounts: []
   volumes: []
   
