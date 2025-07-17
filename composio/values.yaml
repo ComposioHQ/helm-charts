@@ -36,51 +36,13 @@ externalSecrets:
 # Global secrets configuration for development
 # All secrets will be auto-generated for security
 secrets:
-  # Auto-generated secrets (leave empty for random generation)
-  adminToken: ""
-  encryptionKey: ""
-  temporalEncryptionKey: ""
-  bootstrapApiKey: ""
-  # Optional OpenAI API key for LLM functionality
   openaiApiKey: ""
-  # Additional auto-generated secrets
-  authSecret: ""
-  composioApiKey: ""
 
 externalPostgreSQL:
   enabled: true
   urlSecret:
     name: "external-postgres-secret"
     key: "url"
-
-# Disable built-in databases since we're using external PostgreSQL
-postgresql:
-  enabled: false
-  auth:
-    postgresPassword: "postgres123"
-    username: "composio"
-    password: "composio123"
-    database: "composio"
-  primary:
-    persistence:
-      enabled: true
-      size: 8Gi
-    resources:
-      requests:
-        memory: "4Gi"
-        cpu: "2"
-      limits:
-        memory: "4Gi"
-        cpu: "2"
-  
-  # Create additional databases for temporal
-  initdb:
-    scripts:
-      init.sql: |
-        CREATE DATABASE temporal;
-        CREATE DATABASE temporal_visibility;
-        GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
-        GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
 
 redis:
   auth:
@@ -110,7 +72,7 @@ apollo:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "010da28"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
   service:
@@ -138,7 +100,7 @@ mcp:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
-    tag: "dc481d7"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
   service:
@@ -165,7 +127,7 @@ thermos:
   replicaCount: 2
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "010da28"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
   service:
@@ -186,7 +148,7 @@ thermos:
 dbInit:
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
-    tag: "010da28"
+    tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   adminEmail: "hello@composio.dev"
   database:
@@ -215,7 +177,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "10.120.128.3"
+            host: "external-postgres-secret"
             port: 5432
             database: "temporal"
             user: "postgres"
@@ -229,7 +191,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "10.120.128.3"
+            host: "external-postgres-secret"
             port: 5432
             database: "temporal_visibility"
             user: "postgres"
@@ -357,8 +319,7 @@ aws:
     lambdaBucketName: "tools"
   lambda:
     functionName: "mercury"
-    #image: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury:7cb50ee086171b7f07fe109be2cf2d2f1afa14e1"
-
+    
 # Minio configuration - Development
 minio:
   replicaCount: 1
