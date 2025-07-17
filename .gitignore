@@ -1,0 +1,10 @@
+# Generated values files (keep templates)
+composio/values.yaml
+
+# Helm chart dependencies
+*.tgz
+
+# Temporary files
+*.tmp
+*.swp
+*.bak 

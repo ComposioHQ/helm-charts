@@ -26,21 +26,21 @@ global:
 externalSecrets:
   # ECR authentication
   ecr:
-    token: ""
-    server: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
+    token: "${ECR_TOKEN_COMMAND}"
+    server: "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com"
     username: "AWS"
   
   # PostgreSQL configuration  
   postgres:
-    url: ""
+    url: "${POSTGRES_URL}"
   
   # Redis configuration
   redis:
-    url: ""
+    url: "${REDIS_URL}"
 
   # OpenAI API key for LLM functionality (external secret)
   openai:
-    apiKey: ""
+    apiKey: "${OPENAI_API_KEY}"
 
 # Global secrets configuration for development
 # All secrets will be auto-generated for security
@@ -119,8 +119,8 @@ redis:
 apollo:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "1.0-20250717-d3eccab"
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
+    tag: "${IMAGE_TAG}"
     pullPolicy: Always
   
   service:
@@ -147,8 +147,8 @@ apollo:
 mcp:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
-    tag: "1.0-20250717-d3eccab"
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
+    tag: "${IMAGE_TAG}"
     pullPolicy: Always
   
   service:
@@ -174,8 +174,8 @@ mcp:
 thermos:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "1.0-20250717-d3eccab"
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
+    tag: "${IMAGE_TAG}"
     pullPolicy: Always
   
   service:
@@ -195,8 +195,8 @@ thermos:
 # DB Init - Enabled for development
 dbInit:
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
-    tag: "1.0-20250717-d3eccab"
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
+    tag: "${IMAGE_TAG}"
     pullPolicy: Always
   adminEmail: "hello@composio.dev"
   database:
@@ -342,7 +342,7 @@ aws:
 minio:
   replicaCount: 1
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
     tag: "latest"
     pullPolicy: Always
   
@@ -389,7 +389,7 @@ mercury:
   useKnative: true
   replicaCount: 1
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
+    repository: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
     tag: "latest"
     pullPolicy: Always
   
@@ -440,4 +440,4 @@ mercury:
     tls: []
   
   volumeMounts: []
-  volumes: []
+  volumes: [] 
