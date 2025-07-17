@@ -1,0 +1,15 @@
+{{- if .Values.externalSecrets.openai.apiKey }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openai-key
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+type: Opaque
+data:
+  OPENAI_API_KEY: {{ .Values.externalSecrets.openai.apiKey | b64enc }}
+{{- end }} 

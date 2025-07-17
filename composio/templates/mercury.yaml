@@ -79,7 +79,7 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: openai-key
                   key: OPENAI_API_KEY
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
