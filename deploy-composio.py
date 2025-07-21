@@ -167,14 +167,17 @@ class ComposioDeployer:
         print(f"ECR_TOKEN_COMMAND: {'****(set)' if self.env_vars['ECR_TOKEN_COMMAND'] != '' else '(not set)'}")
         print(f"OPENAI_API_KEY: {'****(set)' if self.env_vars['OPENAI_API_KEY'] != '' else '(not set)'}")
         print(f"REDIS_URL: {'****(set)' if self.env_vars['REDIS_URL'] != '' else '(not set)'}")
+        self.env_vars['POSTGRES_HOST'] = self.env_vars['POSTGRES_URL'].split('@')[1].split(':')[0]
+        self.env_vars['POSTGRES_USER'] = self.env_vars['POSTGRES_URL'].split('@')[0].split(':')[0]
+        print(f"POSTGRES_HOST: {self.env_vars['POSTGRES_HOST']}")
+        print(f"POSTGRES_USER: {self.env_vars['POSTGRES_USER']}")
         print()
-
         # Read template and substitute variables
         with open(self.template_file, 'r') as f:
             template_content = f.read()
 
         template = Template(template_content)
-        output_content = template.safe_substitute(self.env_vars)
+        output_content = template.safe_substitute(self.env_vars)      
 
         # Write output file
         with open(self.output_file, 'w') as f:

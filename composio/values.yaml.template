@@ -50,6 +50,16 @@ externalPostgreSQL:
     name: "external-postgres-secret"
     key: "url"
 
+# Secrets configuration - Optional overrides for auto-generated secrets
+# If not provided, secrets will be randomly generated
+secrets:
+  # Optional: Provide custom secrets instead of auto-generated ones
+  # adminToken: ""
+  # encryptionKey: ""
+  # temporalEncryptionKey: ""
+  # authSecret: ""
+  # composioApiKey: ""
+
 # External Redis configuration
 # To use external Redis:
 # 1. Set externalRedis.enabled: true
@@ -225,10 +235,10 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "external-postgres-secret"
+            host: ${POSTGRES_HOST}
             port: 5432
             database: "temporal"
-            user: "postgres"
+            user: ${POSTGRES_USER}
             existingSecret: "external-postgres-secret"
             maxConns: 20
             maxIdleConns: 20
@@ -239,10 +249,10 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "external-postgres-secret"
+            host: ${POSTGRES_HOST}
             port: 5432
             database: "temporal_visibility"
-            user: "postgres"
+            user: ${POSTGRES_USER}
             existingSecret: "external-postgres-secret"
             maxConns: 20
             maxIdleConns: 20
