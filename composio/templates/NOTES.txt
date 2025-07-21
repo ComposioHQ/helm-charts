@@ -1,4 +1,4 @@
-{{- if not .Values.secrets.adminToken }}
+{{- if not ((.Values.secrets).adminToken) }}
 🔐 AUTO-GENERATED SECRETS:
 All sensitive credentials have been automatically generated for security:
 - APOLLO_ADMIN_TOKEN (32 characters)
@@ -47,8 +47,8 @@ To retrieve a specific secret (e.g., admin token):
    Then visit: http://127.0.0.1:8082
 
 3. Get admin credentials:
-   {{- if .Values.secrets.adminToken }}
-   Admin Token: {{ .Values.secrets.adminToken }}
+   {{- if ((.Values.secrets).adminToken) }}
+   Admin Token: {{ (.Values.secrets).adminToken }}
    {{- else }}
    Admin Token: Auto-generated (retrieve using kubectl command above)
    {{- end }}
@@ -69,7 +69,7 @@ For more information:
 - GitHub: https://github.com/composio/self-hosted
 - Support: https://discord.gg/composio
 
-{{- if not .Values.secrets.adminToken }}
+{{- if not ((.Values.secrets).adminToken) }}
 
 INFO: Admin token has been auto-generated for security. Retrieve it using the kubectl commands shown above.
 {{- end }}
