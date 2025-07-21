@@ -80,6 +80,19 @@ spec:
           else
             echo "⚠️  config-domain ConfigMap not found, skipping domain configuration"
           fi
+
+          # Also ensure the domain template is properly set
+          echo "🌐 Setting domain template..."
+          if kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; then
+            kubectl patch configmap config-network -n knative-serving --type merge --patch '
+            {
+              "data": {
+                "domainTemplate": "{{`{{.Name}}.{{.Namespace}}`}}.svc.cluster.local"
+              }
+            }' || echo "⚠️  Domain template patch failed, may already be configured"
+          else
+            echo "⚠️  config-network ConfigMap not found, skipping domain template configuration"
+          fi
           
           # Additional network settings (domain template is now handled during installation)
           echo "🔗 Verifying network settings..."

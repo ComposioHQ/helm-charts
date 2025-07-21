@@ -124,8 +124,7 @@ spec:
           kubectl patch configmap/config-network \
             --namespace knative-serving \
             --type merge \
-            --patch '{"data":{"domainTemplate":"{{.Name}}.{{.Namespace}}.{{.Domain}}"}}' || {
-            echo "⚠️  Domain template patch failed, will retry in background"
+            --patch '{"data":{"domainTemplate":"{{`{{.Name}}.{{.Namespace}}`}}.svc.cluster.local"}}' || {            echo "⚠️  Domain template patch failed, will retry in background"
           }
           
           echo "✅ Knative setup completed successfully!"
