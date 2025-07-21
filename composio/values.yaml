@@ -27,7 +27,7 @@ externalSecrets:
   # ECR authentication
   ecr:
     token: ""
-    server: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
+    server: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
     username: "AWS"
   
   # PostgreSQL configuration  
@@ -49,6 +49,16 @@ externalPostgreSQL:
   urlSecret:
     name: "external-postgres-secret"
     key: "url"
+
+# Secrets configuration - Optional overrides for auto-generated secrets
+# If not provided, secrets will be randomly generated
+secrets:
+  # Optional: Provide custom secrets instead of auto-generated ones
+  # adminToken: ""
+  # encryptionKey: ""
+  # temporalEncryptionKey: ""
+  # authSecret: ""
+  # composioApiKey: ""
 
 # External Redis configuration
 # To use external Redis:
@@ -119,7 +129,7 @@ redis:
 apollo:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
     tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
@@ -147,7 +157,7 @@ apollo:
 mcp:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
     tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
@@ -174,7 +184,7 @@ mcp:
 thermos:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
     tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   
@@ -195,7 +205,7 @@ thermos:
 # DB Init - Enabled for development
 dbInit:
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
     tag: "1.0-20250717-d3eccab"
     pullPolicy: Always
   adminEmail: "hello@composio.dev"
@@ -225,7 +235,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "external-postgres-secret"
+            host: "10.120.128.3"
             port: 5432
             database: "temporal"
             user: "postgres"
@@ -239,7 +249,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "external-postgres-secret"
+            host: "10.120.128.3"
             port: 5432
             database: "temporal_visibility"
             user: "postgres"
@@ -342,7 +352,7 @@ aws:
 minio:
   replicaCount: 1
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
     tag: "latest"
     pullPolicy: Always
   
@@ -389,7 +399,7 @@ mercury:
   useKnative: true
   replicaCount: 1
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
     tag: "latest"
     pullPolicy: Always
   
@@ -440,4 +450,4 @@ mercury:
     tls: []
   
   volumeMounts: []
-  volumes: []
+  volumes: [] 
