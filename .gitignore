@@ -1,0 +1,119 @@
+# Helm-specific files
+values-override.yaml
+values.override.yaml
+**/values-override.yaml
+**/values.override.yaml
+
+# Local development overrides
+values.local.yaml
+values.dev.yaml
+values.staging.yaml
+values.prod.yaml
+**/values.local.yaml
+**/values.dev.yaml
+
+# Sensitive configuration files
+secrets.yaml
+**/secrets.yaml
+*.secret.yaml
+**/*.secret.yaml
+
+# Chart dependencies (uncomment if you want to ignore packaged dependencies)
+# charts/*.tgz
+# **/charts/*.tgz
+
+# Helm package files
+*.tgz
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+
+# macOS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows specific files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux specific files
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary folders
+tmp/
+temp/
+.tmp/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Cache
+.cache/
+*.cache
+
+# Build artifacts
+dist/
+build/
+out/ 
