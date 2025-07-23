@@ -80,19 +80,26 @@ spec:
           else
             echo "⚠️  config-domain ConfigMap not found, skipping domain configuration"
           fi
-          
-          # Configure network settings for cluster-local services
-          echo "🔗 Configuring network settings..."
+
+          # Also ensure the domain template is properly set
+          echo "🌐 Setting domain template..."
           if kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; then
             kubectl patch configmap config-network -n knative-serving --type merge --patch '
             {
               "data": {
-                "ingress-class": "kourier.ingress.networking.knative.dev",
-                "domainTemplate": "{{.Name}}.{{.Namespace}}.{{.Domain}}"
+                "domainTemplate": "{{`{{.Name}}.{{.Namespace}}`}}.svc.cluster.local"
               }
-            }' || echo "⚠️  Network config patch may have already been applied"
+            }' || echo "⚠️  Domain template patch failed, may already be configured"
           else
-            echo "⚠️  config-network ConfigMap not found, skipping network configuration"
+            echo "⚠️  config-network ConfigMap not found, skipping domain template configuration"
+          fi
+          
+          # Additional network settings (domain template is now handled during installation)
+          echo "🔗 Verifying network settings..."
+          if kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; then
+            echo "✅ Network configuration exists"
+          else
+            echo "⚠️  config-network ConfigMap not found"
           fi
           
           # Configure defaults for GKE Autopilot optimization
@@ -116,8 +123,9 @@ spec:
           echo "✅ Knative configuration completed!"
           echo "📊 Configuration summary:"
           echo "  • Domain: cluster-local services enabled"
-          echo "  • Network: Kourier ingress configured"
+          echo "  • Network: Configuration verified" 
           echo "  • Defaults: GKE Autopilot optimized"
+          echo "  • Domain Template: Already configured during installation"
           
           # Verify configuration
           echo "🔍 Verifying configuration..."

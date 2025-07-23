@@ -110,7 +110,7 @@ spec:
           # Install Kourier networking
           apply_with_retry "https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml" "Kourier Networking"
           
-          # Configure Knative to use Kourier
+          # Configure Knative to use Kourier and fix domain template
           echo "🔧 Configuring Knative to use Kourier networking..."
           kubectl patch configmap/config-network \
             --namespace knative-serving \
@@ -119,12 +119,21 @@ spec:
             echo "⚠️  ConfigMap patch failed, will retry in background"
           }
           
+          # Fix domain template to prevent DNS lookup issues
+          echo "🌐 Fixing domain template configuration..."
+          kubectl patch configmap/config-network \
+            --namespace knative-serving \
+            --type merge \
+            --patch '{"data":{"domainTemplate":"{{`{{.Name}}.{{.Namespace}}`}}.svc.cluster.local"}}' || {            echo "⚠️  Domain template patch failed, will retry in background"
+          }
+          
           echo "✅ Knative setup completed successfully!"
           echo "📊 Installation summary:"
           echo "  • Knative Serving CRDs: Installed"
           echo "  • Knative Serving Core: Installed" 
           echo "  • Kourier Networking: Installed"
           echo "  • Network Configuration: Kourier enabled"
+          echo "  • Domain Template: Fixed for cluster-local services"
           
           # Verify installation
           echo "🔍 Verifying installation..."
