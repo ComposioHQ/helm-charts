@@ -1,12 +1,13 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "composio.fullname" . }}-minio
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: minio
 spec:
-  replicas: {{ .Values.minio.replicas | default 1 }}
+  serviceName: {{ include "composio.fullname" . }}-minio-headless
+  replicas: {{ .Values.minio.replicaCount | default 4 }}
   selector:
     matchLabels:
       {{- include "composio.selectorLabels" . | nindent 6 }}
@@ -30,85 +31,90 @@ spec:
           args:
             - -c
             - |
-              echo "=== MINIO SELECTIVE INIT CONTAINER ==="
-              echo "Contents of /mnt/persistent-data:"
-              ls -la /mnt/persistent-data/ || echo "Directory does not exist or is empty"
+              echo "=== MINIO DISTRIBUTED INIT CONTAINER ==="
+              {{- range $i := until (int (.Values.minio.drivesPerNode | default 2)) }}
+              echo "Contents of /mnt/data{{ $i }}:"
+              ls -la /mnt/data{{ $i }}/ || echo "Directory does not exist or is empty"
               echo ""
-              echo "Contents of /data (from Docker image):"
-              ls -la /data/ || echo "Directory does not exist or is empty"
+              echo "Contents of /data{{ $i }} (from Docker image):"
+              ls -la /data{{ $i }}/ || echo "Directory does not exist or is empty"
               echo ""
               
               # Check if this is first startup
-              if [ ! -d "/mnt/persistent-data/.minio.sys" ]; then
-                echo "✅ First startup detected - no .minio.sys found in persistent volume"
+              if [ ! -d "/mnt/data{{ $i }}/.minio.sys" ]; then
+                echo "✅ First startup detected - no .minio.sys found in persistent volume data{{ $i }}"
                 echo "Checking for pre-built data in Docker image..."
-                if [ -d "/data" ] && [ "$(ls -A /data 2>/dev/null)" ]; then
-                  echo "✅ Found pre-built data in Docker image /data:"
-                  ls -la /data/
-                  echo "Copying ALL data from /data to /mnt/persistent-data (first startup)..."
-                  cp -r /data/* /mnt/persistent-data/ 2>/dev/null || true
-                  cp /data/.lookup.zip /mnt/persistent-data/ 2>/dev/null || true
+                if [ -d "/data{{ $i }}" ] && [ "$(ls -A /data{{ $i }} 2>/dev/null)" ]; then
+                  echo "✅ Found pre-built data in Docker image /data{{ $i }}:"
+                  ls -la /data{{ $i }}/
+                  echo "Copying ALL data from /data{{ $i }} to /mnt/data{{ $i }} (first startup)..."
+                  cp -r /data{{ $i }}/* /mnt/data{{ $i }}/ 2>/dev/null || true
+                  cp /data{{ $i }}/.lookup.zip /mnt/data{{ $i }}/ 2>/dev/null || true
                   echo "✅ Initial data copied successfully!"
                 else
-                  echo "❌ No pre-built data found in Docker image /data directory"
+                  echo "❌ No pre-built data found in Docker image /data{{ $i }} directory"
                 fi
               else
-                echo "✅ Existing MinIO installation detected - performing selective updates"
+                echo "✅ Existing MinIO installation detected on data{{ $i }} - performing selective updates"
                 echo "Contents of existing persistent volume:"
-                ls -la /mnt/persistent-data/
+                ls -la /mnt/data{{ $i }}/
                 echo ""
                 
                 # Always update specific items from the new image
                 echo "🔄 Updating /api folder and .lookup.zip from new image..."
                 
                 # Update .lookup.zip if it exists in the image
-                if [ -f "/data/.lookup.zip" ]; then
-                  echo "  → Updating .lookup.zip"
-                  cp /data/.lookup.zip /mnt/persistent-data/
+                if [ -f "/data{{ $i }}/.lookup.zip" ]; then
+                  echo "  → Updating .lookup.zip on data{{ $i }}"
+                  cp /data{{ $i }}/.lookup.zip /mnt/data{{ $i }}/
                 else
-                  echo "  → No .lookup.zip found in new image"
+                  echo "  → No .lookup.zip found in new image for data{{ $i }}"
                 fi
                 
                 # Update api folder if it exists in the image
-                if [ -d "/data/api" ]; then
-                  echo "  → Updating /api folder"
-                  rm -rf /mnt/persistent-data/api 2>/dev/null || true
-                  cp -r /data/api /mnt/persistent-data/
+                if [ -d "/data{{ $i }}/api" ]; then
+                  echo "  → Updating /api folder on data{{ $i }}"
+                  rm -rf /mnt/data{{ $i }}/api 2>/dev/null || true
+                  cp -r /data{{ $i }}/api /mnt/data{{ $i }}/
                 else
-                  echo "  → No /api folder found in new image"
+                  echo "  → No /api folder found in new image for data{{ $i }}"
                 fi
                 
-                # Update any api folders and .lookup.zip files within buckets (e.g., tools/api, tools/.lookup.zip)
-                for bucket_dir in /data/*/; do
+                # Update any api folders and .lookup.zip files within buckets
+                for bucket_dir in /data{{ $i }}/*/; do
                   if [ -d "${bucket_dir}" ]; then
                     bucket_name=$(basename "${bucket_dir}")
                     
                     # Update .lookup.zip within bucket
-                    if [ -f "/data/${bucket_name}/.lookup.zip" ]; then
-                      echo "  → Updating /${bucket_name}/.lookup.zip"
-                      mkdir -p "/mnt/persistent-data/${bucket_name}"
-                      cp "/data/${bucket_name}/.lookup.zip" "/mnt/persistent-data/${bucket_name}/"
+                    if [ -f "/data{{ $i }}/${bucket_name}/.lookup.zip" ]; then
+                      echo "  → Updating /${bucket_name}/.lookup.zip on data{{ $i }}"
+                      mkdir -p "/mnt/data{{ $i }}/${bucket_name}"
+                      cp "/data{{ $i }}/${bucket_name}/.lookup.zip" "/mnt/data{{ $i }}/${bucket_name}/"
                     fi
                     
                     # Update api folder within bucket
-                    if [ -d "/data/${bucket_name}/api" ]; then
-                      echo "  → Updating /${bucket_name}/api folder"
-                      mkdir -p "/mnt/persistent-data/${bucket_name}"
-                      rm -rf "/mnt/persistent-data/${bucket_name}/api" 2>/dev/null || true
-                      cp -r "/data/${bucket_name}/api" "/mnt/persistent-data/${bucket_name}/"
+                    if [ -d "/data{{ $i }}/${bucket_name}/api" ]; then
+                      echo "  → Updating /${bucket_name}/api folder on data{{ $i }}"
+                      mkdir -p "/mnt/data{{ $i }}/${bucket_name}"
+                      rm -rf "/mnt/data{{ $i }}/${bucket_name}/api" 2>/dev/null || true
+                      cp -r "/data{{ $i }}/${bucket_name}/api" "/mnt/data{{ $i }}/${bucket_name}/"
                     fi
                   fi
                 done
                 
-                echo "✅ Selective updates completed!"
+                echo "✅ Selective updates completed on data{{ $i }}!"
               fi
               
               echo ""
-              echo "Final contents of persistent volume:"
-              ls -la /mnt/persistent-data/
+              echo "Final contents of persistent volume data{{ $i }}:"
+              ls -la /mnt/data{{ $i }}/
+              echo ""
+              {{- end }}
           volumeMounts:
-            - name: data
-              mountPath: /mnt/persistent-data
+            {{- range $i := until (int (.Values.minio.drivesPerNode | default 2)) }}
+            - name: data-{{ $i }}
+              mountPath: /mnt/data{{ $i }}
+            {{- end }}
           securityContext:
             {{- toYaml .Values.minio.securityContext | nindent 12 }}
       containers:
@@ -117,6 +123,37 @@ spec:
             {{- toYaml .Values.minio.securityContext | nindent 12 }}
           image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+          {{- if .Values.minio.distributed.enabled }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              {{- if gt (int .Values.minio.replicaCount) 1 }}
+              # Distributed mode with multiple nodes
+              minio server \
+                {{- range $i := until (int .Values.minio.replicaCount) }}
+                {{- range $j := until (int ($.Values.minio.drivesPerNode | default 2)) }}
+                http://{{ include "composio.fullname" $ }}-minio-{{ $i }}.{{ include "composio.fullname" $ }}-minio-headless.{{ $.Values.namespace.name | default "composio" }}.svc.cluster.local/data{{ $j }} \
+                {{- end }}
+                {{- end }}
+                --console-address ":9001"
+              {{- else }}
+              # Single node mode with multiple drives
+              minio server \
+                {{- range $i := until (int (.Values.minio.drivesPerNode | default 2)) }}
+                /data{{ $i }} \
+                {{- end }}
+                --console-address ":9001"
+              {{- end }}
+          {{- else }}
+          # Legacy single drive mode
+          command:
+            - minio
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+          {{- end }}
           ports:
             - name: api
               containerPort: 9000
@@ -135,18 +172,32 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: MINIO_ROOT_PASSWORD
+            {{- if .Values.minio.distributed.enabled }}
+            - name: MINIO_DISTRIBUTED_MODE_ENABLED
+              value: "yes"
+            - name: MINIO_DISTRIBUTED_NODES
+              value: "{{ .Values.minio.replicaCount }}"
+            {{- end }}
             {{- with .Values.minio.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           volumeMounts:
+            {{- if .Values.minio.distributed.enabled }}
+            {{- range $i := until (int (.Values.minio.drivesPerNode | default 2)) }}
+            - name: data-{{ $i }}
+              mountPath: /data{{ $i }}
+            {{- end }}
+            {{- else }}
             - name: data
               mountPath: /data
+            {{- end }}
           resources:
             {{- toYaml .Values.minio.resources | nindent 12 }}
           livenessProbe:
             {{- toYaml .Values.minio.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.minio.readinessProbe | nindent 12 }}
+      {{- if not .Values.minio.distributed.enabled }}
       volumes:
         - name: data
           {{- if .Values.minio.persistence.enabled }}
@@ -155,7 +206,46 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+      {{- end }}
+  {{- if .Values.minio.distributed.enabled }}
+  volumeClaimTemplates:
+    {{- range $i := until (int (.Values.minio.drivesPerNode | default 2)) }}
+    - metadata:
+        name: data-{{ $i }}
+      spec:
+        accessModes:
+          - {{ $.Values.minio.persistence.accessMode | quote }}
+        resources:
+          requests:
+            storage: {{ $.Values.minio.persistence.size | quote }}
+        {{- if $.Values.minio.persistence.storageClass }}
+        storageClassName: {{ $.Values.minio.persistence.storageClass }}
+        {{- end }}
+    {{- end }}
+  {{- end }}
 ---
+{{- if .Values.minio.distributed.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "composio.fullname" . }}-minio-headless
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  clusterIP: None
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+    - name: console
+      port: 9001
+      targetPort: 9001
+---
+{{- end }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -177,7 +267,7 @@ spec:
   selector:
     {{- include "composio.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: minio
-{{- if .Values.minio.persistence.enabled }}
+{{- if and .Values.minio.persistence.enabled (not .Values.minio.distributed.enabled) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
