@@ -74,10 +74,6 @@ For more information:
 INFO: Admin token has been auto-generated for security. Retrieve it using the kubectl commands shown above.
 {{- end }}
 
-{{- if and .Values.postgresql.enabled (not .Values.postgresql.auth.password) }}
-
-INFO: PostgreSQL password will be auto-managed by the chart for security.
-{{- end }}
 
 {{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
 

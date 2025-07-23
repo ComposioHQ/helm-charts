@@ -195,7 +195,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: ""
+            host: "override_some_ip_address_here"
             port: 5432
             database: "temporal"
             user: "postgres"
@@ -209,7 +209,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: ""
+            host: "override_some_ip_address_here"
             port: 5432
             database: "temporal_visibility"
             user: "postgres"
