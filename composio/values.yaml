@@ -59,36 +59,7 @@ externalRedis:
   urlSecret:
     name: "external-redis-secret"
     key: "url"
-
-# Disable built-in databases since we're using external PostgreSQL
-postgresql:
-  enabled: false
-  auth:
-    postgresPassword: "postgres123"
-    username: "composio"
-    password: "composio123"
-    database: "composio"
-  primary:
-    persistence:
-      enabled: true
-      size: 8Gi
-    resources:
-      requests:
-        memory: "4Gi"
-        cpu: "2"
-      limits:
-        memory: "4Gi"
-        cpu: "2"
-  
-  # Create additional databases for temporal
-  initdb:
-    scripts:
-      init.sql: |
-        CREATE DATABASE temporal;
-        CREATE DATABASE temporal_visibility;
-        GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
-        GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
-
+    
 redis:
   # Note: Set enabled to false when using external Redis (externalRedis.enabled: true)
   enabled: true
@@ -209,7 +180,7 @@ temporal:
   
   server:
     enabled: true
-    replicaCount: 1
+    replicaCount: 2
     
     config:
       logLevel: "info"
@@ -224,7 +195,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "external-postgres-secret"
+            host: ""
             port: 5432
             database: "temporal"
             user: "postgres"
@@ -238,7 +209,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "external-postgres-secret"
+            host: ""
             port: 5432
             database: "temporal_visibility"
             user: "postgres"
