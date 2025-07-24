@@ -6,7 +6,7 @@
 # If create is true, the chart will create namespaces needed by services
 # If create is false, you need to create namespaces externally before deploying
 namespace:
-  create: true
+  create: false
   # Name of the namespace where Composio services will be deployed
   # If not specified, defaults to "composio"
   name: "composio"
@@ -21,7 +21,6 @@ global:
 # External secrets configuration
 # Pass these during helm install using --set flags:
 # --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)"
-# --set externalSecrets.postgres.url="postgresql://user:pass@host:port/db"
 # --set externalSecrets.redis.url="redis://user:pass@host:port"
 externalSecrets:
   # ECR authentication
@@ -29,25 +28,12 @@ externalSecrets:
     token: ""
     server: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
     username: "AWS"
-  
-  # PostgreSQL configuration  
-  postgres:
-    url: ""
-  
-  # Redis configuration
-  redis:
-    url: ""
 
 # Global secrets configuration for development
 # All secrets will be auto-generated for security
-secrets:
-  openaiApiKey: ""
 
 externalPostgreSQL:
   enabled: true
-  urlSecret:
-    name: "external-postgres-secret"
-    key: "url"
 
 # External Redis configuration
 # To use external Redis:
@@ -55,14 +41,11 @@ externalPostgreSQL:
 # 2. Set redis.enabled: false
 # 3. Provide Redis URL via: --set externalSecrets.redis.url="redis://user:pass@host:port/db"
 externalRedis:
-  enabled: false
-  urlSecret:
-    name: "external-redis-secret"
-    key: "url"
+  enabled: true
     
 redis:
   # Note: Set enabled to false when using external Redis (externalRedis.enabled: true)
-  enabled: true
+  enabled: false
   auth:
     enabled: true
     password: "redis123"

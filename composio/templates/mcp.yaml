@@ -34,15 +34,10 @@ spec:
               value: "3000"
             - name: HOSTNAME
               value: "0.0.0.0"
-            - name: AUTH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: AUTH_SECRET
             - name: COMPOSIO_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-composio-api-key
                   key: COMPOSIO_API_KEY
             - name: APOLLO_COMPOSIO_BASE_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
@@ -68,9 +63,6 @@ spec:
             {{- if .Values.mcp.env }}
             {{- toYaml .Values.mcp.env | nindent 12 }}
             {{- end }}
-          envFrom:
-            - secretRef:
-                name: {{ .Release.Name }}-secrets
           resources:
             requests:
               cpu: "1"
