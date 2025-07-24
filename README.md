@@ -15,7 +15,9 @@ Production-ready Helm charts to deploy Composio on any Kubernetes cluster.
 
 
 ## Quick installation
-```
+
+### 1. Install Knative Components
+```bash
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
 
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml
@@ -23,13 +25,25 @@ kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1
 kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml
 
 kubectl patch configmap/config-network --namespace knative-serving --type merge --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
+```
 
+### 2. Setup Secrets
+```bash
+# Setup secrets before deploying Helm chart
+POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require" \
+REDIS_URL="redis://<username>:<password>@<host>:6379/0" \
+OPENAI_API_KEY="sk-1234567890abcdef..." \
+./secret-setup.sh -r composio -n composio
+```
+
+### 3. Deploy with Helm
+```bash
 helm install composio ./composio \
   --create-namespace \
   --namespace composio \
   --set namespace.name=composio \
   --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
-  --set externalSecrets.postgres.url="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
+  --debug
 ```
 
 ### Verify Installation
@@ -45,42 +59,37 @@ kubectl get pods -n knative-serving
 kubectl get ksvc -n composio
 ```
 
+## 🔄 Upgrade Deployment
+
+To upgrade an existing Composio deployment:
+
+```bash
+# Update secrets if needed (optional)
+POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require" \
+REDIS_URL="redis://<username>:<password>@<host>:6379/0" \
+OPENAI_API_KEY="sk-1234567890abcdef..." \
+./secret-setup.sh -r composio -n composio
+
+# Upgrade Helm release
+helm upgrade composio ./composio -n composio --debug
+```
+
 ## ⚙️ Configuration Options
-
-### Core Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `mercury.useKnative` | Enable Knative serverless deployment | `true` |
-| `mercury.enabled` | Enable Mercury service | `true` |
-| `namespace.name` | Target namespace | `composio` |
-| `namespace.create` | Create namespace if it doesn't exist | `true` |
 
 ### External Dependencies
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| `externalSecrets.postgres.url` | PostgreSQL connection URL | ✅ Yes |
 | `externalSecrets.ecr.token` | AWS ECR authentication token | ✅ Yes |
-| `externalSecrets.redis.url` | External Redis connection URL | ⚠️ Optional* |
 
-*Required when `externalRedis.enabled: true`
+#### External Services Configuration
 
-#### External Redis Configuration
+External services (PostgreSQL, Redis, OpenAI) are configured via the `secret-setup.sh` script before deploying. See **Quick Installation** section above for details.
 
-To use an external Redis instance instead of the built-in Redis:
-
-```bash
-helm install composio ./composio \
-  --create-namespace \
-  --namespace composio \
-  --set namespace.name=composio \
-  --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
-  --set externalSecrets.postgres.url="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require" \
-  --set externalSecrets.redis.url="redis://<username>:<password>@<redis_host>:6379/<database_number>" \
-  --set externalRedis.enabled=true \
-  --set redis.enabled=false
-```
+**Supported Environment Variables:**
+- `POSTGRES_URL`: PostgreSQL connection URL
+- `REDIS_URL`: External Redis connection URL (optional, uses built-in Redis if not provided)
+- `OPENAI_API_KEY`: OpenAI API key for AI functionality (optional)
 
 **Redis URL Format Examples:**
 - With authentication: `redis://username:password@host:6379/0`

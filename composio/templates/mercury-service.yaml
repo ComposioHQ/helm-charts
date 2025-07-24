@@ -64,35 +64,30 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: openai-secret
                   key: OPENAI_API_KEY
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: OPENAI_API_KEY
             # Minio credentials - with AWS key names to be aws sdk compatible
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-minio-credentials
                   key: MINIO_ROOT_USER
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-minio-credentials
                   key: MINIO_ROOT_PASSWORD
             - name: AWS_LAMBDA_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-minio-credentials
                   key: MINIO_ROOT_USER
             - name: AWS_LAMBDA_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-minio-credentials
                   key: MINIO_ROOT_PASSWORD
             - name: AWS_S3_ENDPOINT
               value: "http://{{ .Release.Name }}-minio:9000"

@@ -128,12 +128,12 @@ spec:
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-minio-credentials
                   key: MINIO_ROOT_USER
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-minio-credentials
                   key: MINIO_ROOT_PASSWORD
             {{- with .Values.minio.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
