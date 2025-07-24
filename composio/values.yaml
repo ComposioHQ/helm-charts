@@ -307,18 +307,10 @@ aws:
     lambdaBucketName: "tools"
   lambda:
     functionName: "mercury"
-minio:
-  # Distributed mode configuration
-  distributed:
-    enabled: true
     
-  # For distributed mode, minimum 4 replicas recommended
-  # For single node with multiple drives, set to 1
-  replicaCount: 4
-  
-  # Number of drives per node (minimum 2 for redundancy)
-  drivesPerNode: 2
-  
+# Minio configuration - Development
+minio:
+  replicaCount: 1
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
     tag: "latest"
@@ -333,7 +325,6 @@ minio:
   
   persistence:
     enabled: true
-    # Size per drive (total storage = replicaCount * drivesPerNode * size)
     size: 8Gi
     accessMode: ReadWriteOnce
     storageClass: ""
@@ -346,36 +337,19 @@ minio:
       memory: "4Gi"
       cpu: "2"
   
-  # Health checks optimized for distributed mode
   livenessProbe:
     httpGet:
       path: /minio/health/live
       port: 9000
-    initialDelaySeconds: 180  # Increased for distributed startup
+    initialDelaySeconds: 120
     periodSeconds: 30
-    timeoutSeconds: 10
-    failureThreshold: 3
   
   readinessProbe:
     httpGet:
       path: /minio/health/ready
       port: 9000
-    initialDelaySeconds: 60   # Increased for distributed startup
+    initialDelaySeconds: 30
     periodSeconds: 10
-    timeoutSeconds: 5
-    successThreshold: 1
-    failureThreshold: 3
-  
-  # Security context for GKE Autopilot compatibility
-  securityContext:
-    allowPrivilegeEscalation: false
-    runAsNonRoot: true
-    runAsUser: 1000
-    capabilities:
-      drop:
-      - ALL
-    seccompProfile:
-      type: RuntimeDefault
   
   extraEnvVars: []
 
