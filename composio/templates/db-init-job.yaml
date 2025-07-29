@@ -55,8 +55,8 @@ spec:
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 1000m
+              memory: 1024Mi
             limits:
-              cpu: 500m
-              memory: 512Mi 
+              cpu: 1000m
+              memory: 1024Mi 
