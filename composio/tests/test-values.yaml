@@ -1,0 +1,98 @@
+# Test values for helm unittest
+# This file provides test data for running unit tests
+
+namespace:
+  create: false
+  name: "test-namespace"
+
+global:
+  environment: test
+  domain: test.local
+  imagePullSecrets:
+    - name: test-secret
+
+externalSecrets:
+  ecr:
+    token: "test-token-123456"
+    server: "123456789.dkr.ecr.us-east-1.amazonaws.com"
+    username: "AWS"
+
+apollo:
+  replicaCount: 1
+  image:
+    repository: test-apollo
+    tag: "test"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 9900
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
+
+mercury:
+  enabled: true
+  useKnative: false
+  replicaCount: 1
+  image:
+    repository: test-mercury
+    tag: "test"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1000
+  ingress:
+    enabled: false
+
+mcp:
+  replicaCount: 1
+  image:
+    repository: test-mcp
+    tag: "test"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+
+thermos:
+  replicaCount: 1
+  image:
+    repository: test-thermos
+    tag: "test"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8180
+
+minio:
+  replicaCount: 1
+  image:
+    repository: test-minio
+    tag: "test"
+    pullPolicy: IfNotPresent
+  auth:
+    rootUser: "testuser"
+    rootPassword: "testpass123"
+  persistence:
+    enabled: true
+    size: 8Gi
+    accessMode: ReadWriteOnce
+
+dbInit:
+  image:
+    repository: test-init
+    tag: "test"
+    pullPolicy: IfNotPresent
+  adminEmail: "test@example.com"
+  database:
+    urlSecret:
+      name: "test-db-secret"
+      key: "url" 

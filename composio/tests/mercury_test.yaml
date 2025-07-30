@@ -1,0 +1,177 @@
+suite: test mercury deployment
+templates:
+  - mercury.yaml
+tests:
+  - it: should create mercury deployment when enabled and not using knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-composio-mercury
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: mercury
+
+  - it: should not create deployment when disabled
+    set:
+      mercury.enabled: false
+      mercury.useKnative: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create deployment when using knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should use correct replica count
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.replicaCount: 2
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 2
+
+  - it: should use default replica count when not specified
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+
+  - it: should use correct image
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.image.repository: test-mercury
+      mercury.image.tag: v1.0.0
+      mercury.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-mercury:v1.0.0
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: should use chart app version when tag not specified
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.image.repository: test-mercury
+      mercury.image.tag: null
+    chart:
+      appVersion: "2.0.0"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-mercury:2.0.0
+
+  - it: should have correct port configuration
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.service.port: 8080
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 8080
+
+  - it: should have default port when not specified
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 8080
+
+  - it: should have security context
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+
+  - it: should have correct environment variables
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AWS_S3_REGION_NAME
+            value: us-east-1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SELF_HOSTED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BACKEND_URL
+            value: http://RELEASE-NAME-apollo:9900
+
+  - it: should include image pull secrets when configured
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      global.imagePullSecrets:
+        - name: mercury-secret
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: mercury-secret
+
+---
+suite: test mercury service
+templates:
+  - mercury-service.yaml
+tests:
+  - it: should create mercury service
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-mercury
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: mercury
+
+  - it: should have correct service configuration
+    set:
+      mercury.service.type: ClusterIP
+      mercury.service.port: 8080
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 8080 

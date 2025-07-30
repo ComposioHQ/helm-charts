@@ -1,0 +1,115 @@
+suite: test thermos deployment
+templates:
+  - thermos.yaml
+tests:
+  - it: should create thermos deployment
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-thermos
+      - equal:
+          path: metadata.labels.app
+          value: thermos
+      - equal:
+          path: metadata.labels.release
+          value: RELEASE-NAME
+
+  - it: should have correct replica count
+    set:
+      thermos.replicaCount: 2
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 2
+
+  - it: should use correct image
+    set:
+      thermos.image.repository: test-thermos
+      thermos.image.tag: latest
+      thermos.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-thermos:latest
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: should have correct port configuration
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 8180
+
+  - it: should have correct resource configuration
+    set:
+      thermos.resources:
+        requests:
+          memory: "1Gi"
+          cpu: "500m"
+        limits:
+          memory: "2Gi"
+          cpu: "1"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: "1Gi"
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: "1"
+
+  - it: should include image pull secrets when configured
+    set:
+      global.imagePullSecrets:
+        - name: thermos-secret
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: thermos-secret
+
+  - it: should have rolling update strategy
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: RollingUpdate
+      - equal:
+          path: spec.strategy.rollingUpdate.maxUnavailable
+          value: 0
+      - equal:
+          path: spec.strategy.rollingUpdate.maxSurge
+          value: 1
+
+---
+suite: test thermos service
+templates:
+  - thermos.yaml
+tests:
+  - it: should create thermos service
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-thermos
+      - equal:
+          path: metadata.labels.app
+          value: thermos
+
+  - it: should have correct service configuration
+    documentIndex: 1
+    set:
+      thermos.service.type: ClusterIP
+      thermos.service.port: 8180
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 8180
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 8180 

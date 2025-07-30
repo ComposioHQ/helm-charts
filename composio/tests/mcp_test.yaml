@@ -1,0 +1,107 @@
+suite: test mcp deployment
+templates:
+  - mcp.yaml
+tests:
+  - it: should create mcp deployment
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-mcp
+      - equal:
+          path: metadata.labels.app
+          value: mcp
+      - equal:
+          path: metadata.labels.release
+          value: RELEASE-NAME
+
+  - it: should have correct replica count
+    documentIndex: 0
+    set:
+      mcp.replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should use correct image
+    documentIndex: 0
+    set:
+      mcp.image.repository: test-mcp
+      mcp.image.tag: v1.2.3
+      mcp.image.pullPolicy: Never
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-mcp:v1.2.3
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Never
+
+  - it: should have correct port configuration
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 3000
+
+  - it: should have correct resource configuration
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: "2Gi"
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: "1"
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: "2Gi"
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: "1"
+
+  - it: should include image pull secrets when configured
+    documentIndex: 0
+    set:
+      global.imagePullSecrets:
+        - name: mcp-secret
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: mcp-secret
+
+---
+suite: test mcp service
+templates:
+  - mcp.yaml
+tests:
+  - it: should create mcp service
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-mcp
+      - equal:
+          path: metadata.labels.app
+          value: mcp
+
+  - it: should have correct service configuration
+    documentIndex: 1
+    set:
+      mcp.service.type: ClusterIP
+      mcp.service.port: 3000
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 3000
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 3000 

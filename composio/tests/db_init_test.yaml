@@ -1,0 +1,84 @@
+suite: test db init job
+templates:
+  - db-init-job.yaml
+tests:
+  - it: should create db init job
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-db-init
+      - equal:
+          path: metadata.labels.app
+          value: db-init
+      - equal:
+          path: metadata.labels.release
+          value: RELEASE-NAME
+
+  - it: should have correct image configuration
+    set:
+      dbInit.image.repository: test-init
+      dbInit.image.tag: v1.0.0
+      dbInit.image.pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-init:v1.0.0
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: should have correct admin email environment variable
+    set:
+      dbInit.adminEmail: test@example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ADMIN_EMAIL
+            value: test@example.com
+
+  - it: should have database URL from secret
+    set:
+      dbInit.database.urlSecret.name: test-db-secret
+      dbInit.database.urlSecret.key: database-url
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: test-db-secret
+                key: database-url
+
+  - it: should include image pull secrets when configured
+    set:
+      global.imagePullSecrets:
+        - name: init-secret
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: init-secret
+
+  - it: should have restart policy Never
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: Never
+
+  - it: should have backoff limit
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 3
+
+  - it: should complete after successful run
+    asserts:
+      - equal:
+          path: spec.completions
+          value: 1
+      - equal:
+          path: spec.parallelism
+          value: 1 
