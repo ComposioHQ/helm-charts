@@ -1,0 +1,67 @@
+suite: test mercury ingress
+templates:
+  - mercury-ingress.yaml
+tests:
+  - it: should create ingress when enabled
+    set:
+      mercury.ingress.enabled: true
+      mercury.ingress.host: mercury.example.com
+      mercury.ingress.className: nginx
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-mercury
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+
+  - it: should not create ingress when disabled
+    set:
+      mercury.ingress.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should have correct host configuration
+    set:
+      mercury.ingress.enabled: true
+      mercury.ingress.host: test.mercury.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: test.mercury.com
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: RELEASE-NAME-mercury
+
+  - it: should include annotations when configured
+    set:
+      mercury.ingress.enabled: true
+      mercury.ingress.annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/rewrite-target"]
+          value: /
+      - equal:
+          path: metadata.annotations["cert-manager.io/cluster-issuer"]
+          value: letsencrypt-prod
+
+  - it: should have TLS configuration when provided
+    set:
+      mercury.ingress.enabled: true
+      mercury.ingress.host: secure.mercury.com
+      mercury.ingress.tls:
+        - secretName: mercury-tls
+          hosts:
+            - secure.mercury.com
+    asserts:
+      - equal:
+          path: spec.tls[0].secretName
+          value: mercury-tls
+      - contains:
+          path: spec.tls[0].hosts
+          content: secure.mercury.com 
