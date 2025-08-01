@@ -1,14 +1,17 @@
-suite: test mercury deployment
+suite: test mercury knative service
 templates:
-  - mercury.yaml
+  - mercury-service.yaml
 tests:
-  - it: should create mercury deployment when enabled and not using knative
+  - it: should create mercury knative service when enabled
     set:
       mercury.enabled: true
-      mercury.useKnative: false
+      mercury.image.repository: test-mercury
+      mercury.image.tag: knative-test
     asserts:
       - isKind:
-          of: Deployment
+          of: Service
+      - isAPIVersion:
+          of: serving.knative.dev/v1
       - equal:
           path: metadata.name
           value: RELEASE-NAME-composio-mercury
@@ -16,49 +19,59 @@ tests:
           path: metadata.labels["app.kubernetes.io/component"]
           value: mercury
 
-  - it: should not create deployment when disabled
+  - it: should not create mercury service when disabled
     set:
       mercury.enabled: false
-      mercury.useKnative: false
     asserts:
       - hasDocuments:
           count: 0
 
-  - it: should not create deployment when using knative
+  - it: should have correct autoscaling annotations
     set:
       mercury.enabled: true
-      mercury.useKnative: true
-    asserts:
-      - hasDocuments:
-          count: 0
-
-  - it: should use correct replica count
-    set:
-      mercury.enabled: true
-      mercury.useKnative: false
-      mercury.replicaCount: 2
+      mercury.autoscaling.minScale: 2
+      mercury.autoscaling.maxScale: 20
+      mercury.autoscaling.target: 90
     asserts:
       - equal:
-          path: spec.replicas
-          value: 2
+          path: spec.template.metadata.annotations["autoscaling.knative.dev/minScale"]
+          value: "2"
+      - equal:
+          path: spec.template.metadata.annotations["autoscaling.knative.dev/maxScale"]
+          value: "20"
+      - equal:
+          path: spec.template.metadata.annotations["autoscaling.knative.dev/target"]
+          value: "90"
 
-  - it: should use default replica count when not specified
+  - it: should use default autoscaling values when not specified
     set:
       mercury.enabled: true
-      mercury.useKnative: false
     asserts:
       - equal:
-          path: spec.replicas
-          value: 1
+          path: spec.template.metadata.annotations["autoscaling.knative.dev/minScale"]
+          value: "1"
+      - equal:
+          path: spec.template.metadata.annotations["autoscaling.knative.dev/maxScale"]
+          value: "10"
+      - equal:
+          path: spec.template.metadata.annotations["autoscaling.knative.dev/target"]
+          value: "80"
 
-  - it: should use correct image
+  - it: should have correct container configuration
     set:
       mercury.enabled: true
-      mercury.useKnative: false
+      mercury.containerConcurrency: 100
+      mercury.timeoutSeconds: 600
       mercury.image.repository: test-mercury
       mercury.image.tag: v1.0.0
       mercury.image.pullPolicy: Always
     asserts:
+      - equal:
+          path: spec.template.spec.containerConcurrency
+          value: 100
+      - equal:
+          path: spec.template.spec.timeoutSeconds
+          value: 600
       - equal:
           path: spec.template.spec.containers[0].image
           value: test-mercury:v1.0.0
@@ -69,7 +82,6 @@ tests:
   - it: should use chart app version when tag not specified
     set:
       mercury.enabled: true
-      mercury.useKnative: false
       mercury.image.repository: test-mercury
       mercury.image.tag: null
     chart:
@@ -82,7 +94,6 @@ tests:
   - it: should have correct port configuration
     set:
       mercury.enabled: true
-      mercury.useKnative: false
       mercury.service.port: 8080
     asserts:
       - equal:
@@ -92,7 +103,6 @@ tests:
   - it: should have default port when not specified
     set:
       mercury.enabled: true
-      mercury.useKnative: false
     asserts:
       - equal:
           path: spec.template.spec.containers[0].ports[0].containerPort
@@ -101,7 +111,6 @@ tests:
   - it: should have security context
     set:
       mercury.enabled: true
-      mercury.useKnative: false
       mercury.securityContext:
         allowPrivilegeEscalation: false
         runAsNonRoot: true
@@ -116,7 +125,6 @@ tests:
   - it: should have correct environment variables
     set:
       mercury.enabled: true
-      mercury.useKnative: false
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -137,7 +145,6 @@ tests:
   - it: should include image pull secrets when configured
     set:
       mercury.enabled: true
-      mercury.useKnative: false
       global.imagePullSecrets:
         - name: mercury-secret
     asserts:
@@ -145,33 +152,10 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
           value: mercury-secret
 
----
-suite: test mercury service
-templates:
-  - mercury-service.yaml
-tests:
-  - it: should create mercury service
-    asserts:
-      - isKind:
-          of: Service
-      - equal:
-          path: metadata.name
-          value: RELEASE-NAME-mercury
-      - equal:
-          path: metadata.labels["app.kubernetes.io/component"]
-          value: mercury
-
-  - it: should have correct service configuration
+  - it: should have cluster-local visibility
     set:
-      mercury.service.type: ClusterIP
-      mercury.service.port: 8080
+      mercury.enabled: true
     asserts:
       - equal:
-          path: spec.type
-          value: ClusterIP
-      - equal:
-          path: spec.ports[0].port
-          value: 8080
-      - equal:
-          path: spec.ports[0].targetPort
-          value: 8080 
+          path: metadata.annotations["serving.knative.dev/visibility"]
+          value: cluster-local

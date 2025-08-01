@@ -1,4 +1,4 @@
-{{- if .Values.mercury.useKnative }}
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -155,4 +155,3 @@ spec:
             - ALL
           seccompProfile:
             type: RuntimeDefault
-{{- end }}

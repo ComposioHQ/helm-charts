@@ -1,4 +1,4 @@
-{{- if .Values.mercury.useKnative }}
+
 {{- if .Values.namespace.create }}
 ---
 apiVersion: v1
@@ -148,4 +148,3 @@ spec:
             - ALL
           seccompProfile:
             type: RuntimeDefault
-{{- end }}

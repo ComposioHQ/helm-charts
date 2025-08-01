@@ -338,9 +338,6 @@ minio:
 
 # Mercury service configuration - Development
 mercury:
-  enabled: true
-  useKnative: true
-  replicaCount: 1
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
     tag: "latest"
