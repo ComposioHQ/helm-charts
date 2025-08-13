@@ -200,6 +200,12 @@ temporal:
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
+      namespaces:
+        # Enable this to create namespaces
+        create: true
+        namespace:
+          - name: default
+            retention: 7d
 
     # Frontend service configuration
     frontend:
