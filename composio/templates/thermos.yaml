@@ -127,9 +127,6 @@ spec:
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}
-          envFrom:
-            - secretRef:
-                name: {{ .Release.Name }}-secrets
           volumeMounts:
             - name: cache-volume
               mountPath: /tmp

@@ -102,9 +102,6 @@ spec:
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}
             {{- end }}
-          envFrom:
-            - secretRef:
-                name: {{ .Release.Name }}-secrets
           resources:
             requests:
               cpu: "1"
