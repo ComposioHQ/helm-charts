@@ -109,6 +109,85 @@ tests:
           path: spec.template.spec.containers[0].resources.limits.cpu
           value: "1"
 
+  - it: should have db-init init container
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: db-init
+
+  - it: should have correct init container image
+    documentIndex: 0
+    set:
+      apollo.image.repository: test-repo
+      apollo.image.tag: test-tag
+      apollo.image.pullPolicy: IfNotPresent
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: test-repo:test-tag
+      - equal:
+          path: spec.template.spec.initContainers[0].imagePullPolicy
+          value: IfNotPresent
+
+  - it: should have correct init container command
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: /base/self-host/bootstrap/setup_db.sh
+
+  - it: should have admin email environment variable in init container
+    documentIndex: 0
+    set:
+      apollo.adminEmail: test@example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: ADMIN_EMAIL
+            value: test@example.com
+
+  - it: should have database URL from secret in init container
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: external-postgres-secret
+                key: url
+
+  - it: should have composio API key from secret in init container
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: COMPOSIO_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-composio-api-key
+                key: COMPOSIO_API_KEY
+
+  - it: should have correct init container resource limits
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.cpu
+          value: 1000m
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.memory
+          value: 1024Mi
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.limits.cpu
+          value: 1000m
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.limits.memory
+          value: 1024Mi
+
 ---
 suite: test apollo service
 templates:

@@ -28,6 +28,38 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: db-init
+          image: "{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
+          imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            - name: COMPOSIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-composio-api-key
+                  key: COMPOSIO_API_KEY
+            - name: ADMIN_EMAIL
+              value: {{ .Values.apollo.adminEmail | default "hello@composio.dev" | quote }}
+          command: ["/base/self-host/bootstrap/setup_db.sh"]
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1024Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
       containers:
         - name: apollo
           image: "{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"

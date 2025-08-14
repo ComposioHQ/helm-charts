@@ -94,6 +94,9 @@ apollo:
       name: "external-postgres-secret"
       key: "url"
   
+  # Admin email for database initialization
+  adminEmail: "hello@composio.dev"
+  
   # Note: Secrets are now managed globally in the 'secrets' section
 
 # MCP service configuration - Development
@@ -144,18 +147,6 @@ thermos:
       cpu: "2"
   
   # Note: Secrets are now managed globally in the 'secrets' section
-
-# DB Init - Enabled for development
-dbInit:
-  image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
-    tag: "1.0-20250717-d3eccab"
-    pullPolicy: Always
-  adminEmail: "hello@composio.dev"
-  database:
-    urlSecret:
-      name: "external-postgres-secret"
-      key: "url"
 
 # Temporal configuration - Using official helm chart as dependency with external PostgreSQL
 temporal:

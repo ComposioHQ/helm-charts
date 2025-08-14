@@ -33,6 +33,8 @@ apollo:
     limits:
       memory: "2Gi"
       cpu: "1"
+  # Admin email for database initialization
+  adminEmail: "test@example.com"
 
 mercury:
   enabled: true
@@ -86,13 +88,4 @@ minio:
     size: 8Gi
     accessMode: ReadWriteOnce
 
-dbInit:
-  image:
-    repository: test-init
-    tag: "test"
-    pullPolicy: IfNotPresent
-  adminEmail: "test@example.com"
-  database:
-    urlSecret:
-      name: "test-db-secret"
-      key: "url" 
+ 
