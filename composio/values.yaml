@@ -402,3 +402,89 @@ mercury:
   volumes: []
   
 
+supportBundle:
+  # Enable/disable support bundle functionality
+  enabled: false
+  
+  # Email address for support ticket submissions
+  supportEmail: "support@yourcompany.com"
+  
+  # Troubleshoot.sh version to use
+  troubleshootVersion: "v0.84.0"
+  
+  # Output path for support bundles (inside container)
+  outputPath: "/tmp/support-bundle"
+  
+  # Run in non-interactive mode
+  interactive: false
+  
+  # Enable automatic redaction of sensitive data
+  redact: true
+  
+  # Resource limits for support bundle job
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+  
+  # Persistence for support bundle storage
+  persistence:
+    enabled: false
+    size: "1Gi"
+    storageClass: ""  # Uses default storage class if empty
+    
+  # Collector configuration
+  collectors:
+    # Enable metrics collection (requires Prometheus)
+    metrics:
+      enabled: false
+      
+    # Enable database connectivity checks
+    database:
+      enabled: false
+  
+  # Analyzer configuration  
+  analyzers:
+    # Minimum cluster requirements
+    minNodes: 1
+    minMemoryGB: 2
+    minCPU: 1
+    
+    # Enable custom log analysis
+    customChecks: true
+    
+  # Custom collectors (advanced users)
+  customCollectors: []
+    # Example:
+    # - logs:
+    #     selector:
+    #       - app=my-custom-app
+    #     namespace: custom-namespace
+    #     limits:
+    #       maxAge: 168h
+    #       maxLines: 5000
+  
+  # Custom analyzers (advanced users) 
+  customAnalyzers: []
+    # Example:
+    # - textAnalyze:
+    #     checkName: "Custom Error Check"
+    #     fileName: "*/logs/*/*.log"
+    #     regex: "CUSTOM_ERROR"
+    #     outcomes:
+    #       - fail:
+    #           when: "true"
+    #           message: "Custom error detected"
+    
+  # Additional redactors
+  customRedactors: []
+    # Example:
+    # - name: "Custom Redactor"
+    #   file: "*/logs/*/*.log"
+    #   regex:
+    #     - 'custom_secret=([^&\s]+)'
+    #   replacements:
+    #     - 'custom_secret=***HIDDEN***'
