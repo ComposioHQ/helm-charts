@@ -28,6 +28,92 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: thermos-db-migration
+          image: "{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
+          imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              echo "Starting database migration..."
+              ./thermos ent:generate-code
+              ./thermos ent:generate-migration
+              ./thermos ent:apply-migration
+              ./thermos ent:migration-status
+              echo "Database migration completed successfully"
+          workingDir: "/tmp"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            - name: THERMOS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            - name: COMPOSIO_ENV
+              value: "production"
+            - name: APOLLO_ENDPOINT
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+            - name: APOLLO_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-apollo-admin-token
+                  key: APOLLO_ADMIN_TOKEN
+            - name: LOG_ENCODING
+              value: "json"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: SELF_HOSTED
+              value: "true"
+            - name: TEMPORAL_CLOUD_HOST_PORT
+              value: "temporal-stack-frontend:7233"
+            - name: TEMPORAL_CLOUD_NAMESPACE
+              value: "default"
+            - name: DISABLE_TEMPORAL_TLS
+              value: "true"
+            - name: LAMBDA_USE_HTTP
+              value: "true"
+            - name: LAMBDA_USE_HTTP_ENDPOINT
+              value: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
+            - name: AWS_LAMBDA_REGION
+              value: {{ .Values.aws.region | quote }}
+            - name: AWS_S3_REGION
+              value: {{ .Values.aws.region | quote }}
+            - name: AWS_S3_LAMBDA_BUCKET_NAME
+              value: {{ .Values.aws.s3.lambdaBucketName | quote }}
+            - name: LAMBDA_FUNCTION_NAME
+              value: {{ .Values.aws.lambda.functionName | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-minio-credentials
+                  key: MINIO_ROOT_USER
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-minio-credentials
+                  key: MINIO_ROOT_PASSWORD
+            - name: AWS_S3_ENDPOINT
+              value: "http://{{ .Release.Name }}-minio:9000"
+            - name: AWS_S3_FORCE_PATH_STYLE
+              value: "true"
+            {{- if .Values.thermos.env }}
+            {{- toYaml .Values.thermos.env | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: cache-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: "0.5"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
       containers:
         - name: thermos
           image: "{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
