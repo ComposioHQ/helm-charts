@@ -55,6 +55,8 @@ spec:
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=8192"
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -76,10 +78,10 @@ spec:
           resources:
             requests:
               cpu: "1"
-              memory: "2Gi"
+              memory: "5Gi"
             limits:
               cpu: "1"
-              memory: "2Gi"
+              memory: "6Gi"
 ---
 apiVersion: v1
 kind: Service
