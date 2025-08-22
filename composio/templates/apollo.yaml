@@ -68,7 +68,7 @@ spec:
             - name: SELF_HOSTED
               value: "true"
             - name: NODE_OPTIONS
-              value: --max-old-space-size=8192
+              value: "--max-old-space-size=8192"
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
             - name: MCP_BASE_URL
