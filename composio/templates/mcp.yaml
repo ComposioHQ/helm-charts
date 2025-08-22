@@ -77,10 +77,10 @@ spec:
             {{- end }}
           resources:
             requests:
-              cpu: "2"
+              cpu: "1"
               memory: "5Gi"
             limits:
-              cpu: "2"
+              cpu: "1"
               memory: "6Gi"
 ---
 apiVersion: v1
