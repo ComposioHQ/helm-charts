@@ -67,6 +67,8 @@ spec:
               value: "false"
             - name: SELF_HOSTED
               value: "true"
+            - name: NODE_OPTIONS
+              value: --max-old-space-size=8192
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
             - name: MCP_BASE_URL
@@ -105,10 +107,10 @@ spec:
           resources:
             requests:
               cpu: "1"
-              memory: "2Gi"
+              memory: "5Gi"
             limits:
               cpu: "1"
-              memory: "2Gi"
+              memory: "6Gi"
 ---
 apiVersion: v1
 kind: Service
