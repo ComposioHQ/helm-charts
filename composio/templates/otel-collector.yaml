@@ -1,0 +1,143 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.otel.collector.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "composio.fullname" . }}-otel-collector-config
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+    
+    processors:
+      batch:
+        timeout: 1s
+        send_batch_size: 1024
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 1500
+    
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:9464"
+        namespace: "composio"
+        const_labels:
+          label1: value1
+      logging:
+        loglevel: debug
+    
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch, memory_limiter]
+          exporters: [logging]
+        metrics:
+          receivers: [otlp]
+          processors: [batch, memory_limiter]
+          exporters: [prometheus, logging]
+        logs:
+          receivers: [otlp]
+          processors: [batch, memory_limiter]
+          exporters: [logging]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "composio.fullname" . }}-otel-collector
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+spec:
+  replicas: {{ .Values.monitoring.otel.collector.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: otel-collector
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: otel-collector
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: otel-collector
+          image: "{{ .Values.monitoring.otel.collector.image.repository }}:{{ .Values.monitoring.otel.collector.image.tag }}"
+          imagePullPolicy: {{ .Values.monitoring.otel.collector.image.pullPolicy }}
+          args:
+            - "--config=/conf/config.yaml"
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+            - name: prometheus
+              containerPort: 9464
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+          resources:
+            {{- toYaml .Values.monitoring.otel.collector.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "composio.fullname" . }}-otel-collector-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "composio.fullname" . }}-otel-collector
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+spec:
+  type: {{ .Values.monitoring.otel.collector.service.type }}
+  ports:
+    - name: otlp-grpc
+      port: {{ .Values.monitoring.otel.collector.service.port }}
+      targetPort: otlp-grpc
+      protocol: TCP
+    - name: otlp-http
+      port: {{ .Values.monitoring.otel.collector.service.httpPort }}
+      targetPort: otlp-http
+      protocol: TCP
+    - name: prometheus
+      port: 9464
+      targetPort: prometheus
+      protocol: TCP
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+{{- end }}
