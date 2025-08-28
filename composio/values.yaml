@@ -2,6 +2,147 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Monitoring configuration
+monitoring:
+  enabled: false
+  # OpenTelemetry configuration
+  otel:
+    # OpenTelemetry Collector configuration
+    collector:
+      enabled: true
+      replicaCount: 1
+      image:
+        repository: otel/opentelemetry-collector
+        tag: "0.96.0"
+        pullPolicy: IfNotPresent
+      service:
+        type: ClusterIP
+        port: 4317  # OTLP gRPC
+        httpPort: 4318  # OTLP HTTP
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "200m"
+      config:
+        receivers:
+          otlp:
+            protocols:
+              grpc:
+                endpoint: "0.0.0.0:4317"
+              http:
+                endpoint: "0.0.0.0:4318"
+        processors:
+          batch:
+            timeout: 1s
+            send_batch_size: 1024
+          memory_limiter:
+            check_interval: 1s
+            limit_mib: 1500
+        exporters:
+          prometheus:
+            endpoint: "0.0.0.0:9464"
+            namespace: "composio"
+            const_labels:
+              label1: value1
+          logging:
+            loglevel: debug
+        service:
+          pipelines:
+            traces:
+              receivers: [otlp]
+              processors: [batch, memory_limiter]
+              exporters: [logging]
+            metrics:
+              receivers: [otlp]
+              processors: [batch, memory_limiter]
+              exporters: [prometheus, logging]
+            logs:
+              receivers: [otlp]
+              processors: [batch, memory_limiter]
+              exporters: [logging]
+
+  # Prometheus configuration
+  prometheus:
+    enabled: true
+    server:
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+      persistentVolume:
+        enabled: true
+        size: 8Gi
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "200m"
+    alertmanager:
+      enabled: false
+    nodeExporter:
+      enabled: false
+    pushgateway:
+      enabled: false
+
+  # Grafana configuration
+  grafana:
+    enabled: true
+    adminPassword: "admin123"
+    persistence:
+      enabled: true
+      size: 5Gi
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'composio'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/composio
+    dashboards:
+      composio:
+        composio-overview:
+          gnetId: null
+          revision: null
+          datasource: Prometheus
+          editable: true
+          panels:
+            - title: "Composio Services Overview"
+              type: "stat"
+              targets:
+                - expr: "up{job=~\".*composio.*\"}"
+                  legendFormat: "{{job}}"
+            - title: "Request Rate"
+              type: "graph"
+              targets:
+                - expr: "rate(http_requests_total[5m])"
+                  legendFormat: "{{job}}"
+            - title: "Response Time"
+              type: "graph"
+              targets:
+                - expr: "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))"
+                  legendFormat: "{{job}} 95th percentile"
+            - title: "Error Rate"
+              type: "graph"
+              targets:
+                - expr: "rate(http_requests_total{status=~\"5..\"}[5m])"
+                  legendFormat: "{{job}} errors"
+
 # Namespace configuration
 # If create is true, the chart will create namespaces needed by services
 # If create is false, you need to create namespaces externally before deploying
@@ -251,6 +392,8 @@ temporal:
   grafana:
     enabled: false
 
+# Legacy prometheus and grafana configurations - now managed under monitoring section
+# These are kept for backward compatibility but should use monitoring.prometheus and monitoring.grafana instead
 prometheus:
   enabled: false
   nodeExporter:

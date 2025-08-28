@@ -1,0 +1,91 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.prometheus.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "composio.fullname" . }}-otel-collector
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: otel-collector
+  endpoints:
+    - port: prometheus
+      interval: 15s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "composio.fullname" . }}-services
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: apollo
+      release: {{ .Release.Name }}
+  endpoints:
+    - port: http
+      interval: 15s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "composio.fullname" . }}-mcp
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: mcp
+      release: {{ .Release.Name }}
+  endpoints:
+    - port: http
+      interval: 15s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "composio.fullname" . }}-thermos
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: thermos
+      release: {{ .Release.Name }}
+  endpoints:
+    - port: http
+      interval: 15s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "composio.fullname" . }}-minio
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: minio
+  endpoints:
+    - port: api
+      interval: 15s
+      path: /minio/v2/metrics/cluster
+{{- end }}

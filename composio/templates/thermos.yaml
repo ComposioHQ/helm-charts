@@ -124,6 +124,25 @@ spec:
                 secretKeyRef:
                   name: external-postgres-secret
                   key: url
+            {{- if .Values.monitoring.enabled }}
+            # OpenTelemetry Configuration
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://{{ .Release.Name }}-otel-collector:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_SERVICE_NAME
+              value: "thermos"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name=thermos,service.version={{ .Values.thermos.image.tag | default .Chart.AppVersion }},deployment.environment={{ .Values.global.environment }}"
+            - name: OTEL_TRACES_SAMPLER
+              value: "parentbased_always_on"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            {{- end }}
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}

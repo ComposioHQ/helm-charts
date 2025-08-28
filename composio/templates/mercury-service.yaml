@@ -95,6 +95,25 @@ spec:
               value: "http://{{ .Release.Name }}-minio:9000"
             - name: AWS_S3_FORCE_PATH_STYLE
               value: "true"
+            {{- if .Values.monitoring.enabled }}
+            # OpenTelemetry Configuration
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://{{ .Release.Name }}-otel-collector:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_SERVICE_NAME
+              value: "mercury"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name=mercury,service.version={{ .Values.mercury.image.tag | default .Chart.AppVersion }},deployment.environment={{ .Values.global.environment }}"
+            - name: OTEL_TRACES_SAMPLER
+              value: "parentbased_always_on"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            {{- end }}
 
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}

@@ -135,6 +135,25 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-minio-credentials
                   key: MINIO_ROOT_PASSWORD
+            {{- if .Values.monitoring.enabled }}
+            # OpenTelemetry Configuration
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://{{ .Release.Name }}-otel-collector:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_SERVICE_NAME
+              value: "minio"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name=minio,service.version={{ .Values.minio.image.tag | default .Chart.AppVersion }},deployment.environment={{ .Values.global.environment }}"
+            - name: OTEL_TRACES_SAMPLER
+              value: "parentbased_always_on"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            {{- end }}
             {{- with .Values.minio.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

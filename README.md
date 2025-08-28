@@ -82,6 +82,32 @@ helm upgrade composio ./composio -n composio --debug
 |-----------|-------------|----------|
 | `externalSecrets.ecr.token` | AWS ECR authentication token | ✅ Yes |
 
+### Monitoring Configuration
+
+The chart includes optional monitoring capabilities with Prometheus, Grafana, and OpenTelemetry instrumentation.
+
+**Enable Monitoring:**
+```bash
+helm install composio ./composio \
+  --set monitoring.enabled=true \
+  --create-namespace \
+  --namespace composio
+```
+
+**Components:**
+- **OpenTelemetry Collector**: Collects metrics, traces, and logs from all services
+- **Prometheus**: Time-series metrics storage and querying
+- **Grafana**: Pre-configured dashboards for service monitoring
+- **Service Instrumentation**: All services automatically instrumented with OpenTelemetry
+
+**Access Grafana:**
+```bash
+kubectl port-forward svc/composio-grafana 3000:80 -n composio
+# Then visit http://localhost:3000 (admin/admin123)
+```
+
+For detailed monitoring documentation, see [MONITORING.md](composio/MONITORING.md).
+
 #### External Services Configuration
 
 External services (PostgreSQL, Redis, OpenAI) are configured via the `secret-setup.sh` script before deploying. See **Quick Installation** section above for details.
