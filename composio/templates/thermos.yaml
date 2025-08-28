@@ -132,11 +132,11 @@ spec:
               mountPath: /tmp
           resources:
             requests:
-              cpu: "1"
-              memory: "2Gi"
+              cpu: "2"
+              memory: "4Gi"
             limits:
-              cpu: "1"
-              memory: "2Gi"
+              cpu: "2"
+              memory: "5Gi"
       volumes:
         - name: cache-volume
           emptyDir: {}
