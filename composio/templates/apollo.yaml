@@ -81,6 +81,8 @@ spec:
               value: "https://mercury.composio.dev"
             - name: SERVICE_NAME
               value: "apollo"
+            - name: APOLLO_URL
+              value: {{ .Values.apollo.apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
