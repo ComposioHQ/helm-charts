@@ -84,7 +84,7 @@ spec:
             - name: APOLLO_URL
               value: {{ .Values.apollo.apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: MAX_AUTH_FAILURES_FOR_EXPIRY
-              value: 1
+              value: "1"
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
