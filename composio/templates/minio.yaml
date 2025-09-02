@@ -47,7 +47,7 @@ spec:
                   ls -la /data/
                   echo "Copying ALL data from /data to /mnt/persistent-data (first startup)..."
                   cp -r /data/* /mnt/persistent-data/ 2>/dev/null || true
-                  cp /data/tools/.lookup.zip /mnt/persistent-data/ 2>/dev/null || true
+                  cp /data/.lookup.zip /mnt/persistent-data/ 2>/dev/null || true
                   echo "✅ Initial data copied successfully!"
                 else
                   echo "❌ No pre-built data found in Docker image /data directory"
@@ -62,18 +62,18 @@ spec:
                 echo "🔄 Updating /api folder and .lookup.zip from new image..."
                 
                 # Update .lookup.zip if it exists in the image
-                if [ -f "/data/tools/.lookup.zip" ]; then
+                if [ -f "/data/.lookup.zip" ]; then
                   echo "  → Updating .lookup.zip"
-                  cp /data/tools/.lookup.zip /mnt/persistent-data/
+                  cp /data/.lookup.zip /mnt/persistent-data/
                 else
                   echo "  → No .lookup.zip found in new image"
                 fi
                 
                 # Update api folder if it exists in the image
-                if [ -d "/data/tools/api" ]; then
+                if [ -d "/data/api" ]; then
                   echo "  → Updating /api folder"
                   rm -rf /mnt/persistent-data/api 2>/dev/null || true
-                  cp -r /data/tools/api /mnt/persistent-data/
+                  cp -r /data/api /mnt/persistent-data/
                 else
                   echo "  → No /api folder found in new image"
                 fi
