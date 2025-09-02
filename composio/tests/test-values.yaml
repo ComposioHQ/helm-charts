@@ -74,6 +74,11 @@ thermos:
 
 minio:
   replicaCount: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
   image:
     repository: test-minio
     tag: "test"

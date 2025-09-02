@@ -300,6 +300,14 @@ aws:
 # Minio configuration - Development
 minio:
   replicaCount: 1
+  
+  # Deployment strategy to prevent Multi-Attach volume errors
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1  # Allow old pod to terminate first
+      maxSurge: 0        # Don't create new pod until old one is gone
+  
   image:
     repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
     tag: "latest"

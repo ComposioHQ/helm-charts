@@ -7,6 +7,10 @@ metadata:
     app.kubernetes.io/component: minio
 spec:
   replicas: {{ .Values.minio.replicas | default 1 }}
+  {{- if .Values.minio.strategy }}
+  strategy:
+    {{- toYaml .Values.minio.strategy | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "composio.selectorLabels" . | nindent 6 }}
@@ -47,7 +51,7 @@ spec:
                   ls -la /data/
                   echo "Copying ALL data from /data to /mnt/persistent-data (first startup)..."
                   cp -r /data/* /mnt/persistent-data/ 2>/dev/null || true
-                  cp /data/tools/.lookup.zip /mnt/persistent-data/ 2>/dev/null || true
+                  # Note: .lookup.zip is already copied as part of the tools bucket structure above
                   echo "✅ Initial data copied successfully!"
                 else
                   echo "❌ No pre-built data found in Docker image /data directory"
@@ -61,21 +65,23 @@ spec:
                 # Always update specific items from the new image
                 echo "🔄 Updating /api folder and .lookup.zip from new image..."
                 
-                # Update .lookup.zip if it exists in the image
-                if [ -f "/data/tools/.lookup.zip" ]; then
-                  echo "  → Updating .lookup.zip"
-                  cp /data/tools/.lookup.zip /mnt/persistent-data/
+                # Update .lookup.zip if it exists in the image (MinIO stores objects as directories)
+                if [ -d "/data/tools/.lookup.zip" ]; then
+                  echo "  → Updating tools/.lookup.zip (MinIO object)"
+                  mkdir -p /mnt/persistent-data/tools
+                  cp -r /data/tools/.lookup.zip /mnt/persistent-data/tools/
                 else
-                  echo "  → No .lookup.zip found in new image"
+                  echo "  → No .lookup.zip found in new image at /data/tools/.lookup.zip"
                 fi
                 
                 # Update api folder if it exists in the image
                 if [ -d "/data/tools/api" ]; then
-                  echo "  → Updating /api folder"
-                  rm -rf /mnt/persistent-data/api 2>/dev/null || true
-                  cp -r /data/tools/api /mnt/persistent-data/
+                  echo "  → Updating tools/api folder"
+                  mkdir -p /mnt/persistent-data/tools
+                  rm -rf /mnt/persistent-data/tools/api 2>/dev/null || true
+                  cp -r /data/tools/api /mnt/persistent-data/tools/
                 else
-                  echo "  → No /api folder found in new image"
+                  echo "  → No api folder found in new image at /data/tools/api"
                 fi
                 
                 # Update any api folders and .lookup.zip files within buckets (e.g., tools/api, tools/.lookup.zip)
@@ -83,11 +89,11 @@ spec:
                   if [ -d "${bucket_dir}" ]; then
                     bucket_name=$(basename "${bucket_dir}")
                     
-                    # Update .lookup.zip within bucket
-                    if [ -f "/data/${bucket_name}/.lookup.zip" ]; then
-                      echo "  → Updating /${bucket_name}/.lookup.zip"
+                    # Update .lookup.zip within bucket (MinIO stores objects as directories)
+                    if [ -d "/data/${bucket_name}/.lookup.zip" ]; then
+                      echo "  → Updating /${bucket_name}/.lookup.zip (MinIO object)"
                       mkdir -p "/mnt/persistent-data/${bucket_name}"
-                      cp "/data/${bucket_name}/.lookup.zip" "/mnt/persistent-data/${bucket_name}/"
+                      cp -r "/data/${bucket_name}/.lookup.zip" "/mnt/persistent-data/${bucket_name}/"
                     fi
                     
                     # Update api folder within bucket
