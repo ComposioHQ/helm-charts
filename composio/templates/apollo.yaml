@@ -95,6 +95,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
+            - name: COMPOSIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-composio-api-key
+                  key: COMPOSIO_API_KEY
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
