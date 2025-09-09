@@ -83,11 +83,11 @@ apollo:
   
   resources:
     requests:
-      memory: "4Gi"
-      cpu: "2"
+      memory: "5Gi"
+      cpu: "1"
     limits:
-      memory: "4Gi"
-      cpu: "2"
+      memory: "6Gi"
+      cpu: "1"
   
   database:
     urlSecret:
@@ -110,11 +110,11 @@ mcp:
   
   resources:
     requests:
-      memory: "4Gi"
-      cpu: "2"
+      memory: "5Gi"
+      cpu: "1"
     limits:
-      memory: "4Gi"
-      cpu: "2"
+      memory: "6Gi"
+      cpu: "1"
   
   database:
     urlSecret:
@@ -140,7 +140,7 @@ thermos:
       memory: "4Gi"
       cpu: "2"
     limits:
-      memory: "4Gi"
+      memory: "5Gi"
       cpu: "2"
   
   # Note: Secrets are now managed globally in the 'secrets' section
