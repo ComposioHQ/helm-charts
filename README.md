@@ -275,7 +275,7 @@ kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/com
 
 **Total Recommended Resources**: 9+ CPUs, 24+ GB RAM
 
-> **Note**: Resource values are taken from actual template files. Mercury resources are configurable via values.yaml, while others are hardcoded in templates.
+> **Note**: All values are configurable via values.yaml
 
 ### 📚 Documentation
 
