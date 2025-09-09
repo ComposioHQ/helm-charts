@@ -14,30 +14,48 @@ Production-ready Helm charts to deploy Composio on any Kubernetes cluster.
 - AWS ECR access (or equivalent container registry)
 
 
-## Quick installation
+## 🚀 Installation Steps
 
-### 1. Install Knative Components
+### Step 1: Prerequisites Setup
+Ensure you have the following ready:
+- Kubernetes cluster with at least **9 CPUs** and **24GB RAM** (recommended: 12+ CPUs, 32GB RAM)
+- External PostgreSQL database
+- AWS ECR access configured
+- `kubectl` and Helm 3.x installed
+
+### Step 2: Install Knative Components
 ```bash
+# Install Knative Serving CRDs
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
 
+# Install Knative Serving Core
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml
 
+# Install Kourier networking layer
 kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml
 
-kubectl patch configmap/config-network --namespace knative-serving --type merge --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
+# Configure Kourier as default ingress
+kubectl patch configmap/config-network \
+  --namespace knative-serving \
+  --type merge \
+  --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
 ```
 
-### 2. Setup Secrets
+### Step 3: Configure External Secrets
+Set up your database and API credentials:
 ```bash
-# Setup secrets before deploying Helm chart
-POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require" \
-REDIS_URL="redis://<username>:<password>@<host>:6379/0" \
-OPENAI_API_KEY="sk-1234567890abcdef..." \
+# Required environment variables
+export POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
+export REDIS_URL="redis://<username>:<password>@<host>:6379/0"  # Optional
+export OPENAI_API_KEY="sk-1234567890abcdef..."  # Optional
+
+# Run the secret setup script
 ./secret-setup.sh -r composio -n composio
 ```
 
-### 3. Deploy with Helm
+### Step 4: Deploy Composio with Helm
 ```bash
+# Install the Helm chart
 helm install composio ./composio \
   --create-namespace \
   --namespace composio \
@@ -46,18 +64,19 @@ helm install composio ./composio \
   --debug
 ```
 
-### Verify Installation
-
+### Step 5: Verify Installation
 ```bash
-# Check all pods are running
+# Check all pods are running (may take 5-10 minutes)
 kubectl get pods -n composio
 
-# For Knative deployments, also check Knative infrastructure
-kubectl get pods -n knative-serving
-
-# Check Knative services (only for Knative deployments)
+# Verify Knative services
 kubectl get ksvc -n composio
+
+# Check Knative infrastructure
+kubectl get pods -n knative-serving
 ```
+
+
 
 ## 🔄 Upgrade Deployment
 
@@ -237,9 +256,26 @@ kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/com
 
 ### Resource Requirements
 
-- **Minimum**: 4 CPUs, 8GB RAM
-- **Recommended**: 8 CPUs, 16GB RAM
+#### Minimum Cluster Requirements
+- **Minimum**: 9 CPUs, 24GB RAM (based on actual resource requests)
+- **Recommended**: 12+ CPUs, 32GB RAM (for buffer and temporal)
 - **Storage**: 20GB minimum for persistent volumes
+
+#### Recommended Resource Limits (Per Service)
+
+| Service | CPU Request | Memory Request | CPU Limit | Memory Limit |
+|---------|-------------|----------------|-----------|--------------|
+| **Apollo** | 1 | 5Gi | 1 | 6Gi |
+| **MCP** | 1 | 5Gi | 1 | 6Gi |
+| **Thermos** | 2 | 4Gi | 2 | 5Gi |
+| **Mercury** | 1 | 2Gi | 2 | 4Gi |
+| **Minio** | 2 | 4Gi | 2 | 4Gi |
+| **Redis** (if enabled) | 2 | 4Gi | 2 | 4Gi |
+| **Temporal** | Default | Default | Default | Default |
+
+**Total Recommended Resources**: 9+ CPUs, 24+ GB RAM
+
+> **Note**: Resource values are taken from actual template files. Mercury resources are configurable via values.yaml, while others are hardcoded in templates.
 
 ### 📚 Documentation
 

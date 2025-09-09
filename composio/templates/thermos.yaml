@@ -131,12 +131,7 @@ spec:
             - name: cache-volume
               mountPath: /tmp
           resources:
-            requests:
-              cpu: "2"
-              memory: "4Gi"
-            limits:
-              cpu: "2"
-              memory: "5Gi"
+            {{- toYaml .Values.thermos.resources | nindent 12 }}
       volumes:
         - name: cache-volume
           emptyDir: {}
