@@ -71,8 +71,7 @@ spec:
               value: "--max-old-space-size=4096"
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
-            - name: MCP_BASE_URL
-              value: {{ printf "http://%s-mcp:3000" .Release.Name | quote }} 
+ 
             - name: OVERWRITE_APOLLO_URL
               value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: OAUTH2_REDIRECT_URI_OVERRIDE

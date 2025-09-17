@@ -21,9 +21,7 @@
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-apollo 8080:{{ .Values.apollo.service.port }}
    Then visit: http://127.0.0.1:8080
 
-   MCP (Management Portal):
-   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-mcp 8081:{{ .Values.mcp.service.port }}
-   Then visit: http://127.0.0.1:8081
+
 
    Temporal Web UI:
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-temporal-web 8082:8080

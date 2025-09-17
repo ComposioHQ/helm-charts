@@ -96,32 +96,7 @@ apollo:
   
   # Note: Secrets are now managed globally in the 'secrets' section
 
-# MCP service configuration - Development
-mcp:
-  replicaCount: 2
-  image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mcp-server
-    tag: "1.0-20250717-d3eccab"
-    pullPolicy: Always
-  
-  service:
-    type: ClusterIP
-    port: 3000
-  
-  resources:
-    requests:
-      memory: "5Gi"
-      cpu: "1"
-    limits:
-      memory: "6Gi"
-      cpu: "1"
-  
-  database:
-    urlSecret:
-      name: "external-postgres-secret"
-      key: "url"
-  
-  # Note: Secrets are now managed globally in the 'secrets' section
+
 
 # Thermos service configuration - Development
 thermos:

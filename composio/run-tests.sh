@@ -65,10 +65,7 @@ case "${1:-all}" in
         print_status $YELLOW "🚀 Running Mercury tests..."
         helm unittest . -f 'tests/mercury_test.yaml' --color
         ;;
-    "mcp")
-        print_status $YELLOW "🚀 Running MCP tests..."
-        helm unittest . -f 'tests/mcp_test.yaml' --color
-        ;;
+
     "thermos")
         print_status $YELLOW "🚀 Running Thermos tests..."
         helm unittest . -f 'tests/thermos_test.yaml' --color
@@ -115,7 +112,7 @@ case "${1:-all}" in
         echo "  all         - Run all tests (default)"
         echo "  apollo      - Run Apollo service tests"
         echo "  mercury     - Run Mercury service tests"
-        echo "  mcp         - Run MCP service tests"
+
         echo "  thermos     - Run Thermos service tests"
         echo "  minio       - Run Minio tests"
         echo "  knative     - Run Knative tests"
