@@ -1,0 +1,270 @@
+{
+  "changelog": [
+    {
+      "id": "2024-01-15-helm-v0.1.0",
+      "date": "2024-01-15",
+      "version": "0.1.0",
+      "type": "helm",
+      "title": "Initial Helm Chart Release",
+      "description": "First release of the Composio Helm chart with all core services",
+      "changes": [
+        "Added Apollo API service configuration",
+        "Added MCP (Management Control Portal) service",
+        "Added Thermos workflow engine service",
+        "Added Mercury serverless function service",
+        "Added MinIO object storage service",
+        "Added Temporal workflow orchestration",
+        "Added Redis caching layer",
+        "Added Knative Serving integration",
+        "Added comprehensive resource limits and health checks",
+        "Added external PostgreSQL and Redis support"
+      ],
+      "breaking": false,
+      "dockerImages": [
+        {
+          "service": "apollo",
+          "repository": "composio-self-host/apollo",
+          "tag": "1.0-20250717-d3eccab",
+          "changes": ["Initial release"]
+        },
+        {
+          "service": "mcp-server",
+          "repository": "composio-self-host/mcp-server",
+          "tag": "1.0-20250717-d3eccab",
+          "changes": ["Initial release"]
+        },
+        {
+          "service": "thermos",
+          "repository": "composio-self-host/thermos",
+          "tag": "1.0-20250717-d3eccab",
+          "changes": ["Initial release"]
+        },
+        {
+          "service": "mercury",
+          "repository": "composio-self-host/mercury",
+          "tag": "latest",
+          "changes": ["Initial release"]
+        },
+        {
+          "service": "minio",
+          "repository": "composio-self-host/minio",
+          "tag": "latest",
+          "changes": ["Initial release"]
+        },
+        {
+          "service": "init",
+          "repository": "composio-self-host/init",
+          "tag": "1.0-20250717-d3eccab",
+          "changes": ["Initial release"]
+        }
+      ]
+    },
+    {
+      "id": "2024-01-20-docker-updates",
+      "date": "2024-01-20",
+      "version": "glean-rc-1.1",
+      "type": "docker",
+      "title": "Docker Image Updates - Glean RC 1.1",
+      "description": "Updated all Docker images to Glean RC 1.1 with performance improvements",
+      "changes": [
+        "Updated Apollo to glean-rc-1.1",
+        "Updated Thermos to glean-rc-1.1", 
+        "Updated Mercury to glean-rc-1.1",
+        "Updated MinIO to glean-rc-1.1",
+        "Updated init container to glean-rc-1.1",
+        "Performance optimizations for all services",
+        "Improved error handling and logging",
+        "Enhanced security configurations"
+      ],
+      "breaking": false,
+      "dockerImages": [
+        {
+          "service": "apollo",
+          "repository": "composio-self-host/apollo",
+          "tag": "glean-rc-1.1",
+          "changes": ["Performance improvements", "Enhanced error handling"]
+        },
+        {
+          "service": "thermos",
+          "repository": "composio-self-host/thermos",
+          "tag": "glean-rc-1.1",
+          "changes": ["Workflow optimization", "Better resource management"]
+        },
+        {
+          "service": "mercury",
+          "repository": "composio-self-host/mercury",
+          "tag": "glean-rc-1.1",
+          "changes": ["Serverless improvements", "Auto-scaling enhancements"]
+        },
+        {
+          "service": "minio",
+          "repository": "composio-self-host/minio",
+          "tag": "glean-rc-1.1",
+          "changes": ["Storage optimization", "Security updates"]
+        },
+        {
+          "service": "init",
+          "repository": "composio-self-host/init",
+          "tag": "glean-rc-1.1",
+          "changes": ["Improved initialization", "Better error recovery"]
+        }
+      ]
+    },
+    {
+      "id": "2024-01-25-mcp-update",
+      "date": "2024-01-25",
+      "version": "c6f8d65",
+      "type": "docker",
+      "title": "MCP Server Update",
+      "description": "Updated MCP server with latest features and bug fixes",
+      "changes": [
+        "Updated MCP server to commit c6f8d65",
+        "Added new management features",
+        "Improved portal interface",
+        "Enhanced monitoring capabilities",
+        "Fixed authentication issues",
+        "Added new API endpoints"
+      ],
+      "breaking": false,
+      "dockerImages": [
+        {
+          "service": "mcp-server",
+          "repository": "composio-self-host/mcp-server",
+          "tag": "c6f8d65",
+          "changes": ["New management features", "UI improvements", "Bug fixes"]
+        }
+      ]
+    },
+    {
+      "id": "2024-02-01-helm-v0.2.0",
+      "date": "2024-02-01",
+      "version": "0.2.0",
+      "type": "helm",
+      "title": "Helm Chart v0.2.0 - Production Optimizations",
+      "description": "Major update with production-ready configurations and monitoring",
+      "changes": [
+        "Added support bundle functionality",
+        "Enhanced resource limits and requests",
+        "Added comprehensive health checks",
+        "Improved security contexts",
+        "Added GKE Autopilot compatibility",
+        "Enhanced monitoring and logging",
+        "Added custom resource definitions",
+        "Improved error handling and recovery"
+      ],
+      "breaking": true,
+      "breakingChanges": [
+        "Resource requirements increased (minimum 9 CPUs, 24GB RAM)",
+        "Security contexts now enforce non-root containers",
+        "New required environment variables for external services",
+        "Knative configuration changes for better performance"
+      ],
+      "dockerImages": [
+        {
+          "service": "apollo",
+          "repository": "composio-self-host/apollo",
+          "tag": "glean-rc-1.1",
+          "changes": ["Production optimizations", "Enhanced monitoring"]
+        },
+        {
+          "service": "mcp-server",
+          "repository": "composio-self-host/mcp-server",
+          "tag": "c6f8d65",
+          "changes": ["Management improvements", "Better error handling"]
+        },
+        {
+          "service": "thermos",
+          "repository": "composio-self-host/thermos",
+          "tag": "glean-rc-1.1",
+          "changes": ["Workflow optimizations", "Resource management"]
+        },
+        {
+          "service": "mercury",
+          "repository": "composio-self-host/mercury",
+          "tag": "glean-rc-1.1",
+          "changes": ["Auto-scaling improvements", "Performance enhancements"]
+        },
+        {
+          "service": "minio",
+          "repository": "composio-self-host/minio",
+          "tag": "glean-rc-1.1",
+          "changes": ["Storage optimizations", "Security updates"]
+        }
+      ]
+    },
+    {
+      "id": "2024-02-10-load-testing",
+      "date": "2024-02-10",
+      "version": "load-test-v1",
+      "type": "docker",
+      "title": "Load Testing Infrastructure",
+      "description": "Added comprehensive load testing capabilities and performance monitoring",
+      "changes": [
+        "Added load testing framework",
+        "Implemented performance monitoring",
+        "Added automated test execution",
+        "Enhanced metrics collection",
+        "Added performance dashboards",
+        "Implemented test result analysis"
+      ],
+      "breaking": false,
+      "dockerImages": [
+        {
+          "service": "load-test",
+          "repository": "composio-self-host/load-test",
+          "tag": "v1.0",
+          "changes": ["Initial load testing framework", "Performance monitoring"]
+        }
+      ]
+    },
+    {
+      "id": "2024-02-15-security-updates",
+      "date": "2024-02-15",
+      "version": "security-v1",
+      "type": "docker",
+      "title": "Security Updates and Hardening",
+      "description": "Comprehensive security updates across all services",
+      "changes": [
+        "Updated all base images to latest secure versions",
+        "Added security scanning in CI/CD pipeline",
+        "Enhanced secret management",
+        "Improved network security",
+        "Added security monitoring",
+        "Updated dependencies with security patches"
+      ],
+      "breaking": false,
+      "dockerImages": [
+        {
+          "service": "apollo",
+          "repository": "composio-self-host/apollo",
+          "tag": "glean-rc-1.1-secure",
+          "changes": ["Security patches", "Updated dependencies"]
+        },
+        {
+          "service": "mcp-server",
+          "repository": "composio-self-host/mcp-server",
+          "tag": "c6f8d65-secure",
+          "changes": ["Security hardening", "Dependency updates"]
+        },
+        {
+          "service": "thermos",
+          "repository": "composio-self-host/thermos",
+          "tag": "glean-rc-1.1-secure",
+          "changes": ["Security improvements", "Vulnerability patches"]
+        },
+        {
+          "service": "mercury",
+          "repository": "composio-self-host/mercury",
+          "tag": "glean-rc-1.1-secure",
+          "changes": ["Security updates", "Network hardening"]
+        },
+        {
+          "service": "minio",
+          "repository": "composio-self-host/minio",
+          "tag": "glean-rc-1.1-secure",
+          "changes": ["Storage security", "Access control improvements"]
+        }
+      ]
+    }
+  ]
+}

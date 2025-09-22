@@ -1,0 +1,173 @@
+{
+  "loadTests": [
+    {
+      "id": "mcp_loadtest_3_30s_20250906_130901",
+      "date": "2024-09-06",
+      "time": "13:09:01",
+      "type": "basic",
+      "duration": "30s",
+      "concurrentUsers": 3,
+      "avgResponseTime": 180,
+      "p95ResponseTime": 320,
+      "p99ResponseTime": 450,
+      "maxResponseTime": 650,
+      "throughput": 850,
+      "errorRate": 0.1,
+      "status": "passed",
+      "description": "Basic load test with 3 concurrent users for 30 seconds",
+      "metrics": {
+        "cpuUsage": 45,
+        "memoryUsage": 68,
+        "networkIO": 25
+      },
+      "errors": {
+        "timeout": 2,
+        "connection": 1,
+        "server5xx": 0
+      }
+    },
+    {
+      "id": "mcp_loadtest_25_15m0s_20250906_131318",
+      "date": "2024-09-06",
+      "time": "13:13:18",
+      "type": "stress",
+      "duration": "15m",
+      "concurrentUsers": 25,
+      "avgResponseTime": 245,
+      "p95ResponseTime": 520,
+      "p99ResponseTime": 850,
+      "maxResponseTime": 1200,
+      "throughput": 1250,
+      "errorRate": 0.2,
+      "status": "passed",
+      "description": "Stress test with 25 concurrent users for 15 minutes",
+      "metrics": {
+        "cpuUsage": 75,
+        "memoryUsage": 82,
+        "networkIO": 60
+      },
+      "errors": {
+        "timeout": 15,
+        "connection": 8,
+        "server5xx": 3
+      }
+    },
+    {
+      "id": "mcp_loadtest_50_15m0s_20250906_133139",
+      "date": "2024-09-06",
+      "time": "13:31:39",
+      "type": "endurance",
+      "duration": "15m",
+      "concurrentUsers": 50,
+      "avgResponseTime": 380,
+      "p95ResponseTime": 750,
+      "p99ResponseTime": 1200,
+      "maxResponseTime": 2100,
+      "throughput": 1800,
+      "errorRate": 0.5,
+      "status": "passed",
+      "description": "Endurance test with 50 concurrent users for 15 minutes",
+      "metrics": {
+        "cpuUsage": 85,
+        "memoryUsage": 90,
+        "networkIO": 75
+      },
+      "errors": {
+        "timeout": 45,
+        "connection": 25,
+        "server5xx": 8
+      }
+    },
+    {
+      "id": "mcp_loadtest_100_30m0s_20250907_140000",
+      "date": "2024-09-07",
+      "time": "14:00:00",
+      "type": "stress",
+      "duration": "30m",
+      "concurrentUsers": 100,
+      "avgResponseTime": 520,
+      "p95ResponseTime": 1200,
+      "p99ResponseTime": 1800,
+      "maxResponseTime": 3500,
+      "throughput": 2200,
+      "errorRate": 1.2,
+      "status": "warning",
+      "description": "High load stress test with 100 concurrent users for 30 minutes",
+      "metrics": {
+        "cpuUsage": 95,
+        "memoryUsage": 95,
+        "networkIO": 85
+      },
+      "errors": {
+        "timeout": 120,
+        "connection": 80,
+        "server5xx": 25
+      }
+    },
+    {
+      "id": "mcp_loadtest_200_10m0s_20250908_100000",
+      "date": "2024-09-08",
+      "time": "10:00:00",
+      "type": "stress",
+      "duration": "10m",
+      "concurrentUsers": 200,
+      "avgResponseTime": 850,
+      "p95ResponseTime": 1800,
+      "p99ResponseTime": 2500,
+      "maxResponseTime": 5000,
+      "throughput": 2800,
+      "errorRate": 2.5,
+      "status": "failed",
+      "description": "Extreme load test with 200 concurrent users for 10 minutes",
+      "metrics": {
+        "cpuUsage": 100,
+        "memoryUsage": 98,
+        "networkIO": 95
+      },
+      "errors": {
+        "timeout": 300,
+        "connection": 200,
+        "server5xx": 50
+      }
+    }
+  ],
+  "performanceBaseline": {
+    "avgResponseTime": 245,
+    "p95ResponseTime": 520,
+    "p99ResponseTime": 850,
+    "maxResponseTime": 1200,
+    "throughput": 1250,
+    "errorRate": 0.2,
+    "concurrentUsers": 25
+  },
+  "recommendations": [
+    {
+      "type": "performance",
+      "title": "Optimize Resource Allocation",
+      "description": "Consider increasing CPU limits for Apollo service to handle peak loads more efficiently.",
+      "priority": "high",
+      "impact": "Reduce response times by 15-20%"
+    },
+    {
+      "type": "database",
+      "title": "Database Connection Pooling",
+      "description": "Implement connection pooling to reduce database connection overhead and improve response times.",
+      "priority": "medium",
+      "impact": "Improve database performance by 25%"
+    },
+    {
+      "type": "scaling",
+      "title": "Auto-scaling Configuration",
+      "description": "Adjust Knative auto-scaling parameters to respond faster to traffic spikes.",
+      "priority": "high",
+      "impact": "Better handling of traffic spikes"
+    },
+    {
+      "type": "monitoring",
+      "title": "Enhanced Monitoring",
+      "description": "Implement more granular monitoring to better understand performance bottlenecks.",
+      "priority": "low",
+      "impact": "Better visibility into system performance"
+    }
+  ]
+}
