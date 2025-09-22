@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Composio Helm Charts - Quick Start Guide</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-cube"></i>
+                <span>Composio Helm Charts</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#quickstart" class="nav-link">Quick Start</a>
+                <a href="changelog.html" class="nav-link">Changelog</a>
+                <a href="load-tests.html" class="nav-link">Load Tests</a>
+                <a href="access-request.html" class="nav-link">Request Access</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Deploy Composio on Kubernetes</h1>
+                <p class="hero-subtitle">Production-ready Helm charts for Composio with comprehensive monitoring, load testing, and enterprise features.</p>
+                <div class="hero-badges">
+                    <span class="badge"><i class="fab fa-kubernetes"></i> Kubernetes Ready</span>
+                    <span class="badge"><i class="fas fa-shield-alt"></i> Production Grade</span>
+                    <span class="badge"><i class="fas fa-chart-line"></i> Load Tested</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="quickstart" class="section">
+            <div class="container">
+                <h2><i class="fas fa-rocket"></i> Quick Start</h2>
+                
+                <div class="steps-container">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Prerequisites</h3>
+                            <p>Ensure you have the following ready:</p>
+                            <ul>
+                                <li>Kubernetes cluster (GKE, EKS, AKS, or self-managed)</li>
+                                <li>Helm 3.x installed</li>
+                                <li>External PostgreSQL database</li>
+                                <li>AWS ECR access configured</li>
+                            </ul>
+                            <div class="code-block">
+                                <pre><code class="language-bash"># Check cluster status
+kubectl get nodes
+
+# Verify Helm installation
+helm version</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Install Knative Components</h3>
+                            <p>Install Knative Serving for serverless capabilities:</p>
+                            <div class="code-block">
+                                <pre><code class="language-bash"># Install Knative Serving CRDs
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
+
+# Install Knative Serving Core
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml
+
+# Install Kourier networking layer
+kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml
+
+# Configure Kourier as default ingress
+kubectl patch configmap/config-network \
+  --namespace knative-serving \
+  --type merge \
+  --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Configure Secrets</h3>
+                            <p>Set up your database and API credentials:</p>
+                            <div class="code-block">
+                                <pre><code class="language-bash"># Required environment variables
+export POSTGRES_URL="postgresql://&lt;username&gt;:&lt;password&gt;@&lt;host_ip&gt;:5432/&lt;database_name&gt;?sslmode=require"
+export REDIS_URL="redis://&lt;username&gt;:&lt;password&gt;@&lt;host&gt;:6379/0"  # Optional
+export OPENAI_API_KEY="sk-1234567890abcdef..."  # Optional
+
+# Run the secret setup script
+./secret-setup.sh -r composio -n composio</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h3>Deploy with Helm</h3>
+                            <p>Install the Composio Helm chart:</p>
+                            <div class="code-block">
+                                <pre><code class="language-bash"># Install the Helm chart
+helm install composio ./composio \
+  --create-namespace \
+  --namespace composio \
+  --set namespace.name=composio \
+  --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
+  --debug</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h3>Verify Installation</h3>
+                            <p>Check that all services are running:</p>
+                            <div class="code-block">
+                                <pre><code class="language-bash"># Check all pods are running (may take 5-10 minutes)
+kubectl get pods -n composio
+
+# Verify Knative services
+kubectl get ksvc -n composio
+
+# Check Knative infrastructure
+kubectl get pods -n knative-serving</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section features">
+            <div class="container">
+                <h2><i class="fas fa-star"></i> Key Features</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <h3>Production Ready</h3>
+                        <p>Optimized for production workloads with proper resource limits, health checks, and monitoring.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </div>
+                        <h3>Auto Scaling</h3>
+                        <p>Built-in Knative auto-scaling based on CPU utilization and request concurrency.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3>Security First</h3>
+                        <p>Non-root containers, security contexts, and proper secret management.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3>Load Tested</h3>
+                        <p>Comprehensive load testing with detailed performance metrics and reports.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h3>External Dependencies</h3>
+                        <p>Support for external PostgreSQL, Redis, and other managed services.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <h3>Easy Configuration</h3>
+                        <p>Simple configuration through values.yaml with comprehensive documentation.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section resource-requirements">
+            <div class="container">
+                <h2><i class="fas fa-cogs"></i> Resource Requirements</h2>
+                <div class="requirements-grid">
+                    <div class="requirement-card minimum">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Minimum</h3>
+                        <div class="resource-item">
+                            <span class="resource-label">CPU:</span>
+                            <span class="resource-value">9 cores</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-label">Memory:</span>
+                            <span class="resource-value">24GB RAM</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-label">Storage:</span>
+                            <span class="resource-value">20GB</span>
+                        </div>
+                    </div>
+                    <div class="requirement-card recommended">
+                        <h3><i class="fas fa-check-circle"></i> Recommended</h3>
+                        <div class="resource-item">
+                            <span class="resource-label">CPU:</span>
+                            <span class="resource-value">12+ cores</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-label">Memory:</span>
+                            <span class="resource-value">32GB RAM</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-label">Storage:</span>
+                            <span class="resource-value">50GB+</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section service-access">
+            <div class="container">
+                <h2><i class="fas fa-network-wired"></i> Service Access</h2>
+                <div class="access-grid">
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <h3>Apollo API</h3>
+                        <p>Main Composio API service</p>
+                        <div class="service-details">
+                            <span class="port">Port: 9900</span>
+                            <span class="type">NodePort</span>
+                        </div>
+                        <div class="code-block small">
+                            <pre><code class="language-bash">kubectl port-forward -n composio svc/composio-apollo 8080:9900</code></pre>
+                        </div>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h3>MCP Portal</h3>
+                        <p>Management and Control Portal</p>
+                        <div class="service-details">
+                            <span class="port">Port: 3000</span>
+                            <span class="type">ClusterIP</span>
+                        </div>
+                        <div class="code-block small">
+                            <pre><code class="language-bash">kubectl port-forward -n composio svc/composio-mcp 8081:3000</code></pre>
+                        </div>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3>Temporal UI</h3>
+                        <p>Workflow management interface</p>
+                        <div class="service-details">
+                            <span class="port">Port: 8080</span>
+                            <span class="type">ClusterIP</span>
+                        </div>
+                        <div class="code-block small">
+                            <pre><code class="language-bash">kubectl port-forward -n composio svc/composio-temporal-web 8082:8080</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section troubleshooting">
+            <div class="container">
+                <h2><i class="fas fa-wrench"></i> Troubleshooting</h2>
+                <div class="troubleshooting-grid">
+                    <div class="trouble-card">
+                        <h3><i class="fas fa-exclamation-circle"></i> Common Issues</h3>
+                        <ul>
+                            <li>Knative components not starting</li>
+                            <li>Mercury service not ready</li>
+                            <li>Database connection issues</li>
+                            <li>Resource quota exceeded</li>
+                        </ul>
+                    </div>
+                    <div class="trouble-card">
+                        <h3><i class="fas fa-cloud"></i> GKE Specific</h3>
+                        <ul>
+                            <li>Autopilot resource limits</li>
+                            <li>Cloud SQL connectivity</li>
+                            <li>Load balancer configuration</li>
+                            <li>Container registry access</li>
+                        </ul>
+                    </div>
+                    <div class="trouble-card">
+                        <h3><i class="fas fa-chart-bar"></i> Monitoring</h3>
+                        <ul>
+                            <li>Pod status and logs</li>
+                            <li>Resource utilization</li>
+                            <li>Network connectivity</li>
+                            <li>Service health checks</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section cta">
+            <div class="container">
+                <div class="cta-content">
+                    <h2>Ready to Deploy?</h2>
+                    <p>Get started with Composio on Kubernetes in minutes</p>
+                    <div class="cta-buttons">
+                        <a href="access-request.html" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Request On-Prem Access
+                        </a>
+                        <a href="changelog.html" class="btn btn-secondary">
+                            <i class="fas fa-history"></i> View Changelog
+                        </a>
+                        <a href="load-tests.html" class="btn btn-secondary">
+                            <i class="fas fa-chart-line"></i> Load Test Results
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="https://docs.composio.dev">Composio Docs</a></li>
+                        <li><a href="https://github.com/composio/helm-charts">GitHub Repository</a></li>
+                        <li><a href="https://discord.gg/composio">Discord Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="changelog.html">Changelog</a></li>
+                        <li><a href="load-tests.html">Load Tests</a></li>
+                        <li><a href="access-request.html">Request Access</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul>
+                        <li><a href="mailto:support@composio.dev">Email Support</a></li>
+                        <li><a href="https://github.com/composio/helm-charts/issues">Report Issues</a></li>
+                        <li><a href="https://discord.gg/composio">Community</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Composio. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="assets/script.js"></script>
+</body>
+</html>

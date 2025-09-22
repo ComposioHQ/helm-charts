@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog - Composio Helm Charts</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-cube"></i>
+                <span>Composio Helm Charts</span>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="#changelog" class="nav-link">Changelog</a>
+                <a href="load-tests.html" class="nav-link">Load Tests</a>
+                <a href="access-request.html" class="nav-link">Request Access</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Changelog</h1>
+                <p class="hero-subtitle">Track all changes to Docker images, Helm chart releases, and component updates</p>
+            </div>
+        </section>
+
+        <section id="changelog" class="section">
+            <div class="container">
+                <div class="changelog-filters">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="helm">Helm Charts</button>
+                    <button class="filter-btn" data-filter="docker">Docker Images</button>
+                    <button class="filter-btn" data-filter="breaking">Breaking Changes</button>
+                </div>
+
+                <div class="changelog-timeline">
+                    <!-- Changelog entries will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="https://docs.composio.dev">Composio Docs</a></li>
+                        <li><a href="https://github.com/composio/helm-charts">GitHub Repository</a></li>
+                        <li><a href="https://discord.gg/composio">Discord Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="index.html">Quick Start</a></li>
+                        <li><a href="load-tests.html">Load Tests</a></li>
+                        <li><a href="access-request.html">Request Access</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul>
+                        <li><a href="mailto:support@composio.dev">Email Support</a></li>
+                        <li><a href="https://github.com/composio/helm-charts/issues">Report Issues</a></li>
+                        <li><a href="https://discord.gg/composio">Community</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Composio. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/script.js"></script>
+</body>
+</html>
