@@ -11,16 +11,25 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-logo">
+            <a href="#" class="nav-logo">
                 <i class="fas fa-cube"></i>
                 <span>Composio Helm Charts</span>
-            </div>
+            </a>
             <div class="nav-menu">
                 <a href="#quickstart" class="nav-link">Quick Start</a>
                 <a href="changelog.html" class="nav-link">Changelog</a>
                 <a href="load-tests.html" class="nav-link">Load Tests</a>
                 <a href="access-request.html" class="nav-link">Request Access</a>
             </div>
+            <button class="mobile-nav-toggle" aria-label="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <div class="mobile-nav-menu">
+            <a href="#quickstart" class="nav-link">Quick Start</a>
+            <a href="changelog.html" class="nav-link">Changelog</a>
+            <a href="load-tests.html" class="nav-link">Load Tests</a>
+            <a href="access-request.html" class="nav-link">Request Access</a>
         </div>
     </nav>
 
@@ -42,7 +51,7 @@
                 <h2><i class="fas fa-rocket"></i> Quick Start</h2>
                 
                 <div class="steps-container">
-                    <div class="step">
+                    <div class="step animate-on-scroll">
                         <div class="step-number">1</div>
                         <div class="step-content">
                             <h3>Prerequisites</h3>
@@ -63,7 +72,7 @@ helm version</code></pre>
                         </div>
                     </div>
 
-                    <div class="step">
+                    <div class="step animate-on-scroll">
                         <div class="step-number">2</div>
                         <div class="step-content">
                             <h3>Install Knative Components</h3>
@@ -87,7 +96,7 @@ kubectl patch configmap/config-network \
                         </div>
                     </div>
 
-                    <div class="step">
+                    <div class="step animate-on-scroll">
                         <div class="step-number">3</div>
                         <div class="step-content">
                             <h3>Configure Secrets</h3>
@@ -104,7 +113,7 @@ export OPENAI_API_KEY="sk-1234567890abcdef..."  # Optional
                         </div>
                     </div>
 
-                    <div class="step">
+                    <div class="step animate-on-scroll">
                         <div class="step-number">4</div>
                         <div class="step-content">
                             <h3>Deploy with Helm</h3>
@@ -121,7 +130,7 @@ helm install composio ./composio \
                         </div>
                     </div>
 
-                    <div class="step">
+                    <div class="step animate-on-scroll">
                         <div class="step-number">5</div>
                         <div class="step-content">
                             <h3>Verify Installation</h3>
@@ -146,42 +155,42 @@ kubectl get pods -n knative-serving</code></pre>
             <div class="container">
                 <h2><i class="fas fa-star"></i> Key Features</h2>
                 <div class="features-grid">
-                    <div class="feature-card">
+                    <div class="feature-card animate-on-scroll">
                         <div class="feature-icon">
                             <i class="fas fa-server"></i>
                         </div>
                         <h3>Production Ready</h3>
                         <p>Optimized for production workloads with proper resource limits, health checks, and monitoring.</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card animate-on-scroll">
                         <div class="feature-icon">
                             <i class="fas fa-expand-arrows-alt"></i>
                         </div>
                         <h3>Auto Scaling</h3>
                         <p>Built-in Knative auto-scaling based on CPU utilization and request concurrency.</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card animate-on-scroll">
                         <div class="feature-icon">
                             <i class="fas fa-shield-alt"></i>
                         </div>
                         <h3>Security First</h3>
                         <p>Non-root containers, security contexts, and proper secret management.</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card animate-on-scroll">
                         <div class="feature-icon">
                             <i class="fas fa-chart-line"></i>
                         </div>
                         <h3>Load Tested</h3>
                         <p>Comprehensive load testing with detailed performance metrics and reports.</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card animate-on-scroll">
                         <div class="feature-icon">
                             <i class="fas fa-database"></i>
                         </div>
                         <h3>External Dependencies</h3>
                         <p>Support for external PostgreSQL, Redis, and other managed services.</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card animate-on-scroll">
                         <div class="feature-icon">
                             <i class="fas fa-tools"></i>
                         </div>
@@ -329,6 +338,44 @@ kubectl get pods -n knative-serving</code></pre>
                         </a>
                         <a href="load-tests.html" class="btn btn-secondary">
                             <i class="fas fa-chart-line"></i> Load Test Results
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section community">
+            <div class="container">
+                <h2><i class="fas fa-users"></i> Join Our Community</h2>
+                <div class="community-grid">
+                    <div class="community-card animate-on-scroll">
+                        <div class="community-icon">
+                            <i class="fab fa-github"></i>
+                        </div>
+                        <h3>GitHub</h3>
+                        <p>Contribute to the project, report issues, and explore the source code.</p>
+                        <a href="https://github.com/composio/helm-charts" class="btn btn-secondary" target="_blank">
+                            <i class="fab fa-github"></i> View on GitHub
+                        </a>
+                    </div>
+                    <div class="community-card animate-on-scroll">
+                        <div class="community-icon">
+                            <i class="fab fa-discord"></i>
+                        </div>
+                        <h3>Discord</h3>
+                        <p>Join our Discord server for real-time support and community discussions.</p>
+                        <a href="https://discord.gg/composio" class="btn btn-secondary" target="_blank">
+                            <i class="fab fa-discord"></i> Join Discord
+                        </a>
+                    </div>
+                    <div class="community-card animate-on-scroll">
+                        <div class="community-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <h3>Documentation</h3>
+                        <p>Explore comprehensive documentation and API references.</p>
+                        <a href="https://docs.composio.dev" class="btn btn-secondary" target="_blank">
+                            <i class="fas fa-external-link-alt"></i> Read Docs
                         </a>
                     </div>
                 </div>
