@@ -2,7 +2,7 @@
 title: "Composio Helm Charts"
 description: "Production-ready Helm charts for Composio with comprehensive monitoring, load testing, and enterprise features."
 baseurl: ""
-url: ""
+url: "https://onprem.composio.dev"
 
 # Build settings
 markdown: kramdown
