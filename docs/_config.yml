@@ -1,7 +1,7 @@
 # GitHub Pages configuration
 title: "Composio Helm Charts"
 description: "Production-ready Helm charts for Composio with comprehensive monitoring, load testing, and enterprise features."
-baseurl: ""
+baseurl: "/helm-charts"
 url: "https://onprem.composio.dev"
 
 # Build settings
