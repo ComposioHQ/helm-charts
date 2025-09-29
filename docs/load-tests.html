@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Test Results - Composio Helm Charts</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-cube"></i>
+                <span>Composio Helm Charts</span>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="changelog.html" class="nav-link">Changelog</a>
+                <a href="#load-tests" class="nav-link">Load Tests</a>
+                <a href="access-request.html" class="nav-link">Request Access</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Load Test Results</h1>
+                <p class="hero-subtitle">Comprehensive performance testing results and metrics for Composio deployments</p>
+            </div>
+        </section>
+
+        <section id="load-tests" class="section">
+            <div class="container">
+                <div class="load-test-controls">
+                    <div class="date-range-selector">
+                        <h3><i class="fas fa-calendar-alt"></i> Date Range</h3>
+                        <div class="date-inputs">
+                            <div class="date-input-group">
+                                <label for="startDate">From:</label>
+                                <input type="date" id="startDate" name="startDate">
+                            </div>
+                            <div class="date-input-group">
+                                <label for="endDate">To:</label>
+                                <input type="date" id="endDate" name="endDate">
+                            </div>
+                            <button id="applyDateFilter" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> Apply Filter
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="test-type-selector">
+                        <h3><i class="fas fa-cogs"></i> Test Type</h3>
+                        <div class="test-type-buttons">
+                            <button class="test-type-btn active" data-type="all">All Tests</button>
+                            <button class="test-type-btn" data-type="basic">Basic Load</button>
+                            <button class="test-type-btn" data-type="stress">Stress Test</button>
+                            <button class="test-type-btn" data-type="endurance">Endurance</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-overview">
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                        <div class="metric-content">
+                            <h3>Average Response Time</h3>
+                            <div class="metric-value" id="avgResponseTime">245ms</div>
+                            <div class="metric-trend positive">
+                                <i class="fas fa-arrow-down"></i> 12% improvement
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="metric-content">
+                            <h3>Concurrent Users</h3>
+                            <div class="metric-value" id="concurrentUsers">50</div>
+                            <div class="metric-trend positive">
+                                <i class="fas fa-arrow-up"></i> 25% increase
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="metric-content">
+                            <h3>Throughput</h3>
+                            <div class="metric-value" id="throughput">1,250 req/s</div>
+                            <div class="metric-trend positive">
+                                <i class="fas fa-arrow-up"></i> 8% increase
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="metric-content">
+                            <h3>Error Rate</h3>
+                            <div class="metric-value" id="errorRate">0.2%</div>
+                            <div class="metric-trend negative">
+                                <i class="fas fa-arrow-down"></i> 0.1% decrease
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-section">
+                    <div class="chart-container">
+                        <h3><i class="fas fa-chart-area"></i> Response Time Timeline</h3>
+                        <canvas id="responseTimeChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3><i class="fas fa-chart-bar"></i> Throughput Over Time</h3>
+                        <canvas id="throughputChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="test-results-section">
+                    <h2><i class="fas fa-list"></i> Test Results</h2>
+                    <div class="test-results-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Test ID</th>
+                                    <th>Date</th>
+                                    <th>Duration</th>
+                                    <th>Users</th>
+                                    <th>Avg Response</th>
+                                    <th>Throughput</th>
+                                    <th>Error Rate</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="testResultsTableBody">
+                                <!-- Test results will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="detailed-results">
+                    <h2><i class="fas fa-microscope"></i> Detailed Analysis</h2>
+                    <div class="analysis-tabs">
+                        <button class="tab-btn active" data-tab="performance">Performance</button>
+                        <button class="tab-btn" data-tab="errors">Error Analysis</button>
+                        <button class="tab-btn" data-tab="resources">Resource Usage</button>
+                        <button class="tab-btn" data-tab="recommendations">Recommendations</button>
+                    </div>
+
+                    <div class="tab-content">
+                        <div id="performance" class="tab-panel active">
+                            <div class="performance-metrics">
+                                <div class="performance-card">
+                                    <h4>P95 Response Time</h4>
+                                    <div class="metric-value">450ms</div>
+                                    <div class="metric-description">95% of requests completed within this time</div>
+                                </div>
+                                <div class="performance-card">
+                                    <h4>P99 Response Time</h4>
+                                    <div class="metric-value">850ms</div>
+                                    <div class="metric-description">99% of requests completed within this time</div>
+                                </div>
+                                <div class="performance-card">
+                                    <h4>Max Response Time</h4>
+                                    <div class="metric-value">2.1s</div>
+                                    <div class="metric-description">Maximum response time observed</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="errors" class="tab-panel">
+                            <div class="error-analysis">
+                                <div class="error-summary">
+                                    <h4>Error Summary</h4>
+                                    <div class="error-stats">
+                                        <div class="error-stat">
+                                            <span class="error-type">Timeout Errors</span>
+                                            <span class="error-count">15</span>
+                                        </div>
+                                        <div class="error-stat">
+                                            <span class="error-type">Connection Errors</span>
+                                            <span class="error-count">8</span>
+                                        </div>
+                                        <div class="error-stat">
+                                            <span class="error-type">Server Errors (5xx)</span>
+                                            <span class="error-count">3</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="resources" class="tab-panel">
+                            <div class="resource-usage">
+                                <div class="resource-chart">
+                                    <h4>CPU Usage</h4>
+                                    <div class="resource-bar">
+                                        <div class="resource-fill" style="width: 75%"></div>
+                                        <span class="resource-value">75%</span>
+                                    </div>
+                                </div>
+                                <div class="resource-chart">
+                                    <h4>Memory Usage</h4>
+                                    <div class="resource-bar">
+                                        <div class="resource-fill" style="width: 68%"></div>
+                                        <span class="resource-value">68%</span>
+                                    </div>
+                                </div>
+                                <div class="resource-chart">
+                                    <h4>Network I/O</h4>
+                                    <div class="resource-bar">
+                                        <div class="resource-fill" style="width: 45%"></div>
+                                        <span class="resource-value">45%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="recommendations" class="tab-panel">
+                            <div class="recommendations">
+                                <div class="recommendation-card">
+                                    <div class="recommendation-icon">
+                                        <i class="fas fa-lightbulb"></i>
+                                    </div>
+                                    <div class="recommendation-content">
+                                        <h4>Optimize Resource Allocation</h4>
+                                        <p>Consider increasing CPU limits for Apollo service to handle peak loads more efficiently.</p>
+                                    </div>
+                                </div>
+                                <div class="recommendation-card">
+                                    <div class="recommendation-icon">
+                                        <i class="fas fa-database"></i>
+                                    </div>
+                                    <div class="recommendation-content">
+                                        <h4>Database Connection Pooling</h4>
+                                        <p>Implement connection pooling to reduce database connection overhead and improve response times.</p>
+                                    </div>
+                                </div>
+                                <div class="recommendation-card">
+                                    <div class="recommendation-icon">
+                                        <i class="fas fa-expand-arrows-alt"></i>
+                                    </div>
+                                    <div class="recommendation-content">
+                                        <h4>Auto-scaling Configuration</h4>
+                                        <p>Adjust Knative auto-scaling parameters to respond faster to traffic spikes.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="https://docs.composio.dev">Composio Docs</a></li>
+                        <li><a href="https://github.com/composio/helm-charts">GitHub Repository</a></li>
+                        <li><a href="https://discord.gg/composio">Discord Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="index.html">Quick Start</a></li>
+                        <li><a href="changelog.html">Changelog</a></li>
+                        <li><a href="access-request.html">Request Access</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul>
+                        <li><a href="mailto:support@composio.dev">Email Support</a></li>
+                        <li><a href="https://github.com/composio/helm-charts/issues">Report Issues</a></li>
+                        <li><a href="https://discord.gg/composio">Community</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Composio. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/script.js"></script>
+</body>
+</html>

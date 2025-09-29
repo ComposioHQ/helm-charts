@@ -26,7 +26,7 @@ externalSecrets:
   # ECR authentication
   ecr:
     token: ""
-    server: "AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
+    server: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
     username: "AWS"
 
 # Global secrets configuration for development
@@ -72,8 +72,8 @@ redis:
 apollo:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "1.0-20250717-d3eccab"
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
+    tag: "latest"
     pullPolicy: Always
   
   service:
@@ -96,14 +96,12 @@ apollo:
   
   # Note: Secrets are now managed globally in the 'secrets' section
 
-
-
 # Thermos service configuration - Development
 thermos:
   replicaCount: 2
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "1.0-20250717-d3eccab"
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
+    tag: "latest"
     pullPolicy: Always
   
   service:
@@ -123,8 +121,8 @@ thermos:
 # DB Init - Enabled for development
 dbInit:
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
-    tag: "1.0-20250717-d3eccab"
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
+    tag: "latest"
     pullPolicy: Always
   adminEmail: "hello@composio.dev"
   database:
@@ -284,7 +282,7 @@ minio:
       maxSurge: 0        # Don't create new pod until old one is gone
   
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
     tag: "latest"
     pullPolicy: Always
   
@@ -331,7 +329,7 @@ mercury:
   useKnative: true
   replicaCount: 1
   image:
-    repository: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
+    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
     tag: "latest"
     pullPolicy: Always
   
@@ -390,7 +388,7 @@ supportBundle:
   enabled: false
   
   # Email address for support ticket submissions
-  supportEmail: "support@yourcompany.com"
+  supportEmail: "support@composio.dev"
   
   # Troubleshoot.sh version to use
   troubleshootVersion: "v0.84.0"

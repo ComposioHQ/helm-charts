@@ -1,0 +1,77 @@
+# GitHub Pages configuration
+title: "Composio Helm Charts"
+description: "Production-ready Helm charts for Composio with comprehensive monitoring, load testing, and enterprise features."
+baseurl: ""
+url: ""
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Exclude files from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
+# Include files
+include:
+  - _redirects
+
+# Collections
+collections:
+  changelog:
+    output: true
+    permalink: /changelog/:name/
+  load-tests:
+    output: true
+    permalink: /load-tests/:name/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+      type: "changelog"
+    values:
+      layout: "changelog"
+  - scope:
+      path: ""
+      type: "load-tests"
+    values:
+      layout: "load-tests"
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# SEO
+author: "Composio Team"
+social:
+  name: "Composio"
+  links:
+    - "https://github.com/composio"
+    - "https://discord.gg/composio"
+    - "https://docs.composio.dev"
+
+# Navigation
+navigation:
+  - title: "Quick Start"
+    url: "/"
+  - title: "Changelog"
+    url: "/changelog.html"
+  - title: "Load Tests"
+    url: "/load-tests.html"
+  - title: "Request Access"
+    url: "/access-request.html"
