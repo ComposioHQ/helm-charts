@@ -52,15 +52,7 @@ mercury:
   ingress:
     enabled: false
 
-mcp:
-  replicaCount: 1
-  image:
-    repository: test-mcp
-    tag: "test"
-    pullPolicy: IfNotPresent
-  service:
-    type: ClusterIP
-    port: 3000
+
 
 thermos:
   replicaCount: 1

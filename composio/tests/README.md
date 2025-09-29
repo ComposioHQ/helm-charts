@@ -24,7 +24,7 @@ Or using our test runner (which will auto-install the plugin):
 |-----------|-------------|-------------------|
 | `apollo_test.yaml` | Apollo service deployment and service tests | `apollo.yaml` |
 | `mercury_test.yaml` | Mercury service with conditional logic | `mercury.yaml`, `mercury-service.yaml` |
-| `mcp_test.yaml` | MCP service deployment and service tests | `mcp.yaml` |
+
 | `thermos_test.yaml` | Thermos service deployment and service tests | `thermos.yaml` |
 | `minio_test.yaml` | Minio storage deployment, service, and PVC tests | `minio.yaml` |
 | `knative_test.yaml` | Knative serving and CRD tests | `knative-serving.yaml`, `knative-crds.yaml` |
@@ -51,7 +51,7 @@ chmod +x run-tests.sh
 # Run specific component tests
 ./run-tests.sh apollo
 ./run-tests.sh mercury
-./run-tests.sh mcp
+
 ./run-tests.sh thermos
 ./run-tests.sh minio
 ./run-tests.sh knative
@@ -105,11 +105,7 @@ helm unittest . -f 'tests/*_test.yaml' --values tests/test-values.yaml
 - ✅ Service configuration
 - ✅ Port configuration with defaults
 
-### MCP Service Tests
-- ✅ Deployment and service creation
-- ✅ Replica count configuration
-- ✅ Image and resource configuration
-- ✅ Port and service type configuration
+
 
 ### Thermos Service Tests
 - ✅ Deployment and service creation

@@ -66,21 +66,7 @@ Apollo selector labels
 app.kubernetes.io/component: apollo
 {{- end }}
 
-{{/*
-MCP labels
-*/}}
-{{- define "composio.mcp.labels" -}}
-{{ include "composio.labels" . }}
-app.kubernetes.io/component: mcp
-{{- end }}
 
-{{/*
-MCP selector labels
-*/}}
-{{- define "composio.mcp.selectorLabels" -}}
-{{ include "composio.selectorLabels" . }}
-app.kubernetes.io/component: mcp
-{{- end }}
 
 {{/*
 Thermos labels
@@ -200,10 +186,10 @@ Compile all warnings into a single message, and call fail.
 Validate database configuration
 */}}
 {{- define "composio.validateValues.database" -}}
-{{- if and (not .Values.postgresql.enabled) (or (not .Values.apollo.secrets.databaseUrl) (not .Values.mcp.secrets.databaseUrl)) -}}
+{{- if and (not .Values.postgresql.enabled) (not .Values.apollo.secrets.databaseUrl) -}}
 composio: database
-    You must provide database URLs when PostgreSQL is disabled.
-    Please set apollo.secrets.databaseUrl and mcp.secrets.databaseUrl
+    You must provide database URL when PostgreSQL is disabled.
+    Please set apollo.secrets.databaseUrl
 {{- end -}}
 {{- end -}}
 
