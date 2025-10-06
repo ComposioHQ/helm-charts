@@ -151,4 +151,55 @@ spec:
       protocol: TCP
   selector:
     app: thermos
-    release: {{ .Release.Name }} 
+    release: {{ .Release.Name }}
+---
+{{- if .Values.thermos.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-thermos
+  labels:
+    app: thermos
+    release: {{ .Release.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-thermos
+  minReplicas: {{ .Values.thermos.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.thermos.autoscaling.maxReplicas | default 10 }}
+  metrics:
+    {{- if .Values.thermos.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.thermos.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.thermos.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.thermos.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.thermos.autoscaling.scaleDownStabilizationWindowSeconds | default 300 }}
+      policies:
+      - type: Percent
+        value: {{ .Values.thermos.autoscaling.scaleDownPercent | default 10 }}
+        periodSeconds: {{ .Values.thermos.autoscaling.scaleDownPeriodSeconds | default 60 }}
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.thermos.autoscaling.scaleUpStabilizationWindowSeconds | default 60 }}
+      policies:
+      - type: Percent
+        value: {{ .Values.thermos.autoscaling.scaleUpPercent | default 100 }}
+        periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
+      - type: Pods
+        value: {{ .Values.thermos.autoscaling.scaleUpPods | default 4 }}
+        periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
+      selectPolicy: Max
+{{- end }} 

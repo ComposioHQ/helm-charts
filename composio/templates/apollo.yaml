@@ -134,3 +134,54 @@ spec:
   selector:
     app: apollo
     release: {{ .Release.Name }}
+---
+{{- if .Values.apollo.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-apollo
+  labels:
+    app: apollo
+    release: {{ .Release.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-apollo
+  minReplicas: {{ .Values.apollo.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.apollo.autoscaling.maxReplicas | default 10 }}
+  metrics:
+    {{- if .Values.apollo.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.apollo.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.apollo.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.apollo.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.apollo.autoscaling.scaleDownStabilizationWindowSeconds | default 300 }}
+      policies:
+      - type: Percent
+        value: {{ .Values.apollo.autoscaling.scaleDownPercent | default 10 }}
+        periodSeconds: {{ .Values.apollo.autoscaling.scaleDownPeriodSeconds | default 60 }}
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.apollo.autoscaling.scaleUpStabilizationWindowSeconds | default 60 }}
+      policies:
+      - type: Percent
+        value: {{ .Values.apollo.autoscaling.scaleUpPercent | default 100 }}
+        periodSeconds: {{ .Values.apollo.autoscaling.scaleUpPeriodSeconds | default 15 }}
+      - type: Pods
+        value: {{ .Values.apollo.autoscaling.scaleUpPods | default 4 }}
+        periodSeconds: {{ .Values.apollo.autoscaling.scaleUpPeriodSeconds | default 15 }}
+      selectPolicy: Max
+{{- end }}
