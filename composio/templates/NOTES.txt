@@ -33,7 +33,13 @@
 
    All pods should be in 'Running' status.
 
-4. For production use:
+4. Secret Management:
+   - Application secrets are managed by secret-setup.sh script
+   - Helm secrets are protected from recreation during upgrades
+   - Use kubectl for manual secret management when needed
+   - See SECRETS.md for detailed secret management documentation
+
+5. For production use:
    - Configure external databases (PostgreSQL, Redis)
    - Set up proper ingress with SSL certificates
    - Configure monitoring and logging

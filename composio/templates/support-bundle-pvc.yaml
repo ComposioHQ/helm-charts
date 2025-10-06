@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "myapp.fullname" . }}-support-bundle-pvc
+  name: {{ include "composio.fullname" . }}-support-bundle-pvc
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: support-bundle
 spec:
   accessModes:

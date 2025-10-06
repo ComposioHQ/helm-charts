@@ -23,14 +23,38 @@ global:
 # --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)"
 # --set externalSecrets.redis.url="redis://user:pass@host:port"
 externalSecrets:
-  # ECR authentication
+  # ECR authentication - Optional, will only create secret if token is provided
   ecr:
-    token: ""
+    enabled: true  # Set to false to disable ECR secret creation entirely
+    token: ""      # Leave empty to skip ECR secret creation
     server: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
     username: "AWS"
 
 # Global secrets configuration for development
 # All secrets will be auto-generated for security
+
+# Application secrets management
+secrets:
+  # Set to true to enable Helm-based secret creation (not recommended for production)
+  # Set to false to use secret-setup.sh script (recommended)
+  createAppSecrets: false
+  
+  # External secret management options
+  external:
+    # PostgreSQL secret (created by secret-setup.sh)
+    postgres:
+      enabled: true
+      secretName: "external-postgres-secret"
+    
+    # Redis secret (created by secret-setup.sh)  
+    redis:
+      enabled: true
+      secretName: "external-redis-secret"
+    
+    # OpenAI secret (created by secret-setup.sh)
+    openai:
+      enabled: true
+      secretName: "openai-secret"
 
 externalPostgreSQL:
   enabled: true

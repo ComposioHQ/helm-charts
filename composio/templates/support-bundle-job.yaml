@@ -2,10 +2,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "myapp.fullname" . }}-support-bundle-job
+  name: {{ include "composio.fullname" . }}-support-bundle-job
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: support-bundle
   annotations:
     "helm.sh/hook": manual
@@ -14,11 +14,11 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "myapp.selectorLabels" . | nindent 8 }}
+        {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: support-bundle
     spec:
       restartPolicy: Never
-      serviceAccountName: {{ include "myapp.fullname" . }}-support-bundle
+      serviceAccountName: {{ include "composio.fullname" . }}-support-bundle
       containers:
       - name: support-bundle
         image: "replicated/troubleshoot:{{ .Values.supportBundle.troubleshootVersion | default "v0.84.0" }}"
@@ -26,7 +26,7 @@ spec:
         command:
         - support-bundle
         args:
-        - "secret/{{ include "myapp.fullname" . }}-support-bundle"
+        - "secret/{{ include "composio.fullname" . }}-support-bundle"
         - "--output={{ .Values.supportBundle.outputPath | default "/tmp/support-bundle" }}"
         {{- if .Values.supportBundle.interactive }}
         - "--interactive=false"
@@ -51,7 +51,7 @@ spec:
       - name: output
         {{- if .Values.supportBundle.persistence.enabled }}
         persistentVolumeClaim:
-          claimName: {{ include "myapp.fullname" . }}-support-bundle-pvc
+          claimName: {{ include "composio.fullname" . }}-support-bundle-pvc
         {{- else }}
         emptyDir: {}
         {{- end }}

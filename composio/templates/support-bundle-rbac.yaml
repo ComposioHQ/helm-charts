@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: support-bundle
   
 ---
@@ -13,9 +13,9 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: support-bundle
 rules:
 # Basic cluster information
@@ -34,10 +34,10 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: support-bundle
 rules:
 # Application namespace resources
@@ -53,17 +53,17 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: support-bundle
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
 subjects:
 - kind: ServiceAccount
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
   namespace: {{ .Release.Namespace }}
 
 ---
@@ -71,17 +71,17 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: support-bundle
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
 subjects:
 - kind: ServiceAccount
-  name: {{ include "myapp.fullname" . }}-support-bundle
+  name: {{ include "composio.fullname" . }}-support-bundle
   namespace: {{ .Release.Namespace }}
 {{- end }}
