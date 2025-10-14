@@ -33,9 +33,10 @@ usage() {
     echo "  --skip-generated    Skip creating auto-generated secrets, only create user-provided ones"
     echo ""
     echo -e "${YELLOW}Optional Environment Variables for User-Provided Secrets:${NC}"
-    echo "  POSTGRES_URL      PostgreSQL connection URL (postgresql://user:pass@host:port/db)"
-    echo "  REDIS_URL         Redis connection URL (redis://user:pass@host:port/db)"
-    echo "  OPENAI_API_KEY    OpenAI API key for AI functionality"
+    echo "  POSTGRES_URL         PostgreSQL connection URL for Apollo (postgresql://user:pass@host:port/db)"
+    echo "  THERMOS_POSTGRES_URL PostgreSQL connection URL for Thermos (postgresql://user:pass@host:port/db)"
+    echo "  REDIS_URL            Redis connection URL (redis://user:pass@host:port/db)"
+    echo "  OPENAI_API_KEY       OpenAI API key for AI functionality"
     echo ""
     echo -e "${YELLOW}Generated Secrets (auto-created if missing):${NC}"
     echo "  • \${release}-apollo-admin-token      (APOLLO_ADMIN_TOKEN)"
@@ -46,12 +47,14 @@ usage() {
     echo ""
     echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
     echo "  • external-postgres-secret            (from POSTGRES_URL)"
+    echo "  • external-thermos-postgres-secret    (from THERMOS_POSTGRES_URL)"
     echo "  • external-redis-secret               (from REDIS_URL)"
     echo "  • openai-secret                       (from OPENAI_API_KEY)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo "  # Setup with all external secrets"
-    echo "  POSTGRES_URL=\"postgresql://user:pass@db.example.com:5432/composio\" \\"
+    echo "  POSTGRES_URL=\"postgresql://user:pass@apollo-db.example.com:5432/apollo\" \\"
+    echo "  THERMOS_POSTGRES_URL=\"postgresql://user:pass@thermos-db.example.com:5432/thermos\" \\"
     echo "  REDIS_URL=\"redis://user:pass@redis.example.com:6379/0\" \\"
     echo "  OPENAI_API_KEY=\"sk-1234567890abcdef...\" \\"
     echo "  $0 -r composio -n composio"
@@ -184,7 +187,7 @@ create_postgres_secret() {
     local url="$1"
     local secret_name="external-postgres-secret"
     
-    print_info "Creating PostgreSQL secret from URL"
+    print_info "Creating Apollo PostgreSQL secret from URL"
     
     # Parse URL to extract password
     local url_without_protocol=$(echo "$url" | sed -E 's|^[^:]+://||')
@@ -192,7 +195,7 @@ create_postgres_secret() {
     local password=$(echo "$userpass_and_rest" | cut -d':' -f2)
     
     if [[ "$DRY_RUN" == true ]]; then
-        print_info "[DRY-RUN] Would create PostgreSQL secret: $secret_name"
+        print_info "[DRY-RUN] Would create Apollo PostgreSQL secret: $secret_name"
         print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"url=$url\" --from-literal=\"password=$password\" -n \"$NAMESPACE\""
     else
         kubectl create secret generic "$secret_name" \
@@ -200,7 +203,32 @@ create_postgres_secret() {
             --from-literal="password=$password" \
             -n "$NAMESPACE"
         
-        print_success "Created PostgreSQL secret: $secret_name"
+        print_success "Created Apollo PostgreSQL secret: $secret_name"
+    fi
+}
+
+# Function to parse and create thermos postgres secret
+create_thermos_postgres_secret() {
+    local url="$1"
+    local secret_name="external-thermos-postgres-secret"
+    
+    print_info "Creating Thermos PostgreSQL secret from URL"
+    
+    # Parse URL to extract password
+    local url_without_protocol=$(echo "$url" | sed -E 's|^[^:]+://||')
+    local userpass_and_rest=$(echo "$url_without_protocol" | cut -d'@' -f1)
+    local password=$(echo "$userpass_and_rest" | cut -d':' -f2)
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "[DRY-RUN] Would create Thermos PostgreSQL secret: $secret_name"
+        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"url=$url\" --from-literal=\"password=$password\" -n \"$NAMESPACE\""
+    else
+        kubectl create secret generic "$secret_name" \
+            --from-literal="url=$url" \
+            --from-literal="password=$password" \
+            -n "$NAMESPACE"
+        
+        print_success "Created Thermos PostgreSQL secret: $secret_name"
     fi
 }
 
@@ -289,7 +317,17 @@ if [[ -n "$POSTGRES_URL" ]]; then
         create_postgres_secret "$POSTGRES_URL"
     fi
 else
-    print_info "POSTGRES_URL not provided - skipping PostgreSQL secret creation"
+    print_info "POSTGRES_URL not provided - skipping Apollo PostgreSQL secret creation"
+fi
+
+if [[ -n "$THERMOS_POSTGRES_URL" ]]; then
+    if secret_exists "external-thermos-postgres-secret"; then
+        print_warning "Secret already exists: external-thermos-postgres-secret"
+    else
+        create_thermos_postgres_secret "$THERMOS_POSTGRES_URL"
+    fi
+else
+    print_info "THERMOS_POSTGRES_URL not provided - skipping Thermos PostgreSQL secret creation"
 fi
 
 if [[ -n "$REDIS_URL" ]]; then
