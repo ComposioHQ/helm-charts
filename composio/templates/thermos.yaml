@@ -36,10 +36,17 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
+            # Thermos database URL
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-thermos-postgres-secret
+                  key: url
+            # Keep DATABASE_URL for backward compatibility with Atlas
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-postgres-secret
+                  name: external-thermos-postgres-secret
                   key: url
             - name: COMPOSIO_API_KEY
               valueFrom:
@@ -145,12 +152,12 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-postgres-secret
+                  name: external-thermos-postgres-secret
                   key: url
             - name: THERMOS_DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-postgres-secret
+                  name: external-thermos-postgres-secret
                   key: url
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}

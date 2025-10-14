@@ -36,6 +36,7 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
+            # Apollo database URL
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
