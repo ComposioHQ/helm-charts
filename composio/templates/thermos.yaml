@@ -28,6 +28,34 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.thermos.dbInit.enabled }}
+      initContainers:
+        - name: thermos-db-init
+          image: "{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
+          imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-postgres-secret
+                  key: url
+            - name: COMPOSIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-composio-api-key
+                  key: COMPOSIO_API_KEY
+            - name: ADMIN_EMAIL
+              value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      {{- end }}
       containers:
         - name: thermos
           image: "{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
