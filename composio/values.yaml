@@ -80,7 +80,7 @@ apollo:
   dbInit:
     enabled: true
     image:
-      repository: apollo-db-init
+      repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init
       tag: "latest"
       pullPolicy: Always
   
@@ -132,7 +132,7 @@ thermos:
   dbInit:
     enabled: true
     image:
-      repository: thermos-db-init
+      repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init
       tag: "latest"
       pullPolicy: Always
   
