@@ -76,6 +76,14 @@ apollo:
     tag: "latest"
     pullPolicy: Always
   
+  # Apollo DB init container configuration
+  dbInit:
+    enabled: true
+    image:
+      repository: apollo-db-init
+      tag: "latest"
+      pullPolicy: Always
+  
   service:
     type: NodePort
     port: 9900
@@ -120,6 +128,14 @@ thermos:
     tag: "latest"
     pullPolicy: Always
   
+  # Thermos DB init container configuration
+  dbInit:
+    enabled: true
+    image:
+      repository: thermos-db-init
+      tag: "latest"
+      pullPolicy: Always
+  
   service:
     type: ClusterIP
     port: 8180
@@ -150,17 +166,9 @@ thermos:
     scaleUpPeriodSeconds: 15
     scaleUpPods: 4
 
-# DB Init - Enabled for development
+# DB Init configuration for init containers
 dbInit:
-  image:
-    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/init
-    tag: "latest"
-    pullPolicy: Always
   adminEmail: "hello@composio.dev"
-  database:
-    urlSecret:
-      name: "external-postgres-secret"
-      key: "url"
 
 # Temporal configuration - Using official helm chart as dependency with external PostgreSQL
 temporal:
