@@ -166,9 +166,14 @@ thermos:
     scaleUpPeriodSeconds: 15
     scaleUpPods: 4
 
-# DB Init configuration for init containers
+# DB Init configuration for Jobs (runs once per deployment)
 dbInit:
   adminEmail: "hello@composio.dev"
+  # Job configuration
+  job:
+    backoffLimit: 3
+    activeDeadlineSeconds: 300
+    restartPolicy: OnFailure
 
 # Temporal configuration - Using official helm chart as dependency with external PostgreSQL
 temporal:
@@ -307,7 +312,7 @@ otel:
   enabled: true
   exporter:
     otlp:
-      endpoint: "http://composio-otel-collector:4317"
+      endpoint: "composio-otel-collector:4317"  # gRPC endpoint without http://
       insecure: true
   traces:
     enabled: true
@@ -319,6 +324,7 @@ otel:
   apollo:
     serviceName: "apollo"
     serviceVersion: "1.0.0"
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"  # HTTP endpoint for metrics
   thermos:
     serviceName: "thermos"
     serviceVersion: "1.0.0"
