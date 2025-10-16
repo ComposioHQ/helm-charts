@@ -163,6 +163,9 @@ spec:
               value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
             - name: OTEL_METRIC_EXPORT_INTERVAL
               value: {{ .Values.otel.metrics.exportInterval | default "60000" | quote }}
+            # OTEL Resource attributes
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
             {{- end }}
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}

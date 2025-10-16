@@ -307,7 +307,7 @@ otel:
   enabled: true
   exporter:
     otlp:
-      endpoint: "http://otel-collector:4317"
+      endpoint: "http://composio-otel-collector:4317"
       insecure: true
   traces:
     enabled: true

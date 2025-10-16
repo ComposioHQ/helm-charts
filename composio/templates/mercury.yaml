@@ -101,6 +101,9 @@ spec:
               value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
             - name: OTEL_METRIC_EXPORT_INTERVAL
               value: {{ .Values.otel.metrics.exportInterval | default "60000" | quote }}
+            # OTEL Resource attributes
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
             {{- end }}
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
