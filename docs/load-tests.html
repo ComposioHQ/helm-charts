@@ -12,7 +12,8 @@
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <i class="fas fa-cube"></i>
+                <img src="assets/composio-logo.svg" alt="Composio" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                <i class="fas fa-cube" style="display: none;"></i>
                 <span>Composio Helm Charts</span>
             </div>
             <div class="nav-menu">
@@ -127,15 +128,16 @@
 
                 <div class="test-results-section">
                     <h2><i class="fas fa-list"></i> Test Results</h2>
-                    <div class="test-results-table">
-                        <table>
+                    <div class="test-results-table-container">
+                        <table class="test-results-table">
                             <thead>
                                 <tr>
                                     <th>Test ID</th>
-                                    <th>Date</th>
+                                    <th>Date & Time</th>
                                     <th>Duration</th>
                                     <th>Users</th>
                                     <th>Avg Response</th>
+                                    <th>P95 Response</th>
                                     <th>Throughput</th>
                                     <th>Error Rate</th>
                                     <th>Status</th>

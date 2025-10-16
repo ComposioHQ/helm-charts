@@ -229,17 +229,54 @@ function renderTestResultsTable() {
     
     tbody.innerHTML = filteredTests.map(test => `
         <tr>
-            <td>${test.id}</td>
-            <td>${formatDate(test.date)}</td>
-            <td>${test.duration}</td>
-            <td>${test.concurrentUsers}</td>
-            <td>${test.avgResponseTime}ms</td>
-            <td>${test.throughput.toLocaleString()} req/s</td>
-            <td>${test.errorRate}%</td>
-            <td><span class="status-badge ${test.status}">${test.status.toUpperCase()}</span></td>
             <td>
-                <button class="btn btn-small" onclick="viewTestDetails('${test.id}')">
-                    <i class="fas fa-eye"></i> View
+                <div class="test-id">
+                    <i class="fas fa-hashtag"></i>
+                    <span>${test.id}</span>
+                </div>
+            </td>
+            <td>
+                <div class="test-datetime">
+                    <div class="test-date">${formatDate(test.date)}</div>
+                    <div class="test-time">${test.time}</div>
+                </div>
+            </td>
+            <td>
+                <span class="duration-badge">${test.duration}</span>
+            </td>
+            <td>
+                <div class="users-info">
+                    <i class="fas fa-users"></i>
+                    <span>${test.concurrentUsers}</span>
+                </div>
+            </td>
+            <td>
+                <div class="response-time">
+                    <span class="response-value">${test.avgResponseTime}ms</span>
+                </div>
+            </td>
+            <td>
+                <div class="response-time">
+                    <span class="response-value">${test.p95ResponseTime}ms</span>
+                </div>
+            </td>
+            <td>
+                <div class="throughput">
+                    <span class="throughput-value">${test.throughput.toLocaleString()}</span>
+                    <span class="throughput-unit">req/s</span>
+                </div>
+            </td>
+            <td>
+                <div class="error-rate ${test.errorRate > 1 ? 'high' : test.errorRate > 0.5 ? 'medium' : 'low'}">
+                    <span class="error-value">${test.errorRate}%</span>
+                </div>
+            </td>
+            <td>
+                <span class="status-badge ${test.status}">${test.status.toUpperCase()}</span>
+            </td>
+            <td>
+                <button class="view-btn" onclick="viewTestDetails('${test.id}')" title="View Details">
+                    <i class="fas fa-eye"></i>
                 </button>
             </td>
         </tr>
@@ -368,6 +405,113 @@ function formatDate(dateString) {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
+    });
+}
+
+// Copy to clipboard function
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        showNotification('Command copied to clipboard!', 'success');
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+        showNotification('Failed to copy command', 'error');
+    });
+}
+
+// Show quick fix modal
+function showQuickFix(category) {
+    const fixes = {
+        'common': {
+            title: 'Common Issues Quick Fix',
+            content: `
+                <div class="quick-fix-content">
+                    <h4>Check these first:</h4>
+                    <ol>
+                        <li>Verify all pods are running: <code>kubectl get pods -n composio</code></li>
+                        <li>Check resource limits: <code>kubectl describe nodes</code></li>
+                        <li>Review logs: <code>kubectl logs -n composio &lt;pod-name&gt;</code></li>
+                        <li>Verify database connectivity</li>
+                    </ol>
+                    <h4>Common Solutions:</h4>
+                    <ul>
+                        <li>Restart failed pods: <code>kubectl delete pod &lt;pod-name&gt; -n composio</code></li>
+                        <li>Check resource quotas: <code>kubectl describe quota -n composio</code></li>
+                        <li>Verify secrets: <code>kubectl get secrets -n composio</code></li>
+                    </ul>
+                </div>
+            `
+        },
+        'gke': {
+            title: 'GKE Specific Issues',
+            content: `
+                <div class="quick-fix-content">
+                    <h4>GKE Autopilot Considerations:</h4>
+                    <ol>
+                        <li>Ensure resource requests are within Autopilot limits</li>
+                        <li>Check Cloud SQL connectivity and firewall rules</li>
+                        <li>Verify IAM permissions for container registry</li>
+                        <li>Review load balancer configuration</li>
+                    </ol>
+                    <h4>GKE Commands:</h4>
+                    <ul>
+                        <li>Check cluster info: <code>gcloud container clusters describe &lt;cluster-name&gt;</code></li>
+                        <li>Review firewall: <code>gcloud compute firewall-rules list</code></li>
+                        <li>Check IAM: <code>gcloud projects get-iam-policy &lt;project-id&gt;</code></li>
+                    </ul>
+                </div>
+            `
+        },
+        'monitoring': {
+            title: 'Monitoring & Debugging',
+            content: `
+                <div class="quick-fix-content">
+                    <h4>Monitoring Commands:</h4>
+                    <ol>
+                        <li>Pod status: <code>kubectl get pods -n composio -o wide</code></li>
+                        <li>Resource usage: <code>kubectl top pods -n composio</code></li>
+                        <li>Service endpoints: <code>kubectl get endpoints -n composio</code></li>
+                        <li>Network policies: <code>kubectl get networkpolicies -n composio</code></li>
+                    </ol>
+                    <h4>Log Analysis:</h4>
+                    <ul>
+                        <li>Follow logs: <code>kubectl logs -f &lt;pod-name&gt; -n composio</code></li>
+                        <li>Previous logs: <code>kubectl logs --previous &lt;pod-name&gt; -n composio</code></li>
+                        <li>All containers: <code>kubectl logs &lt;pod-name&gt; -c &lt;container-name&gt; -n composio</code></li>
+                    </ul>
+                </div>
+            `
+        }
+    };
+    
+    const fix = fixes[category];
+    if (!fix) return;
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${fix.title}</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                ${fix.content}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close modal functionality
+    modal.querySelector('.modal-close').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
     });
 }
 

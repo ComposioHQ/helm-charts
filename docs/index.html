@@ -11,8 +11,9 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="#" class="nav-logo">
-                <i class="fas fa-cube"></i>
+            <a href="index.html" class="nav-logo">
+                <img src="assets/composio-logo.svg" alt="Composio" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                <i class="fas fa-cube" style="display: none;"></i>
                 <span>Composio Helm Charts</span>
             </a>
             <div class="nav-menu">
@@ -210,37 +211,41 @@ kubectl get pods -n knative-serving</code></pre>
         <section class="section resource-requirements">
             <div class="container">
                 <h2><i class="fas fa-cogs"></i> Resource Requirements</h2>
-                <div class="requirements-grid">
-                    <div class="requirement-card minimum">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Minimum</h3>
-                        <div class="resource-item">
-                            <span class="resource-label">CPU:</span>
-                            <span class="resource-value">9 cores</span>
-                        </div>
-                        <div class="resource-item">
-                            <span class="resource-label">Memory:</span>
-                            <span class="resource-value">24GB RAM</span>
-                        </div>
-                        <div class="resource-item">
-                            <span class="resource-label">Storage:</span>
-                            <span class="resource-value">20GB</span>
-                        </div>
-                    </div>
-                    <div class="requirement-card recommended">
-                        <h3><i class="fas fa-check-circle"></i> Recommended</h3>
-                        <div class="resource-item">
-                            <span class="resource-label">CPU:</span>
-                            <span class="resource-value">12+ cores</span>
-                        </div>
-                        <div class="resource-item">
-                            <span class="resource-label">Memory:</span>
-                            <span class="resource-value">32GB RAM</span>
-                        </div>
-                        <div class="resource-item">
-                            <span class="resource-label">Storage:</span>
-                            <span class="resource-value">50GB+</span>
-                        </div>
-                    </div>
+                <div class="requirements-table-container">
+                    <table class="requirements-table">
+                        <thead>
+                            <tr>
+                                <th>Configuration</th>
+                                <th>CPU</th>
+                                <th>Memory</th>
+                                <th>Storage</th>
+                                <th>Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="minimum-row">
+                                <td><i class="fas fa-exclamation-triangle"></i> Minimum</td>
+                                <td>9 cores</td>
+                                <td>24GB RAM</td>
+                                <td>20GB</td>
+                                <td>Development & Testing</td>
+                            </tr>
+                            <tr class="recommended-row">
+                                <td><i class="fas fa-check-circle"></i> Recommended</td>
+                                <td>12+ cores</td>
+                                <td>32GB RAM</td>
+                                <td>50GB+</td>
+                                <td>Production</td>
+                            </tr>
+                            <tr class="enterprise-row">
+                                <td><i class="fas fa-star"></i> Enterprise</td>
+                                <td>20+ cores</td>
+                                <td>64GB+ RAM</td>
+                                <td>100GB+</td>
+                                <td>High Load Production</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -248,49 +253,89 @@ kubectl get pods -n knative-serving</code></pre>
         <section class="section service-access">
             <div class="container">
                 <h2><i class="fas fa-network-wired"></i> Service Access</h2>
-                <div class="access-grid">
-                    <div class="service-card">
-                        <div class="service-icon">
-                            <i class="fas fa-rocket"></i>
-                        </div>
-                        <h3>Apollo API</h3>
-                        <p>Main Composio API service</p>
-                        <div class="service-details">
-                            <span class="port">Port: 9900</span>
-                            <span class="type">NodePort</span>
-                        </div>
-                        <div class="code-block small">
-                            <pre><code class="language-bash">kubectl port-forward -n composio svc/composio-apollo 8080:9900</code></pre>
-                        </div>
-                    </div>
-                    <div class="service-card">
-                        <div class="service-icon">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <h3>MCP Portal</h3>
-                        <p>Management and Control Portal</p>
-                        <div class="service-details">
-                            <span class="port">Port: 3000</span>
-                            <span class="type">ClusterIP</span>
-                        </div>
-                        <div class="code-block small">
-                            <pre><code class="language-bash">kubectl port-forward -n composio svc/composio-mcp 8081:3000</code></pre>
-                        </div>
-                    </div>
-                    <div class="service-card">
-                        <div class="service-icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <h3>Temporal UI</h3>
-                        <p>Workflow management interface</p>
-                        <div class="service-details">
-                            <span class="port">Port: 8080</span>
-                            <span class="type">ClusterIP</span>
-                        </div>
-                        <div class="code-block small">
-                            <pre><code class="language-bash">kubectl port-forward -n composio svc/composio-temporal-web 8082:8080</code></pre>
-                        </div>
-                    </div>
+                <div class="services-table-container">
+                    <table class="services-table">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Description</th>
+                                <th>Port</th>
+                                <th>Type</th>
+                                <th>Access Command</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="service-info">
+                                        <i class="fas fa-rocket service-icon"></i>
+                                        <span class="service-name">Apollo API</span>
+                                    </div>
+                                </td>
+                                <td>Main Composio API service</td>
+                                <td>9900</td>
+                                <td><span class="service-type nodeport">NodePort</span></td>
+                                <td>
+                                    <button class="copy-btn" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-apollo 8080:9900')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </td>
+                                <td><span class="status-badge running">Running</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="service-info">
+                                        <i class="fas fa-cogs service-icon"></i>
+                                        <span class="service-name">MCP Portal</span>
+                                    </div>
+                                </td>
+                                <td>Management and Control Portal</td>
+                                <td>3000</td>
+                                <td><span class="service-type clusterip">ClusterIP</span></td>
+                                <td>
+                                    <button class="copy-btn" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-mcp 8081:3000')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </td>
+                                <td><span class="status-badge running">Running</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="service-info">
+                                        <i class="fas fa-clock service-icon"></i>
+                                        <span class="service-name">Temporal UI</span>
+                                    </div>
+                                </td>
+                                <td>Workflow management interface</td>
+                                <td>8080</td>
+                                <td><span class="service-type clusterip">ClusterIP</span></td>
+                                <td>
+                                    <button class="copy-btn" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-temporal-web 8082:8080')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </td>
+                                <td><span class="status-badge running">Running</span></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="service-info">
+                                        <i class="fas fa-database service-icon"></i>
+                                        <span class="service-name">MinIO Console</span>
+                                    </div>
+                                </td>
+                                <td>Object storage management</td>
+                                <td>9001</td>
+                                <td><span class="service-type clusterip">ClusterIP</span></td>
+                                <td>
+                                    <button class="copy-btn" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-minio 8083:9001')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </td>
+                                <td><span class="status-badge running">Running</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -298,34 +343,97 @@ kubectl get pods -n knative-serving</code></pre>
         <section class="section troubleshooting">
             <div class="container">
                 <h2><i class="fas fa-wrench"></i> Troubleshooting</h2>
-                <div class="troubleshooting-grid">
-                    <div class="trouble-card">
-                        <h3><i class="fas fa-exclamation-circle"></i> Common Issues</h3>
-                        <ul>
-                            <li>Knative components not starting</li>
-                            <li>Mercury service not ready</li>
-                            <li>Database connection issues</li>
-                            <li>Resource quota exceeded</li>
-                        </ul>
-                    </div>
-                    <div class="trouble-card">
-                        <h3><i class="fas fa-cloud"></i> GKE Specific</h3>
-                        <ul>
-                            <li>Autopilot resource limits</li>
-                            <li>Cloud SQL connectivity</li>
-                            <li>Load balancer configuration</li>
-                            <li>Container registry access</li>
-                        </ul>
-                    </div>
-                    <div class="trouble-card">
-                        <h3><i class="fas fa-chart-bar"></i> Monitoring</h3>
-                        <ul>
-                            <li>Pod status and logs</li>
-                            <li>Resource utilization</li>
-                            <li>Network connectivity</li>
-                            <li>Service health checks</li>
-                        </ul>
-                    </div>
+                <div class="troubleshooting-table-container">
+                    <table class="troubleshooting-table">
+                        <thead>
+                            <tr>
+                                <th>Issue Category</th>
+                                <th>Common Problems</th>
+                                <th>Quick Fix</th>
+                                <th>Documentation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="issue-category">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        <span>Common Issues</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <ul class="issue-list">
+                                        <li>Knative components not starting</li>
+                                        <li>Mercury service not ready</li>
+                                        <li>Database connection issues</li>
+                                        <li>Resource quota exceeded</li>
+                                    </ul>
+                                </td>
+                                <td>
+                                    <button class="fix-btn" onclick="showQuickFix('common')">
+                                        <i class="fas fa-tools"></i> Quick Fix
+                                    </button>
+                                </td>
+                                <td>
+                                    <a href="https://docs.composio.dev" class="doc-link" target="_blank">
+                                        <i class="fas fa-book"></i> View Docs
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="issue-category">
+                                        <i class="fas fa-cloud"></i>
+                                        <span>GKE Specific</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <ul class="issue-list">
+                                        <li>Autopilot resource limits</li>
+                                        <li>Cloud SQL connectivity</li>
+                                        <li>Load balancer configuration</li>
+                                        <li>Container registry access</li>
+                                    </ul>
+                                </td>
+                                <td>
+                                    <button class="fix-btn" onclick="showQuickFix('gke')">
+                                        <i class="fas fa-tools"></i> Quick Fix
+                                    </button>
+                                </td>
+                                <td>
+                                    <a href="https://docs.composio.dev" class="doc-link" target="_blank">
+                                        <i class="fas fa-book"></i> View Docs
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="issue-category">
+                                        <i class="fas fa-chart-bar"></i>
+                                        <span>Monitoring</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <ul class="issue-list">
+                                        <li>Pod status and logs</li>
+                                        <li>Resource utilization</li>
+                                        <li>Network connectivity</li>
+                                        <li>Service health checks</li>
+                                    </ul>
+                                </td>
+                                <td>
+                                    <button class="fix-btn" onclick="showQuickFix('monitoring')">
+                                        <i class="fas fa-tools"></i> Quick Fix
+                                    </button>
+                                </td>
+                                <td>
+                                    <a href="https://docs.composio.dev" class="doc-link" target="_blank">
+                                        <i class="fas fa-book"></i> View Docs
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
