@@ -342,7 +342,7 @@ otel:
           port: 4317
           targetPort: 4317
           protocol: TCP
-        otlpHttp:
+        otlp-http:
           port: 4318
           targetPort: 4318
           protocol: TCP
