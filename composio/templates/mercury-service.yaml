@@ -95,6 +95,27 @@ spec:
               value: "http://{{ .Release.Name }}-minio:9000"
             - name: AWS_S3_FORCE_PATH_STYLE
               value: "true"
+            # OpenTelemetry configuration
+            {{- if .Values.otel.enabled }}
+            - name: OTEL_ENABLED
+              value: {{ .Values.otel.enabled | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.otel.mercury.serviceName | default "mercury-openapi" | quote }}
+            - name: OTEL_SERVICE_VERSION
+              value: {{ .Values.otel.mercury.serviceVersion | default "1.0.0" | quote }}
+            - name: OTEL_ENVIRONMENT
+              value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "http://%s-otel-collector:4317" .Release.Name) | quote }}
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
+            - name: OTEL_TRACES_ENABLED
+              value: {{ .Values.otel.traces.enabled | default "true" | quote }}
+            - name: OTEL_METRICS_ENABLED
+              value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: {{ .Values.otel.metrics.exportInterval | default "60000" | quote }}
+            {{- end }}
 
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}

@@ -1,0 +1,132 @@
+{{- if and .Values.otel.enabled .Values.otel.collector.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-otel-collector-config
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      {{- toYaml .Values.otel.collector.config.receivers | nindent 6 }}
+    
+    processors:
+      {{- toYaml .Values.otel.collector.config.processors | nindent 6 }}
+    
+    exporters:
+      {{- toYaml .Values.otel.collector.config.exporters | nindent 6 }}
+    
+    service:
+      {{- toYaml .Values.otel.collector.config.service | nindent 6 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-otel-collector
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+spec:
+  replicas: {{ .Values.otel.collector.replicaCount | default 1 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: otel-collector
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: otel-collector
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/otel-collector.yaml") . | sha256sum }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: otel-collector
+          image: "{{ .Values.otel.collector.image.repository }}:{{ .Values.otel.collector.image.tag }}"
+          imagePullPolicy: {{ .Values.otel.collector.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            - /otelcol-contrib
+            - --config=/etc/otelcol-contrib/otel-collector-config.yaml
+          ports:
+            - name: otlp
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+            - name: jaeger-grpc
+              containerPort: 14250
+              protocol: TCP
+            - name: prometheus
+              containerPort: 8889
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: GOMEMLIMIT
+              value: "{{ .Values.otel.collector.resources.limits.memory | default "1Gi" }}"
+          resources:
+            {{- toYaml .Values.otel.collector.resources | nindent 12 }}
+          volumeMounts:
+            - name: otel-collector-config-vol
+              mountPath: /etc/otelcol-contrib
+      volumes:
+        - name: otel-collector-config-vol
+          configMap:
+            name: {{ .Release.Name }}-otel-collector-config
+            items:
+              - key: otel-collector-config.yaml
+                path: otel-collector-config.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-otel-collector
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+spec:
+  type: {{ .Values.otel.collector.service.type }}
+  ports:
+    {{- range $name, $port := .Values.otel.collector.service.ports }}
+    - name: {{ $name }}
+      port: {{ $port.port }}
+      targetPort: {{ $port.targetPort }}
+      protocol: {{ $port.protocol }}
+    {{- end }}
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+{{- end }}

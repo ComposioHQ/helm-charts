@@ -302,6 +302,126 @@ tolerations: []
 
 affinity: {}
 
+# OpenTelemetry configuration
+otel:
+  enabled: true
+  exporter:
+    otlp:
+      endpoint: "http://otel-collector:4317"
+      insecure: true
+  traces:
+    enabled: true
+  metrics:
+    enabled: true
+    exportInterval: 60000  # milliseconds
+  environment: "development"
+  # Service-specific configurations
+  apollo:
+    serviceName: "apollo"
+    serviceVersion: "1.0.0"
+  thermos:
+    serviceName: "thermos"
+    serviceVersion: "1.0.0"
+  mercury:
+    serviceName: "mercury-openapi"
+    serviceVersion: "1.0.0"
+  
+  # OpenTelemetry Collector configuration
+  collector:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: otel/opentelemetry-collector-contrib
+      tag: "0.91.0"
+      pullPolicy: IfNotPresent
+    
+    service:
+      type: ClusterIP
+      ports:
+        otlp:
+          port: 4317
+          targetPort: 4317
+          protocol: TCP
+        otlpHttp:
+          port: 4318
+          targetPort: 4318
+          protocol: TCP
+        jaeger:
+          port: 14250
+          targetPort: 14250
+          protocol: TCP
+        prometheus:
+          port: 8889
+          targetPort: 8889
+          protocol: TCP
+    
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    
+    # Collector configuration
+    config:
+      # Exporters configuration - modify these to send to your observability backend
+      exporters:
+        # Console exporter for debugging (disable in production)
+        debug:
+          verbosity: basic
+        # Prometheus exporter for metrics
+        prometheus:
+          endpoint: "0.0.0.0:8889"
+        # OTLP exporter - configure this to send to your backend
+        # otlp:
+        #   endpoint: "https://your-backend:4317"
+        #   headers:
+        #     api-key: "your-api-key"
+      
+      # Processors for data transformation
+      processors:
+        batch:
+          timeout: 1s
+          send_batch_size: 1024
+        memory_limiter:
+          limit_mib: 512
+      
+      # Receivers to collect telemetry data
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+            http:
+              endpoint: "0.0.0.0:4318"
+        jaeger:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:14250"
+      
+      # Extensions for additional functionality
+      extensions:
+        health_check:
+          endpoint: "0.0.0.0:13133"
+        pprof:
+          endpoint: "0.0.0.0:1777"
+        zpages:
+          endpoint: "0.0.0.0:55679"
+      
+      # Service pipelines
+      service:
+        extensions: [health_check, pprof, zpages]
+        pipelines:
+          traces:
+            receivers: [otlp, jaeger]
+            processors: [memory_limiter, batch]
+            exporters: [debug]  # Add your backend exporters here
+          metrics:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [debug, prometheus]  # Add your backend exporters here
+
 # AWS configuration - disabled for development
 aws:
   region: us-east-1
