@@ -28,41 +28,6 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.thermos.dbInit.enabled }}
-      initContainers:
-        - name: thermos-db-init
-          image: "{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
-          imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          env:
-            # Thermos database URL
-            - name: POSTGRES_URL
-              valueFrom:
-                secretKeyRef:
-                  name: external-thermos-postgres-secret
-                  key: url
-            # Keep DATABASE_URL for backward compatibility with Atlas
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: external-thermos-postgres-secret
-                  key: url
-            - name: COMPOSIO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-composio-api-key
-                  key: COMPOSIO_API_KEY
-            - name: ADMIN_EMAIL
-              value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
-          resources:
-            requests:
-              cpu: 500m
-              memory: 512Mi
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-      {{- end }}
       containers:
         - name: thermos
           image: "{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
@@ -116,7 +81,6 @@ spec:
             - name: SELF_HOSTED
               value: "true"
             - name: TEMPORAL_CLOUD_HOST_PORT
-              value: 
               value: "temporal-stack-frontend:7233"
             - name: TEMPORAL_CLOUD_NAMESPACE
               value: "default"
@@ -170,7 +134,7 @@ spec:
             - name: OTEL_ENVIRONMENT
               value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "http://%s-otel-collector:4317" .Release.Name) | quote }}
+              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
             - name: OTEL_EXPORTER_OTLP_INSECURE
               value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
             - name: OTEL_TRACES_ENABLED
