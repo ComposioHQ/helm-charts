@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Reference - Composio Helm Charts</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <i class="fas fa-cube"></i>
+                <span>Composio Helm Charts</span>
+            </a>
+            <div class="nav-menu">
+                <a href="index.html#quickstart" class="nav-link">Quick Start</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+                <a href="configuration.html" class="nav-link active">Configuration</a>
+                <a href="guides.html" class="nav-link">Guides</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+                <a href="changelog.html" class="nav-link">Changelog</a>
+                <a href="load-tests.html" class="nav-link">Load Tests</a>
+            </div>
+            <button class="mobile-nav-toggle" aria-label="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <div class="mobile-nav-menu">
+            <a href="index.html#quickstart" class="nav-link">Quick Start</a>
+            <a href="architecture.html" class="nav-link">Architecture</a>
+            <a href="configuration.html" class="nav-link active">Configuration</a>
+            <a href="guides.html" class="nav-link">Guides</a>
+            <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            <a href="changelog.html" class="nav-link">Changelog</a>
+            <a href="load-tests.html" class="nav-link">Load Tests</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="section">
+            <div class="container">
+                <h1><i class="fas fa-cog"></i> Configuration Reference</h1>
+                <p class="subtitle">Complete values.yaml configuration guide for Composio Helm Charts</p>
+
+                <div class="config-nav">
+                    <a href="#global" class="config-nav-link">Global</a>
+                    <a href="#secrets" class="config-nav-link">Secrets</a>
+                    <a href="#apollo" class="config-nav-link">Apollo</a>
+                    <a href="#thermos" class="config-nav-link">Thermos</a>
+                    <a href="#mercury" class="config-nav-link">Mercury</a>
+                    <a href="#temporal" class="config-nav-link">Temporal</a>
+                    <a href="#minio" class="config-nav-link">Minio</a>
+                    <a href="#redis" class="config-nav-link">Redis</a>
+                    <a href="#otel" class="config-nav-link">Observability</a>
+                </div>
+
+                <div id="global" class="config-section">
+                    <h2><i class="fas fa-globe"></i> Global Configuration</h2>
+
+                    <h3>Namespace Settings</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>namespace.create</code></td>
+                                <td>Create namespace automatically</td>
+                                <td><code>false</code></td>
+                                <td>No</td>
+                            </tr>
+                            <tr>
+                                <td><code>namespace.name</code></td>
+                                <td>Namespace for Composio services</td>
+                                <td><code>"composio"</code></td>
+                                <td>No</td>
+                            </tr>
+                            <tr>
+                                <td><code>global.environment</code></td>
+                                <td>Deployment environment</td>
+                                <td><code>"development"</code></td>
+                                <td>No</td>
+                            </tr>
+                            <tr>
+                                <td><code>global.domain</code></td>
+                                <td>Base domain for services</td>
+                                <td><code>"localhost"</code></td>
+                                <td>No</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="code-example">
+                        <h4>Example Configuration:</h4>
+                        <div class="code-block">
+                            <pre><code class="language-yaml">namespace:
+  create: true
+  name: "composio-prod"
+
+global:
+  environment: production
+  domain: "composio.example.com"
+  imagePullSecrets:
+    - name: ecr-secret</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="secrets" class="config-section">
+                    <h2><i class="fas fa-key"></i> Secrets & External Services</h2>
+
+                    <h3>External Secrets Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Required</th>
+                                <th>Set Via</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>externalSecrets.ecr.token</code></td>
+                                <td>AWS ECR authentication token</td>
+                                <td>Yes</td>
+                                <td>--set flag</td>
+                            </tr>
+                            <tr>
+                                <td><code>externalSecrets.ecr.server</code></td>
+                                <td>ECR registry server URL</td>
+                                <td>Yes</td>
+                                <td>values.yaml</td>
+                            </tr>
+                            <tr>
+                                <td><code>externalSecrets.ecr.username</code></td>
+                                <td>ECR username (typically "AWS")</td>
+                                <td>Yes</td>
+                                <td>values.yaml</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="code-example">
+                        <h4>Setting Secrets via Environment Variables:</h4>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Required: PostgreSQL connection string
+export POSTGRES_URL="postgresql://user:password@host:5432/db?sslmode=require"
+
+# Optional: External Redis
+export REDIS_URL="redis://user:password@host:6379/0"
+
+# Optional: OpenAI API key
+export OPENAI_API_KEY="sk-1234567890..."
+
+# Run secret setup script
+./secret-setup.sh -r composio -n composio</code></pre>
+                        </div>
+                    </div>
+
+                    <h3>Database Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>externalPostgreSQL.enabled</code></td>
+                                <td>Use external PostgreSQL database</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>externalRedis.enabled</code></td>
+                                <td>Use external Redis</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>redis.enabled</code></td>
+                                <td>Deploy bundled Redis (Bitnami)</td>
+                                <td><code>false</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="apollo" class="config-section">
+                    <h2><i class="fas fa-rocket"></i> Apollo Service</h2>
+
+                    <h3>Deployment Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>apollo.replicaCount</code></td>
+                                <td>Number of Apollo replicas</td>
+                                <td><code>2</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.image.repository</code></td>
+                                <td>Apollo container image repository</td>
+                                <td>ECR repository</td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.image.tag</code></td>
+                                <td>Apollo container image tag</td>
+                                <td><code>"0e07c93"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.image.pullPolicy</code></td>
+                                <td>Image pull policy</td>
+                                <td><code>Always</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Service Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>apollo.service.type</code></td>
+                                <td>Kubernetes service type</td>
+                                <td><code>NodePort</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.service.port</code></td>
+                                <td>Service port</td>
+                                <td><code>9900</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.service.nodePort</code></td>
+                                <td>NodePort for external access</td>
+                                <td><code>30900</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Resource Limits</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>apollo.resources.requests.memory</code></td>
+                                <td>Memory request</td>
+                                <td><code>"5Gi"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.resources.requests.cpu</code></td>
+                                <td>CPU request</td>
+                                <td><code>"1"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.resources.limits.memory</code></td>
+                                <td>Memory limit</td>
+                                <td><code>"6Gi"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.resources.limits.cpu</code></td>
+                                <td>CPU limit</td>
+                                <td><code>"1"</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Horizontal Pod Autoscaler (HPA)</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>apollo.autoscaling.enabled</code></td>
+                                <td>Enable HPA for Apollo</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.autoscaling.minReplicas</code></td>
+                                <td>Minimum replicas</td>
+                                <td><code>2</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.autoscaling.maxReplicas</code></td>
+                                <td>Maximum replicas</td>
+                                <td><code>10</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.autoscaling.targetCPUUtilizationPercentage</code></td>
+                                <td>Target CPU for scaling</td>
+                                <td><code>70</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>apollo.autoscaling.targetMemoryUtilizationPercentage</code></td>
+                                <td>Target memory for scaling</td>
+                                <td><code>80</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="code-example">
+                        <h4>Example: Enable HPA for Production:</h4>
+                        <div class="code-block">
+                            <pre><code class="language-yaml">apollo:
+  replicaCount: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="thermos" class="config-section">
+                    <h2><i class="fas fa-fire"></i> Thermos Service</h2>
+
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>thermos.replicaCount</code></td>
+                                <td>Number of Thermos replicas</td>
+                                <td><code>2</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>thermos.service.type</code></td>
+                                <td>Kubernetes service type</td>
+                                <td><code>ClusterIP</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>thermos.service.port</code></td>
+                                <td>Service port</td>
+                                <td><code>8180</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>thermos.resources.requests.memory</code></td>
+                                <td>Memory request</td>
+                                <td><code>"4Gi"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>thermos.resources.requests.cpu</code></td>
+                                <td>CPU request</td>
+                                <td><code>"2"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>thermos.autoscaling.enabled</code></td>
+                                <td>Enable HPA for Thermos</td>
+                                <td><code>false</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="mercury" class="config-section">
+                    <h2><i class="fas fa-bolt"></i> Mercury Service (Knative)</h2>
+
+                    <h3>Deployment Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>mercury.enabled</code></td>
+                                <td>Deploy Mercury service</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>mercury.useKnative</code></td>
+                                <td>Use Knative for serverless deployment</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>mercury.replicaCount</code></td>
+                                <td>Initial replicas (if not Knative)</td>
+                                <td><code>1</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Auto-scaling Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>mercury.autoscaling.minScale</code></td>
+                                <td>Minimum Knative replicas</td>
+                                <td><code>1</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>mercury.autoscaling.maxScale</code></td>
+                                <td>Maximum Knative replicas</td>
+                                <td><code>10</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>mercury.autoscaling.target</code></td>
+                                <td>Target CPU utilization (%)</td>
+                                <td><code>80</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>mercury.containerConcurrency</code></td>
+                                <td>Max concurrent requests per container</td>
+                                <td><code>0</code> (unlimited)</td>
+                            </tr>
+                            <tr>
+                                <td><code>mercury.timeoutSeconds</code></td>
+                                <td>Request timeout in seconds</td>
+                                <td><code>300</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="code-example">
+                        <h4>Example: Mercury with Scale-to-Zero:</h4>
+                        <div class="code-block">
+                            <pre><code class="language-yaml">mercury:
+  enabled: true
+  useKnative: true
+  autoscaling:
+    minScale: 0  # Scale to zero when idle
+    maxScale: 20
+    target: 80
+  containerConcurrency: 100  # Limit concurrent requests
+  timeoutSeconds: 600  # 10-minute timeout</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="temporal" class="config-section">
+                    <h2><i class="fas fa-clock"></i> Temporal Workflow Engine</h2>
+
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>temporal.server.enabled</code></td>
+                                <td>Deploy Temporal server</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>temporal.server.replicaCount</code></td>
+                                <td>Number of Temporal replicas</td>
+                                <td><code>2</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>temporal.web.enabled</code></td>
+                                <td>Deploy Temporal web UI</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>temporal.schema.setup.enabled</code></td>
+                                <td>Auto-create database schema</td>
+                                <td><code>true</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Temporal uses the external PostgreSQL database configured via secret-setup.sh. It automatically creates <code>temporal</code> and <code>temporal_visibility</code> databases.
+                    </div>
+                </div>
+
+                <div id="minio" class="config-section">
+                    <h2><i class="fas fa-database"></i> Minio Object Storage</h2>
+
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>minio.replicaCount</code></td>
+                                <td>Number of Minio instances</td>
+                                <td><code>1</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>minio.auth.rootUser</code></td>
+                                <td>Minio admin username</td>
+                                <td><code>"minioadmin"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>minio.auth.rootPassword</code></td>
+                                <td>Minio admin password</td>
+                                <td><code>"minioadmin123"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>minio.persistence.enabled</code></td>
+                                <td>Enable persistent storage</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>minio.persistence.size</code></td>
+                                <td>Persistent volume size</td>
+                                <td><code>8Gi</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>minio.persistence.storageClass</code></td>
+                                <td>Storage class for PVC</td>
+                                <td><code>""</code> (default)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> Minio uses a RollingUpdate strategy with maxUnavailable=1 and maxSurge=0 to prevent Multi-Attach volume errors on single-replica deployments.
+                    </div>
+                </div>
+
+                <div id="redis" class="config-section">
+                    <h2><i class="fas fa-server"></i> Redis Configuration</h2>
+
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>redis.enabled</code></td>
+                                <td>Deploy bundled Redis (Bitnami)</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>externalRedis.enabled</code></td>
+                                <td>Use external Redis</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>redis.auth.enabled</code></td>
+                                <td>Enable Redis authentication</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>redis.auth.password</code></td>
+                                <td>Redis password (if bundled)</td>
+                                <td><code>"redis123"</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>redis.master.persistence.size</code></td>
+                                <td>Redis storage size (if bundled)</td>
+                                <td><code>8Gi</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="code-example">
+                        <h4>Example: Use Bundled Redis:</h4>
+                        <div class="code-block">
+                            <pre><code class="language-yaml">externalRedis:
+  enabled: false
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "securepassword"
+  master:
+    persistence:
+      enabled: true
+      size: 16Gi</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="otel" class="config-section">
+                    <h2><i class="fas fa-chart-line"></i> OpenTelemetry & Observability</h2>
+
+                    <h3>Core Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>otel.enabled</code></td>
+                                <td>Enable OpenTelemetry</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>otel.traces.enabled</code></td>
+                                <td>Enable trace collection</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>otel.metrics.enabled</code></td>
+                                <td>Enable metrics collection</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>otel.environment</code></td>
+                                <td>Environment label</td>
+                                <td><code>"development"</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Collector Configuration</h3>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>otel.collector.enabled</code></td>
+                                <td>Deploy OTEL collector</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>otel.collector.replicaCount</code></td>
+                                <td>Number of collector instances</td>
+                                <td><code>1</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>otel.collector.googleCloud.enabled</code></td>
+                                <td>Export to Google Cloud</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>otel.collector.googleCloud.projectId</code></td>
+                                <td>GCP project ID</td>
+                                <td><code>"self-host-kubernetes"</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="code-example">
+                        <h4>Example: Disable Google Cloud Export:</h4>
+                        <div class="code-block">
+                            <pre><code class="language-yaml">otel:
+  enabled: true
+  collector:
+    enabled: true
+    googleCloud:
+      enabled: false  # Only use local Prometheus
+    config:
+      exporters:
+        prometheus:
+          endpoint: "0.0.0.0:8889"
+      service:
+        pipelines:
+          traces:
+            exporters: [debug]
+          metrics:
+            exporters: [prometheus]</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tips-section">
+                    <h2><i class="fas fa-lightbulb"></i> Configuration Tips</h2>
+
+                    <div class="tip-card">
+                        <h3><i class="fas fa-shield-alt"></i> Security Best Practices</h3>
+                        <ul>
+                            <li>Always use strong, auto-generated passwords in production</li>
+                            <li>Enable external secrets management (AWS Secrets Manager, HashiCorp Vault)</li>
+                            <li>Use TLS/SSL for all external database connections</li>
+                            <li>Rotate ECR tokens regularly using automation</li>
+                            <li>Apply network policies to restrict pod-to-pod communication</li>
+                        </ul>
+                    </div>
+
+                    <div class="tip-card">
+                        <h3><i class="fas fa-tachometer-alt"></i> Performance Optimization</h3>
+                        <ul>
+                            <li>Enable HPA for production workloads</li>
+                            <li>Use external managed databases (Cloud SQL, RDS) for better performance</li>
+                            <li>Configure appropriate resource requests/limits based on load testing</li>
+                            <li>Use node affinity to place services on appropriate node pools</li>
+                            <li>Consider using Redis for caching to reduce database load</li>
+                        </ul>
+                    </div>
+
+                    <div class="tip-card">
+                        <h3><i class="fas fa-dollar-sign"></i> Cost Optimization</h3>
+                        <ul>
+                            <li>Use Mercury's scale-to-zero feature for dev/staging environments</li>
+                            <li>Right-size resource requests after monitoring actual usage</li>
+                            <li>Use spot/preemptible instances for non-critical workloads</li>
+                            <li>Disable unused services (OTEL collector in dev, Temporal web UI)</li>
+                            <li>Use shared managed services across multiple environments</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="guides.html">Cloud Provider Guides</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="changelog.html">Changelog</a></li>
+                        <li><a href="load-tests.html">Load Tests</a></li>
+                        <li><a href="https://github.com/composio/helm-charts">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul>
+                        <li><a href="https://discord.gg/composio">Discord Community</a></li>
+                        <li><a href="https://docs.composio.dev">Composio Docs</a></li>
+                        <li><a href="mailto:support@composio.dev">Email Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Composio. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="assets/script.js"></script>
+</body>
+</html>

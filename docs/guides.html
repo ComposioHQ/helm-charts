@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Provider Guides - Composio Helm Charts</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <i class="fas fa-cube"></i>
+                <span>Composio Helm Charts</span>
+            </a>
+            <div class="nav-menu">
+                <a href="index.html#quickstart" class="nav-link">Quick Start</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+                <a href="configuration.html" class="nav-link">Configuration</a>
+                <a href="guides.html" class="nav-link active">Guides</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+                <a href="changelog.html" class="nav-link">Changelog</a>
+                <a href="load-tests.html" class="nav-link">Load Tests</a>
+            </div>
+            <button class="mobile-nav-toggle" aria-label="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <div class="mobile-nav-menu">
+            <a href="index.html#quickstart" class="nav-link">Quick Start</a>
+            <a href="architecture.html" class="nav-link">Architecture</a>
+            <a href="configuration.html" class="nav-link">Configuration</a>
+            <a href="guides.html" class="nav-link active">Guides</a>
+            <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            <a href="changelog.html" class="nav-link">Changelog</a>
+            <a href="load-tests.html" class="nav-link">Load Tests</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="section">
+            <div class="container">
+                <h1><i class="fas fa-cloud"></i> Cloud Provider Deployment Guides</h1>
+                <p class="subtitle">Step-by-step guides for deploying Composio on major cloud platforms</p>
+
+                <div class="cloud-providers">
+                    <a href="#gke" class="provider-card">
+                        <i class="fab fa-google"></i>
+                        <h3>Google GKE</h3>
+                        <p>Google Kubernetes Engine</p>
+                    </a>
+                    <a href="#eks" class="provider-card">
+                        <i class="fab fa-aws"></i>
+                        <h3>Amazon EKS</h3>
+                        <p>Elastic Kubernetes Service</p>
+                    </a>
+                    <a href="#aks" class="provider-card">
+                        <i class="fab fa-microsoft"></i>
+                        <h3>Azure AKS</h3>
+                        <p>Azure Kubernetes Service</p>
+                    </a>
+                </div>
+
+                <div id="gke" class="guide-section">
+                    <h2><i class="fab fa-google"></i> Google Kubernetes Engine (GKE)</h2>
+
+                    <div class="guide-content">
+                        <h3>Prerequisites</h3>
+                        <ul>
+                            <li>Google Cloud account with billing enabled</li>
+                            <li>gcloud CLI installed and configured</li>
+                            <li>kubectl installed</li>
+                            <li>Helm 3.x installed</li>
+                        </ul>
+
+                        <h3>Step 1: Set Up Environment Variables</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Set your project variables
+export PROJECT_ID="your-gcp-project-id"
+export REGION="us-central1"
+export CLUSTER_NAME="composio-cluster"
+export ZONE="us-central1-a"
+
+# Set project
+gcloud config set project $PROJECT_ID</code></pre>
+                        </div>
+
+                        <h3>Step 2: Create GKE Cluster</h3>
+
+                        <h4>Option A: GKE Autopilot (Recommended)</h4>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create Autopilot cluster (fully managed)
+gcloud container clusters create-auto $CLUSTER_NAME \
+    --region=$REGION \
+    --project=$PROJECT_ID
+
+# Get credentials
+gcloud container clusters get-credentials $CLUSTER_NAME \
+    --region=$REGION \
+    --project=$PROJECT_ID</code></pre>
+                        </div>
+
+                        <h4>Option B: Standard GKE Cluster</h4>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create standard cluster with custom configuration
+gcloud container clusters create $CLUSTER_NAME \
+    --region=$REGION \
+    --num-nodes=3 \
+    --machine-type=n2-standard-8 \
+    --disk-size=50GB \
+    --enable-autoscaling \
+    --min-nodes=3 \
+    --max-nodes=10 \
+    --enable-autorepair \
+    --enable-autoupgrade \
+    --project=$PROJECT_ID
+
+# Get credentials
+gcloud container clusters get-credentials $CLUSTER_NAME \
+    --region=$REGION \
+    --project=$PROJECT_ID</code></pre>
+                        </div>
+
+                        <h3>Step 3: Create Cloud SQL PostgreSQL Instance</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create PostgreSQL instance
+gcloud sql instances create composio-postgres \
+    --database-version=POSTGRES_15 \
+    --tier=db-custom-4-16384 \
+    --region=$REGION \
+    --network=default \
+    --no-assign-ip
+
+# Set root password
+gcloud sql users set-password postgres \
+    --instance=composio-postgres \
+    --password="YourSecurePassword123!"
+
+# Create database
+gcloud sql databases create composio \
+    --instance=composio-postgres
+
+# Get connection info
+export POSTGRES_IP=$(gcloud sql instances describe composio-postgres \
+    --format='get(ipAddresses[0].ipAddress)')
+export POSTGRES_URL="postgresql://postgres:YourSecurePassword123!@${POSTGRES_IP}:5432/composio?sslmode=require"</code></pre>
+                        </div>
+
+                        <h3>Step 4: Set Up Workload Identity (Optional but Recommended)</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create service account for OTEL collector
+gcloud iam service-accounts create otel-collector \
+    --display-name="OpenTelemetry Collector"
+
+# Grant permissions
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:otel-collector@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="roles/cloudtrace.agent"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:otel-collector@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="roles/monitoring.metricWriter"</code></pre>
+                        </div>
+
+                        <h3>Step 5: Install Knative on GKE</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Install Knative Serving CRDs
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
+
+# Install Knative Serving Core
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml
+
+# Install Kourier for networking
+kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml
+
+# Configure Kourier as default
+kubectl patch configmap/config-network \
+    --namespace knative-serving \
+    --type merge \
+    --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
+
+# Wait for Knative to be ready
+kubectl wait --for=condition=Ready pods --all -n knative-serving --timeout=300s</code></pre>
+                        </div>
+
+                        <h3>Step 6: Configure Secrets</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Export required secrets
+export POSTGRES_URL="postgresql://postgres:YourSecurePassword123!@${POSTGRES_IP}:5432/composio?sslmode=require"
+export REDIS_URL=""  # Leave empty to use bundled Redis
+export OPENAI_API_KEY="sk-your-openai-key"  # Optional
+
+# Run secret setup script
+./secret-setup.sh -r composio -n composio</code></pre>
+                        </div>
+
+                        <h3>Step 7: Deploy Composio</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Deploy with Helm
+helm install composio ./composio \
+    --create-namespace \
+    --namespace composio \
+    --set namespace.name=composio \
+    --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
+    --set otel.collector.googleCloud.projectId=$PROJECT_ID \
+    --debug
+
+# Wait for deployment
+kubectl wait --for=condition=Ready pods --all -n composio --timeout=600s</code></pre>
+                        </div>
+
+                        <h3>Step 8: Verify Installation</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Check all pods
+kubectl get pods -n composio
+
+# Check Knative services
+kubectl get ksvc -n composio
+
+# Port forward to Apollo
+kubectl port-forward -n composio svc/composio-apollo 8080:9900
+
+# Test API
+curl http://localhost:8080/api/v1/health</code></pre>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>GKE Autopilot Tips:</strong>
+                            <ul>
+                                <li>Autopilot automatically manages node provisioning and scaling</li>
+                                <li>Resource requests are strictly enforced - ensure proper values</li>
+                                <li>Some features like privileged containers are disabled</li>
+                                <li>Cost is based on pod resource requests, not node size</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="eks" class="guide-section">
+                    <h2><i class="fab fa-aws"></i> Amazon Elastic Kubernetes Service (EKS)</h2>
+
+                    <div class="guide-content">
+                        <h3>Prerequisites</h3>
+                        <ul>
+                            <li>AWS account with appropriate IAM permissions</li>
+                            <li>AWS CLI installed and configured</li>
+                            <li>eksctl installed</li>
+                            <li>kubectl installed</li>
+                            <li>Helm 3.x installed</li>
+                        </ul>
+
+                        <h3>Step 1: Set Up Environment Variables</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Set your AWS variables
+export AWS_REGION="us-east-1"
+export CLUSTER_NAME="composio-eks-cluster"
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)</code></pre>
+                        </div>
+
+                        <h3>Step 2: Create EKS Cluster</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create EKS cluster using eksctl
+eksctl create cluster \
+    --name $CLUSTER_NAME \
+    --region $AWS_REGION \
+    --version 1.28 \
+    --nodegroup-name standard-workers \
+    --node-type t3.2xlarge \
+    --nodes 3 \
+    --nodes-min 3 \
+    --nodes-max 10 \
+    --managed \
+    --with-oidc \
+    --ssh-access \
+    --ssh-public-key ~/.ssh/id_rsa.pub
+
+# Update kubeconfig
+aws eks update-kubeconfig \
+    --region $AWS_REGION \
+    --name $CLUSTER_NAME</code></pre>
+                        </div>
+
+                        <h3>Step 3: Create RDS PostgreSQL Database</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create DB subnet group
+aws rds create-db-subnet-group \
+    --db-subnet-group-name composio-db-subnet \
+    --db-subnet-group-description "Composio Database Subnet" \
+    --subnet-ids subnet-xxx subnet-yyy \
+    --region $AWS_REGION
+
+# Create PostgreSQL instance
+aws rds create-db-instance \
+    --db-instance-identifier composio-postgres \
+    --db-instance-class db.t3.large \
+    --engine postgres \
+    --engine-version 15.4 \
+    --master-username postgres \
+    --master-user-password "YourSecurePassword123!" \
+    --allocated-storage 100 \
+    --storage-type gp3 \
+    --vpc-security-group-ids sg-xxx \
+    --db-subnet-group-name composio-db-subnet \
+    --backup-retention-period 7 \
+    --region $AWS_REGION
+
+# Wait for instance to be available
+aws rds wait db-instance-available \
+    --db-instance-identifier composio-postgres
+
+# Get endpoint
+export DB_ENDPOINT=$(aws rds describe-db-instances \
+    --db-instance-identifier composio-postgres \
+    --query 'DBInstances[0].Endpoint.Address' \
+    --output text)
+
+export POSTGRES_URL="postgresql://postgres:YourSecurePassword123!@${DB_ENDPOINT}:5432/postgres?sslmode=require"</code></pre>
+                        </div>
+
+                        <h3>Step 4: Create ElastiCache Redis (Optional)</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create Redis cluster
+aws elasticache create-cache-cluster \
+    --cache-cluster-id composio-redis \
+    --cache-node-type cache.t3.medium \
+    --engine redis \
+    --num-cache-nodes 1 \
+    --security-group-ids sg-xxx \
+    --region $AWS_REGION
+
+# Get Redis endpoint
+export REDIS_ENDPOINT=$(aws elasticache describe-cache-clusters \
+    --cache-cluster-id composio-redis \
+    --show-cache-node-info \
+    --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address' \
+    --output text)
+
+export REDIS_URL="redis://${REDIS_ENDPOINT}:6379/0"</code></pre>
+                        </div>
+
+                        <h3>Step 5: Install AWS Load Balancer Controller</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create IAM policy
+curl -o iam_policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.6.0/docs/install/iam_policy.json
+
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam_policy.json
+
+# Create service account
+eksctl create iamserviceaccount \
+    --cluster=$CLUSTER_NAME \
+    --namespace=kube-system \
+    --name=aws-load-balancer-controller \
+    --attach-policy-arn=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy \
+    --override-existing-serviceaccounts \
+    --approve
+
+# Install controller via Helm
+helm repo add eks https://aws.github.io/eks-charts
+helm repo update
+
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+    -n kube-system \
+    --set clusterName=$CLUSTER_NAME \
+    --set serviceAccount.create=false \
+    --set serviceAccount.name=aws-load-balancer-controller</code></pre>
+                        </div>
+
+                        <h3>Step 6: Install Knative on EKS</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Install Knative Serving
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml
+
+# Install Kourier
+kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml
+
+# Configure Kourier
+kubectl patch configmap/config-network \
+    --namespace knative-serving \
+    --type merge \
+    --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'</code></pre>
+                        </div>
+
+                        <h3>Step 7: Configure Secrets & Deploy</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Set secrets
+export POSTGRES_URL="postgresql://postgres:YourSecurePassword123!@${DB_ENDPOINT}:5432/postgres?sslmode=require"
+export REDIS_URL="redis://${REDIS_ENDPOINT}:6379/0"
+
+./secret-setup.sh -r composio -n composio
+
+# Deploy Composio
+helm install composio ./composio \
+    --create-namespace \
+    --namespace composio \
+    --set namespace.name=composio \
+    --set externalSecrets.ecr.token="$(aws ecr get-login-password --region $AWS_REGION)" \
+    --debug</code></pre>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>EKS Security Tips:</strong>
+                            <ul>
+                                <li>Use VPC security groups to control database access</li>
+                                <li>Enable encryption at rest for RDS and ElastiCache</li>
+                                <li>Use AWS Secrets Manager for production credentials</li>
+                                <li>Enable EKS cluster logging for audit trails</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="aks" class="guide-section">
+                    <h2><i class="fab fa-microsoft"></i> Azure Kubernetes Service (AKS)</h2>
+
+                    <div class="guide-content">
+                        <h3>Prerequisites</h3>
+                        <ul>
+                            <li>Azure account with active subscription</li>
+                            <li>Azure CLI (az) installed and configured</li>
+                            <li>kubectl installed</li>
+                            <li>Helm 3.x installed</li>
+                        </ul>
+
+                        <h3>Step 1: Set Up Environment Variables</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Set Azure variables
+export RESOURCE_GROUP="composio-rg"
+export LOCATION="eastus"
+export CLUSTER_NAME="composio-aks-cluster"
+export ACR_NAME="composioacr"
+
+# Login to Azure
+az login
+az account set --subscription "Your-Subscription-Name"</code></pre>
+                        </div>
+
+                        <h3>Step 2: Create Resource Group</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create resource group
+az group create \
+    --name $RESOURCE_GROUP \
+    --location $LOCATION</code></pre>
+                        </div>
+
+                        <h3>Step 3: Create AKS Cluster</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create AKS cluster
+az aks create \
+    --resource-group $RESOURCE_GROUP \
+    --name $CLUSTER_NAME \
+    --node-count 3 \
+    --node-vm-size Standard_D8s_v3 \
+    --enable-managed-identity \
+    --enable-addons monitoring \
+    --enable-cluster-autoscaler \
+    --min-count 3 \
+    --max-count 10 \
+    --generate-ssh-keys
+
+# Get credentials
+az aks get-credentials \
+    --resource-group $RESOURCE_GROUP \
+    --name $CLUSTER_NAME</code></pre>
+                        </div>
+
+                        <h3>Step 4: Create Azure Database for PostgreSQL</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create PostgreSQL server
+az postgres flexible-server create \
+    --resource-group $RESOURCE_GROUP \
+    --name composio-postgres \
+    --location $LOCATION \
+    --admin-user adminuser \
+    --admin-password "YourSecurePassword123!" \
+    --sku-name Standard_D4s_v3 \
+    --tier GeneralPurpose \
+    --storage-size 128 \
+    --version 15
+
+# Create database
+az postgres flexible-server db create \
+    --resource-group $RESOURCE_GROUP \
+    --server-name composio-postgres \
+    --database-name composio
+
+# Get connection string
+export POSTGRES_HOST=$(az postgres flexible-server show \
+    --resource-group $RESOURCE_GROUP \
+    --name composio-postgres \
+    --query "fullyQualifiedDomainName" -o tsv)
+
+export POSTGRES_URL="postgresql://adminuser:YourSecurePassword123!@${POSTGRES_HOST}:5432/composio?sslmode=require"</code></pre>
+                        </div>
+
+                        <h3>Step 5: Create Azure Cache for Redis (Optional)</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Create Redis cache
+az redis create \
+    --resource-group $RESOURCE_GROUP \
+    --name composio-redis \
+    --location $LOCATION \
+    --sku Standard \
+    --vm-size c1
+
+# Get Redis connection info
+export REDIS_HOST=$(az redis show \
+    --resource-group $RESOURCE_GROUP \
+    --name composio-redis \
+    --query "hostName" -o tsv)
+
+export REDIS_KEY=$(az redis list-keys \
+    --resource-group $RESOURCE_GROUP \
+    --name composio-redis \
+    --query "primaryKey" -o tsv)
+
+export REDIS_URL="redis://:${REDIS_KEY}@${REDIS_HOST}:6380/0?ssl=true"</code></pre>
+                        </div>
+
+                        <h3>Step 6: Install Knative on AKS</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Install Knative Serving
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml
+
+# Install Kourier
+kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml
+
+# Configure Kourier
+kubectl patch configmap/config-network \
+    --namespace knative-serving \
+    --type merge \
+    --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'</code></pre>
+                        </div>
+
+                        <h3>Step 7: Configure Secrets & Deploy</h3>
+                        <div class="code-block">
+                            <pre><code class="language-bash"># Set secrets
+export POSTGRES_URL="postgresql://adminuser:YourSecurePassword123!@${POSTGRES_HOST}:5432/composio?sslmode=require"
+export REDIS_URL="redis://:${REDIS_KEY}@${REDIS_HOST}:6380/0?ssl=true"
+
+./secret-setup.sh -r composio -n composio
+
+# Deploy Composio
+helm install composio ./composio \
+    --create-namespace \
+    --namespace composio \
+    --set namespace.name=composio \
+    --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
+    --debug</code></pre>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>AKS Tips:</strong>
+                            <ul>
+                                <li>Use Azure Monitor for container insights</li>
+                                <li>Enable Azure Active Directory integration for RBAC</li>
+                                <li>Use Azure Key Vault for secrets management</li>
+                                <li>Consider using Azure Application Gateway for ingress</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comparison-section">
+                    <h2><i class="fas fa-balance-scale"></i> Cloud Provider Comparison</h2>
+
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>GKE</th>
+                                <th>EKS</th>
+                                <th>AKS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Managed Control Plane</td>
+                                <td><i class="fas fa-check text-success"></i> Yes</td>
+                                <td><i class="fas fa-check text-success"></i> Yes</td>
+                                <td><i class="fas fa-check text-success"></i> Yes</td>
+                            </tr>
+                            <tr>
+                                <td>Autopilot Mode</td>
+                                <td><i class="fas fa-check text-success"></i> Yes</td>
+                                <td><i class="fas fa-times text-danger"></i> No</td>
+                                <td><i class="fas fa-times text-danger"></i> No</td>
+                            </tr>
+                            <tr>
+                                <td>Integrated Database</td>
+                                <td>Cloud SQL</td>
+                                <td>RDS</td>
+                                <td>Azure Database</td>
+                            </tr>
+                            <tr>
+                                <td>Integrated Redis</td>
+                                <td>Memorystore</td>
+                                <td>ElastiCache</td>
+                                <td>Azure Cache</td>
+                            </tr>
+                            <tr>
+                                <td>Native Monitoring</td>
+                                <td>Cloud Monitoring</td>
+                                <td>CloudWatch</td>
+                                <td>Azure Monitor</td>
+                            </tr>
+                            <tr>
+                                <td>Setup Complexity</td>
+                                <td>Low</td>
+                                <td>Medium</td>
+                                <td>Medium</td>
+                            </tr>
+                            <tr>
+                                <td>Cost (Relative)</td>
+                                <td>$$</td>
+                                <td>$$</td>
+                                <td>$$</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="guides.html">Cloud Provider Guides</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="changelog.html">Changelog</a></li>
+                        <li><a href="load-tests.html">Load Tests</a></li>
+                        <li><a href="https://github.com/composio/helm-charts">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul>
+                        <li><a href="https://discord.gg/composio">Discord Community</a></li>
+                        <li><a href="https://docs.composio.dev">Composio Docs</a></li>
+                        <li><a href="mailto:support@composio.dev">Email Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Composio. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="assets/script.js"></script>
+</body>
+</html>

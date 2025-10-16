@@ -1,9 +1,13 @@
 [![Helm Chart](https://img.shields.io/badge/Helm-Chart-0f1689?logo=helm)](https://helm.sh/)
+[![Documentation](https://img.shields.io/badge/Docs-Online-blue)](https://onprem.composio.dev)
+
 # Composio Helm Charts
 
-https://composio.dev 
+https://composio.dev
 
-Production-ready Helm charts to deploy Composio on any Kubernetes cluster. 
+Production-ready Helm charts to deploy Composio on any Kubernetes cluster.
+
+**📖 [Complete Documentation](https://onprem.composio.dev)** | [Architecture](https://onprem.composio.dev/architecture.html) | [Configuration](https://onprem.composio.dev/configuration.html) | [Cloud Guides](https://onprem.composio.dev/guides.html) | [Troubleshooting](https://onprem.composio.dev/troubleshooting.html) 
 
 
 ## 📋 Prerequisites
@@ -12,6 +16,8 @@ Production-ready Helm charts to deploy Composio on any Kubernetes cluster.
 - `kubectl` configured for your cluster
 - External PostgreSQL database
 - AWS ECR access (or equivalent container registry)
+
+> **Detailed guides available**: See our [cloud provider guides](https://onprem.composio.dev/guides.html) for GKE, EKS, and AKS specific setup instructions.
 
 
 ## 🚀 Installation Steps
@@ -95,6 +101,8 @@ helm upgrade composio ./composio -n composio --debug
 
 ## ⚙️ Configuration Options
 
+> **Full configuration reference**: See the [complete configuration guide](https://onprem.composio.dev/configuration.html) for detailed parameter documentation.
+
 ### External Dependencies
 
 | Parameter | Description | Required |
@@ -160,6 +168,8 @@ kubectl get secret composio-secrets -n composio -o yaml
 ```
 
 ## 🛠️ Troubleshooting
+
+> **Comprehensive troubleshooting guide**: Visit [troubleshooting page](https://onprem.composio.dev/troubleshooting.html) for detailed solutions.
 
 ### Common Issues
 
@@ -279,6 +289,11 @@ kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/com
 
 ### 📚 Documentation
 
+- **Documentation Website**: https://onprem.composio.dev
+- **Architecture Guide**: https://onprem.composio.dev/architecture.html
+- **Configuration Reference**: https://onprem.composio.dev/configuration.html
+- **Cloud Provider Guides**: https://onprem.composio.dev/guides.html
+- **Troubleshooting**: https://onprem.composio.dev/troubleshooting.html
 - **Composio Docs**: https://docs.composio.dev
 - **GitHub**: https://github.com/composio/helm-charts
 - **Support**: https://discord.gg/composio

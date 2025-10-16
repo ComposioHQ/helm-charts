@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - Composio Helm Charts</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <i class="fas fa-cube"></i>
+                <span>Composio Helm Charts</span>
+            </a>
+            <div class="nav-menu">
+                <a href="index.html#quickstart" class="nav-link">Quick Start</a>
+                <a href="architecture.html" class="nav-link active">Architecture</a>
+                <a href="configuration.html" class="nav-link">Configuration</a>
+                <a href="guides.html" class="nav-link">Guides</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+                <a href="changelog.html" class="nav-link">Changelog</a>
+                <a href="load-tests.html" class="nav-link">Load Tests</a>
+            </div>
+            <button class="mobile-nav-toggle" aria-label="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <div class="mobile-nav-menu">
+            <a href="index.html#quickstart" class="nav-link">Quick Start</a>
+            <a href="architecture.html" class="nav-link active">Architecture</a>
+            <a href="configuration.html" class="nav-link">Configuration</a>
+            <a href="guides.html" class="nav-link">Guides</a>
+            <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            <a href="changelog.html" class="nav-link">Changelog</a>
+            <a href="load-tests.html" class="nav-link">Load Tests</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="section">
+            <div class="container">
+                <h1><i class="fas fa-sitemap"></i> Architecture Overview</h1>
+                <p class="subtitle">Understanding the Composio Helm Charts deployment architecture</p>
+
+                <div class="architecture-diagram">
+                    <h2><i class="fas fa-diagram-project"></i> System Components</h2>
+                    <div class="architecture-overview">
+                        <pre class="diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│                         Kubernetes Cluster                       │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                  Composio Namespace                      │   │
+│  │                                                           │   │
+│  │  ┌──────────────┐         ┌──────────────┐              │   │
+│  │  │   Apollo     │◄────────┤  PostgreSQL  │              │   │
+│  │  │   (API)      │         │  (External)  │              │   │
+│  │  │  Port: 9900  │         └──────────────┘              │   │
+│  │  └───────┬──────┘                                        │   │
+│  │          │                                               │   │
+│  │          │  ┌──────────────┐         ┌──────────────┐  │   │
+│  │          ├──┤   Thermos    │◄────────┤    Redis     │  │   │
+│  │          │  │ (Background) │         │ (Optional)   │  │   │
+│  │          │  │  Port: 8180  │         └──────────────┘  │   │
+│  │          │  └──────────────┘                            │   │
+│  │          │                                               │   │
+│  │          │  ┌──────────────┐                            │   │
+│  │          └──┤   Mercury    │  (Knative Service)        │   │
+│  │             │    (MCP)     │  Auto-scaling: 1-10       │   │
+│  │             │  Port: 8080  │                            │   │
+│  │             └──────────────┘                            │   │
+│  │                                                           │   │
+│  │  ┌──────────────┐         ┌──────────────┐              │   │
+│  │  │    Minio     │         │   Temporal   │              │   │
+│  │  │  (Storage)   │         │  (Workflow)  │              │   │
+│  │  │  Port: 9000  │         │  Port: 7233  │              │   │
+│  │  └──────────────┘         └──────────────┘              │   │
+│  │                                                           │   │
+│  │  ┌──────────────────────────────────────────────────┐  │   │
+│  │  │      OpenTelemetry Collector (Observability)     │  │   │
+│  │  │      Exports: Google Cloud Monitoring/Trace      │  │   │
+│  │  └──────────────────────────────────────────────────┘  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              Knative Serving Namespace                   │   │
+│  │  ┌──────────────────────────────────────────────────┐  │   │
+│  │  │  Knative Controller, Webhook, Activator, HPA     │  │   │
+│  │  │  Kourier Ingress Controller                       │  │   │
+│  │  └──────────────────────────────────────────────────┘  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                        </pre>
+                    </div>
+                </div>
+
+                <div class="components-grid">
+                    <h2><i class="fas fa-cubes"></i> Core Services</h2>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-rocket"></i>
+                            <h3>Apollo</h3>
+                            <span class="component-badge">API Service</span>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>Purpose:</strong> Main API server for Composio platform</p>
+                            <p><strong>Port:</strong> 9900 (NodePort: 30900)</p>
+                            <p><strong>Replicas:</strong> 2 (default)</p>
+                            <p><strong>Resources:</strong> 5Gi memory, 1 CPU</p>
+                            <p><strong>Template:</strong> <code>composio/templates/apollo.yaml:1</code></p>
+                            <ul class="component-features">
+                                <li>RESTful API endpoints</li>
+                                <li>PostgreSQL database integration</li>
+                                <li>Auto-generated admin tokens</li>
+                                <li>Health checks and readiness probes</li>
+                                <li>Optional HPA for auto-scaling</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-fire"></i>
+                            <h3>Thermos</h3>
+                            <span class="component-badge">Background Service</span>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>Purpose:</strong> Background processing and task execution</p>
+                            <p><strong>Port:</strong> 8180 (ClusterIP)</p>
+                            <p><strong>Replicas:</strong> 2 (default)</p>
+                            <p><strong>Resources:</strong> 4Gi memory, 2 CPU</p>
+                            <p><strong>Template:</strong> <code>composio/templates/thermos.yaml:1</code></p>
+                            <ul class="component-features">
+                                <li>Asynchronous task processing</li>
+                                <li>Temporal workflow integration</li>
+                                <li>Redis queue management</li>
+                                <li>Database initialization jobs</li>
+                                <li>Configurable scaling policies</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-bolt"></i>
+                            <h3>Mercury</h3>
+                            <span class="component-badge knative">Knative Service</span>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>Purpose:</strong> Model Context Protocol (MCP) endpoint</p>
+                            <p><strong>Port:</strong> 8080 (ClusterIP)</p>
+                            <p><strong>Replicas:</strong> Auto-scaling (1-10)</p>
+                            <p><strong>Resources:</strong> 2Gi memory, 1 CPU</p>
+                            <p><strong>Template:</strong> <code>composio/templates/mercury.yaml:1</code></p>
+                            <ul class="component-features">
+                                <li>Knative-based serverless scaling</li>
+                                <li>Scale-to-zero capabilities</li>
+                                <li>Request-based auto-scaling</li>
+                                <li>Configurable concurrency limits</li>
+                                <li>300-second request timeout</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-database"></i>
+                            <h3>Minio</h3>
+                            <span class="component-badge">Storage Service</span>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>Purpose:</strong> S3-compatible object storage</p>
+                            <p><strong>Port:</strong> 9000 (ClusterIP)</p>
+                            <p><strong>Replicas:</strong> 1</p>
+                            <p><strong>Resources:</strong> 4Gi memory, 2 CPU</p>
+                            <p><strong>Template:</strong> <code>composio/templates/minio.yaml:1</code></p>
+                            <ul class="component-features">
+                                <li>S3-compatible API</li>
+                                <li>Persistent volume storage (8Gi)</li>
+                                <li>Tool and function storage</li>
+                                <li>Health and readiness probes</li>
+                                <li>Admin credentials management</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-clock"></i>
+                            <h3>Temporal</h3>
+                            <span class="component-badge">Workflow Engine</span>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>Purpose:</strong> Distributed workflow orchestration</p>
+                            <p><strong>Port:</strong> 7233 (Frontend), 8080 (Web UI)</p>
+                            <p><strong>Replicas:</strong> 2 (server)</p>
+                            <p><strong>Resources:</strong> Default Temporal settings</p>
+                            <p><strong>Chart:</strong> Dependency (temporal-0.64.0)</p>
+                            <ul class="component-features">
+                                <li>Workflow and activity orchestration</li>
+                                <li>PostgreSQL persistence</li>
+                                <li>Web UI for monitoring</li>
+                                <li>Admin tools included</li>
+                                <li>Namespace management</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-chart-line"></i>
+                            <h3>OpenTelemetry Collector</h3>
+                            <span class="component-badge">Observability</span>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>Purpose:</strong> Metrics and trace collection</p>
+                            <p><strong>Ports:</strong> 4317 (gRPC), 4318 (HTTP)</p>
+                            <p><strong>Replicas:</strong> 1</p>
+                            <p><strong>Resources:</strong> 512Mi memory, 500m CPU</p>
+                            <p><strong>Template:</strong> <code>composio/templates/otel-collector.yaml:1</code></p>
+                            <ul class="component-features">
+                                <li>OTLP, Jaeger protocol support</li>
+                                <li>Google Cloud Monitoring export</li>
+                                <li>Google Cloud Trace export</li>
+                                <li>Prometheus metrics endpoint</li>
+                                <li>Batch processing and memory limits</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="architecture-patterns">
+                    <h2><i class="fas fa-network-wired"></i> Communication Patterns</h2>
+
+                    <div class="pattern-card">
+                        <h3><i class="fas fa-arrow-right"></i> Service-to-Service Communication</h3>
+                        <ul>
+                            <li><strong>Apollo → PostgreSQL:</strong> Direct database connection via secret-managed credentials</li>
+                            <li><strong>Apollo → Redis:</strong> Optional external or internal Redis for caching</li>
+                            <li><strong>Apollo → Minio:</strong> Object storage for tools and Lambda functions</li>
+                            <li><strong>Thermos → Temporal:</strong> Workflow execution and task management</li>
+                            <li><strong>Mercury → Apollo:</strong> API calls for MCP functionality</li>
+                            <li><strong>All Services → OTEL Collector:</strong> Telemetry data export</li>
+                        </ul>
+                    </div>
+
+                    <div class="pattern-card">
+                        <h3><i class="fas fa-shield-alt"></i> Security Architecture</h3>
+                        <ul>
+                            <li><strong>Secrets Management:</strong> Kubernetes Secrets with auto-generated values</li>
+                            <li><strong>Non-root Containers:</strong> All services run as non-root users</li>
+                            <li><strong>Security Contexts:</strong> Drop all capabilities, read-only root filesystem where possible</li>
+                            <li><strong>Network Policies:</strong> Can be configured per environment</li>
+                            <li><strong>RBAC:</strong> Service accounts with minimal required permissions</li>
+                            <li><strong>Image Pull Secrets:</strong> AWS ECR authentication for private registries</li>
+                        </ul>
+                    </div>
+
+                    <div class="pattern-card">
+                        <h3><i class="fas fa-sync-alt"></i> Data Flow</h3>
+                        <ul>
+                            <li><strong>Request Flow:</strong> User → Apollo API → PostgreSQL → Response</li>
+                            <li><strong>Background Tasks:</strong> Apollo → Temporal → Thermos → Task Execution</li>
+                            <li><strong>MCP Requests:</strong> Client → Mercury (via Knative) → Apollo → Response</li>
+                            <li><strong>File Storage:</strong> Service → Minio → S3-compatible storage</li>
+                            <li><strong>Observability:</strong> All Services → OTEL Collector → Google Cloud</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependencies-section">
+                    <h2><i class="fas fa-puzzle-piece"></i> External Dependencies</h2>
+
+                    <div class="dependency-grid">
+                        <div class="dependency-card required">
+                            <h3><i class="fas fa-check-circle"></i> Required</h3>
+                            <ul>
+                                <li><strong>PostgreSQL:</strong> External database for all services</li>
+                                <li><strong>AWS ECR:</strong> Container registry authentication</li>
+                                <li><strong>Kubernetes 1.28+:</strong> Container orchestration platform</li>
+                                <li><strong>Knative Serving:</strong> Serverless runtime for Mercury</li>
+                            </ul>
+                        </div>
+
+                        <div class="dependency-card optional">
+                            <h3><i class="fas fa-info-circle"></i> Optional</h3>
+                            <ul>
+                                <li><strong>Redis:</strong> Can use external or bundled Redis (Bitnami)</li>
+                                <li><strong>OpenAI API:</strong> For AI-powered features</li>
+                                <li><strong>Google Cloud:</strong> For observability exports</li>
+                                <li><strong>Load Balancer:</strong> For production ingress</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="scaling-section">
+                    <h2><i class="fas fa-expand-arrows-alt"></i> Scaling Strategy</h2>
+
+                    <table class="scaling-table">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Scaling Type</th>
+                                <th>Min/Max Replicas</th>
+                                <th>Trigger</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Apollo</td>
+                                <td>HPA (Optional)</td>
+                                <td>2 / 10</td>
+                                <td>CPU: 70%, Memory: 80%</td>
+                            </tr>
+                            <tr>
+                                <td>Thermos</td>
+                                <td>HPA (Optional)</td>
+                                <td>2 / 10</td>
+                                <td>CPU: 70%, Memory: 80%</td>
+                            </tr>
+                            <tr>
+                                <td>Mercury</td>
+                                <td>Knative Auto-scaling</td>
+                                <td>1 / 10</td>
+                                <td>CPU: 80%, Concurrency</td>
+                            </tr>
+                            <tr>
+                                <td>Minio</td>
+                                <td>Manual</td>
+                                <td>1</td>
+                                <td>N/A (StatefulSet)</td>
+                            </tr>
+                            <tr>
+                                <td>Temporal</td>
+                                <td>Manual</td>
+                                <td>2</td>
+                                <td>N/A</td>
+                            </tr>
+                            <tr>
+                                <td>OTEL Collector</td>
+                                <td>Manual</td>
+                                <td>1</td>
+                                <td>N/A</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="deployment-modes">
+                    <h2><i class="fas fa-layer-group"></i> Deployment Modes</h2>
+
+                    <div class="mode-card">
+                        <h3><i class="fas fa-laptop-code"></i> Development Mode</h3>
+                        <ul>
+                            <li>Uses values.yaml defaults</li>
+                            <li>Minimal resource requests</li>
+                            <li>Single replica for most services</li>
+                            <li>Includes debug utilities</li>
+                            <li>Local port-forwarding for access</li>
+                        </ul>
+                    </div>
+
+                    <div class="mode-card">
+                        <h3><i class="fas fa-server"></i> Production Mode</h3>
+                        <ul>
+                            <li>Uses values-override.yaml</li>
+                            <li>High-availability configuration</li>
+                            <li>Multiple replicas with HPA</li>
+                            <li>External PostgreSQL and Redis</li>
+                            <li>Load balancer ingress</li>
+                            <li>Enhanced monitoring and alerting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="architecture.html">Architecture</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                        <li><a href="guides.html">Cloud Provider Guides</a></li>
+                        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="changelog.html">Changelog</a></li>
+                        <li><a href="load-tests.html">Load Tests</a></li>
+                        <li><a href="https://github.com/composio/helm-charts">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul>
+                        <li><a href="https://discord.gg/composio">Discord Community</a></li>
+                        <li><a href="https://docs.composio.dev">Composio Docs</a></li>
+                        <li><a href="mailto:support@composio.dev">Email Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Composio. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="assets/script.js"></script>
+</body>
+</html>
