@@ -73,7 +73,7 @@ apollo:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "rc-161001"
+    tag: "0e07c93"
     pullPolicy: Always
   
   # Apollo DB init container configuration
@@ -81,7 +81,7 @@ apollo:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init
-      tag: "rc-161001"
+      tag: "0e07c93"
       pullPolicy: Always
   
   service:
@@ -125,7 +125,7 @@ thermos:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "rc-161001"
+    tag: "0e07c93"
     pullPolicy: Always
   
   # Thermos DB init container configuration
@@ -133,7 +133,7 @@ thermos:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init
-      tag: "rc-161001"
+      tag: "0e07c93"
       pullPolicy: Always
   
   service:
@@ -313,12 +313,19 @@ otel:
   exporter:
     otlp:
       endpoint: "composio-otel-collector:4317"  # gRPC endpoint without http://
+      tracesEndpoint: "composio-otel-collector:4317"  # Traces endpoint
+      metricsEndpoint: "composio-otel-collector:4317"  # Metrics endpoint
       insecure: true
+      headers: ""  # Optional headers for authentication
   traces:
     enabled: true
+    sampler: "always_on"  # Sampling strategy: always_on, always_off, traceidratio
+    samplerArg: 1.0  # Sampling ratio (0.0 to 1.0)
   metrics:
     enabled: true
     exportInterval: 60000  # milliseconds
+  logs:
+    enabled: false  # Enable if you want to collect logs via OTEL
   environment: "development"
   # Service-specific configurations
   apollo:
