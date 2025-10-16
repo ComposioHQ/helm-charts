@@ -19,6 +19,9 @@ data:
     exporters:
       {{- toYaml .Values.otel.collector.config.exporters | nindent 6 }}
     
+    extensions:
+      {{- toYaml .Values.otel.collector.config.extensions | nindent 6 }}
+    
     service:
       {{- toYaml .Values.otel.collector.config.service | nindent 6 }}
 ---
