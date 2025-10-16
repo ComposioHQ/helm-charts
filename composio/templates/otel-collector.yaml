@@ -1,4 +1,19 @@
 {{- if and .Values.otel.enabled .Values.otel.collector.enabled }}
+{{- if .Values.otel.collector.googleCloud.serviceAccount.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.otel.collector.googleCloud.serviceAccount.name }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+  {{- if .Values.otel.collector.googleCloud.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml .Values.otel.collector.googleCloud.serviceAccount.annotations | nindent 4 }}
+  {{- end }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -55,6 +70,9 @@ spec:
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if .Values.otel.collector.googleCloud.serviceAccount.create }}
+      serviceAccountName: {{ .Release.Name }}-{{ .Values.otel.collector.googleCloud.serviceAccount.name }}
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

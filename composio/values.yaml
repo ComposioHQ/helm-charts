@@ -73,7 +73,7 @@ apollo:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "latest"
+    tag: "rc-161001"
     pullPolicy: Always
   
   # Apollo DB init container configuration
@@ -81,7 +81,7 @@ apollo:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init
-      tag: "latest"
+      tag: "rc-161001"
       pullPolicy: Always
   
   service:
@@ -125,7 +125,7 @@ thermos:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "latest"
+    tag: "rc-161001"
     pullPolicy: Always
   
   # Thermos DB init container configuration
@@ -133,7 +133,7 @@ thermos:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init
-      tag: "latest"
+      tag: "rc-161001"
       pullPolicy: Always
   
   service:
@@ -363,21 +363,32 @@ otel:
         memory: "1Gi"
         cpu: "1000m"
     
+    # Google Cloud configuration
+    googleCloud:
+      enabled: true
+      projectId: "self-host-kubernetes"
+      serviceAccount:
+        create: true
+        name: "otel-collector"
+        annotations:
+          iam.gke.io/gcp-service-account: "otel-collector@self-host-kubernetes.iam.gserviceaccount.com"
+    
     # Collector configuration
     config:
-      # Exporters configuration - modify these to send to your observability backend
+      # Exporters configuration - send to Google Cloud
       exporters:
-        # Console exporter for debugging (disable in production)
+        # Console exporter for debugging
         debug:
           verbosity: basic
         # Prometheus exporter for metrics
         prometheus:
           endpoint: "0.0.0.0:8889"
-        # OTLP exporter - configure this to send to your backend
-        # otlp:
-        #   endpoint: "https://your-backend:4317"
-        #   headers:
-        #     api-key: "your-api-key"
+        # Google Cloud exporter for metrics and traces
+        googlecloud:
+          project: "self-host-kubernetes"
+          metric:
+            prefix: "composio/"
+          trace: {}
       
       # Processors for data transformation
       processors:
@@ -386,6 +397,7 @@ otel:
           send_batch_size: 1024
         memory_limiter:
           limit_mib: 512
+          check_interval: 1s
       
       # Receivers to collect telemetry data
       receivers:
@@ -416,11 +428,11 @@ otel:
           traces:
             receivers: [otlp, jaeger]
             processors: [memory_limiter, batch]
-            exporters: [debug]  # Add your backend exporters here
+            exporters: [debug, googlecloud]  # Export to Google Cloud Trace
           metrics:
             receivers: [otlp]
             processors: [memory_limiter, batch]
-            exporters: [debug, prometheus]  # Add your backend exporters here
+            exporters: [debug, prometheus, googlecloud]  # Export to Google Cloud Monitoring
 
 # AWS configuration - disabled for development
 aws:
@@ -443,7 +455,7 @@ minio:
   
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
-    tag: "latest"
+    tag: "rc-161001"
     pullPolicy: Always
   
   service:
@@ -490,7 +502,7 @@ mercury:
   replicaCount: 1
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
-    tag: "latest"
+    tag: "rc-161001"
     pullPolicy: Always
   
   # Let the container use its default entrypoint
