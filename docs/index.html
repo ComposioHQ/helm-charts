@@ -158,51 +158,270 @@ kubectl get pods -n knative-serving</code></pre>
             </div>
         </section>
 
-        <section class="section features">
+        <section class="section core-services">
             <div class="container">
-                <h2><i class="fas fa-star"></i> Key Features</h2>
-                <div class="features-grid">
-                    <div class="feature-card animate-on-scroll">
-                        <div class="feature-icon">
-                            <i class="fas fa-server"></i>
+                <h2><i class="fas fa-cogs"></i> Core Services</h2>
+                <p class="section-subtitle">Composio's microservices architecture with enterprise-grade reliability</p>
+                
+                <div class="services-architecture">
+                    <div class="service-layer">
+                        <h3 class="layer-title">API Layer</h3>
+                        <div class="services-grid">
+                            <div class="service-card apollo">
+                                <div class="service-header">
+                                    <div class="service-icon">
+                                        <i class="fas fa-rocket"></i>
+                                    </div>
+                                    <div class="service-info">
+                                        <h4>Apollo API</h4>
+                                        <span class="service-version">v1.0</span>
+                                    </div>
+                                    <div class="service-status">
+                                        <span class="status-dot running"></span>
+                                        <span class="status-text">Running</span>
+                                    </div>
+                                </div>
+                                <p class="service-description">Main Composio API service handling all tool integrations and agent requests</p>
+                                <div class="service-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Port:</span>
+                                        <span class="metric-value">9900</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Type:</span>
+                                        <span class="metric-value">NodePort</span>
+                                    </div>
+                                </div>
+                                <div class="service-actions">
+                                    <button class="action-btn primary" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-apollo 8080:9900')">
+                                        <i class="fas fa-external-link-alt"></i> Access
+                                    </button>
+                                    <button class="action-btn secondary" onclick="showServiceDetails('apollo')">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="service-card mcp">
+                                <div class="service-header">
+                                    <div class="service-icon">
+                                        <i class="fas fa-cogs"></i>
+                                    </div>
+                                    <div class="service-info">
+                                        <h4>MCP Portal</h4>
+                                        <span class="service-version">v1.0</span>
+                                    </div>
+                                    <div class="service-status">
+                                        <span class="status-dot running"></span>
+                                        <span class="status-text">Running</span>
+                                    </div>
+                                </div>
+                                <p class="service-description">Management and Control Portal for monitoring and configuring Composio services</p>
+                                <div class="service-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Port:</span>
+                                        <span class="metric-value">3000</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Type:</span>
+                                        <span class="metric-value">ClusterIP</span>
+                                    </div>
+                                </div>
+                                <div class="service-actions">
+                                    <button class="action-btn primary" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-mcp 8081:3000')">
+                                        <i class="fas fa-external-link-alt"></i> Access
+                                    </button>
+                                    <button class="action-btn secondary" onclick="showServiceDetails('mcp')">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <h3>Production Ready</h3>
-                        <p>Optimized for production workloads with proper resource limits, health checks, and monitoring.</p>
                     </div>
-                    <div class="feature-card animate-on-scroll">
-                        <div class="feature-icon">
-                            <i class="fas fa-expand-arrows-alt"></i>
+
+                    <div class="service-layer">
+                        <h3 class="layer-title">Processing Layer</h3>
+                        <div class="services-grid">
+                            <div class="service-card thermos">
+                                <div class="service-header">
+                                    <div class="service-icon">
+                                        <i class="fas fa-fire"></i>
+                                    </div>
+                                    <div class="service-info">
+                                        <h4>Thermos</h4>
+                                        <span class="service-version">v1.0</span>
+                                    </div>
+                                    <div class="service-status">
+                                        <span class="status-dot running"></span>
+                                        <span class="status-text">Running</span>
+                                    </div>
+                                </div>
+                                <p class="service-description">Workflow engine for orchestrating complex multi-step tool executions</p>
+                                <div class="service-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Workflows:</span>
+                                        <span class="metric-value">Active</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Engine:</span>
+                                        <span class="metric-value">Temporal</span>
+                                    </div>
+                                </div>
+                                <div class="service-actions">
+                                    <button class="action-btn primary" onclick="showServiceDetails('thermos')">
+                                        <i class="fas fa-play"></i> Monitor
+                                    </button>
+                                    <button class="action-btn secondary" onclick="showServiceDetails('thermos')">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="service-card mercury">
+                                <div class="service-header">
+                                    <div class="service-icon">
+                                        <i class="fas fa-bolt"></i>
+                                    </div>
+                                    <div class="service-info">
+                                        <h4>Mercury</h4>
+                                        <span class="service-version">v1.0</span>
+                                    </div>
+                                    <div class="service-status">
+                                        <span class="status-dot running"></span>
+                                        <span class="status-text">Running</span>
+                                    </div>
+                                </div>
+                                <p class="service-description">Serverless function service for on-demand tool execution and scaling</p>
+                                <div class="service-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Scaling:</span>
+                                        <span class="metric-value">Auto</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Runtime:</span>
+                                        <span class="metric-value">Knative</span>
+                                    </div>
+                                </div>
+                                <div class="service-actions">
+                                    <button class="action-btn primary" onclick="showServiceDetails('mercury')">
+                                        <i class="fas fa-chart-line"></i> Metrics
+                                    </button>
+                                    <button class="action-btn secondary" onclick="showServiceDetails('mercury')">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <h3>Auto Scaling</h3>
-                        <p>Built-in Knative auto-scaling based on CPU utilization and request concurrency.</p>
                     </div>
-                    <div class="feature-card animate-on-scroll">
-                        <div class="feature-icon">
-                            <i class="fas fa-shield-alt"></i>
+
+                    <div class="service-layer">
+                        <h3 class="layer-title">Infrastructure Layer</h3>
+                        <div class="services-grid">
+                            <div class="service-card temporal">
+                                <div class="service-header">
+                                    <div class="service-icon">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <div class="service-info">
+                                        <h4>Temporal</h4>
+                                        <span class="service-version">v0.64.0</span>
+                                    </div>
+                                    <div class="service-status">
+                                        <span class="status-dot running"></span>
+                                        <span class="status-text">Running</span>
+                                    </div>
+                                </div>
+                                <p class="service-description">Workflow orchestration and state management for reliable task execution</p>
+                                <div class="service-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">UI Port:</span>
+                                        <span class="metric-value">8080</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Type:</span>
+                                        <span class="metric-value">ClusterIP</span>
+                                    </div>
+                                </div>
+                                <div class="service-actions">
+                                    <button class="action-btn primary" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-temporal-web 8082:8080')">
+                                        <i class="fas fa-external-link-alt"></i> Access UI
+                                    </button>
+                                    <button class="action-btn secondary" onclick="showServiceDetails('temporal')">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="service-card minio">
+                                <div class="service-header">
+                                    <div class="service-icon">
+                                        <i class="fas fa-database"></i>
+                                    </div>
+                                    <div class="service-info">
+                                        <h4>MinIO</h4>
+                                        <span class="service-version">v17.11.3</span>
+                                    </div>
+                                    <div class="service-status">
+                                        <span class="status-dot running"></span>
+                                        <span class="status-text">Running</span>
+                                    </div>
+                                </div>
+                                <p class="service-description">Object storage for files, documents, and persistent data management</p>
+                                <div class="service-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Console:</span>
+                                        <span class="metric-value">9001</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">API:</span>
+                                        <span class="metric-value">9000</span>
+                                    </div>
+                                </div>
+                                <div class="service-actions">
+                                    <button class="action-btn primary" onclick="copyToClipboard('kubectl port-forward -n composio svc/composio-minio 8083:9001')">
+                                        <i class="fas fa-external-link-alt"></i> Console
+                                    </button>
+                                    <button class="action-btn secondary" onclick="showServiceDetails('minio')">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="service-card redis">
+                                <div class="service-header">
+                                    <div class="service-icon">
+                                        <i class="fas fa-memory"></i>
+                                    </div>
+                                    <div class="service-info">
+                                        <h4>Redis</h4>
+                                        <span class="service-version">v17.11.3</span>
+                                    </div>
+                                    <div class="service-status">
+                                        <span class="status-dot running"></span>
+                                        <span class="status-text">Running</span>
+                                    </div>
+                                </div>
+                                <p class="service-description">In-memory caching layer for improved performance and session management</p>
+                                <div class="service-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Port:</span>
+                                        <span class="metric-value">6379</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Type:</span>
+                                        <span class="metric-value">ClusterIP</span>
+                                    </div>
+                                </div>
+                                <div class="service-actions">
+                                    <button class="action-btn primary" onclick="showServiceDetails('redis')">
+                                        <i class="fas fa-chart-bar"></i> Monitor
+                                    </button>
+                                    <button class="action-btn secondary" onclick="showServiceDetails('redis')">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <h3>Security First</h3>
-                        <p>Non-root containers, security contexts, and proper secret management.</p>
-                    </div>
-                    <div class="feature-card animate-on-scroll">
-                        <div class="feature-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h3>Load Tested</h3>
-                        <p>Comprehensive load testing with detailed performance metrics and reports.</p>
-                    </div>
-                    <div class="feature-card animate-on-scroll">
-                        <div class="feature-icon">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <h3>External Dependencies</h3>
-                        <p>Support for external PostgreSQL, Redis, and other managed services.</p>
-                    </div>
-                    <div class="feature-card animate-on-scroll">
-                        <div class="feature-icon">
-                            <i class="fas fa-tools"></i>
-                        </div>
-                        <h3>Easy Configuration</h3>
-                        <p>Simple configuration through values.yaml with comprehensive documentation.</p>
                     </div>
                 </div>
             </div>

@@ -418,6 +418,185 @@ function copyToClipboard(text) {
     });
 }
 
+// Show service details modal
+function showServiceDetails(serviceName) {
+    const serviceDetails = {
+        'apollo': {
+            title: 'Apollo API Service',
+            description: 'Main Composio API service handling all tool integrations and agent requests',
+            details: {
+                'Port': '9900',
+                'Type': 'NodePort',
+                'Namespace': 'composio',
+                'Service': 'composio-apollo',
+                'Health Check': '/health',
+                'Metrics': '/metrics'
+            },
+            commands: [
+                'kubectl port-forward -n composio svc/composio-apollo 8080:9900',
+                'kubectl logs -n composio deployment/composio-apollo',
+                'kubectl describe svc composio-apollo -n composio'
+            ]
+        },
+        'mcp': {
+            title: 'MCP Portal Service',
+            description: 'Management and Control Portal for monitoring and configuring Composio services',
+            details: {
+                'Port': '3000',
+                'Type': 'ClusterIP',
+                'Namespace': 'composio',
+                'Service': 'composio-mcp',
+                'Health Check': '/health',
+                'Features': 'Dashboard, Monitoring, Configuration'
+            },
+            commands: [
+                'kubectl port-forward -n composio svc/composio-mcp 8081:3000',
+                'kubectl logs -n composio deployment/composio-mcp',
+                'kubectl describe svc composio-mcp -n composio'
+            ]
+        },
+        'thermos': {
+            title: 'Thermos Workflow Engine',
+            description: 'Workflow engine for orchestrating complex multi-step tool executions',
+            details: {
+                'Engine': 'Temporal',
+                'Namespace': 'composio',
+                'Service': 'composio-thermos',
+                'Workflows': 'Active',
+                'Scaling': 'Auto'
+            },
+            commands: [
+                'kubectl logs -n composio deployment/composio-thermos',
+                'kubectl describe deployment composio-thermos -n composio',
+                'kubectl get workflows -n composio'
+            ]
+        },
+        'mercury': {
+            title: 'Mercury Serverless Service',
+            description: 'Serverless function service for on-demand tool execution and scaling',
+            details: {
+                'Runtime': 'Knative',
+                'Scaling': 'Auto',
+                'Namespace': 'composio',
+                'Service': 'composio-mercury',
+                'Functions': 'On-demand'
+            },
+            commands: [
+                'kubectl logs -n composio deployment/composio-mercury',
+                'kubectl describe ksvc composio-mercury -n composio',
+                'kubectl get pods -n composio -l app=mercury'
+            ]
+        },
+        'temporal': {
+            title: 'Temporal Workflow Orchestration',
+            description: 'Workflow orchestration and state management for reliable task execution',
+            details: {
+                'UI Port': '8080',
+                'Type': 'ClusterIP',
+                'Namespace': 'composio',
+                'Service': 'composio-temporal-web',
+                'Version': '0.64.0'
+            },
+            commands: [
+                'kubectl port-forward -n composio svc/composio-temporal-web 8082:8080',
+                'kubectl logs -n composio deployment/composio-temporal-web',
+                'kubectl describe svc composio-temporal-web -n composio'
+            ]
+        },
+        'minio': {
+            title: 'MinIO Object Storage',
+            description: 'Object storage for files, documents, and persistent data management',
+            details: {
+                'Console Port': '9001',
+                'API Port': '9000',
+                'Namespace': 'composio',
+                'Service': 'composio-minio',
+                'Version': '17.11.3'
+            },
+            commands: [
+                'kubectl port-forward -n composio svc/composio-minio 8083:9001',
+                'kubectl logs -n composio deployment/composio-minio',
+                'kubectl describe svc composio-minio -n composio'
+            ]
+        },
+        'redis': {
+            title: 'Redis Cache Service',
+            description: 'In-memory caching layer for improved performance and session management',
+            details: {
+                'Port': '6379',
+                'Type': 'ClusterIP',
+                'Namespace': 'composio',
+                'Service': 'composio-redis',
+                'Version': '17.11.3'
+            },
+            commands: [
+                'kubectl logs -n composio deployment/composio-redis',
+                'kubectl describe svc composio-redis -n composio',
+                'kubectl exec -it deployment/composio-redis -n composio -- redis-cli'
+            ]
+        }
+    };
+    
+    const service = serviceDetails[serviceName];
+    if (!service) return;
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${service.title}</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="service-details-content">
+                    <p class="service-description">${service.description}</p>
+                    
+                    <div class="service-info-section">
+                        <h4>Service Information</h4>
+                        <div class="info-grid">
+                            ${Object.entries(service.details).map(([key, value]) => `
+                                <div class="info-item">
+                                    <span class="info-label">${key}:</span>
+                                    <span class="info-value">${value}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="service-commands-section">
+                        <h4>Useful Commands</h4>
+                        <div class="commands-list">
+                            ${service.commands.map(cmd => `
+                                <div class="command-item">
+                                    <code class="command-code">${cmd}</code>
+                                    <button class="copy-command-btn" onclick="copyToClipboard('${cmd}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close modal functionality
+    modal.querySelector('.modal-close').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
 // Show quick fix modal
 function showQuickFix(category) {
     const fixes = {
