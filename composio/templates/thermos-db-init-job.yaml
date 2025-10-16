@@ -1,0 +1,63 @@
+{{- if .Values.thermos.dbInit.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-thermos-db-init
+  labels:
+    app: thermos-db-init
+    release: {{ .Release.Name }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      name: {{ .Release.Name }}-thermos-db-init
+      labels:
+        app: thermos-db-init
+        release: {{ .Release.Name }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
+      containers:
+        - name: thermos-db-init
+          image: "{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
+          imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            # Thermos database URL
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-thermos-postgres-secret
+                  key: url
+            # Keep DATABASE_URL for backward compatibility with Atlas
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-thermos-postgres-secret
+                  key: url
+            - name: COMPOSIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-composio-api-key
+                  key: COMPOSIO_API_KEY
+            - name: ADMIN_EMAIL
+              value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+  backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
+  activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
+{{- end }}
