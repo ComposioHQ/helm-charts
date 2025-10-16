@@ -95,7 +95,7 @@ spec:
             failureThreshold: 3
           env:
             - name: GOMEMLIMIT
-              value: "{{ .Values.otel.collector.resources.limits.memory | default "1Gi" }}"
+              value: "1024MiB"
           resources:
             {{- toYaml .Values.otel.collector.resources | nindent 12 }}
           volumeMounts:
