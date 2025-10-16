@@ -99,137 +99,130 @@
                 <div class="components-grid">
                     <h2><i class="fas fa-cubes"></i> Core Services</h2>
 
-                    <div class="component-card">
-                        <div class="component-header">
-                            <i class="fas fa-rocket"></i>
-                            <h3>Apollo</h3>
-                            <span class="component-badge">API Service</span>
-                        </div>
-                        <div class="component-content">
-                            <p><strong>Purpose:</strong> Main API server for Composio platform</p>
-                            <p><strong>Port:</strong> 9900 (NodePort: 30900)</p>
-                            <p><strong>Replicas:</strong> 2 (default)</p>
-                            <p><strong>Resources:</strong> 5Gi memory, 1 CPU</p>
-                            <p><strong>Template:</strong> <code>composio/templates/apollo.yaml:1</code></p>
-                            <ul class="component-features">
-                                <li>RESTful API endpoints</li>
-                                <li>PostgreSQL database integration</li>
-                                <li>Auto-generated admin tokens</li>
-                                <li>Health checks and readiness probes</li>
-                                <li>Optional HPA for auto-scaling</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="component-card">
-                        <div class="component-header">
-                            <i class="fas fa-fire"></i>
-                            <h3>Thermos</h3>
-                            <span class="component-badge">Background Service</span>
-                        </div>
-                        <div class="component-content">
-                            <p><strong>Purpose:</strong> Background processing and task execution</p>
-                            <p><strong>Port:</strong> 8180 (ClusterIP)</p>
-                            <p><strong>Replicas:</strong> 2 (default)</p>
-                            <p><strong>Resources:</strong> 4Gi memory, 2 CPU</p>
-                            <p><strong>Template:</strong> <code>composio/templates/thermos.yaml:1</code></p>
-                            <ul class="component-features">
-                                <li>Asynchronous task processing</li>
-                                <li>Temporal workflow integration</li>
-                                <li>Redis queue management</li>
-                                <li>Database initialization jobs</li>
-                                <li>Configurable scaling policies</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="component-card">
-                        <div class="component-header">
-                            <i class="fas fa-bolt"></i>
-                            <h3>Mercury</h3>
-                            <span class="component-badge knative">Knative Service</span>
-                        </div>
-                        <div class="component-content">
-                            <p><strong>Purpose:</strong> Model Context Protocol (MCP) endpoint</p>
-                            <p><strong>Port:</strong> 8080 (ClusterIP)</p>
-                            <p><strong>Replicas:</strong> Auto-scaling (1-10)</p>
-                            <p><strong>Resources:</strong> 2Gi memory, 1 CPU</p>
-                            <p><strong>Template:</strong> <code>composio/templates/mercury.yaml:1</code></p>
-                            <ul class="component-features">
-                                <li>Knative-based serverless scaling</li>
-                                <li>Scale-to-zero capabilities</li>
-                                <li>Request-based auto-scaling</li>
-                                <li>Configurable concurrency limits</li>
-                                <li>300-second request timeout</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="component-card">
-                        <div class="component-header">
-                            <i class="fas fa-database"></i>
-                            <h3>Minio</h3>
-                            <span class="component-badge">Storage Service</span>
-                        </div>
-                        <div class="component-content">
-                            <p><strong>Purpose:</strong> S3-compatible object storage</p>
-                            <p><strong>Port:</strong> 9000 (ClusterIP)</p>
-                            <p><strong>Replicas:</strong> 1</p>
-                            <p><strong>Resources:</strong> 4Gi memory, 2 CPU</p>
-                            <p><strong>Template:</strong> <code>composio/templates/minio.yaml:1</code></p>
-                            <ul class="component-features">
-                                <li>S3-compatible API</li>
-                                <li>Persistent volume storage (8Gi)</li>
-                                <li>Tool and function storage</li>
-                                <li>Health and readiness probes</li>
-                                <li>Admin credentials management</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="component-card">
-                        <div class="component-header">
-                            <i class="fas fa-clock"></i>
-                            <h3>Temporal</h3>
-                            <span class="component-badge">Workflow Engine</span>
-                        </div>
-                        <div class="component-content">
-                            <p><strong>Purpose:</strong> Distributed workflow orchestration</p>
-                            <p><strong>Port:</strong> 7233 (Frontend), 8080 (Web UI)</p>
-                            <p><strong>Replicas:</strong> 2 (server)</p>
-                            <p><strong>Resources:</strong> Default Temporal settings</p>
-                            <p><strong>Chart:</strong> Dependency (temporal-0.64.0)</p>
-                            <ul class="component-features">
-                                <li>Workflow and activity orchestration</li>
-                                <li>PostgreSQL persistence</li>
-                                <li>Web UI for monitoring</li>
-                                <li>Admin tools included</li>
-                                <li>Namespace management</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="component-card">
-                        <div class="component-header">
-                            <i class="fas fa-chart-line"></i>
-                            <h3>OpenTelemetry Collector</h3>
-                            <span class="component-badge">Observability</span>
-                        </div>
-                        <div class="component-content">
-                            <p><strong>Purpose:</strong> Metrics and trace collection</p>
-                            <p><strong>Ports:</strong> 4317 (gRPC), 4318 (HTTP)</p>
-                            <p><strong>Replicas:</strong> 1</p>
-                            <p><strong>Resources:</strong> 512Mi memory, 500m CPU</p>
-                            <p><strong>Template:</strong> <code>composio/templates/otel-collector.yaml:1</code></p>
-                            <ul class="component-features">
-                                <li>OTLP, Jaeger protocol support</li>
-                                <li>Google Cloud Monitoring export</li>
-                                <li>Google Cloud Trace export</li>
-                                <li>Prometheus metrics endpoint</li>
-                                <li>Batch processing and memory limits</li>
-                            </ul>
-                        </div>
-                    </div>
+                    <table class="services-table">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Type</th>
+                                <th>Purpose</th>
+                                <th>Port</th>
+                                <th>Replicas</th>
+                                <th>Resources</th>
+                                <th>Template</th>
+                                <th>Key Features</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Apollo</strong></td>
+                                <td>API Service</td>
+                                <td>Main API server for Composio platform</td>
+                                <td>9900 (NodePort: 30900)</td>
+                                <td>2 (default)</td>
+                                <td>5Gi memory, 1 CPU</td>
+                                <td><code>composio/templates/apollo.yaml:1</code></td>
+                                <td>
+                                    <ul>
+                                        <li>RESTful API endpoints</li>
+                                        <li>PostgreSQL database integration</li>
+                                        <li>Auto-generated admin tokens</li>
+                                        <li>Health checks and readiness probes</li>
+                                        <li>Optional HPA for auto-scaling</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Thermos</strong></td>
+                                <td>Background Service</td>
+                                <td>Background processing and task execution</td>
+                                <td>8180 (ClusterIP)</td>
+                                <td>2 (default)</td>
+                                <td>4Gi memory, 2 CPU</td>
+                                <td><code>composio/templates/thermos.yaml:1</code></td>
+                                <td>
+                                    <ul>
+                                        <li>Asynchronous task processing</li>
+                                        <li>Temporal workflow integration</li>
+                                        <li>Redis queue management</li>
+                                        <li>Database initialization jobs</li>
+                                        <li>Configurable scaling policies</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mercury</strong></td>
+                                <td>Knative Service</td>
+                                <td>Model Context Protocol (MCP) endpoint</td>
+                                <td>8080 (ClusterIP)</td>
+                                <td>Auto-scaling (1-10)</td>
+                                <td>2Gi memory, 1 CPU</td>
+                                <td><code>composio/templates/mercury.yaml:1</code></td>
+                                <td>
+                                    <ul>
+                                        <li>Knative-based serverless scaling</li>
+                                        <li>Scale-to-zero capabilities</li>
+                                        <li>Request-based auto-scaling</li>
+                                        <li>Configurable concurrency limits</li>
+                                        <li>300-second request timeout</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Minio</strong></td>
+                                <td>Storage Service</td>
+                                <td>S3-compatible object storage</td>
+                                <td>9000 (ClusterIP)</td>
+                                <td>1</td>
+                                <td>4Gi memory, 2 CPU</td>
+                                <td><code>composio/templates/minio.yaml:1</code></td>
+                                <td>
+                                    <ul>
+                                        <li>S3-compatible API</li>
+                                        <li>Persistent volume storage (8Gi)</li>
+                                        <li>Tool and function storage</li>
+                                        <li>Health and readiness probes</li>
+                                        <li>Admin credentials management</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Temporal</strong></td>
+                                <td>Workflow Engine</td>
+                                <td>Distributed workflow orchestration</td>
+                                <td>7233 (Frontend), 8080 (Web UI)</td>
+                                <td>2 (server)</td>
+                                <td>Default Temporal settings</td>
+                                <td>Dependency (temporal-0.64.0)</td>
+                                <td>
+                                    <ul>
+                                        <li>Workflow and activity orchestration</li>
+                                        <li>PostgreSQL persistence</li>
+                                        <li>Web UI for monitoring</li>
+                                        <li>Admin tools included</li>
+                                        <li>Namespace management</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>OpenTelemetry Collector</strong></td>
+                                <td>Observability</td>
+                                <td>Metrics and trace collection</td>
+                                <td>4317 (gRPC), 4318 (HTTP)</td>
+                                <td>1</td>
+                                <td>512Mi memory, 500m CPU</td>
+                                <td><code>composio/templates/otel-collector.yaml:1</code></td>
+                                <td>
+                                    <ul>
+                                        <li>OTLP, Jaeger protocol support</li>
+                                        <li>Google Cloud Monitoring export</li>
+                                        <li>Google Cloud Trace export</li>
+                                        <li>Prometheus metrics endpoint</li>
+                                        <li>Batch processing and memory limits</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 <div class="architecture-patterns">

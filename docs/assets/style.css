@@ -2803,3 +2803,130 @@ html {
         height: 40px;
     }
 }
+
+/* Services Table Styling */
+.services-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    background: var(--card-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.services-table thead {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+.services-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.services-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.services-table tr:hover {
+    background-color: var(--hover-bg);
+    transition: background-color 0.2s ease;
+}
+
+.services-table tr:last-child td {
+    border-bottom: none;
+}
+
+.services-table ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    list-style-type: disc;
+}
+
+.services-table li {
+    margin-bottom: 0.3rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.services-table code {
+    background: var(--code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--code-color);
+    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+.services-table strong {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Responsive table */
+@media (max-width: 1200px) {
+    .services-table {
+        font-size: 0.85rem;
+    }
+    
+    .services-table th,
+    .services-table td {
+        padding: 0.8rem 0.6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .services-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .services-table thead,
+    .services-table tbody,
+    .services-table th,
+    .services-table td,
+    .services-table tr {
+        display: block;
+    }
+    
+    .services-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    .services-table tr {
+        border: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        padding: 1rem;
+        background: var(--card-bg);
+    }
+    
+    .services-table td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+        white-space: normal;
+    }
+    
+    .services-table td:before {
+        content: attr(data-label) ": ";
+        position: absolute;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+}
