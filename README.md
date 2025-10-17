@@ -30,22 +30,20 @@ Ensure you have the following ready:
 - `kubectl` and Helm 3.x installed
 
 ### Step 2: Install Knative Components
-```bash
-# Install Knative Serving CRDs
-kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml
+# Install Knative Serving CRDs (latest: v1.19.6)
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.19.6/serving-crds.yaml
 
-# Install Knative Serving Core
-kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml
+# Install Knative Serving Core (latest: v1.19.6)
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.19.6/serving-core.yaml
 
-# Install Kourier networking layer
-kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml
+# Install Kourier networking layer (latest: v1.19.5)
+kubectl apply -f https://github.com/knative-extensions/net-kourier/releases/download/knative-v1.19.5/kourier.yaml
 
 # Configure Kourier as default ingress
 kubectl patch configmap/config-network \
   --namespace knative-serving \
   --type merge \
   --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
-```
 
 ### Step 3: Configure External Secrets
 Set up your database and API credentials:
