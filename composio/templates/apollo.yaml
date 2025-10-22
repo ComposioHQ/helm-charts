@@ -109,6 +109,11 @@ spec:
                 secretKeyRef:
                   name: external-postgres-secret
                   key: url
+            - name: ORG_API_KEY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-encryption-key
+                  key: ENCRYPTION_KEY
             # OpenTelemetry configuration
             {{- if .Values.otel.enabled }}
             - name: OTEL_ENABLED

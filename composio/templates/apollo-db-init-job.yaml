@@ -43,6 +43,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
+            - name: ORG_API_KEY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-encryption-key
+                  key: ENCRYPTION_KEY
             - name: COMPOSIO_API_KEY
               valueFrom:
                 secretKeyRef:
