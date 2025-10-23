@@ -73,7 +73,7 @@ apollo:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "0e07c93"
+    tag: "495d325"
     pullPolicy: Always
   
   # Apollo DB init container configuration
@@ -81,7 +81,7 @@ apollo:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init
-      tag: "0e07c93"
+      tag: "495d325"
       pullPolicy: Always
   
   service:
@@ -125,7 +125,7 @@ thermos:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "0e07c93"
+    tag: "495d325"
     pullPolicy: Always
   
   # Thermos DB init container configuration
@@ -133,7 +133,7 @@ thermos:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init
-      tag: "0e07c93"
+      tag: "495d325"
       pullPolicy: Always
   
   service:
@@ -468,7 +468,7 @@ minio:
   
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
-    tag: "rc-161001"
+    tag: "495d325"
     pullPolicy: Always
   
   service:
@@ -515,7 +515,7 @@ mercury:
   replicaCount: 1
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
-    tag: "rc-161001"
+    tag: "495d325"
     pullPolicy: Always
   
   # Let the container use its default entrypoint
