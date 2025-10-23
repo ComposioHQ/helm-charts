@@ -45,17 +45,43 @@ kubectl patch configmap/config-network \
   --type merge \
   --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
 
-### Step 3: Configure External Secrets
-Set up your database and API credentials:
+### Step 3: Configure Secrets
+Set up your database and API credentials using the comprehensive secret management system:
+
+#### Option A: Full External Dependencies (Recommended for Production)
 ```bash
-# Required environment variables
+# Required: PostgreSQL for Apollo
 export POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
-export REDIS_URL="redis://<username>:<password>@<host>:6379/0"  # Optional
-export OPENAI_API_KEY="sk-1234567890abcdef..."  # Optional
+
+# Optional: Separate PostgreSQL for Thermos
+export THERMOS_POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
+
+# Optional: External Redis (uses built-in Redis if not provided)
+export REDIS_URL="redis://<username>:<password>@<host>:6379/0"
+
+# Optional: OpenAI API for AI functionality
+export OPENAI_API_KEY="sk-1234567890abcdef..."
 
 # Run the secret setup script
 ./secret-setup.sh -r composio -n composio
 ```
+
+#### Option B: Minimal Setup (Development)
+```bash
+# Only provide required PostgreSQL, let script generate other secrets
+export POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
+
+# Run secret setup (will auto-generate missing secrets)
+./secret-setup.sh -r composio -n composio
+```
+
+#### Option C: Dry Run (Preview)
+```bash
+# Preview what secrets would be created without making changes
+./secret-setup.sh -r composio -n composio --dry-run
+```
+
+> **Secret Management**: The `secret-setup.sh` script handles both auto-generated secrets (tokens, keys) and user-provided secrets (database URLs, API keys). All secrets are protected from recreation during Helm upgrades.
 
 ### Step 4: Deploy Composio with Helm
 ```bash
@@ -87,15 +113,18 @@ kubectl get pods -n knative-serving
 To upgrade an existing Composio deployment:
 
 ```bash
-# Update secrets if needed (optional)
+# Secrets are automatically preserved during upgrades
+# Only update secrets if you need to change external dependencies
 POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require" \
 REDIS_URL="redis://<username>:<password>@<host>:6379/0" \
 OPENAI_API_KEY="sk-1234567890abcdef..." \
 ./secret-setup.sh -r composio -n composio
 
-# Upgrade Helm release
+# Upgrade Helm release (secrets are preserved)
 helm upgrade composio ./composio -n composio --debug
 ```
+
+> **Secret Protection**: All existing secrets are automatically preserved during Helm upgrades. The `secret-setup.sh` script only creates new secrets if they don't exist, ensuring your existing configuration remains intact.
 
 ## ⚙️ Configuration Options
 
@@ -153,17 +182,166 @@ kubectl port-forward -n composio svc/composio-temporal-web 8082:8080
 - **MCP Portal**: http://localhost:8081  
 - **Temporal UI**: http://localhost:8082
 
-## 🔐 Retrieving Secrets
+## 🔐 Secret Management
 
-All sensitive credentials are auto-generated during installation:
+Composio uses a comprehensive secret management system that handles both auto-generated and user-provided secrets. All secrets are protected from recreation during Helm upgrades.
+
+### Secret Types
+
+#### Auto-Generated Secrets
+These secrets are automatically created by the `secret-setup.sh` script:
+
+| Secret Name | Purpose | Key |
+|-------------|---------|-----|
+| `{release}-apollo-admin-token` | Apollo API admin authentication | `APOLLO_ADMIN_TOKEN` |
+| `{release}-encryption-key` | Application data encryption | `ENCRYPTION_KEY` |
+| `{release}-temporal-encryption-key` | Temporal workflow encryption | `TEMPORAL_TRIGGER_ENCRYPTION_KEY` |
+| `{release}-composio-api-key` | Composio API authentication | `COMPOSIO_API_KEY` |
+| `{release}-minio-credentials` | MinIO object storage credentials | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` |
+
+#### User-Provided Secrets
+These secrets are created from environment variables you provide:
+
+| Secret Name | Environment Variable | Purpose |
+|-------------|---------------------|---------|
+| `external-postgres-secret` | `POSTGRES_URL` | Apollo database connection |
+| `external-thermos-postgres-secret` | `THERMOS_POSTGRES_URL` | Thermos database connection |
+| `external-redis-secret` | `REDIS_URL` | Redis cache connection |
+| `openai-secret` | `OPENAI_API_KEY` | OpenAI API integration |
+
+#### Helm-Managed Secrets
+These secrets are managed by Helm templates with existence checks:
+
+| Secret Name | Purpose | When Created |
+|-------------|---------|--------------|
+| `ecr-secret` | AWS ECR authentication | When `externalSecrets.ecr.token` is provided |
+| `{release}-support-bundle` | Troubleshoot.sh integration | When `supportBundle.enabled=true` |
+
+> **⚠️ CRITICAL: ENCRYPTION_KEY Security**
+> 
+> The `ENCRYPTION_KEY` is **CRITICAL** and **MUST NOT BE LOST**:
+> - **Encrypts database data**: All sensitive data in the database is encrypted with this key
+> - **Cannot be recovered**: If lost, encrypted data becomes permanently inaccessible
+> - **Must persist across deployments**: The same key must be used for all upgrades
+> - **Backup required**: Always backup this key before any deployment changes
+> - **Secure storage**: Store this key in a secure location (password manager, secure vault)
+> 
+> **If you lose the ENCRYPTION_KEY, you will lose access to all encrypted data in your database.**
+
+### Secret Setup Process
+
+#### Initial Setup
+```bash
+# Set up external secrets using the script (recommended)
+export POSTGRES_URL="postgresql://user:pass@host:port/db"
+export THERMOS_POSTGRES_URL="postgresql://user:pass@host:port/db"  # Optional
+export REDIS_URL="redis://user:pass@host:port/db"  # Optional
+export OPENAI_API_KEY="sk-..."  # Optional
+
+# Run secret setup
+./secret-setup.sh -r composio -n composio
+```
+
+#### Dry Run Mode
+```bash
+# Preview what secrets would be created
+./secret-setup.sh -r composio -n composio --dry-run
+```
+
+#### Skip Generated Secrets
+```bash
+# Only create user-provided secrets
+./secret-setup.sh -r composio -n composio --skip-generated
+```
+
+### Retrieving Secrets
+
+#### Get Specific Secret Values
+```bash
+# Get Apollo admin token
+kubectl get secret composio-apollo-admin-token -n composio -o jsonpath="{.data.APOLLO_ADMIN_TOKEN}" | base64 -d
+
+# Get MinIO credentials
+kubectl get secret composio-minio-credentials -n composio -o jsonpath="{.data.MINIO_ROOT_USER}" | base64 -d
+kubectl get secret composio-minio-credentials -n composio -o jsonpath="{.data.MINIO_ROOT_PASSWORD}" | base64 -d
+
+# Get external database URL
+kubectl get secret external-postgres-secret -n composio -o jsonpath="{.data.url}" | base64 -d
+
+# Get ENCRYPTION_KEY (CRITICAL - backup this immediately!)
+kubectl get secret composio-encryption-key -n composio -o jsonpath="{.data.ENCRYPTION_KEY}" | base64 -d
+```
+
+#### List All Secrets
+```bash
+# List all secrets in namespace
+kubectl get secrets -n composio
+
+# List secrets with labels
+kubectl get secrets -n composio -l app.kubernetes.io/name=composio
+```
+
+#### View Secret Details
+```bash
+# View complete secret (base64 encoded)
+kubectl get secret <secret-name> -n composio -o yaml
+
+# Decode specific key
+kubectl get secret <secret-name> -n composio -o jsonpath="{.data.<key>}" | base64 -d
+```
+
+### Secret Protection
+
+All secrets are protected from recreation during Helm upgrades:
+
+- **Auto-generated secrets**: Never recreated by Helm, only by `secret-setup.sh`
+- **User-provided secrets**: Only created if they don't exist
+- **Helm-managed secrets**: Use existence checks to prevent recreation
+
+### Manual Secret Management
+
+You can still manage secrets manually using kubectl:
 
 ```bash
-# Get admin token
-kubectl get secret composio-secrets -n composio -o jsonpath="{.data.APOLLO_ADMIN_TOKEN}" | base64 -d
+# Create secret manually
+kubectl create secret generic my-secret \
+  --from-literal=key=value \
+  -n composio
 
-# Get all secrets
-kubectl get secret composio-secrets -n composio -o yaml
+# Update existing secret
+kubectl patch secret my-secret -n composio \
+  --type='json' \
+  -p='[{"op": "replace", "path": "/data/key", "value": "'$(echo -n "new-value" | base64)'"}]'
+
+# Delete secret
+kubectl delete secret my-secret -n composio
 ```
+
+### Secret Management Best Practices
+
+#### 1. Production Deployment
+- **Use external databases**: Always provide `POSTGRES_URL` for production
+- **Separate databases**: Use different databases for Apollo and Thermos
+- **External Redis**: Use `REDIS_URL` for better performance and persistence
+- **Backup secrets**: Keep secure backups of all generated secrets
+- **ENCRYPTION_KEY backup**: **CRITICAL** - Backup the ENCRYPTION_KEY immediately after first deployment
+
+#### 2. Development Setup
+- **Minimal configuration**: Only provide `POSTGRES_URL`, let script generate others
+- **Local databases**: Use local PostgreSQL instances for development
+- **Built-in services**: Use built-in Redis and MinIO for simplicity
+
+#### 3. Security Considerations
+- **Secret rotation**: Regularly rotate auto-generated secrets in production
+- **Access control**: Use RBAC to limit secret access
+- **External secret management**: Consider using AWS Secrets Manager or HashiCorp Vault
+- **Network policies**: Implement network policies to restrict secret access
+
+#### 4. Upgrade Strategy
+- **Secrets are preserved**: All secrets survive Helm upgrades
+- **New secrets**: Only new secrets are created, existing ones are never modified
+- **Backup before upgrade**: Always backup critical secrets before major upgrades
+- **Test upgrades**: Test secret management in non-production environments
 
 ## 🛠️ Troubleshooting
 
@@ -193,6 +371,56 @@ kubectl logs -n composio -l serving.knative.dev/service=composio-mercury
 ```bash
 # Verify database connectivity
 kubectl logs -n composio deployment/composio-apollo
+
+# Check if database secrets exist
+kubectl get secret external-postgres-secret -n composio
+kubectl get secret external-thermos-postgres-secret -n composio
+
+# Test database connection manually
+kubectl run -it --rm debug --image=postgres:15 --restart=Never -- \
+  psql "$(kubectl get secret external-postgres-secret -n composio -o jsonpath='{.data.url}' | base64 -d)"
+```
+
+#### Secret Management Issues
+```bash
+# Check if secrets exist
+kubectl get secrets -n composio | grep -E "(composio-|external-|openai-)"
+
+# Verify secret contents (base64 encoded)
+kubectl get secret composio-apollo-admin-token -n composio -o yaml
+
+# Check secret setup script logs
+./secret-setup.sh -r composio -n composio --dry-run
+
+# Recreate missing secrets
+./secret-setup.sh -r composio -n composio
+```
+
+#### Secret Access Issues
+```bash
+# Check if pods can access secrets
+kubectl describe pod -n composio -l app.kubernetes.io/name=apollo
+
+# Verify secret mounts
+kubectl get pod -n composio -l app.kubernetes.io/name=apollo -o jsonpath='{.items[0].spec.volumes}'
+
+# Test secret access from pod
+kubectl exec -n composio deployment/composio-apollo -- env | grep -E "(POSTGRES|REDIS|OPENAI)"
+```
+
+#### ENCRYPTION_KEY Issues
+```bash
+# Check if ENCRYPTION_KEY exists
+kubectl get secret composio-encryption-key -n composio
+
+# Verify ENCRYPTION_KEY value (backup this!)
+kubectl get secret composio-encryption-key -n composio -o jsonpath="{.data.ENCRYPTION_KEY}" | base64 -d
+
+# If ENCRYPTION_KEY is missing, recreate it (WARNING: This will make existing encrypted data inaccessible!)
+./secret-setup.sh -r composio -n composio
+
+# Check if pods can access ENCRYPTION_KEY
+kubectl exec -n composio deployment/composio-apollo -- env | grep ENCRYPTION_KEY
 ```
 
 ### GKE-Specific Troubleshooting
@@ -292,6 +520,7 @@ kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/com
 - **Configuration Reference**: https://onprem.composio.dev/configuration.html
 - **Cloud Provider Guides**: https://onprem.composio.dev/guides.html
 - **Troubleshooting**: https://onprem.composio.dev/troubleshooting.html
+- **Secret Management**: [SECRETS.md](./SECRETS.md) - Detailed secret management documentation
 - **Composio Docs**: https://docs.composio.dev
 - **GitHub**: https://github.com/composio/helm-charts
 - **Support**: https://discord.gg/composio
