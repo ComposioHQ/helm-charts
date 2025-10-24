@@ -26,7 +26,7 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.minio.podSecurityContext | nindent 8 }}
       initContainers:
         - name: minio-data-init
           image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag | default .Chart.AppVersion }}"
@@ -116,11 +116,11 @@ spec:
             - name: data
               mountPath: /mnt/persistent-data
           securityContext:
-            {{- toYaml .Values.minio.securityContext | nindent 12 }}
+            {{- toYaml .Values.minio.containerSecurityContext | nindent 12 }}
       containers:
         - name: {{ .Chart.Name }}-minio
           securityContext:
-            {{- toYaml .Values.minio.securityContext | nindent 12 }}
+            {{- toYaml .Values.minio.containerSecurityContext | nindent 12 }}
           image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
           ports:
