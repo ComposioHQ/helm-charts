@@ -23,14 +23,14 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.apollo.dbInit.podSecurityContext | nindent 8 }}
       restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
       containers:
         - name: apollo-db-init
           image: "{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml .Values.apollo.dbInit.containerSecurityContext | nindent 12 }}
           env:
             # Apollo database URL
             - name: DATABASE_URL

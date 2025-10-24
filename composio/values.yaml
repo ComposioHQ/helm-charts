@@ -78,6 +78,18 @@ apollo:
   nodeSelector: {}
   tolerations: []
   affinity: {} 
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
   # Apollo DB init container configuration
   dbInit:
     enabled: true
@@ -85,6 +97,19 @@ apollo:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init
       tag: "495d325"
       pullPolicy: Always
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 3000
+      fsGroup: 2000
+
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+
   
   service:
     type: NodePort
@@ -134,6 +159,19 @@ thermos:
   tolerations: []
   affinity: {}
   
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+  
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  
   # Thermos DB init container configuration
   dbInit:
     enabled: true
@@ -141,6 +179,19 @@ thermos:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init
       tag: "495d325"
       pullPolicy: Always
+    
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 3000
+      fsGroup: 2000
+  
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
   
   service:
     type: ClusterIP
@@ -316,6 +367,19 @@ affinity: {}
 # OpenTelemetry configuration
 otel:
   enabled: true
+  
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
   exporter:
     otlp:
       endpoint: "composio-otel-collector:4317"  # gRPC endpoint without http://
@@ -466,6 +530,19 @@ minio:
   replicaCount: 1
   
   # Deployment strategy to prevent Multi-Attach volume errors
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -528,6 +605,30 @@ mercury:
   # command: []
   # args: []
   
+  nodeSelector: {}
+  tolerations: []
+  affinity: {} 
+
+  livenessProbe:
+    enabled: false
+    # httpGet:
+    #   path: /api/health
+    #   port: 3000
+    # initialDelaySeconds: 120
+    # timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: false
+    # httpGet:
+    #   path: /api/health
+    #   port: 3000
+    #   scheme: HTTP
+    # failureThreshold: 3
+    # initialDelaySeconds: 30
+    # periodSeconds: 10
+    # successThreshold: 1
+    # timeoutSeconds: 1
+
   service:
     type: ClusterIP
     port: 8080
@@ -578,6 +679,19 @@ supportBundle:
   # Enable/disable support bundle functionality
   enabled: false
   
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
   # Email address for support ticket submissions
   supportEmail: "support@composio.dev"
   

@@ -27,7 +27,7 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.thermos.podSecurityContext | nindent 8 }}
       {{- with .Values.thermos.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -47,7 +47,7 @@ spec:
           command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml .Values.thermos.containerSecurityContext | nindent 12 }}
           ports:
             - containerPort: 8180
           livenessProbe:
