@@ -157,23 +157,6 @@ thermos:
     tag: "495d325"
     pullPolicy: Always
   
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  
-  podSecurityContext:
-    runAsUser: 1000
-    runAsGroup: 3000
-    fsGroup: 2000
-  
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    runAsNonRoot: true
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop:
-        - ALL
-  
   # Thermos DB init container configuration
   dbInit:
     enabled: true
