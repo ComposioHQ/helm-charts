@@ -58,6 +58,73 @@ export OPENAI_API_KEY="sk-1234567890abcdef..."  # Optional
 ```
 
 ### Step 4: Deploy Composio with Helm
+
+NOTE: Below is an example on how to provide nodeselector, affinity and toleration to thermos and apollo application using values.yaml. 
+
+```
+thermos: 
+    nodeSelector:
+      kubernetes.io/os: linux
+      env: dev
+
+    tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "test"
+        effect: "NoSchedule"
+
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - test-node-1
+                    - test-node-2
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+                - key: env
+                  operator: In
+                  values:
+                    - dev
+
+
+apollo:
+    nodeSelector:
+      kubernetes.io/os: linux
+      env: dev
+
+    tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "test"
+        effect: "NoSchedule"
+
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - test-node-1
+                    - test-node-2
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+                - key: env
+                  operator: In
+                  values:
+                    - dev
+```
+
+
 ```bash
 # Install the Helm chart
 helm install composio ./composio \
