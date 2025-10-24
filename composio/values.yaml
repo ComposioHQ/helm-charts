@@ -75,7 +75,9 @@ apollo:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
     tag: "495d325"
     pullPolicy: Always
-  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {} 
   # Apollo DB init container configuration
   dbInit:
     enabled: true
@@ -127,6 +129,10 @@ thermos:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
     tag: "495d325"
     pullPolicy: Always
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
   
   # Thermos DB init container configuration
   dbInit:
