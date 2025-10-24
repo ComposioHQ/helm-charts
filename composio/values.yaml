@@ -92,6 +92,18 @@ apollo:
     capabilities:
       drop:
         - ALL
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
   # Apollo DB init container configuration
   dbInit:
     enabled: true
@@ -156,6 +168,23 @@ thermos:
     repository: composio-self-host/thermos
     tag: "495d325"
     pullPolicy: Always
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+  
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
   
   # Thermos DB init container configuration
   dbInit:
@@ -465,6 +494,19 @@ otel:
     capabilities:
       drop:
         - ALL
+  
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
   exporter:
     otlp:
       endpoint: "composio-otel-collector:4317"  # gRPC endpoint without http://
@@ -630,6 +672,19 @@ minio:
       drop:
         - ALL
 
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -716,6 +771,31 @@ mercury:
     # successThreshold: 1
     # timeoutSeconds: 1
 
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {} 
+
+  livenessProbe:
+    enabled: false
+    # httpGet:
+    #   path: /api/health
+    #   port: 3000
+    # initialDelaySeconds: 120
+    # timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: false
+    # httpGet:
+    #   path: /api/health
+    #   port: 3000
+    #   scheme: HTTP
+    # failureThreshold: 3
+    # initialDelaySeconds: 30
+    # periodSeconds: 10
+    # successThreshold: 1
+    # timeoutSeconds: 1
+
   service:
     type: ClusterIP
     port: 8080
@@ -765,6 +845,20 @@ mercury:
 supportBundle:
   # Enable/disable support bundle functionality
   enabled: false
+  
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
   
   podSecurityContext:
     runAsUser: 1000
