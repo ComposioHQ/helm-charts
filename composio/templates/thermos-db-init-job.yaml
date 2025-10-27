@@ -27,7 +27,7 @@ spec:
       restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
       containers:
         - name: thermos-db-init
-          image: "{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
+          image: "{{ .Values.global.registry.name }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.thermos.dbInit.containerSecurityContext | nindent 12 }}

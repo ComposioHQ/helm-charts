@@ -14,6 +14,8 @@ namespace:
 global:
   environment: development
   domain: localhost
+  registry: 
+    name: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
   imagePullSecrets:
     - name: ecr-secret
   # Add global security defaults for GKE Autopilot
@@ -72,7 +74,7 @@ redis:
 apollo:
   replicaCount: 2
   image:
-    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
+    repository: composio-self-host/apollo
     tag: "495d325"
     pullPolicy: Always
   nodeSelector: {}
@@ -94,7 +96,7 @@ apollo:
   dbInit:
     enabled: true
     image:
-      repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init
+      repository: composio-self-host/apollo-db-init
       tag: "495d325"
       pullPolicy: Always
     podSecurityContext:
@@ -151,7 +153,7 @@ apollo:
 thermos:
   replicaCount: 2
   image:
-    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
+    repository: composio-self-host/thermos
     tag: "495d325"
     pullPolicy: Always
   
@@ -176,7 +178,7 @@ thermos:
   dbInit:
     enabled: true
     image:
-      repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init
+      repository: composio-self-host/thermos-db-init
       tag: "495d325"
       pullPolicy: Always
     
@@ -238,7 +240,31 @@ temporal:
   
   server:
     enabled: true
+    livenessProbe:
+      enabled: false
+      # httpGet:
+      #   path: /api/health
+      #   port: 3000
+      # initialDelaySeconds: 120
+      # timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: false
+      # httpGet:
+      #   path: /api/health
+      #   port: 3000
+      #   scheme: HTTP
+      # failureThreshold: 3
+      # initialDelaySeconds: 30
+      # periodSeconds: 10
+      # successThreshold: 1
+      # timeoutSeconds: 1
+
     replicaCount: 2
+    image:
+      repository: temporalio/server
+      tag: 1.28.0
+      pullPolicy: IfNotPresent
     
     config:
       logLevel: "info"
@@ -284,6 +310,25 @@ temporal:
 
     # Frontend service configuration
     frontend:
+      livenessProbe:
+        enabled: false
+        # httpGet:
+        #   path: /api/health
+        #   port: 3000
+        # initialDelaySeconds: 120
+        # timeoutSeconds: 10
+
+      readinessProbe:
+        enabled: false
+        # httpGet:
+        #   path: /api/health
+        #   port: 3000
+        #   scheme: HTTP
+        # failureThreshold: 3
+        # initialDelaySeconds: 30
+        # periodSeconds: 10
+        # successThreshold: 1
+        # timeoutSeconds: 1
       service:
         type: ClusterIP
         port: 7233
@@ -305,19 +350,76 @@ temporal:
   web:
     enabled: true
     replicaCount: 1
+    image:
+      repository: temporalio/ui
+      tag: 2.38.3
+      pullPolicy: IfNotPresent
     service:
       type: ClusterIP
       port: 8080
+    livenessProbe:
+      enabled: false
+      # httpGet:
+      #   path: /api/health
+      #   port: 3000
+      # initialDelaySeconds: 120
+      # timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: false
+      # httpGet:
+      #   path: /api/health
+      #   port: 3000
+      #   scheme: HTTP
+      # failureThreshold: 3
+      # initialDelaySeconds: 30
+      # periodSeconds: 10
+      # successThreshold: 1
+      # timeoutSeconds: 1
+    service:
+      type: ClusterIP
+      port: 7233
+      membershipPort: 6933
+      httpPort: 7243
+
   
   admintools:
+    livenessProbe:
+      enabled: false
+      # httpGet:
+      #   path: /api/health
+      #   port: 3000
+      # initialDelaySeconds: 120
+      # timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: false
+      # httpGet:
+      #   path: /api/health
+      #   port: 3000
+      #   scheme: HTTP
+      # failureThreshold: 3
+      # initialDelaySeconds: 30
+      # periodSeconds: 10
+      # successThreshold: 1
+      # timeoutSeconds: 1
     enabled: true
+    image:
+      repository: temporalio/admin-tools
+      tag: 1.28.0-tctl-1.18.2-cli-1.3.0
+      pullPolicy: IfNotPresent
 
   cassandra:
     enabled: false
+    image:
+      repo: cassandra
+      tag: 3.11.3
+      pullPolicy: IfNotPresent
   mysql:
     enabled: false
   elasticsearch:
     enabled: false
+    imageTag: 7.17.3
     
   prometheus:
     enabled: false
@@ -552,7 +654,7 @@ minio:
       maxSurge: 0        # Don't create new pod until old one is gone
   
   image:
-    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
+    repository: composio-self-host/minio
     tag: "495d325"
     pullPolicy: Always
   
@@ -599,7 +701,7 @@ mercury:
   useKnative: true
   replicaCount: 1
   image:
-    repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
+    repository: composio-self-host/mercury
     tag: "495d325"
     pullPolicy: Always
   
