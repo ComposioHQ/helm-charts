@@ -73,7 +73,7 @@ apollo:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo
-    tag: "495d325"
+    tag: "8474ccc"
     pullPolicy: Always
   nodeSelector: {}
   tolerations: []
@@ -95,7 +95,7 @@ apollo:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init
-      tag: "495d325"
+      tag: "8474ccc"
       pullPolicy: Always
     podSecurityContext:
       runAsUser: 1000
@@ -152,7 +152,7 @@ thermos:
   replicaCount: 2
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos
-    tag: "495d325"
+    tag: "8474ccc"
     pullPolicy: Always
   
   nodeSelector: {}
@@ -177,7 +177,7 @@ thermos:
     enabled: true
     image:
       repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init
-      tag: "495d325"
+      tag: "8474ccc"
       pullPolicy: Always
     
     podSecurityContext:
@@ -553,7 +553,7 @@ minio:
   
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/minio
-    tag: "495d325"
+    tag: "8474ccc"
     pullPolicy: Always
   
   service:
@@ -600,7 +600,7 @@ mercury:
   replicaCount: 1
   image:
     repository: 008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury
-    tag: "495d325"
+    tag: "8474ccc"
     pullPolicy: Always
   
   # Let the container use its default entrypoint
