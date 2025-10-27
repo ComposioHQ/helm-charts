@@ -84,6 +84,73 @@ export POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database
 > **Secret Management**: The `secret-setup.sh` script handles both auto-generated secrets (tokens, keys) and user-provided secrets (database URLs, API keys). All secrets are protected from recreation during Helm upgrades.
 
 ### Step 4: Deploy Composio with Helm
+
+NOTE: Below is an example on how to provide nodeselector, affinity and toleration to thermos and apollo application using values.yaml. 
+
+```
+thermos: 
+    nodeSelector:
+      kubernetes.io/os: linux
+      env: dev
+
+    tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "test"
+        effect: "NoSchedule"
+
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - test-node-1
+                    - test-node-2
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+                - key: env
+                  operator: In
+                  values:
+                    - dev
+
+
+apollo:
+    nodeSelector:
+      kubernetes.io/os: linux
+      env: dev
+
+    tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "test"
+        effect: "NoSchedule"
+
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - test-node-1
+                    - test-node-2
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+                - key: env
+                  operator: In
+                  values:
+                    - dev
+```
+
+
 ```bash
 # Install the Helm chart
 helm install composio ./composio \
