@@ -42,7 +42,7 @@ spec:
       {{- end }}
       containers:
         - name: apollo
-          image: "{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
+          image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.apollo.containerSecurityContext | nindent 12 }}

@@ -27,7 +27,7 @@ spec:
       restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
       containers:
         - name: apollo-db-init
-          image: "{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
+          image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.apollo.dbInit.containerSecurityContext | nindent 12 }}
