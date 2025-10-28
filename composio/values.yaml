@@ -231,7 +231,7 @@ dbInit:
   # Job configuration
   job:
     backoffLimit: 3
-    activeDeadlineSeconds: 300
+    activeDeadlineSeconds: 1200
     restartPolicy: OnFailure
 
 # Temporal configuration - Using official helm chart as dependency with external PostgreSQL
@@ -507,9 +507,11 @@ otel:
   thermos:
     serviceName: "thermos"
     serviceVersion: "1.0.0"
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"  # HTTP endpoint for metrics
   mercury:
     serviceName: "mercury-openapi"
     serviceVersion: "1.0.0"
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"  # HTTP endpoint for metrics
   
   # OpenTelemetry Collector configuration
   collector:
