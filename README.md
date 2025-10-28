@@ -1,5 +1,5 @@
 [![Helm Chart](https://img.shields.io/badge/Helm-Chart-0f1689?logo=helm)](https://helm.sh/)
-[![Documentation](https://img.shields.io/badge/Docs-Online-blue)](https://onprem.composio.dev)
+[![Documentation](https://img.shields.io/badge/Docs-Online-blue)](https://composiohq.github.io/helm-charts/index.html)
 
 # Composio Helm Charts
 
@@ -7,8 +7,67 @@ https://composio.dev
 
 Production-ready Helm charts to deploy Composio on any Kubernetes cluster.
 
-**📖 [Complete Documentation](https://onprem.composio.dev)** | [Architecture](https://onprem.composio.dev/architecture.html) | [Configuration](https://onprem.composio.dev/configuration.html) | [Cloud Guides](https://onprem.composio.dev/guides.html) | [Troubleshooting](https://onprem.composio.dev/troubleshooting.html) 
+**📖 [Complete Documentation](https://composiohq.github.io/helm-charts/index.html)** | [Architecture](https://composiohq.github.io/helm-charts/architecture.html) | [Configuration](https://composiohq.github.io/helm-charts/configuration.html) | [Cloud Guides](https://composiohq.github.io/helm-charts/guides.html) | [Troubleshooting](https://composiohq.github.io/helm-charts/troubleshooting.html) 
 
+## 🏗️ Architecture
+
+The following diagram illustrates the Composio Kubernetes architecture, showing the flow of requests, interactions between services, and auxiliary components:
+
+```mermaid
+graph TB
+    Internet[🌐 Internet] --> HTTPS[HTTPS]
+    HTTPS --> PublicIngress[Public Ingress<br/>Optional]
+    
+    subgraph "KUBERNETES CLUSTER"
+        PublicIngress --> Apollo[Apollo<br/>OAuth callbacks/business logic]
+        
+        Apollo <--> Redis[Redis<br/>Cache/Data Store]
+        Apollo --> Thermos[Thermos<br/>Tools Management]
+        
+        Redis --> Temporal[Temporal.io<br/>Workflows Management]
+        Thermos --> Temporal
+        Thermos --> Mercury[Mercury<br/>Knative Service]
+        
+        Temporal <--> Postgres[Postgres<br/>Primary Database]
+        Apollo <--> Postgres
+        
+        Mercury --> ToolsAPIs[Tools/LLM APIs<br/>External Services]
+        
+        subgraph "AUXILIARY SERVICES"
+            KubeSecrets[kube-secrets<br/>Secret Management]
+            OtherK8s[Other Necessary K8s<br/>Components]
+            ECR[ECR<br/>Docker Images]
+        end
+        
+        Apollo --> OtelCollector[Otel Collector<br/>Metrics/Traces]
+        Thermos --> OtelCollector
+        Mercury --> OtelCollector
+    end
+    
+    ToolsAPIs -.->|Outbound Actions<br/>egress internet| Internet
+    
+    classDef coreService fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef database fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef auxiliary fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef monitoring fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    
+    class Apollo,Thermos,Mercury coreService
+    class Redis,Postgres,Temporal database
+    class Internet,ToolsAPIs external
+    class KubeSecrets,OtherK8s,ECR auxiliary
+    class OtelCollector monitoring
+```
+
+### Component Descriptions
+
+- **Core Services**: Apollo (main API), Thermos (tools management), Mercury (Knative service)
+- **Data Layer**: Redis (caching), Postgres (primary database), Temporal.io (workflow orchestration)
+- **External Integration**: Tools/LLM APIs for AI functionality
+- **Auxiliary Services**: kube-secrets, ECR, other Kubernetes components
+- **Monitoring**: Otel Collector for observability and telemetry
+
+For additional architectural details, see our [Architecture Diagram](./docs/architecture-diagram.md).
 
 ## 📋 Prerequisites
 - Kubernetes cluster (GKE, EKS, AKS, or self-managed)
@@ -17,7 +76,7 @@ Production-ready Helm charts to deploy Composio on any Kubernetes cluster.
 - External PostgreSQL database
 - AWS ECR access (or equivalent container registry)
 
-> **Detailed guides available**: See our [cloud provider guides](https://onprem.composio.dev/guides.html) for GKE, EKS, and AKS specific setup instructions.
+> **Detailed guides available**: See our [cloud provider guides](https://composiohq.github.io/helm-charts/guides.html) for GKE, EKS, and AKS specific setup instructions.
 
 
 ## 🚀 Installation Steps
@@ -195,7 +254,7 @@ helm upgrade composio ./composio -n composio --debug
 
 ## ⚙️ Configuration Options
 
-> **Full configuration reference**: See the [complete configuration guide](https://onprem.composio.dev/configuration.html) for detailed parameter documentation.
+> **Full configuration reference**: See the [complete configuration guide](https://composiohq.github.io/helm-charts/configuration.html) for detailed parameter documentation.
 
 ### External Dependencies
 
@@ -412,7 +471,7 @@ kubectl delete secret my-secret -n composio
 
 ## 🛠️ Troubleshooting
 
-> **Comprehensive troubleshooting guide**: Visit [troubleshooting page](https://onprem.composio.dev/troubleshooting.html) for detailed solutions.
+> **Comprehensive troubleshooting guide**: Visit [troubleshooting page](https://composiohq.github.io/helm-charts/troubleshooting.html) for detailed solutions.
 
 ### Common Issues
 
@@ -582,11 +641,11 @@ kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/com
 
 ### 📚 Documentation
 
-- **Documentation Website**: https://onprem.composio.dev
-- **Architecture Guide**: https://onprem.composio.dev/architecture.html
-- **Configuration Reference**: https://onprem.composio.dev/configuration.html
-- **Cloud Provider Guides**: https://onprem.composio.dev/guides.html
-- **Troubleshooting**: https://onprem.composio.dev/troubleshooting.html
+- **Documentation Website**: https://composiohq.github.io/helm-charts/index.html
+- **Architecture Guide**: https://composiohq.github.io/helm-charts/architecture.html
+- **Configuration Reference**: https://composiohq.github.io/helm-charts/configuration.html
+- **Cloud Provider Guides**: https://composiohq.github.io/helm-charts/guides.html
+- **Troubleshooting**: https://composiohq.github.io/helm-charts/troubleshooting.html
 - **Secret Management**: [SECRETS.md](./SECRETS.md) - Detailed secret management documentation
 - **Composio Docs**: https://docs.composio.dev
 - **GitHub**: https://github.com/composio/helm-charts
