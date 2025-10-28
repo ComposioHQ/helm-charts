@@ -31,7 +31,14 @@ server:
     # timeoutSeconds: 10
 
   readinessProbe:
-    enabled: false
+    enabled: true
+    failureThreshold: 3
+    initialDelaySeconds: 150
+    periodSeconds: 10
+    successThreshold: 1
+    tcpSocket:
+      port: rpc
+    timeoutSeconds: 1
     # httpGet:
     #   path: /api/health
     #   port: 3000
@@ -233,7 +240,14 @@ server:
       # timeoutSeconds: 10
 
     readinessProbe:
-      enabled: false
+      enabled: true
+      failureThreshold: 3
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 7233
+      timeoutSeconds: 1
       # httpGet:
       #   path: /api/health
       #   port: 3000
@@ -456,15 +470,15 @@ admintools:
 
   readinessProbe:
     enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    #   scheme: HTTP
-    # failureThreshold: 3
-    # initialDelaySeconds: 30
-    # periodSeconds: 10
-    # successThreshold: 1
-    # timeoutSeconds: 1
+    httpGet:
+      path: /api/health
+      port: 3000
+      scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
   image:
     repository: temporalio/admin-tools
     tag: "1.29"
@@ -501,7 +515,14 @@ web:
     # timeoutSeconds: 10
 
   readinessProbe:
-    enabled: false
+    enabled: true
+    failureThreshold: 3
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    tcpSocket:
+      port: http
+    timeoutSeconds: 1
     # httpGet:
     #   path: /api/health
     #   port: 3000

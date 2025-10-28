@@ -32,15 +32,7 @@ spec:
           imagePullPolicy: {{ .Values.admintools.image.pullPolicy }}
           {{- if .Values.admintools.readinessProbe.enabled }}
           readinessProbe:
-            httpGet:
-              path: {{ .Values.admintools.readinessProbe.httpGet.path }}
-              port: {{ .Values.admintools.readinessProbe.httpGet.port }}
-              scheme: {{ .Values.admintools.readinessProbe.httpGet.scheme }}
-            failureThreshold: {{ .Values.admintools.readinessProbe.failureThreshold }}
-            initialDelaySeconds: {{ .Values.admintools.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.admintools.readinessProbe.periodSeconds }}
-            successThreshold: {{ .Values.admintools.readinessProbe.successThreshold }}
-            timeoutSeconds: {{ .Values.admintools.readinessProbe.timeoutSeconds }}
+            {{- toYaml (omit .Values.admintools.readinessProbe "enabled") | nindent 12 }}
           {{- end }} 
           env:
             # TEMPORAL_CLI_ADDRESS is deprecated, use TEMPORAL_ADDRESS instead
