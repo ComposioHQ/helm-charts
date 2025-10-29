@@ -51,15 +51,7 @@ spec:
               port: http
           {{- if .Values.web.readinessProbe.enabled }}
           readinessProbe:
-            httpGet:
-              path: {{ .Values.web.readinessProbe.httpGet.path }}
-              port: {{ .Values.web.readinessProbe.httpGet.port }}
-              scheme: {{ .Values.web.readinessProbe.httpGet.scheme }}
-            failureThreshold: {{ .Values.web.readinessProbe.failureThreshold }}
-            initialDelaySeconds: {{ .Values.web.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.web.readinessProbe.periodSeconds }}
-            successThreshold: {{ .Values.web.readinessProbe.successThreshold }}
-            timeoutSeconds: {{ .Values.web.readinessProbe.timeoutSeconds }}
+            {{- toYaml (omit .Values.web.readinessProbe "enabled") | nindent 12 }}
           {{- end }}
           ports:
             - name: http

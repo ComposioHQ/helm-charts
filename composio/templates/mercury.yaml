@@ -47,22 +47,12 @@ spec:
           
           {{- if .Values.mercury.livenessProbe.enabled }}
           livenessProbe:
-            {{- toYaml .Values.mercury.livenessProbe.httpGet | nindent 12 }}
-            initialDelaySeconds: {{ .Values.mercury.livenessProbe.initialDelaySeconds }}
-            timeoutSeconds: {{ .Values.mercury.livenessProbe.timeoutSeconds }}
+            {{- toYaml (omit $.Values.mercury.livenessProbe "enabled") | nindent 12 }}
           {{- end }}
-          {{- if .Values.mercury.readinessProbe.enabled }}
+          {{- if $.Values.server.readinessProbe.enabled }}
           readinessProbe:
-            httpGet:
-              path: {{ .Values.mercury.readinessProbe.httpGet.path }}
-              port: {{ .Values.mercury.readinessProbe.httpGet.port }}
-              scheme: {{ .Values.mercury.readinessProbe.httpGet.scheme }}
-            failureThreshold: {{ .Values.mercury.readinessProbe.failureThreshold }}
-            initialDelaySeconds: {{ .Values.mercury.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.mercury.readinessProbe.periodSeconds }}
-            successThreshold: {{ .Values.mercury.readinessProbe.successThreshold }}
-            timeoutSeconds: {{ .Values.mercury.readinessProbe.timeoutSeconds }}
-          {{- end }}
+            {{- toYaml (omit $.Values.mercury.readinessProbe "enabled") | nindent 12 }}
+          {{- end }} 
 
           env:
             # AWS S3 Configuration (using Minio)

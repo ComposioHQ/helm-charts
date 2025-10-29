@@ -31,6 +31,20 @@ spec:
           imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.apollo.dbInit.containerSecurityContext | nindent 12 }}
+          readinessProbe:
+            exec:
+              command:
+                - ls
+                - /
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - ls
+                - /
+            initialDelaySeconds: 5
+            periodSeconds: 5
           env:
             # Apollo database URL
             - name: DATABASE_URL

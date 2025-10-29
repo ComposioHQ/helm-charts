@@ -29,6 +29,20 @@ spec:
         - name: thermos-db-init
           image: "{{ .Values.global.registry.name }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
+          readinessProbe:
+            exec:
+              command:
+                - ls
+                - /
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - ls
+                - /
+            initialDelaySeconds: 5
+            periodSeconds: 5
           securityContext:
             {{- toYaml .Values.thermos.dbInit.containerSecurityContext | nindent 12 }}
           env:
