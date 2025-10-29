@@ -240,16 +240,16 @@ temporal:
   
   server:
     enabled: true
-    livenessProbe:
-      enabled: false
+    # livenessProbe:
+      # enabled: false
       # httpGet:
       #   path: /api/health
       #   port: 3000
       # initialDelaySeconds: 120
       # timeoutSeconds: 10
 
-    readinessProbe:
-      enabled: false
+    # readinessProbe:
+      # enabled: false
       # httpGet:
       #   path: /api/health
       #   port: 3000
@@ -310,16 +310,16 @@ temporal:
 
     # Frontend service configuration
     frontend:
-      livenessProbe:
-        enabled: false
+      # livenessProbe:
+        # enabled: false
         # httpGet:
         #   path: /api/health
         #   port: 3000
         # initialDelaySeconds: 120
         # timeoutSeconds: 10
 
-      readinessProbe:
-        enabled: false
+      # readinessProbe:
+        # enabled: false
         # httpGet:
         #   path: /api/health
         #   port: 3000
@@ -357,16 +357,16 @@ temporal:
     service:
       type: ClusterIP
       port: 8080
-    livenessProbe:
-      enabled: false
+    # livenessProbe:
+      # enabled: false
       # httpGet:
       #   path: /api/health
       #   port: 3000
       # initialDelaySeconds: 120
       # timeoutSeconds: 10
 
-    readinessProbe:
-      enabled: false
+    # readinessProbe:
+      # enabled: false
       # httpGet:
       #   path: /api/health
       #   port: 3000
@@ -384,16 +384,16 @@ temporal:
 
   
   admintools:
-    livenessProbe:
-      enabled: false
+    # livenessProbe:
+      # enabled: false
       # httpGet:
       #   path: /api/health
       #   port: 3000
       # initialDelaySeconds: 120
       # timeoutSeconds: 10
 
-    readinessProbe:
-      enabled: false
+    # readinessProbe:
+      # enabled: false
       # httpGet:
       #   path: /api/health
       #   port: 3000

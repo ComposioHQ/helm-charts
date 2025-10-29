@@ -188,6 +188,20 @@ spec:
         - name: done
           image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
+          readinessProbe:
+            exec:
+              command:
+                - ls
+                - /
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - ls
+                - /
+            initialDelaySeconds: 5
+            periodSeconds: 5
           command: ['sh', '-c', 'echo "Store setup completed"']
             {{- with $.Values.schema.resources }}
           resources:
