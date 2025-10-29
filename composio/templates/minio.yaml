@@ -1,3 +1,4 @@
+{{- if .Values.minio.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -202,3 +203,5 @@ spec:
   storageClassName: {{ .Values.minio.persistence.storageClass }}
   {{- end }}
 {{- end }} 
+
+{{- end }}

@@ -126,6 +126,9 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
+            {{- if .Values.apollo.objectStore.enabled }}
+            {{- toYaml .Values.apollo.objectStore.storeSecrets | nindent 12 }}
+            {{- end }}
             # OpenTelemetry configuration
             {{- if .Values.otel.enabled }}
             - name: OTEL_ENABLED
