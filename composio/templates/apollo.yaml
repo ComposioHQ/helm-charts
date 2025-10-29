@@ -126,8 +126,30 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
-            {{- if .Values.apollo.objectStore.enabled }}
-            {{- toYaml .Values.apollo.objectStore.storeSecrets | nindent 12 }}
+            - name: S3_ENDPOINT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: s3-cred
+                  key: S3_ENDPOINT_URL
+
+            {{- if not .Values.apollo.oidcprovider }}
+            - name: S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: s3-cred
+                  key: S3_REGION
+
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-cred
+                  key: S3_ACCESS_KEY_ID
+
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-cred
+                  key: S3_SECRET_ACCESS_KEY
             {{- end }}
             # OpenTelemetry configuration
             {{- if .Values.otel.enabled }}

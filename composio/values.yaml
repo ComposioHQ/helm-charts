@@ -73,30 +73,7 @@ redis:
 # Apollo service configuration - Development
 apollo:
   replicaCount: 2 
-  objectStore:
-    enabled: false 
-    storeSecrets: 
-      - name: S3_ACCESS_KEY_ID
-        valueFrom:
-          secretKeyRef:
-            name: s3-cred
-            key: S3_ACCESS_KEY_ID
-      - name: S3_SECRET_ACCESS_KEY
-        valueFrom:
-          secretKeyRef:
-            name: s3-cred
-            key: S3_SECRET_ACCESS_KEY
-      - name: S3_ENDPOINT_URL
-        valueFrom:
-          secretKeyRef:
-            name: s3-cred
-            key: S3_ENDPOINT_URL
-      - name: S3_REGION
-        valueFrom:
-          secretKeyRef:
-            name: s3-cred
-            key: S3_REGION
-
+  oidcprovider: false # If true don't need to pass S3 region, accessKey and secretKey
   image:
     repository: composio-self-host/apollo
     tag: "495d325"
