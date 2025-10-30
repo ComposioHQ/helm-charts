@@ -574,7 +574,7 @@ otel:
         googlecloud:
           project: "self-host-kubernetes"
           metric:
-            prefix: "composio/"
+            prefix: "custom.googleapis.com/composio/"
           trace: {}
       
       # Processors for data transformation
