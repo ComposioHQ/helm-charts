@@ -23,12 +23,14 @@ server:
     tag: 1.29.0
     pullPolicy: IfNotPresent
   livenessProbe:
-    enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    # initialDelaySeconds: 120
-    # timeoutSeconds: 10
+    enabled: true
+    failureThreshold: 3
+    initialDelaySeconds: 150
+    periodSeconds: 10
+    successThreshold: 1
+    tcpSocket:
+      port: rpc
+    timeoutSeconds: 1
 
   readinessProbe:
     enabled: true
@@ -116,6 +118,7 @@ server:
   # for sidecar containers, add containers here with restartPolicy: Always
   additionalInitContainers: []
   securityContext:
+    allowPrivilegeEscalation: false
     runAsUser: 1000
     runAsGroup: 1000
     fsGroup: 1000
@@ -301,7 +304,9 @@ server:
     tolerations: []
     affinity: {}
     additionalEnv: []
-    containerSecurityContext: {}
+    containerSecurityContext: 
+      allowPrivilegeEscalation: false
+
     topologySpreadConstraints: []
     podDisruptionBudget: {}
   internalFrontend:
@@ -330,7 +335,9 @@ server:
     tolerations: []
     affinity: {}
     additionalEnv: []
-    containerSecurityContext: {}
+    containerSecurityContext: 
+      allowPrivilegeEscalation: false
+
     topologySpreadConstraints: []
     podDisruptionBudget: {}
   history:
@@ -374,7 +381,9 @@ server:
     affinity: {}
     additionalEnv: []
     additionalEnvSecretName: ""
-    containerSecurityContext: {}
+    containerSecurityContext: 
+      allowPrivilegeEscalation: false
+
     topologySpreadConstraints: []
     podDisruptionBudget: {}
   matching:
@@ -417,7 +426,9 @@ server:
     tolerations: []
     affinity: {}
     additionalEnv: []
-    containerSecurityContext: {}
+    containerSecurityContext: 
+      allowPrivilegeEscalation: false
+
     topologySpreadConstraints: []
     podDisruptionBudget: {}
   worker:
@@ -460,7 +471,9 @@ server:
     tolerations: []
     affinity: {}
     additionalEnv: []
-    containerSecurityContext: {}
+    containerSecurityContext: 
+      allowPrivilegeEscalation: false
+
     topologySpreadConstraints: []
     podDisruptionBudget: {}
 admintools:
@@ -506,8 +519,12 @@ admintools:
   # for sidecar containers, add containers here with restartPolicy: Always
   additionalInitContainers: []
   resources: {}
-  containerSecurityContext: {}
-  securityContext: {}
+  containerSecurityContext: 
+    allowPrivilegeEscalation: false
+
+  securityContext: 
+    allowPrivilegeEscalation: false
+
   podDisruptionBudget: {}
 web:
   # additionalInitContainers: []
@@ -593,8 +610,12 @@ web:
   # https://docs.temporal.io/references/web-ui-environment-variables
   additionalEnv: []
   additionalEnvSecretName: ""
-  containerSecurityContext: {}
-  securityContext: {}
+  containerSecurityContext: 
+    allowPrivilegeEscalation: false
+
+  securityContext: 
+    allowPrivilegeEscalation: false
+
   topologySpreadConstraints: []
   podDisruptionBudget: {}
 schema:
@@ -609,8 +630,13 @@ schema:
   podAnnotations: {}
   podLabels: {}
   resources: {}
-  containerSecurityContext: {}
-  securityContext: {}
+  containerSecurityContext: 
+    allowPrivilegeEscalation: false
+
+  securityContext: 
+    allowPrivilegeEscalation: false
+
+
 elasticsearch:
   enabled: true
   replicas: 3

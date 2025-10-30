@@ -279,7 +279,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "override_some_ip_address_here"
+            host: "override_some_ip_address_here" # DB host required
             port: 5432
             database: "temporal"
             user: "postgres"
