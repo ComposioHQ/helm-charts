@@ -256,6 +256,205 @@ helm upgrade composio ./composio -n composio --debug
 
 > **Full configuration reference**: See the [complete configuration guide](https://composiohq.github.io/helm-charts/configuration.html) for detailed parameter documentation.
 
+### OpenTelemetry (OTEL) Configuration
+
+The chart includes built-in OpenTelemetry support for collecting metrics and traces from all services.
+
+#### Enabling/Disabling OTEL
+
+```yaml
+otel:
+  enabled: true  # Set to false to disable OTEL completely
+  
+  traces:
+    enabled: true  # Enable trace collection
+    sampler: "always_on"  # Options: always_on, always_off, traceidratio
+    samplerArg: 1.0  # Sampling ratio (0.0 to 1.0) for traceidratio
+  
+  metrics:
+    enabled: true  # Enable metrics collection
+    exportInterval: 60000  # Export interval in milliseconds
+```
+
+#### OTEL Collector Configuration
+
+The OTEL collector receives telemetry from services and exports to backends like Google Cloud Monitoring, Prometheus, or other OTLP-compatible systems.
+
+```yaml
+otel:
+  collector:
+    enabled: true
+    replicaCount: 1
+    
+    # Configure exporters
+    config:
+      exporters:
+        # Debug exporter (logs to console)
+        debug:
+          verbosity: basic
+        
+        # Prometheus exporter for metrics
+        prometheus:
+          endpoint: "0.0.0.0:8889"
+        
+        # Google Cloud exporter for metrics and traces
+        googlecloud:
+          project: "your-gcp-project-id"
+          metric:
+            # IMPORTANT: Custom metrics MUST use custom.googleapis.com/ prefix
+            prefix: "custom.googleapis.com/composio/"
+          trace: {}
+      
+      # Configure pipelines
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp, jaeger]
+            processors: [memory_limiter, batch]
+            exporters: [debug, googlecloud]
+          metrics:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [debug, prometheus, googlecloud]
+```
+
+#### Service Endpoint Configuration
+
+**IMPORTANT: Endpoint Format Rules**
+
+- **gRPC endpoints (port 4317)**: Do NOT include protocol prefix
+  - ✅ Correct: `composio-otel-collector:4317`
+  - ❌ Incorrect: `http://composio-otel-collector:4317`
+  - ❌ Incorrect: `grpc://composio-otel-collector:4317`
+
+- **HTTP endpoints (port 4318)**: Must include `http://` prefix
+  - ✅ Correct: `http://composio-otel-collector:4318/v1/metrics`
+  - ❌ Incorrect: `composio-otel-collector:4318/v1/metrics`
+
+```yaml
+otel:
+  exporter:
+    otlp:
+      # gRPC endpoint - NO protocol prefix
+      endpoint: "composio-otel-collector:4317"
+      tracesEndpoint: "composio-otel-collector:4317"
+      metricsEndpoint: "composio-otel-collector:4317"
+      insecure: true  # Set to false for TLS
+  
+  # Service-specific configurations
+  apollo:
+    serviceName: "apollo"
+    serviceVersion: "1.0.0"
+    # HTTP endpoint for metrics (with http:// prefix)
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
+  
+  mercury:
+    serviceName: "mercury-openapi"
+    serviceVersion: "1.0.0"
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
+  
+  thermos:
+    serviceName: "thermos"
+    serviceVersion: "1.0.0"
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
+```
+
+#### Google Cloud Monitoring Setup
+
+To export metrics and traces to Google Cloud:
+
+**1. Create GCP Service Account:**
+```bash
+gcloud iam service-accounts create otel-collector \
+  --display-name="OTEL Collector"
+```
+
+**2. Grant Required Permissions:**
+```bash
+# For metrics
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:otel-collector@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/monitoring.metricWriter"
+
+# For traces
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:otel-collector@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/cloudtrace.agent"
+```
+
+**3. Configure Workload Identity (for GKE):**
+```bash
+gcloud iam service-accounts add-iam-policy-binding \
+  otel-collector@YOUR_PROJECT_ID.iam.gserviceaccount.com \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:YOUR_PROJECT_ID.svc.id.goog[composio/composio-otel-collector]"
+```
+
+**4. Update values.yaml:**
+```yaml
+otel:
+  collector:
+    googleCloud:
+      enabled: true
+      projectId: "YOUR_PROJECT_ID"
+      serviceAccount:
+        create: true
+        name: "otel-collector"
+        annotations:
+          iam.gke.io/gcp-service-account: "otel-collector@YOUR_PROJECT_ID.iam.gserviceaccount.com"
+    
+    config:
+      exporters:
+        googlecloud:
+          project: "YOUR_PROJECT_ID"
+          metric:
+            prefix: "custom.googleapis.com/composio/"
+          trace: {}
+```
+
+**Important Notes:**
+- Google Cloud custom metrics **must** use the `custom.googleapis.com/` prefix
+- The prefix format is: `custom.googleapis.com/<your-namespace>/`
+- Without the correct prefix, you'll get `PermissionDenied` errors
+
+#### Verification
+
+```bash
+# Check OTEL collector logs
+kubectl logs -n composio -l app.kubernetes.io/component=otel-collector --tail=50
+
+# Verify service OTEL configuration
+kubectl exec -n composio deployment/composio-apollo -- env | grep OTEL
+
+# View Prometheus metrics (if enabled)
+kubectl port-forward -n composio svc/composio-otel-collector 8889:8889
+# Access http://localhost:8889/metrics
+
+# Check Google Cloud Monitoring
+# Navigate to: Cloud Console > Monitoring > Metrics Explorer
+# Search for: custom.googleapis.com/composio/
+```
+
+#### Disabling OTEL
+
+To disable OTEL completely:
+
+```yaml
+otel:
+  enabled: false  # Disables instrumentation in services
+  collector:
+    enabled: false  # Disables the collector
+```
+
+Or disable only service instrumentation while keeping the collector:
+
+```yaml
+otel:
+  enabled: false  # Services won't send telemetry
+  collector:
+    enabled: true  # Collector still available for other workloads
+```
+
 ### External Dependencies
 
 | Parameter | Description | Required |

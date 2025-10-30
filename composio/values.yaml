@@ -484,9 +484,12 @@ otel:
         - ALL
   exporter:
     otlp:
-      endpoint: "composio-otel-collector:4317"  # gRPC endpoint without http://
-      tracesEndpoint: "composio-otel-collector:4317"  # Traces endpoint
-      metricsEndpoint: "composio-otel-collector:4317"  # Metrics endpoint
+      # gRPC endpoint for OTLP (no protocol prefix needed for gRPC)
+      endpoint: "composio-otel-collector:4317"
+      # Separate trace endpoint (optional, defaults to endpoint)
+      tracesEndpoint: "composio-otel-collector:4317"
+      # Separate metrics endpoint for gRPC (optional, defaults to endpoint)
+      metricsEndpoint: "composio-otel-collector:4317"
       insecure: true
       headers: ""  # Optional headers for authentication
   traces:
@@ -574,7 +577,7 @@ otel:
         googlecloud:
           project: "self-host-kubernetes"
           metric:
-            prefix: "composio/"
+            prefix: "custom.googleapis.com/composio/"
           trace: {}
       
       # Processors for data transformation
