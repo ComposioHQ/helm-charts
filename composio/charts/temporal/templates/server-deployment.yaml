@@ -134,12 +134,10 @@ spec:
             - name: metrics
               containerPort: 9090
               protocol: TCP
-          {{- if ne $service "worker" }}
+          {{- if $.Values.server.livenessProbe.enabled }}
           livenessProbe:
-             initialDelaySeconds: 150
-             tcpSocket:
-               port: rpc
-          {{- end }}
+            {{- toYaml (omit $.Values.server.livenessProbe "enabled") | nindent 12 }}
+          {{- end }} 
           {{- if $.Values.server.readinessProbe.enabled }}
           readinessProbe:
             {{- toYaml (omit $.Values.server.readinessProbe "enabled") | nindent 12 }}
