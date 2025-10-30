@@ -37,19 +37,22 @@ usage() {
     echo "  THERMOS_POSTGRES_URL PostgreSQL connection URL for Thermos (postgresql://user:pass@host:port/db)"
     echo "  REDIS_URL            Redis connection URL (redis://user:pass@host:port/db)"
     echo "  OPENAI_API_KEY       OpenAI API key for AI functionality"
+    echo "  S3_REGION            Object store region"
+    echo "  S3_ACCESS_KEY_ID     Object store access-key-id"
+    echo "  S3_SECRET_ACCESS_KEY Object store secret-access-key"
     echo ""
     echo -e "${YELLOW}Generated Secrets (auto-created if missing):${NC}"
     echo "  • \${release}-apollo-admin-token      (APOLLO_ADMIN_TOKEN)"
     echo "  • \${release}-encryption-key          (ENCRYPTION_KEY)"
     echo "  • \${release}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)"
     echo "  • \${release}-composio-api-key        (COMPOSIO_API_KEY)"
-    echo "  • \${release}-minio-credentials       (MINIO_ROOT_USER + MINIO_ROOT_PASSWORD)"
     echo ""
     echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
     echo "  • external-postgres-secret            (from POSTGRES_URL)"
     echo "  • external-thermos-postgres-secret    (from THERMOS_POSTGRES_URL)"
     echo "  • external-redis-secret               (from REDIS_URL)"
     echo "  • openai-secret                       (from OPENAI_API_KEY)"
+    echo "  • s3-secret                           (from S3_ENDPOINT_URL)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo "  # Setup with all external secrets"
@@ -57,6 +60,7 @@ usage() {
     echo "  THERMOS_POSTGRES_URL=\"postgresql://user:pass@thermos-db.example.com:5432/thermos\" \\"
     echo "  REDIS_URL=\"redis://user:pass@redis.example.com:6379/0\" \\"
     echo "  OPENAI_API_KEY=\"sk-1234567890abcdef...\" \\"
+    echo "  S3_ENDPOINT_URL=\"https://<bucket-name>.s3.<region>.amazonaws.com\" \\"
     echo "  $0 -r composio -n composio"
     echo ""
     echo "  # Dry-run to see what would be created"
@@ -163,22 +167,38 @@ create_simple_secret() {
     fi
 }
 
-# Function to create minio credentials secret
-create_minio_secret() {
+# create s3-cred
+create_s3_secret() {
     local secret_name=$1
-    local user=$2
-    local password=$3
     
     if [[ "$DRY_RUN" == true ]]; then
         print_info "[DRY-RUN] Would create secret: $secret_name"
-        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"MINIO_ROOT_USER=$user\" --from-literal=\"MINIO_ROOT_PASSWORD=$password\" -n \"$NAMESPACE\""
+        if [ -z "$S3_REGION" ] && [ -z "$S3_ACCESS_KEY_ID" ] && [ -z "$S3_SECRET_ACCESS_KEY" ]; then
+          print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"S3_ENDPOINT_URL=$S3_ENDPOINT_URL\" -n \"$NAMESPACE\""
+        else
+          print_info "kubectl create secret generic \"$secret_name\" \
+            --from-literal=\"S3_ENDPOINT_URL=$S3_ENDPOINT_URL\" \
+            --from-literal=\"S3_REGION=$S3_REGION\" \
+            --from-literal=\"S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID\" \
+            --from-literal=\"S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY\" \
+            -n \"$NAMESPACE\""
+        fi
     else
-        print_info "Creating secret: $secret_name"
-        kubectl create secret generic "$secret_name" \
-            --from-literal="MINIO_ROOT_USER=$user" \
-            --from-literal="MINIO_ROOT_PASSWORD=$password" \
-            -n "$NAMESPACE"
-        print_success "Created secret: $secret_name"
+        if [ -z "$S3_REGION" ] && [ -z "$S3_ACCESS_KEY_ID" ] && [ -z "$S3_SECRET_ACCESS_KEY" ]; then
+          print_info "Creating secret: $secret_name"
+          kubectl create secret generic "$secret_name" \
+              --from-literal="S3_ENDPOINT_URL=$S3_ENDPOINT_URL" \
+              -n "$NAMESPACE"
+          print_success "Created secret: $secret_name"
+        else
+            print_info "Creating secret: $secret_name"
+            kubectl create secret generic "$secret_name" \
+              --from-literal="S3_ENDPOINT_URL=$S3_ENDPOINT_URL" \
+              --from-literal="S3_REGION=$S3_REGION" \
+              --from-literal="S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID" \
+              --from-literal="S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY" \
+              -n "$NAMESPACE"
+        fi
     fi
 }
 
@@ -296,14 +316,11 @@ else
         fi
     done
 
-    # Handle MinIO credentials (combined secret)
-    minio_secret_name="${RELEASE_NAME}-minio-credentials"
-    if secret_exists "$minio_secret_name"; then
-        print_warning "Secret already exists: $minio_secret_name"
+    s3_secret_name="s3-cred"
+    if secret_exists "$s3_secret_name"; then
+        print_warning "Secret already exists: $s3_secret_name"
     else
-        minio_user="minioadmin"
-        minio_password=$(generate_random 16)
-        create_minio_secret "$minio_secret_name" "$minio_user" "$minio_password"
+        create_s3_secret "$s3_secret_name"
     fi
 fi
 

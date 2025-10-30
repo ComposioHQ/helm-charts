@@ -72,7 +72,8 @@ redis:
 
 # Apollo service configuration - Development
 apollo:
-  replicaCount: 2
+  replicaCount: 2 
+  oidcprovider: false # If true don't need to pass S3 region, accessKey and secretKey
   image:
     repository: composio-self-host/apollo
     tag: "495d325"
@@ -634,6 +635,7 @@ aws:
     
 # Minio configuration - Development
 minio:
+  enabled: false
   replicaCount: 1
   
   # Deployment strategy to prevent Multi-Attach volume errors
