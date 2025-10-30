@@ -134,6 +134,15 @@ spec:
             - name: metrics
               containerPort: 9090
               protocol: TCP
+          {{- if eq $rawService "worker" }}
+          livenessProbe:
+            {{- toYaml (omit $.Values.workerProbe.livenessProbe "enabled") | nindent 12 }}
+          {{- end }} 
+          {{- if $.Values.server.readinessProbe.enabled }}
+          readinessProbe:
+            {{- toYaml (omit $.Values.workerProbe.readinessProbe "enabled") | nindent 12 }}
+          {{- end }}
+          {{- if not (eq $rawService "worker") }} 
           {{- if $.Values.server.livenessProbe.enabled }}
           livenessProbe:
             {{- toYaml (omit $.Values.server.livenessProbe "enabled") | nindent 12 }}
@@ -141,7 +150,8 @@ spec:
           {{- if $.Values.server.readinessProbe.enabled }}
           readinessProbe:
             {{- toYaml (omit $.Values.server.readinessProbe "enabled") | nindent 12 }}
-          {{- end }} 
+          {{- end }}
+          {{- end }}
           volumeMounts:
             - name: config
               mountPath: /etc/temporal/config/config_template.yaml

@@ -75,7 +75,7 @@ apollo:
   replicaCount: 2
   image:
     repository: composio-self-host/apollo
-    tag: "495d325"
+    tag: "2eef15b"
     pullPolicy: Always
   nodeSelector: {}
   tolerations: []
@@ -97,7 +97,7 @@ apollo:
     enabled: true
     image:
       repository: composio-self-host/apollo-db-init
-      tag: "495d325"
+      tag: "2eef15b"
       pullPolicy: Always
     podSecurityContext:
       runAsUser: 1000
@@ -154,7 +154,7 @@ thermos:
   replicaCount: 2
   image:
     repository: composio-self-host/thermos
-    tag: "495d325"
+    tag: "744a5bf"
     pullPolicy: Always
   
   nodeSelector: {}
@@ -179,7 +179,7 @@ thermos:
     enabled: true
     image:
       repository: composio-self-host/thermos-db-init
-      tag: "495d325"
+      tag: "744a5bf"
       pullPolicy: Always
     
     podSecurityContext:
@@ -237,6 +237,21 @@ dbInit:
 # Temporal configuration - Using official helm chart as dependency with external PostgreSQL
 temporal:
   fullnameOverride: "temporal-stack"
+  # extraEnv: 
+  #   - name: "SQL_TLS"
+  #     value: "true"
+  #   - name: "SQL_TLS_DISABLE_HOST_VERIFICATION"
+  #     value: "true"
+  #   - name: "SQL_TLS_ENABLED"
+  #     value: "true"
+  #   - name: "SQL_HOST_VERIFICATION"
+  #     value: "false"
+  #   - name: SKIP_DB_CREATE
+  #     value: "true"
+  #   - name: DBNAME
+  #     value: temporal_db
+  #   - name: VISIBILITY_DBNAME
+  #     value: temporal_visibility_db
   
   server:
     enabled: true
@@ -279,10 +294,10 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "override_some_ip_address_here" # DB host required
+            host: "postgres.db"
             port: 5432
             database: "temporal"
-            user: "postgres"
+            user: "composio"
             existingSecret: "external-postgres-secret"
             maxConns: 20
             maxIdleConns: 20
@@ -293,10 +308,10 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "override_some_ip_address_here"
+            host: "postgres.db"
             port: 5432
             database: "temporal_visibility"
-            user: "postgres"
+            user: "composio"
             existingSecret: "external-postgres-secret"
             maxConns: 20
             maxIdleConns: 20
@@ -698,11 +713,11 @@ minio:
 # Mercury service configuration - Development
 mercury:
   enabled: true
-  useKnative: true
+  useKnative: false
   replicaCount: 1
   image:
     repository: composio-self-host/mercury
-    tag: "495d325"
+    tag: "744a5bf"
     pullPolicy: Always
   
   # Let the container use its default entrypoint
