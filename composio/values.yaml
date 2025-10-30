@@ -231,7 +231,7 @@ dbInit:
   # Job configuration
   job:
     backoffLimit: 3
-    activeDeadlineSeconds: 1200
+    activeDeadlineSeconds: 2400
     restartPolicy: OnFailure
 
 # Temporal configuration - Using official helm chart as dependency with external PostgreSQL
