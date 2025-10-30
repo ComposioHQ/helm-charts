@@ -27,25 +27,13 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.apollo.podSecurityContext | nindent 8 }}
-      {{- with .Values.apollo.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.apollo.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.apollo.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: apollo
           image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
           securityContext:
-            {{- toYaml .Values.apollo.containerSecurityContext | nindent 12 }}
+            {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
             - containerPort: 9900
           livenessProbe:
