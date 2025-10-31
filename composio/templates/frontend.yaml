@@ -77,7 +77,7 @@ spec:
             - name: OPENAPI_URL
               value: {{ .Values.frontend.env.OPENAPI_URL | quote }}
             {{- end }}
-            {{- if .Values.frontend.secrets.OPENAI_API_KEY }}
+            {{- if and .Values.frontend.secrets .Values.frontend.secrets.OPENAI_API_KEY }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -90,7 +90,7 @@ spec:
                   name: {{ .Release.Name }}-secrets
                   key: OPENAI_API_KEY
             {{- end }}
-            {{- if .Values.frontend.secrets.PLAIN_SECRET }}
+            {{- if and .Values.frontend.secrets .Values.frontend.secrets.PLAIN_SECRET }}
             - name: PLAIN_SECRET
               valueFrom:
                 secretKeyRef:
@@ -174,7 +174,7 @@ spec:
   selector:
     {{- include "composio.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
-{{- if .Values.frontend.autoscaling.enabled }}
+{{- if and .Values.frontend.autoscaling .Values.frontend.autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

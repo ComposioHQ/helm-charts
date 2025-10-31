@@ -846,20 +846,6 @@ frontend:
   #     secretName: custom-secret
   #     secretKey: plain-secret
   # HPA (Horizontal Pod Autoscaler) configuration
-  autoscaling:
-    enabled: false
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-    targetMemoryUtilizationPercentage: 80
-    # Scaling behavior configuration
-    scaleDownStabilizationWindowSeconds: 300
-    scaleDownPercent: 10
-    scaleDownPeriodSeconds: 60
-    scaleUpStabilizationWindowSeconds: 60
-    scaleUpPercent: 100
-    scaleUpPeriodSeconds: 15
-    scaleUpPods: 4
   ingress:
     enabled: false
     className: ""
