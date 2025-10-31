@@ -515,6 +515,10 @@ otel:
     serviceName: "mercury-openapi"
     serviceVersion: "1.0.0"
     metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"  # HTTP endpoint for metrics
+  frontend:
+    serviceName: "frontend"
+    serviceVersion: "1.0.0"
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"  # HTTP endpoint for metrics
   
   # OpenTelemetry Collector configuration
   collector:
@@ -780,7 +784,88 @@ mercury:
   
   volumeMounts: []
   volumes: []
-  
+
+# Frontend service configuration - Development
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: composio-self-host/frontend
+    tag: "latest"
+    pullPolicy: Always
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
+  env:
+    # Server-side environment variables
+    PORT: "3000"
+    NODE_ENV: "production"
+    # OPENAPI_URL: ""  # Optional - uncomment and set if needed
+    # Set OPENAI_API_KEY to any truthy value (e.g., "true") to load from default secrets, or configure custom secret below
+    # OPENAI_API_KEY: ""  
+    # Set PLAIN_SECRET to any truthy value (e.g., "true") to load from default secrets, or configure custom secret below
+    # PLAIN_SECRET: ""
+    OVERRIDE_BACKEND_URL: ""  # Defaults to apollo service URL
+    # Client-side environment variables (prefixed with NEXT_PUBLIC_)
+    # NEXT_PUBLIC_POSTHOG_KEY: ""  # Optional
+    NEXT_PUBLIC_BACKEND_URL: ""  # Defaults to apollo service URL
+    # NEXT_PUBLIC_APP_URL: ""  # Optional
+    # NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: ""  # Optional - set to "true" to disable
+    NEXT_PUBLIC_SELF_HOSTED: "true"
+  # Optional: Additional environment variables (array format)
+  # extraEnv:
+  #   - name: CUSTOM_VAR
+  #     value: "custom_value"
+  # Secrets configuration for sensitive values (alternative to env)
+  # secrets:
+  #   OPENAI_API_KEY:
+  #     secretName: custom-secret
+  #     secretKey: openai-key
+  #   PLAIN_SECRET:
+  #     secretName: custom-secret
+  #     secretKey: plain-secret
+  # HPA (Horizontal Pod Autoscaler) configuration
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    # Scaling behavior configuration
+    scaleDownStabilizationWindowSeconds: 300
+    scaleDownPercent: 10
+    scaleDownPeriodSeconds: 60
+    scaleUpStabilizationWindowSeconds: 60
+    scaleUpPercent: 100
+    scaleUpPeriodSeconds: 15
+    scaleUpPods: 4
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: ""
+    tls: []
 
 supportBundle:
   # Enable/disable support bundle functionality
