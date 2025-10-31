@@ -29,7 +29,7 @@ spec:
         {{- toYaml .Values.minio.podSecurityContext | nindent 8 }}
       initContainers:
         - name: minio-data-init
-          image: "{{ .Values.global.registry.name }}/{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag | default .Chart.AppVersion }}"
           command: ["/bin/sh"]
           args:
             - -c
@@ -121,7 +121,7 @@ spec:
         - name: {{ .Chart.Name }}-minio
           securityContext:
             {{- toYaml .Values.minio.containerSecurityContext | nindent 12 }}
-          image: "{{ .Values.global.registry.name }}/{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
           ports:
             - name: api
