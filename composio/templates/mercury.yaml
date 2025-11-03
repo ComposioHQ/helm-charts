@@ -24,14 +24,28 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- with .Values.mercury.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mercury.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mercury.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: mercury
           image: "{{ .Values.global.registry.name }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag }}"
           imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.mercury.service.port | default 8080 }}
+          {{- with .Values.mercury.securityContext }}
           securityContext:
-            {{- toYaml .Values.mercury.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 5

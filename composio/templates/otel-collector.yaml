@@ -74,14 +74,18 @@ spec:
       {{- if .Values.otel.collector.googleCloud.serviceAccount.create }}
       serviceAccountName: {{ .Release.Name }}-{{ .Values.otel.collector.googleCloud.serviceAccount.name }}
       {{- end }}
+      {{- with .Values.otel.collector.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: otel-collector
           image: "{{ .Values.otel.collector.image.repository }}:{{ .Values.otel.collector.image.tag }}"
           imagePullPolicy: {{ .Values.otel.collector.image.pullPolicy }}
+          {{- with .Values.otel.collector.containerSecurityContext }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           command:
             - /otelcol-contrib
             - --config=/etc/otelcol-contrib/otel-collector-config.yaml
