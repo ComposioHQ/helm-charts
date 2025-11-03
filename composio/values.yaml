@@ -77,6 +77,20 @@ apollo:
     repository: composio-self-host/apollo
     tag: "495d325"
     pullPolicy: Always
+  # nodeSelector: {}
+  # tolerations: []
+  # affinity: {} 
+  # podSecurityContext:
+  #   runAsUser: 1000
+  #   runAsGroup: 3000
+  #   fsGroup: 2000
+  # containerSecurityContext:
+  #   allowPrivilegeEscalation: false
+  #   runAsNonRoot: true
+  #   readOnlyRootFilesystem: false
+  #   capabilities:
+  #     drop:
+  #       - ALL
   # Apollo DB init container configuration
   dbInit:
     enabled: true
@@ -84,6 +98,18 @@ apollo:
       repository: composio-self-host/apollo-db-init
       tag: "495d325"
       pullPolicy: Always
+    # podSecurityContext:
+    #   runAsUser: 1000
+    #   runAsGroup: 3000
+    #   fsGroup: 2000
+
+    # containerSecurityContext:
+    #   allowPrivilegeEscalation: false
+    #   runAsNonRoot: true
+    #   readOnlyRootFilesystem: false
+    #   capabilities:
+    #     drop:
+    #       - ALL
   
   service:
     type: NodePort
@@ -128,6 +154,22 @@ thermos:
     repository: composio-self-host/thermos
     tag: "495d325"
     pullPolicy: Always
+  # nodeSelector: {}
+  # tolerations: []
+  # affinity: {}
+
+  # podSecurityContext:
+  #   runAsUser: 1000
+  #   runAsGroup: 3000
+  #   fsGroup: 2000
+
+  # containerSecurityContext:
+  #   allowPrivilegeEscalation: false
+  #   runAsNonRoot: true
+  #   readOnlyRootFilesystem: true
+  #   capabilities:
+  #     drop:
+  #       - ALL
   # Thermos DB init container configuration
   dbInit:
     enabled: true
@@ -135,6 +177,18 @@ thermos:
       repository: composio-self-host/thermos-db-init
       tag: "495d325"
       pullPolicy: Always
+    # podSecurityContext:
+    #   runAsUser: 1000
+    #   runAsGroup: 3000
+    #   fsGroup: 2000
+
+    # containerSecurityContext:
+    #   allowPrivilegeEscalation: false
+    #   runAsNonRoot: true
+    #   readOnlyRootFilesystem: true
+    #   capabilities:
+    #     drop:
+    #       - ALL
   
   service:
     type: ClusterIP
@@ -401,11 +455,11 @@ serviceAccount:
   annotations: {}
   name: ""
 
-nodeSelector: {}
+# nodeSelector: {}
 
-tolerations: []
+# tolerations: []
 
-affinity: {}
+# affinity: {}
 
 # OpenTelemetry configuration
 otel:
@@ -555,7 +609,18 @@ otel:
             receivers: [otlp]
             processors: [memory_limiter, batch]
             exporters: [debug, prometheus, googlecloud]  # Export to Google Cloud Monitoring
+#   podSecurityContext:
+#     runAsUser: 1000
+#     runAsGroup: 3000
+#     fsGroup: 2000
 
+#   containerSecurityContext:
+#     allowPrivilegeEscalation: false
+#     runAsNonRoot: true
+#     readOnlyRootFilesystem: true
+#     capabilities:
+#       drop:
+#         - ALL
 # AWS configuration - disabled for development
 aws:
   region: us-east-1
@@ -625,7 +690,9 @@ mercury:
     repository: composio-self-host/mercury
     tag: "495d325"
     pullPolicy: Always
-  
+  # nodeSelector: {}
+  # tolerations: []
+  # affinity: {} 
   # Let the container use its default entrypoint
   # command: []
   # args: []
@@ -648,6 +715,7 @@ mercury:
     # periodSeconds: 10
     # successThreshold: 1
     # timeoutSeconds: 1
+
 
   service:
     type: ClusterIP
@@ -821,3 +889,16 @@ supportBundle:
     #     - 'custom_secret=([^&\s]+)'
     #   replacements:
     #     - 'custom_secret=***HIDDEN***'
+
+#   podSecurityContext:
+#     runAsUser: 1000
+#     runAsGroup: 3000
+#     fsGroup: 2000
+
+#   containerSecurityContext:
+#     allowPrivilegeEscalation: false
+#     runAsNonRoot: true
+#     readOnlyRootFilesystem: true
+#     capabilities:
+#       drop:
+#         - ALL
