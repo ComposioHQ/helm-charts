@@ -77,7 +77,6 @@ apollo:
     repository: composio-self-host/apollo
     tag: "495d325"
     pullPolicy: Always
-  
   # Apollo DB init container configuration
   dbInit:
     enabled: true
@@ -129,7 +128,6 @@ thermos:
     repository: composio-self-host/thermos
     tag: "495d325"
     pullPolicy: Always
-  
   # Thermos DB init container configuration
   dbInit:
     enabled: true
@@ -569,7 +567,6 @@ aws:
 # Minio configuration - Development
 minio:
   replicaCount: 1
-  
   # Deployment strategy to prevent Multi-Attach volume errors
   strategy:
     type: RollingUpdate
@@ -632,7 +629,26 @@ mercury:
   # Let the container use its default entrypoint
   # command: []
   # args: []
-  
+  livenessProbe:
+    enabled: false
+    # httpGet:
+    #   path: /api/health
+    #   port: 3000
+    # initialDelaySeconds: 120
+    # timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: false
+    # httpGet:
+    #   path: /api/health
+    #   port: 3000
+    #   scheme: HTTP
+    # failureThreshold: 3
+    # initialDelaySeconds: 30
+    # periodSeconds: 10
+    # successThreshold: 1
+    # timeoutSeconds: 1
+
   service:
     type: ClusterIP
     port: 8080
@@ -686,20 +702,6 @@ frontend:
     repository: composio-self-host/frontend
     tag: "latest"
     pullPolicy: Always
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  podSecurityContext:
-    runAsUser: 1000
-    runAsGroup: 3000
-    fsGroup: 2000
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    runAsNonRoot: true
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop:
-        - ALL
   service:
     type: ClusterIP
     port: 3000
