@@ -42,8 +42,10 @@ spec:
           imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.mercury.service.port | default 8080 }}
+          {{- with .Values.mercury.securityContext }}
           securityContext:
-            {{- toYaml .Values.mercury.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 5
@@ -76,6 +78,9 @@ spec:
               value: "true"
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+            - name: APOLLO_URL
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+
             # Minio credentials
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
@@ -109,6 +114,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: OPENAI_API_KEY
+            - name: APOLLO_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-apollo-admin-token
+                  key: APOLLO_ADMIN_TOKEN
             # OpenTelemetry configuration
             {{- if .Values.otel.enabled }}
             - name: OTEL_ENABLED
@@ -129,6 +139,8 @@ spec:
               value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
             - name: OTEL_METRIC_EXPORT_INTERVAL
               value: {{ .Values.otel.metrics.exportInterval | default "60000" | quote }}
+            - name: USE_APOLLO_GET_DOWNLOAD_URL_API
+              value: "true"
             # OTEL Resource attributes
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"

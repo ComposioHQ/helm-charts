@@ -1,0 +1,234 @@
+{{- if .Values.frontend.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "composio.fullname" . }}-frontend
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount | default 1 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.global.registry.name }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          {{- with .Values.frontend.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.frontend.service.port | default 3000 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.frontend.service.port | default 3000 }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.frontend.service.port | default 3000 }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            # Server-side environment variables
+            - name: PORT
+              value: {{ .Values.frontend.env.PORT | default "3000" | quote }}
+            - name: NODE_ENV
+              value: {{ .Values.frontend.env.NODE_ENV | default "production" | quote }}
+            {{- if .Values.frontend.env.OPENAPI_URL }}
+            - name: OPENAPI_URL
+              value: {{ .Values.frontend.env.OPENAPI_URL | quote }}
+            {{- end }}
+            {{- if and .Values.frontend.secrets .Values.frontend.secrets.OPENAI_API_KEY }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretName }}
+                  key: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretKey }}
+            {{- else }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-openai-credentials
+                  key: OPENAI_API_KEY
+            {{- end }}
+            {{- if and .Values.frontend.secrets .Values.frontend.secrets.PLAIN_SECRET }}
+            - name: PLAIN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.frontend.secrets.PLAIN_SECRET.secretName }}
+                  key: {{ .Values.frontend.secrets.PLAIN_SECRET.secretKey }}
+            {{- else if .Values.frontend.env.PLAIN_SECRET }}
+            - name: PLAIN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: PLAIN_SECRET
+            {{- end }}
+            - name: OVERRIDE_BACKEND_URL
+              value: {{ .Values.frontend.env.OVERRIDE_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+            # Client-side environment variables (prefixed with NEXT_PUBLIC_)
+            {{- if .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY }}
+            - name: NEXT_PUBLIC_POSTHOG_KEY
+              value: {{ .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY | quote }}
+            {{- end }}
+            - name: NEXT_PUBLIC_BACKEND_URL
+              value: {{ .Values.frontend.env.NEXT_PUBLIC_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+            {{- if .Values.frontend.env.NEXT_PUBLIC_APP_URL }}
+            - name: NEXT_PUBLIC_APP_URL
+              value: {{ .Values.frontend.env.NEXT_PUBLIC_APP_URL | quote }}
+            {{- end }}
+            {{- if .Values.frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN }}
+            - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
+              value: {{ .Values.frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN | quote }}
+            {{- end }}
+            - name: NEXT_PUBLIC_SELF_HOSTED
+              value: {{ .Values.frontend.env.NEXT_PUBLIC_SELF_HOSTED | default "true" | quote }}
+            # OpenTelemetry configuration
+            {{- if .Values.otel.enabled }}
+            - name: OTEL_ENABLED
+              value: {{ .Values.otel.enabled | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.otel.frontend.serviceName | default "frontend" | quote }}
+            - name: OTEL_SERVICE_VERSION
+              value: {{ .Values.otel.frontend.serviceVersion | default "1.0.0" | quote }}
+            - name: OTEL_ENVIRONMENT
+              value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: {{ .Values.otel.exporter.otlp.tracesEndpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            # OTEL Resource attributes
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name={{ .Values.otel.frontend.serviceName | default "frontend" }},service.version={{ .Values.otel.frontend.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+            {{- end }}
+            {{- if .Values.frontend.extraEnv }}
+            {{- toYaml .Values.frontend.extraEnv | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "composio.fullname" . }}-frontend
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  type: {{ .Values.frontend.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.frontend.service.port | default 3000 }}
+      targetPort: {{ .Values.frontend.service.port | default 3000 }}
+      protocol: TCP
+      {{- if and (eq .Values.frontend.service.type "NodePort") .Values.frontend.service.nodePort }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+{{- if and .Values.frontend.autoscaling .Values.frontend.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "composio.fullname" . }}-frontend
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "composio.fullname" . }}-frontend
+  minReplicas: {{ .Values.frontend.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.frontend.autoscaling.maxReplicas | default 10 }}
+  metrics:
+    {{- if .Values.frontend.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.frontend.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.frontend.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.frontend.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.frontend.autoscaling.scaleDownStabilizationWindowSeconds | default 300 }}
+      policies:
+      - type: Percent
+        value: {{ .Values.frontend.autoscaling.scaleDownPercent | default 10 }}
+        periodSeconds: {{ .Values.frontend.autoscaling.scaleDownPeriodSeconds | default 60 }}
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.frontend.autoscaling.scaleUpStabilizationWindowSeconds | default 60 }}
+      policies:
+      - type: Percent
+        value: {{ .Values.frontend.autoscaling.scaleUpPercent | default 100 }}
+        periodSeconds: {{ .Values.frontend.autoscaling.scaleUpPeriodSeconds | default 15 }}
+      - type: Pods
+        value: {{ .Values.frontend.autoscaling.scaleUpPods | default 4 }}
+        periodSeconds: {{ .Values.frontend.autoscaling.scaleUpPeriodSeconds | default 15 }}
+      selectPolicy: Max
+{{- end }}
+{{- end }}
+

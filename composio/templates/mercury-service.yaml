@@ -45,8 +45,10 @@ spec:
           {{- end }}
           ports:
             - containerPort: {{ .Values.mercury.service.port | default 8080 }}
+          {{- with .Values.mercury.securityContext }}
           securityContext:
-            {{- toYaml .Values.mercury.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             # AWS S3 Configuration (using Minio) - matching your reference configuration
             - name: AWS_S3_REGION_NAME
@@ -68,6 +70,15 @@ spec:
                   key: OPENAI_API_KEY
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+            - name: APOLLO_URL
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+            - name: APOLLO_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-apollo-admin-token
+                  key: APOLLO_ADMIN_TOKEN
+            - name: USE_APOLLO_GET_DOWNLOAD_URL_API
+              value: "true"
             # Minio credentials - with AWS key names to be aws sdk compatible
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
