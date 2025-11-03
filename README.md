@@ -780,6 +780,7 @@ kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/com
 - **Troubleshooting**: https://composiohq.github.io/helm-charts/troubleshooting.html
 - **Secret Management**: [SECRETS.md](./SECRETS.md) - Detailed secret management documentation
 - **GCS via S3 Storage Guide**: [docs/gcs-s3-storage.md](./docs/gcs-s3-storage.md)
+ - **SMTP Setup Guide**: [docs/smtp-setup.md](./docs/smtp-setup.md)
 - **Composio Docs**: https://docs.composio.dev
 - **GitHub**: https://github.com/composio/helm-charts
 - **Support**: https://discord.gg/composio
