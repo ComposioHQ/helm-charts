@@ -81,9 +81,9 @@ apollo:
   tolerations: []
   affinity: {} 
   podSecurityContext:
-    runAsUser: 1000
-    runAsGroup: 3000
-    fsGroup: 2000
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
 
   containerSecurityContext:
     allowPrivilegeEscalation: false
@@ -100,9 +100,9 @@ apollo:
       tag: "2eef15b"
       pullPolicy: Always
     podSecurityContext:
-      runAsUser: 1000
-      runAsGroup: 3000
-      fsGroup: 2000
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
 
     containerSecurityContext:
       allowPrivilegeEscalation: false
@@ -162,9 +162,9 @@ thermos:
   affinity: {}
   
   podSecurityContext:
-    runAsUser: 1000
-    runAsGroup: 3000
-    fsGroup: 2000
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
   
   containerSecurityContext:
     allowPrivilegeEscalation: false
@@ -183,9 +183,9 @@ thermos:
       pullPolicy: Always
     
     podSecurityContext:
-      runAsUser: 1000
-      runAsGroup: 3000
-      fsGroup: 2000
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
   
     containerSecurityContext:
       allowPrivilegeEscalation: false
