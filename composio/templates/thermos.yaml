@@ -26,8 +26,10 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- with .Values.thermos.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.thermos.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.thermos.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -46,8 +48,10 @@ spec:
           imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
           command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
+          {{- with .Values.thermos.containerSecurityContext }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - containerPort: 8180
           livenessProbe:

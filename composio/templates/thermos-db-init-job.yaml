@@ -22,15 +22,19 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- with .Values.thermos.dbInit.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.thermos.dbInit.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
       containers:
         - name: thermos-db-init
           image: "{{ .Values.global.registry.name }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
+          {{- with .Values.thermos.dbInit.containerSecurityContext }}
           securityContext:
-            {{- toYaml .Values.thermos.dbInit.containerSecurityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             # Thermos database URL
             - name: POSTGRES_URL

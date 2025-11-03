@@ -42,8 +42,10 @@ spec:
           imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.mercury.service.port | default 8080 }}
+          {{- with .Values.mercury.securityContext }}
           securityContext:
-            {{- toYaml .Values.mercury.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 5
