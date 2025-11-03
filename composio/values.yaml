@@ -129,6 +129,12 @@ apollo:
       name: "external-postgres-secret"
       key: "url"
   
+  # SMTP configuration
+  smtp:
+    enabled: false
+    smtpAuthorEmail: "admin@yourdomain.com"
+    # credentialsSecret: ""  # Optional: custom secret name (defaults to {release-name}-smtp-credentials)
+  
   # Note: Secrets are now managed globally in the 'secrets' section
   
   # HPA (Horizontal Pod Autoscaler) configuration

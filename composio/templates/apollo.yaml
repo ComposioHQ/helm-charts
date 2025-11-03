@@ -183,10 +183,15 @@ spec:
               value: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
             - name: OTEL_LOGS_EXPORTER
               value: "otlp"
+            {{- if .Values.apollo.smtp.enabled }}
             - name: SMTP_CONNECTION_STRING
-              value: {{ .Values.apollo.smtpConnectionString | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.apollo.smtp.credentialsSecret | default (printf "%s-smtp-credentials" .Release.Name) }}
+                  key: SMTP_CONNECTION_STRING
+            {{- end }}
             - name: SMTP_AUTHOR_EMAIL
-              value: {{ .Values.apollo.smtpAuthorEmail | quote }}
+              value: {{ .Values.apollo.smtp.smtpAuthorEmail | quote }}
             - name: S3_BUCKET
               value: {{ .Values.apollo.s3Bucket | quote }}
             - name: TEST_DEBUG
