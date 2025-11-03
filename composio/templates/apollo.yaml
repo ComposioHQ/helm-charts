@@ -163,6 +163,8 @@ spec:
               value: {{ .Values.apollo.jwtSecret | quote }}
             - name: OTEL_METRICS_EXPORTER
               value: "otlp"
+            - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
+              value: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
             - name: OTEL_LOGS_EXPORTER
               value: "otlp"
             - name: SMTP_CONNECTION_STRING

@@ -714,17 +714,8 @@ frontend:
     # Server-side environment variables
     PORT: "3000"
     NODE_ENV: "production"
-    # OPENAPI_URL: ""  # Optional - uncomment and set if needed
-    # Set OPENAI_API_KEY to any truthy value (e.g., "true") to load from default secrets, or configure custom secret below
-    # OPENAI_API_KEY: ""  
-    # Set PLAIN_SECRET to any truthy value (e.g., "true") to load from default secrets, or configure custom secret below
-    # PLAIN_SECRET: ""
     OVERRIDE_BACKEND_URL: ""  # Defaults to apollo service URL
-    # Client-side environment variables (prefixed with NEXT_PUBLIC_)
-    # NEXT_PUBLIC_POSTHOG_KEY: ""  # Optional
-    NEXT_PUBLIC_BACKEND_URL: ""  # Defaults to apollo service URL
-    # NEXT_PUBLIC_APP_URL: ""  # Optional
-    # NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: ""  # Optional - set to "true" to disable
+    NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: "true"
     NEXT_PUBLIC_SELF_HOSTED: "true"
   # Optional: Additional environment variables (array format)
   # extraEnv:
@@ -735,9 +726,6 @@ frontend:
   #   OPENAI_API_KEY:
   #     secretName: custom-secret
   #     secretKey: openai-key
-  #   PLAIN_SECRET:
-  #     secretName: custom-secret
-  #     secretKey: plain-secret
   ingress:
     enabled: false
     className: ""
