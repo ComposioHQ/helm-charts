@@ -76,7 +76,7 @@ spec:
             - name: _ENV
               value: "production"
             {{/* add the GOOGLE_APPLICATION_CREDENTIALS here */}}
-            {{- if .Values.apollo.googleServiceAccount.enabled }}
+            {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: "{{ .Values.apollo.googleServiceAccount.mountPath }}/key.json"
             {{- end }}
@@ -206,12 +206,12 @@ spec:
           resources:
             {{- toYaml .Values.apollo.resources | nindent 12 }}
           volumeMounts:
-            {{- if .Values.apollo.googleServiceAccount.enabled }}
+            {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
             - name: gcp-key
               mountPath: "{{ .Values.apollo.googleServiceAccount.mountPath }}"
               readOnly: true
             {{- end }}
-      {{- if .Values.apollo.googleServiceAccount.enabled }}
+      {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
       volumes:
         - name: gcp-key
           secret:
