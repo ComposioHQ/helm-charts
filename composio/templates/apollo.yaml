@@ -27,25 +27,13 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.apollo.podSecurityContext | nindent 8 }}
-      {{- with .Values.apollo.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.apollo.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.apollo.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: apollo
           image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
           securityContext:
-            {{- toYaml .Values.apollo.containerSecurityContext | nindent 12 }}
+            {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
             - containerPort: 9900
           livenessProbe:
@@ -69,17 +57,24 @@ spec:
               value: "9900"
             - name: HOSTNAME
               value: "0.0.0.0"
-            - name: NODE_ENV
+            - name: _ENV
               value: "production"
+            {{/* add the GOOGLE_APPLICATION_CREDENTIALS here */}}
+            {{- if .Values.apollo.googleServiceAccount.enabled }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "{{ .Values.apollo.googleServiceAccount.mountPath }}/key.json"
+            {{- end }}
             - name: AWS_REGION
               value: {{ .Values.aws.region | quote }}
             - name: COMPOSIO_ENV
               value: "production"
+            - name: OVERWRITE_FE_URL
+              value: {{ .Values.apollo.overwrite_fe_url | quote }}
             - name: USE_CLICKHOUSE_FOR_LOGS
               value: "false"
             - name: SELF_HOSTED
               value: "true"
-            - name: NODE_OPTIONS
+            - name: _OPTIONS
               value: "--max-old-space-size=4096"
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
@@ -90,6 +85,26 @@ spec:
               value: {{ .Values.apollo.oauth2_redirect_uri_override | default (printf "http://%s-apollo:9900/api/v3/toolkits/auth/callback" .Release.Name) | quote }}
             - name: MERCURY_URL
               value: "https://mercury.composio.dev"
+            - name: S3_FORCE_PATH_STYLE
+              value: {{ .Values.apollo.s3ForcePathStyle | default "true" | quote }}
+            - name: S3_ENDPOINT
+              value: {{ .Values.apollo.s3Endpoint | quote }}
+            - name: S3_ENDPOINT_URL
+              value: {{ .Values.apollo.s3EndpointUrl | quote }}
+            - name: S3_REGION
+              value: {{ .Values.apollo.s3Region | quote }}
+            - name: S3_SIGNATURE_VERSION
+              value: {{ .Values.apollo.s3SignatureVersion | quote }}
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_ACCESS_KEY_ID
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_SECRET_ACCESS_KEY
             - name: SERVICE_NAME
               value: "apollo"
             - name: APOLLO_URL
@@ -144,10 +159,20 @@ spec:
               value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
             - name: OTEL_TRACES_EXPORTER
               value: "otlp"
+            - name: JWT_SECRET
+              value: {{ .Values.apollo.jwtSecret | quote }}
             - name: OTEL_METRICS_EXPORTER
               value: "otlp"
             - name: OTEL_LOGS_EXPORTER
               value: "otlp"
+            - name: SMTP_CONNECTION_STRING
+              value: {{ .Values.apollo.smtpConnectionString | quote }}
+            - name: SMTP_AUTHOR_EMAIL
+              value: {{ .Values.apollo.smtpAuthorEmail | quote }}
+            - name: S3_BUCKET
+              value: {{ .Values.apollo.s3Bucket | quote }}
+            - name: TEST_DEBUG
+              value: "true"
             # Custom Apollo variables for backward compatibility
             - name: ENABLE_OTEL_METRICS
               value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
@@ -162,6 +187,18 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.apollo.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.apollo.googleServiceAccount.enabled }}
+            - name: gcp-key
+              mountPath: "{{ .Values.apollo.googleServiceAccount.mountPath }}"
+              readOnly: true
+            {{- end }}
+      {{- if .Values.apollo.googleServiceAccount.enabled }}
+      volumes:
+        - name: gcp-key
+          secret:
+            secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -176,8 +213,8 @@ spec:
     - port: {{ .Values.apollo.service.port }}
       targetPort: 9900
       protocol: TCP
-      {{- if and (eq .Values.apollo.service.type "NodePort") .Values.apollo.service.nodePort }}
-      nodePort: {{ .Values.apollo.service.nodePort }}
+      {{- if and (eq .Values.apollo.service.type "Port") .Values.apollo.service.Port }}
+      Port: {{ .Values.apollo.service.Port }}
       {{- end }}
   selector:
     app: apollo

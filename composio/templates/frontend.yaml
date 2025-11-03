@@ -83,11 +83,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretName }}
                   key: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretKey }}
-            {{- else if .Values.frontend.env.OPENAI_API_KEY }}
+            {{- else }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-openai-credentials
                   key: OPENAI_API_KEY
             {{- end }}
             {{- if and .Values.frontend.secrets .Values.frontend.secrets.PLAIN_SECRET }}

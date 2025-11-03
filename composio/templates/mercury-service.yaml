@@ -68,6 +68,15 @@ spec:
                   key: OPENAI_API_KEY
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+            - name: APOLLO_URL
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+            - name: APOLLO_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-apollo-admin-token
+                  key: APOLLO_ADMIN_TOKEN
+            - name: USE_APOLLO_GET_DOWNLOAD_URL_API
+              value: "true"
             # Minio credentials - with AWS key names to be aws sdk compatible
             - name: AWS_ACCESS_KEY_ID
               valueFrom:

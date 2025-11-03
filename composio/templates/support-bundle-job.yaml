@@ -17,16 +17,12 @@ spec:
         {{- include "myapp.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: support-bundle
     spec:
-      securityContext:
-        {{- toYaml .Values.supportBundle.podSecurityContext | nindent 8 }}
       restartPolicy: Never
       serviceAccountName: {{ include "myapp.fullname" . }}-support-bundle
       containers:
       - name: support-bundle
         image: "replicated/troubleshoot:{{ .Values.supportBundle.troubleshootVersion | default "v0.84.0" }}"
         imagePullPolicy: IfNotPresent
-        securityContext:
-            {{- toYaml .Values.supportBundle.containerSecurityContext | nindent 12 }}
         command:
         - support-bundle
         args:
