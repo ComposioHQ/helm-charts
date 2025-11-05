@@ -770,7 +770,7 @@ mercury:
 
 # Frontend service configuration - Development
 frontend:
-  enabled: true
+  enabled: false
   replicaCount: 1
   image:
     repository: composio-self-host/frontend

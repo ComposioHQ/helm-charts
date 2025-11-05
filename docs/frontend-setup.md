@@ -10,6 +10,10 @@ This guide walks you through enabling and configuring the Composio frontend (Nex
 ### Key configuration knobs
 The frontend is controlled by `frontend.*` values. Important ones:
 
+Note: To actually deploy the frontend, set these in your override values (e.g., `values-override.yaml`). Defaults in `composio/values.yaml` keep them disabled.
+- `frontend.enabled`: set to `true` to deploy the frontend.
+- `frontend.ingress.enabled`: set to `true` if you also want to expose it via Ingress (then configure `frontend.ingress.host`, `className`, and `tls`).
+
 - Service and image:
   - `frontend.enabled`: enable the frontend component
   - `frontend.image.repository`, `frontend.image.tag`
