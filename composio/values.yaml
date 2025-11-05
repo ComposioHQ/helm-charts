@@ -75,7 +75,7 @@ apollo:
   replicaCount: 2
   image:
     repository: composio-self-host/apollo
-    tag: "2eef15b"
+    tag: "kore-v1.0.0"
     pullPolicy: Always
   nodeSelector: {}
   tolerations: []
@@ -97,7 +97,7 @@ apollo:
     enabled: true
     image:
       repository: composio-self-host/apollo-db-init
-      tag: "2eef15b"
+      tag: "kore-v1.0.0"
       pullPolicy: Always
     podSecurityContext:
       runAsUser: 1001
@@ -154,7 +154,7 @@ thermos:
   replicaCount: 2
   image:
     repository: composio-self-host/thermos
-    tag: "744a5bf"
+    tag: "release-2025_11_03"
     pullPolicy: Always
   
   nodeSelector: {}
@@ -294,7 +294,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "postgres.db"
+            host: "postgres-new.db"
             port: 5432
             database: "temporal"
             user: "composio"
@@ -308,7 +308,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "postgres.db"
+            host: "postgres-new.db"
             port: 5432
             database: "temporal_visibility"
             user: "composio"
@@ -483,7 +483,7 @@ affinity: {}
 
 # OpenTelemetry configuration
 otel:
-  enabled: true
+  enabled: false
   
   podSecurityContext:
     runAsUser: 1000
@@ -717,7 +717,7 @@ mercury:
   replicaCount: 1
   image:
     repository: composio-self-host/mercury
-    tag: "744a5bf"
+    tag: "release-2025_11_03"
     pullPolicy: Always
   
   # Let the container use its default entrypoint
