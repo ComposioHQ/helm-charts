@@ -637,6 +637,7 @@ aws:
     
 # Minio configuration - Development
 minio:
+  enabled: false
   replicaCount: 1
   # Deployment strategy to prevent Multi-Attach volume errors
   strategy:

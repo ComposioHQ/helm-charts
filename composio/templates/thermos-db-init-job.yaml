@@ -26,6 +26,18 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
+      {{- with .Values.thermos.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.thermos.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.thermos.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: thermos-db-init
           image: "{{ .Values.global.registry.name }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
