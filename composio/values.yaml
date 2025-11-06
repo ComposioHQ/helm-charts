@@ -277,7 +277,7 @@ temporal:
 
     replicaCount: 2
     image:
-      repository: temporalio/server
+      repository: temporalio/server # Provide custom registry here
       tag: 1.28.0
       pullPolicy: IfNotPresent
     
@@ -366,7 +366,7 @@ temporal:
     enabled: true
     replicaCount: 1
     image:
-      repository: temporalio/ui
+      repository: temporalio/ui #Provide custom registry
       tag: 2.38.3
       pullPolicy: IfNotPresent
     service:
@@ -420,7 +420,7 @@ temporal:
       # timeoutSeconds: 1
     enabled: true
     image:
-      repository: temporalio/admin-tools
+      repository: temporalio/admin-tools # Provide custom registry here
       tag: 1.28.0-tctl-1.18.2-cli-1.3.0
       pullPolicy: IfNotPresent
 
