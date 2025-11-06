@@ -647,6 +647,7 @@ aws:
 # Minio configuration - Development
 minio:
   replicaCount: 1
+  enabled: false
   
   # Deployment strategy to prevent Multi-Attach volume errors
   podSecurityContext:
