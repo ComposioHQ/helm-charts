@@ -25,6 +25,18 @@ spec:
       securityContext:
         {{- toYaml .Values.apollo.dbInit.podSecurityContext | nindent 8 }}
       restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
+      {{- with .Values.apollo.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.apollo.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.apollo.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: apollo-db-init
           image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
