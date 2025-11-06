@@ -255,6 +255,9 @@ temporal:
   
   server:
     enabled: true
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
     # livenessProbe:
       # enabled: false
       # httpGet:
@@ -325,6 +328,9 @@ temporal:
 
     # Frontend service configuration
     frontend:
+      nodeSelector: {}
+      tolerations: []
+      affinity: {}
       # livenessProbe:
         # enabled: false
         # httpGet:
@@ -352,6 +358,9 @@ temporal:
 
   # Enable schema setup to create temporal databases
   schema:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
     createDatabase:
       enabled: true
     setup:
@@ -363,6 +372,9 @@ temporal:
 
   # Enable web UI
   web:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
     enabled: true
     replicaCount: 1
     image:
@@ -399,6 +411,9 @@ temporal:
 
   
   admintools:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
     # livenessProbe:
       # enabled: false
       # httpGet:
