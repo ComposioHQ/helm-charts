@@ -248,6 +248,8 @@ temporal:
   #     value: "false"
   #   - name: SKIP_DB_CREATE
   #     value: "true"
+  #   - name: SKIP_DB_CREATE
+  #     value: "true"
   #   - name: DBNAME
   #     value: temporal_db
   #   - name: VISIBILITY_DBNAME
@@ -297,7 +299,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "postgres-new.db"
+            host: "HOST"
             port: 5432
             database: "temporal"
             user: "composio"
@@ -305,13 +307,17 @@ temporal:
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
+            # tls: 
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
         
         # Visibility database (will be created by schema setup)
         visibility:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "postgres-new.db"
+            host: "HOST"
             port: 5432
             database: "temporal_visibility"
             user: "composio"
@@ -319,6 +325,10 @@ temporal:
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
+            # tls: 
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
       namespaces:
         # Enable this to create namespaces
         create: true
@@ -414,6 +424,15 @@ temporal:
     nodeSelector: {}
     tolerations: []
     affinity: {}
+    # additionalVolumes:
+    #   - name: temporal-db-tls
+    #     secret:
+    #       secretName: temporal-db-tls-secret
+    # additionalVolumeMounts: 
+    #   - name: temporal-db-tls
+    #     mountPath: /etc/certs
+    #     readOnly: true
+
     # livenessProbe:
       # enabled: false
       # httpGet:
