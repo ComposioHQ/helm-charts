@@ -84,8 +84,6 @@ spec:
               value: {{ .Values.aws.region | quote }}
             - name: COMPOSIO_ENV
               value: "production"
-            - name: OVERWRITE_FE_URL
-              value: {{ .Values.apollo.overwrite_fe_url | quote }}
             - name: USE_CLICKHOUSE_FOR_LOGS
               value: "false"
             - name: SELF_HOSTED
@@ -94,7 +92,10 @@ spec:
               value: "--max-old-space-size=4096"
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
- 
+            {{- if .Values.apollo.overwrite_fe_url }}
+             - name: OVERWRITE_FE_URL
+              value: {{ .Values.apollo.overwrite_fe_url | quote }}
+            {{- end }}
             - name: OVERWRITE_APOLLO_URL
               value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: OAUTH2_REDIRECT_URI_OVERRIDE
