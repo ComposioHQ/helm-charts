@@ -92,6 +92,8 @@ spec:
               value: "--max-old-space-size=4096"
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
+            - name: BACKEND_URL
+              value: {{ .Values.apollo.overwrite_apollo_url | printf "http://%s-apollo:9900" .Release.Name | quote }}
             {{- if .Values.apollo.overwrite_fe_url }}
              - name: OVERWRITE_FE_URL
               value: {{ .Values.apollo.overwrite_fe_url | quote }}
