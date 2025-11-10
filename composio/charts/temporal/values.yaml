@@ -20,27 +20,8 @@ server:
   enabled: true
   image:
     repository: temporalio/server
-    tag: 1.29.0
+    tag: 1.28.0
     pullPolicy: IfNotPresent
-  livenessProbe:
-    enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    # initialDelaySeconds: 120
-    # timeoutSeconds: 10
-
-  readinessProbe:
-    enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    #   scheme: HTTP
-    # failureThreshold: 3
-    # initialDelaySeconds: 30
-    # periodSeconds: 10
-    # successThreshold: 1
-    # timeoutSeconds: 1
   # Global default settings (can be overridden per service)
   replicaCount: 1
   metrics:
@@ -224,26 +205,6 @@ server:
         - name: default
           retention: 3d
   frontend:
-    livenessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      # initialDelaySeconds: 120
-      # timeoutSeconds: 10
-
-    readinessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      #   scheme: HTTP
-      # failureThreshold: 3
-      # initialDelaySeconds: 30
-      # periodSeconds: 10
-      # successThreshold: 1
-      # timeoutSeconds: 1
-
     service:
       # Evaluated as template
       annotations: {}
@@ -315,25 +276,6 @@ server:
     topologySpreadConstraints: []
     podDisruptionBudget: {}
   history:
-    livenessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      # initialDelaySeconds: 120
-      # timeoutSeconds: 10
-
-    readinessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      #   scheme: HTTP
-      # failureThreshold: 3
-      # initialDelaySeconds: 30
-      # periodSeconds: 10
-      # successThreshold: 1
-      # timeoutSeconds: 1
     service:
       # type: ClusterIP
       port: 7234
@@ -359,25 +301,6 @@ server:
     topologySpreadConstraints: []
     podDisruptionBudget: {}
   matching:
-    livenessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      # initialDelaySeconds: 120
-      # timeoutSeconds: 10
-
-    readinessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      #   scheme: HTTP
-      # failureThreshold: 3
-      # initialDelaySeconds: 30
-      # periodSeconds: 10
-      # successThreshold: 1
-      # timeoutSeconds: 1
     service:
       # type: ClusterIP
       port: 7235
@@ -402,25 +325,6 @@ server:
     topologySpreadConstraints: []
     podDisruptionBudget: {}
   worker:
-    livenessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      # initialDelaySeconds: 120
-      # timeoutSeconds: 10
-
-    readinessProbe:
-      enabled: false
-      # httpGet:
-      #   path: /api/health
-      #   port: 3000
-      #   scheme: HTTP
-      # failureThreshold: 3
-      # initialDelaySeconds: 30
-      # periodSeconds: 10
-      # successThreshold: 1
-      # timeoutSeconds: 1
     service:
       # type: ClusterIP
       port: 7239
@@ -446,28 +350,9 @@ server:
     podDisruptionBudget: {}
 admintools:
   enabled: true
-  livenessProbe:
-    enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    # initialDelaySeconds: 120
-    # timeoutSeconds: 10
-
-  readinessProbe:
-    enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    #   scheme: HTTP
-    # failureThreshold: 3
-    # initialDelaySeconds: 30
-    # periodSeconds: 10
-    # successThreshold: 1
-    # timeoutSeconds: 1
   image:
     repository: temporalio/admin-tools
-    tag: "1.29"
+    tag: 1.28.0-tctl-1.18.2-cli-1.3.0
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -492,31 +377,11 @@ admintools:
   podDisruptionBudget: {}
 web:
   # additionalInitContainers: []
-  livenessProbe:
-    enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    # initialDelaySeconds: 120
-    # timeoutSeconds: 10
-
-  readinessProbe:
-    enabled: false
-    # httpGet:
-    #   path: /api/health
-    #   port: 3000
-    #   scheme: HTTP
-    # failureThreshold: 3
-    # initialDelaySeconds: 30
-    # periodSeconds: 10
-    # successThreshold: 1
-    # timeoutSeconds: 1
-
   enabled: true
   replicaCount: 1
   image:
     repository: temporalio/ui
-    tag: 2.40.1
+    tag: 2.38.3
     pullPolicy: IfNotPresent
   service:
     # set type to NodePort if access to web needs access from outside the cluster

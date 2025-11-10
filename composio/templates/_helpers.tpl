@@ -66,7 +66,21 @@ Apollo selector labels
 app.kubernetes.io/component: apollo
 {{- end }}
 
+{{/*
+MCP labels
+*/}}
+{{- define "composio.mcp.labels" -}}
+{{ include "composio.labels" . }}
+app.kubernetes.io/component: mcp
+{{- end }}
 
+{{/*
+MCP selector labels
+*/}}
+{{- define "composio.mcp.selectorLabels" -}}
+{{ include "composio.selectorLabels" . }}
+app.kubernetes.io/component: mcp
+{{- end }}
 
 {{/*
 Thermos labels
@@ -186,10 +200,10 @@ Compile all warnings into a single message, and call fail.
 Validate database configuration
 */}}
 {{- define "composio.validateValues.database" -}}
-{{- if and (not .Values.postgresql.enabled) (not .Values.apollo.secrets.databaseUrl) -}}
+{{- if and (not .Values.postgresql.enabled) (or (not .Values.apollo.secrets.databaseUrl) (not .Values.mcp.secrets.databaseUrl)) -}}
 composio: database
-    You must provide database URL when PostgreSQL is disabled.
-    Please set apollo.secrets.databaseUrl
+    You must provide database URLs when PostgreSQL is disabled.
+    Please set apollo.secrets.databaseUrl and mcp.secrets.databaseUrl
 {{- end -}}
 {{- end -}}
 
@@ -197,14 +211,9 @@ composio: database
 Validate Redis configuration
 */}}
 {{- define "composio.validateValues.redis" -}}
-{{- if and .Values.externalRedis.enabled (not .Values.externalSecrets.redis.url) -}}
+{{- if and (not .Values.redis.enabled) (or (not .Values.apollo.secrets.redisUrl) (not .Values.mcp.secrets.redisUrl) (not .Values.thermos.secrets.redisUrl)) -}}
 composio: redis
-    You must provide a Redis URL when external Redis is enabled.
-    Please set externalSecrets.redis.url
+    You must provide Redis URLs when Redis is disabled.
+    Please set apollo.secrets.redisUrl, mcp.secrets.redisUrl, and thermos.secrets.redisUrl
 {{- end -}}
-{{- if and .Values.externalRedis.enabled .Values.redis.enabled -}}
-composio: redis
-    You cannot enable both external Redis and built-in Redis.
-    Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
-{{- end -}} 
