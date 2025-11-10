@@ -85,7 +85,7 @@ server:
                 operator: In
                 values:
                 - elasticsearch-master
-            topologyKey: kubernetes.io/hostname    
+            topologyKey: kubernetes.io/hostname
         requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
             matchExpressions:
@@ -94,7 +94,7 @@ server:
               values:
               - frontend
           topologyKey: kubernetes.io/hostname
- 
+
   history:
     affinity:
       podAffinity:
@@ -129,7 +129,7 @@ server:
                 operator: In
                 values:
                 - elasticsearch-master
-            topologyKey: kubernetes.io/hostname    
+            topologyKey: kubernetes.io/hostname
         requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
             matchExpressions:

@@ -1,3 +1,20 @@
+{{- if not .Values.secrets.adminToken }}
+🔐 AUTO-GENERATED SECRETS:
+All sensitive credentials have been automatically generated for security:
+- APOLLO_ADMIN_TOKEN (32 characters)
+- ENCRYPTION_KEY (32 characters)
+- TEMPORAL_TRIGGER_ENCRYPTION_KEY (32 characters)
+- BOOTSTRAP_API_KEY_VALUE (32 characters)
+- MINIO credentials
+
+These secrets are persistent across upgrades. To view generated secrets:
+  kubectl get secret {{ .Release.Name }}-secrets -o yaml
+
+To retrieve a specific secret (e.g., admin token):
+  kubectl get secret {{ .Release.Name }}-secrets -o jsonpath="{.data.APOLLO_ADMIN_TOKEN}" | base64 -d
+
+{{- end }}
+
 1. Get the application URL by running these commands:
 {{- if contains "NodePort" .Values.apollo.service.type }}
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "composio.fullname" . }}-apollo)
@@ -21,19 +38,27 @@
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-apollo 8080:{{ .Values.apollo.service.port }}
    Then visit: http://127.0.0.1:8080
 
-
+   MCP (Management Portal):
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-mcp 8081:{{ .Values.mcp.service.port }}
+   Then visit: http://127.0.0.1:8081
 
    Temporal Web UI:
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-temporal-web 8082:8080
    Then visit: http://127.0.0.1:8082
 
+3. Get admin credentials:
+   {{- if .Values.secrets.adminToken }}
+   Admin Token: {{ .Values.secrets.adminToken }}
+   {{- else }}
+   Admin Token: Auto-generated (retrieve using kubectl command above)
+   {{- end }}
 
-3. Verify installation:
+4. Verify installation:
    kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
 
    All pods should be in 'Running' status.
 
-4. For production use:
+5. For production use:
    - Configure external databases (PostgreSQL, Redis)
    - Set up proper ingress with SSL certificates
    - Configure monitoring and logging
@@ -44,8 +69,17 @@ For more information:
 - GitHub: https://github.com/composio/self-hosted
 - Support: https://discord.gg/composio
 
+{{- if not .Values.secrets.adminToken }}
+
+INFO: Admin token has been auto-generated for security. Retrieve it using the kubectl commands shown above.
+{{- end }}
+
+{{- if and .Values.postgresql.enabled (not .Values.postgresql.auth.password) }}
+
+INFO: PostgreSQL password will be auto-managed by the chart for security.
+{{- end }}
 
 {{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
 
 INFO: Redis password will be auto-managed by the chart for security.
-{{- end }} 
+{{- end }}
