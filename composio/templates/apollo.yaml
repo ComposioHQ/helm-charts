@@ -96,7 +96,7 @@ spec:
               value: {{ .Values.apollo.overwrite_apollo_url | printf "http://%s-apollo:9900" .Release.Name | quote }}
           {{- if .Values.apollo.overwrite_fe_url }}
             - name: OVERWRITE_FE_URL
-               value: {{ .Values.apollo.overwrite_fe_url | quote }}
+              value: {{ .Values.apollo.overwrite_fe_url | quote }}
           {{- end }}
             - name: OVERWRITE_APOLLO_URL
               value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
