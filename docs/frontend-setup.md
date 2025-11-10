@@ -48,9 +48,7 @@ frontend:
 
   env:
     # Server-side Apollo URL (in-cluster by default)
-    # OVERRIDE_BACKEND_URL: "http://composio-apollo:9900"
-    # Public Apollo URL that the browser should use
-    NEXT_PUBLIC_BACKEND_URL: "https://api.example.com"
+    #OVERRIDE_BACKEND_URL: "http://composio-apollo:9900"
     # Public frontend URL (helps generate absolute links)
     NEXT_PUBLIC_APP_URL: "https://app.example.com"
     # Optional flags
