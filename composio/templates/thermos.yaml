@@ -22,36 +22,80 @@ spec:
         app: thermos
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.thermos.serviceAccountName }}
+      serviceAccountName: {{ .Values.thermos.serviceAccountName }}
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.podSecurityContext }}
-      securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.thermos.nodeSelector }}
+      {{- if or .Values.nodeSelector .Values.thermos.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
+        {{- with .Values.thermos.nodeSelector }}
+          {{- toYaml . | nindent 8 }}
+        {{- else }}
+          {{- toYaml .Values.nodeSelector | nindent 8 }}
+        {{- end }}
       {{- end }}
-      {{- with .Values.thermos.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.thermos.tolerations }}
+      {{- if .Values.tolerations }}
       tolerations:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.thermos.dbInit.enabled }}
+      initContainers:
+      {{- if .Values.thermos.additionalInitContainers}}
+        {{- with .Values.thermos.additionalInitContainers }}
+          {{- toYaml . | nindent 8}}
+        {{- end }}
+      {{- end }}
+        - name: thermos-db-init
+          image: "{{ .Values.thermos.dbInit.image.imageName }}"
+          imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-thermos-postgres-secret
+                  key: url
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: external-thermos-postgres-secret
+                  key: url
+            - name: COMPOSIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: COMPOSIO_API_KEY
+            - name: ADMIN_EMAIL
+              value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+            {{- if .Values.thermos.dbInit.env }}
+            {{- toYaml .Values.thermos.dbInit.env | nindent 12 }}
+            {{- end }}
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          {{- with .Values.thermos.additionalVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- end }}
       containers:
         - name: thermos
-          image: "{{ .Values.global.registry.name }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
+          image: "{{ .Values.thermos.image.imageName }}"
           imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
           command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
-          {{- with .Values.thermos.containerSecurityContext }}
           securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
             - containerPort: 8180
           livenessProbe:
@@ -82,7 +126,7 @@ spec:
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-apollo-admin-token
+                  name: {{ .Release.Name }}-secrets
                   key: APOLLO_ADMIN_TOKEN
             - name: LOG_ENCODING
               value: "json"
@@ -97,7 +141,8 @@ spec:
             - name: SELF_HOSTED
               value: "true"
             - name: TEMPORAL_CLOUD_HOST_PORT
-              value: "temporal-stack-frontend:7233"
+              value:
+              value: "temporal-composio-frontend:7233"
             - name: TEMPORAL_CLOUD_NAMESPACE
               value: "default"
             - name: DISABLE_TEMPORAL_TLS
@@ -105,7 +150,7 @@ spec:
             - name: LAMBDA_USE_HTTP
               value: "true"
             - name: LAMBDA_USE_HTTP_ENDPOINT
-              value: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
+              value: {{ printf "http://%s-mercury:8080" .Release.Name | quote }}
             - name: AWS_LAMBDA_REGION
               value: {{ .Values.aws.region | quote }}
             - name: AWS_S3_REGION
@@ -114,19 +159,6 @@ spec:
               value: {{ .Values.aws.s3.lambdaBucketName | quote }}
             - name: LAMBDA_FUNCTION_NAME
               value: {{ .Values.aws.lambda.functionName | quote }}
-            # Minio credentials as AWS S3 environment variables
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-minio-credentials
-                  key: MINIO_ROOT_USER
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-minio-credentials
-                  key: MINIO_ROOT_PASSWORD
-            - name: AWS_S3_ENDPOINT
-              value: "http://{{ .Release.Name }}-minio:9000"
             - name: AWS_S3_FORCE_PATH_STYLE
               value: "true"
             - name: DATABASE_URL
@@ -139,45 +171,26 @@ spec:
                 secretKeyRef:
                   name: external-thermos-postgres-secret
                   key: url
-            # OpenTelemetry configuration
-            {{- if .Values.otel.enabled }}
-            - name: OTEL_ENABLED
-              value: {{ .Values.otel.enabled | quote }}
-            - name: OTEL_SERVICE_NAME
-              value: {{ .Values.otel.thermos.serviceName | default "thermos" | quote }}
-            - name: OTEL_SERVICE_VERSION
-              value: {{ .Values.otel.thermos.serviceVersion | default "1.0.0" | quote }}
-            - name: OTEL_ENVIRONMENT
-              value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_INSECURE
-              value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
-            - name: OTEL_EXPORTER_OTLP_HEADERS
-              value: {{ .Values.otel.exporter.otlp.headers | default "" | quote }}
-            - name: OTEL_TRACES_EXPORTER
-              value: "otlp"
-            - name: OTEL_METRICS_EXPORTER
-              value: "otlp"
-            - name: OTEL_LOGS_EXPORTER
-              value: "otlp"
-            # OTEL Resource attributes  
-            - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.otel.thermos.serviceName | default "thermos" }},service.version={{ .Values.otel.thermos.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
-            {{- end }}
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
           volumeMounts:
             - name: cache-volume
               mountPath: /tmp
+          {{- with .Values.thermos.additionalVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
       volumes:
         - name: cache-volume
           emptyDir: {}
+      {{- with .Values.thermos.additionalVolumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -195,54 +208,3 @@ spec:
   selector:
     app: thermos
     release: {{ .Release.Name }}
----
-{{- if .Values.thermos.autoscaling.enabled }}
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: {{ .Release.Name }}-thermos
-  labels:
-    app: thermos
-    release: {{ .Release.Name }}
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: {{ .Release.Name }}-thermos
-  minReplicas: {{ .Values.thermos.autoscaling.minReplicas | default 2 }}
-  maxReplicas: {{ .Values.thermos.autoscaling.maxReplicas | default 10 }}
-  metrics:
-    {{- if .Values.thermos.autoscaling.targetCPUUtilizationPercentage }}
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: {{ .Values.thermos.autoscaling.targetCPUUtilizationPercentage }}
-    {{- end }}
-    {{- if .Values.thermos.autoscaling.targetMemoryUtilizationPercentage }}
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: {{ .Values.thermos.autoscaling.targetMemoryUtilizationPercentage }}
-    {{- end }}
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: {{ .Values.thermos.autoscaling.scaleDownStabilizationWindowSeconds | default 300 }}
-      policies:
-      - type: Percent
-        value: {{ .Values.thermos.autoscaling.scaleDownPercent | default 10 }}
-        periodSeconds: {{ .Values.thermos.autoscaling.scaleDownPeriodSeconds | default 60 }}
-    scaleUp:
-      stabilizationWindowSeconds: {{ .Values.thermos.autoscaling.scaleUpStabilizationWindowSeconds | default 60 }}
-      policies:
-      - type: Percent
-        value: {{ .Values.thermos.autoscaling.scaleUpPercent | default 100 }}
-        periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
-      - type: Pods
-        value: {{ .Values.thermos.autoscaling.scaleUpPods | default 4 }}
-        periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
-      selectPolicy: Max
-{{- end }} 

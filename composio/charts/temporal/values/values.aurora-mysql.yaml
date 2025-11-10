@@ -31,7 +31,7 @@ server:
           maxIdleConns: 20
           maxConnLifetime: "1h"
           connectAttributes:
-            tx_isolation: 'READ-COMMITTED'          
+            tx_isolation: 'READ-COMMITTED'
 
 cassandra:
   enabled: false
