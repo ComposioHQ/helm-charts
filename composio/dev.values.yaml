@@ -34,7 +34,7 @@ apollo:
   replicaCount: 2
   image:
     repository: apollo
-    tag: "release-2025_11_03"
+    tag: "release-2025_11_11"
     pullPolicy: Always
   
   service:
@@ -59,7 +59,7 @@ apollo:
     enabled: true
     image:
       repository: apollo-db-init
-      tag: "release-2025_11_03"
+      tag: "release-2025_11_11"
       pullPolicy: Always
   
   # Google Cloud Storage Configuration (via S3 API)
@@ -85,7 +85,7 @@ thermos:
   replicaCount: 2
   image:
     repository: thermos
-    tag: "release-2025_11_03"
+    tag: "release-2025_11_11"
     pullPolicy: Always
   
   service:
@@ -104,7 +104,7 @@ thermos:
     enabled: true
     image:
       repository: thermos-db-init
-      tag: "release-2025_11_03"
+      tag: "release-2025_11_11"
       pullPolicy: Always
   
   autoscaling:
@@ -115,7 +115,7 @@ minio:
   enabled: false  # Not deploying minio, using GCS instead
   image:
     repository: minio
-    tag: "release-2025_11_03"
+    tag: "release-2025_11_11"
     pullPolicy: Always
 
 # Mercury Service Configuration
@@ -125,7 +125,7 @@ mercury:
   replicaCount: 1
   image:
     repository: mercury
-    tag: "release-2025_11_03"
+    tag: "release-2025_11_11"
     pullPolicy: Always
   
   service:
@@ -159,7 +159,7 @@ frontend:
   replicaCount: 1
   image:
     repository: frontend
-    tag: "release-2025_11_03"
+    tag: "release-2025_11_11"
     pullPolicy: Always
   
   service:
