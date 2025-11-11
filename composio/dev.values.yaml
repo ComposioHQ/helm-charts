@@ -1,0 +1,314 @@
+# Development Override Values for Composio
+# Usage: helm upgrade --install composio ./composio -n composio -f dev.values.yaml
+
+# Global Configuration
+global:
+  environment: development
+  domain: localhost
+  # Google Artifact Registry Configuration
+  registry: 
+    name: "us-central1-docker.pkg.dev/infra-dev-464711/test-registry"
+  # Image pull secret (must be created in namespace before deployment)
+  imagePullSecrets:
+    - name: ema-image-pull-secret
+
+# Namespace Configuration
+namespace:
+  create: false
+  name: "composio"
+
+# External PostgreSQL Configuration
+externalPostgreSQL:
+  enabled: true
+
+# External Redis Configuration
+externalRedis:
+  enabled: true
+
+# Redis (disabled - using external)
+redis:
+  enabled: false
+
+# Apollo Service Configuration
+apollo:
+  replicaCount: 2
+  image:
+    repository: apollo
+    tag: "release-2025_11_03"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP  # Internal only, not exposed externally
+    port: 9900
+  
+  resources:
+    requests:
+      memory: "5Gi"
+      cpu: "1"
+    limits:
+      memory: "6Gi"
+      cpu: "1"
+  
+  database:
+    urlSecret:
+      name: "external-postgres-secret"
+      key: "url"
+  
+  # Apollo DB init container configuration
+  dbInit:
+    enabled: true
+    image:
+      repository: apollo-db-init
+      tag: "release-2025_11_03"
+      pullPolicy: Always
+  
+  # Google Cloud Storage Configuration (via S3 API)
+  # See docs/gcs-s3-storage.md for setup instructions
+  s3ForcePathStyle: "true"
+  s3Endpoint: "https://storage.googleapis.com"
+  s3EndpointUrl: "https://storage.googleapis.com"
+  s3Bucket: "ema-dev-401514-ema-dev-composio-private-bucket"
+  s3Region: "auto"
+  s3SignatureVersion: "s3"
+  
+  # SMTP Configuration
+  smtp:
+    enabled: false
+    smtpAuthorEmail: "admin@yourdomain.com"
+  
+  # HPA Configuration
+  autoscaling:
+    enabled: false
+
+# Thermos Service Configuration
+thermos:
+  replicaCount: 2
+  image:
+    repository: thermos
+    tag: "release-2025_11_03"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 8180
+  
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "5Gi"
+      cpu: "2"
+  
+  dbInit:
+    enabled: true
+    image:
+      repository: thermos-db-init
+      tag: "release-2025_11_03"
+      pullPolicy: Always
+  
+  autoscaling:
+    enabled: false
+
+# Minio Configuration - DISABLED (using GCS)
+minio:
+  enabled: false  # Not deploying minio, using GCS instead
+  image:
+    repository: minio
+    tag: "release-2025_11_03"
+    pullPolicy: Always
+
+# Mercury Service Configuration
+mercury:
+  enabled: true
+  useKnative: true
+  replicaCount: 1
+  image:
+    repository: mercury
+    tag: "release-2025_11_03"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 8080
+  
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  
+  knative:
+    minReplicas: 1
+    replicas: 2
+    maxReplicas: 5
+  
+  autoscaling:
+    minScale: 1
+    maxScale: 10
+    target: 80
+  
+  ingress:
+    enabled: false  # Enable if you need external Mercury access
+
+# Frontend Service Configuration
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: frontend
+    tag: "release-2025_11_03"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 3000
+  
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "3Gi"
+      cpu: "1"
+  
+  env:
+    PORT: "3000"
+    NODE_ENV: "production"
+  env:
+    # Server-side Apollo URL (used for SSR, API routes, etc. inside the cluster)
+    # OVERRIDE_BACKEND_URL: "http://composio-apollo:9900"
+    # Public Apollo URL — still set for consistency, but won’t be reachable externally yet
+    # Public frontend URL (the domain users will open)
+    NEXT_PUBLIC_APP_URL: "https://dev.composio.ema.co"
+    NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: "true"
+    NEXT_PUBLIC_SELF_HOSTED: "true"
+  
+  ingress:
+    enabled: true
+    className: "gce"  # GCP GCE ingress controller
+    host: "dev.composio.ema.co"
+    annotations:
+      kubernetes.io/ingress.class: "gce"
+      kubernetes.io/ingress.global-static-ip-name: "composio-ing-global-ip"  # Name of your static IP
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    tls:
+      - hosts:
+          - dev.composio.ema.co
+        secretName: frontend-tls  # Your certificate secret
+
+# OpenTelemetry Configuration - DISABLED for development
+otel:
+  enabled: false
+  collector:
+    enabled: false
+
+# Temporal Configuration
+temporal:
+  fullnameOverride: "temporal-stack"
+  
+  server:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: temporalio/server
+      tag: 1.28.0
+      pullPolicy: IfNotPresent
+    
+    livenessProbe:
+      enabled: false
+    readinessProbe:
+      enabled: false
+    
+    config:
+      logLevel: "info"
+      numHistoryShards: 512
+      
+      persistence:
+        defaultStore: default
+        
+        default:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            host: "10.69.0.66"
+            port: 5432
+            database: "temporal"
+            user: "postgres"
+            existingSecret: "external-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+        
+        visibility:
+          driver: "sql" 
+          sql:
+            driver: "postgres12"
+            host: "10.69.0.66"
+            port: 5432
+            database: "temporal_visibility"
+            user: "postgres"
+            existingSecret: "external-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+  
+  schema:
+    createDatabase:
+      enabled: true
+    setup:
+      enabled: true
+      backoffLimit: 100
+    update:
+      enabled: true
+      backoffLimit: 100
+  
+  web:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: temporalio/ui
+      tag: 2.38.3
+      pullPolicy: IfNotPresent
+    livenessProbe:
+      enabled: false
+    readinessProbe:
+      enabled: false
+  
+  admintools:
+    enabled: true
+    image:
+      repository: temporalio/admin-tools
+      tag: 1.28.0-tctl-1.18.2-cli-1.3.0
+      pullPolicy: IfNotPresent
+    livenessProbe:
+      enabled: false
+    readinessProbe:
+      enabled: false
+  
+  cassandra:
+    enabled: false
+  mysql:
+    enabled: false
+  elasticsearch:
+    enabled: false
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false
+
+# AWS Configuration (for region/bucket names)
+aws:
+  region: us-east-1
+  s3:
+    lambdaBucketName: "tools"
+  lambda:
+    functionName: "mercury"
+
+# Support Bundle Configuration
+supportBundle:
+  enabled: false
+
