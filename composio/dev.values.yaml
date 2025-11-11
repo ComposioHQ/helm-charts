@@ -7,7 +7,7 @@ global:
   domain: localhost
   # Google Artifact Registry Configuration
   registry: 
-    name: "us-central1-docker.pkg.dev/infra-dev-464711/test-registry"
+    name: "us-central1-docker.pkg.dev/infra-dev-464711/docker-registry"
   # Image pull secret (must be created in namespace before deployment)
   imagePullSecrets:
     - name: ema-image-pull-secret
