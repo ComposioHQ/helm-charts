@@ -48,9 +48,7 @@ frontend:
 
   env:
     # Server-side Apollo URL (in-cluster by default)
-    # OVERRIDE_BACKEND_URL: "http://composio-apollo:9900"
-    # Public Apollo URL that the browser should use
-    NEXT_PUBLIC_BACKEND_URL: "https://api.example.com"
+    #OVERRIDE_BACKEND_URL: "http://composio-apollo:9900"
     # Public frontend URL (helps generate absolute links)
     NEXT_PUBLIC_APP_URL: "https://app.example.com"
     # Optional flags
@@ -99,6 +97,15 @@ kubectl port-forward -n composio svc/composio-frontend 3000:3000
   - Set `apollo.overwrite_fe_url` to your public frontend URL (e.g., `https://app.example.com`) so links in emails are correct.
 - Health endpoints: the frontend serves `/api/health` for readiness/liveness.
 - Autoscaling: enable and tune via `frontend.autoscaling.*` if needed.
+- Static logos (optional): enable static, built-in logos served by setting:
+  ```yaml
+  apollo:
+    useStaticLogos: true
+  ```
+  This sets `USE_STATIC_LOGOS=true` in Apollo.
+  
+  Note: The logo URL for all toolkits follows a specific format. You can also manually access an individual toolkit’s logo by using the following format:
+  `https://${apollo.overwrite_fe_url}/logos/{toolkit_slug_lowercase}.svg`
 
 ### Code references
 The chart maps these values to the Deployment and Service:
@@ -122,6 +129,13 @@ spec:
   {{- end }}
   rules:
     - host: {{ .Values.frontend.ingress.host | default (printf "app.%s" .Values.global.domain) }}
+```
+
+```133:140:composio/templates/apollo.yaml
+          {{- if .Values.apollo.useStaticLogos }}
+            - name: USE_STATIC_LOGOS
+              value: "true"
+          {{ end }}
 ```
 
 

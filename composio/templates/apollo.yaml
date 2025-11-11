@@ -93,11 +93,11 @@ spec:
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
             - name: BACKEND_URL
-              value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+              value: {{ .Values.apollo.overwrite_apollo_url | printf "http://%s-apollo:9900" .Release.Name | quote }}
             {{- if .Values.apollo.overwrite_fe_url }}
              - name: OVERWRITE_FE_URL
               value: {{ .Values.apollo.overwrite_fe_url | quote }}
-            {{- end }}
+          {{- end }}
             - name: OVERWRITE_APOLLO_URL
               value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: OAUTH2_REDIRECT_URI_OVERRIDE
@@ -130,6 +130,14 @@ spec:
               value: {{ .Values.apollo.apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: MAX_AUTH_FAILURES_FOR_EXPIRY
               value: "1"
+          {{- if or (.Values.apollo.frontendUrl) (.Values.apollo.overwrite_fe_url) }}
+            - name: FRONTEND_URL
+              value: {{ (.Values.apollo.overwrite_fe_url | default .Values.apollo.frontendUrl | default (printf "https://app.%s" .Values.global.domain)) | quote }}
+          {{ end }}
+          {{- if .Values.apollo.useStaticLogos }}
+            - name: USE_STATIC_LOGOS
+              value: "true"
+          {{ end }}
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
@@ -160,6 +168,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
+            - name: JWT_SECRET
+              value: {{ .Values.apollo.jwtSecret | quote }}
+            - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
+              value: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
             # OpenTelemetry configuration
             {{- if .Values.otel.enabled }}
             - name: OTEL_ENABLED
@@ -178,12 +190,8 @@ spec:
               value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
             - name: OTEL_TRACES_EXPORTER
               value: "otlp"
-            - name: JWT_SECRET
-              value: {{ .Values.apollo.jwtSecret | quote }}
             - name: OTEL_METRICS_EXPORTER
               value: "otlp"
-            - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
-              value: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
             - name: OTEL_LOGS_EXPORTER
               value: "otlp"
             {{- if .Values.apollo.smtp.enabled }}
