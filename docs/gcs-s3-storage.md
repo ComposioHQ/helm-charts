@@ -1,4 +1,4 @@
-## Setting up S3 (or Google Cloud storage via S3 APIs)
+## Setting up S3 (or Google Cloud Storage via S3 APIs)
 
 This guide shows how to configure Composio to use your own S3 buckets, or Google Cloud Storage (GCS) through its S3-compatible API. Apollo reads its S3 configuration from Helm values and credentials from a Kubernetes Secret.
 
