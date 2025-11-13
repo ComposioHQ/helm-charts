@@ -169,7 +169,10 @@ spec:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
             - name: JWT_SECRET
-              value: {{ .Values.apollo.jwtSecret | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-jwt-secret
+                  key: JWT_SECRET
             - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
               value: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
             # OpenTelemetry configuration
@@ -194,6 +197,15 @@ spec:
               value: "otlp"
             - name: OTEL_LOGS_EXPORTER
               value: "otlp"
+            # Custom Apollo variables for backward compatibility
+            - name: ENABLE_OTEL_METRICS
+              value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
+            - name: OTEL_METRICS_ENDPOINT
+              value: {{ .Values.otel.apollo.metricsEndpoint | default (printf "http://%s-otel-collector:4318/v1/metrics" .Release.Name) | quote }}
+            # OTEL Resource attributes
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+            {{- end }}
             {{- if .Values.apollo.smtp.enabled }}
             - name: SMTP_CONNECTION_STRING
               valueFrom:
@@ -207,15 +219,6 @@ spec:
               value: {{ .Values.apollo.s3Bucket | quote }}
             - name: TEST_DEBUG
               value: "true"
-            # Custom Apollo variables for backward compatibility
-            - name: ENABLE_OTEL_METRICS
-              value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
-            - name: OTEL_METRICS_ENDPOINT
-              value: {{ .Values.otel.apollo.metricsEndpoint | default (printf "http://%s-otel-collector:4318/v1/metrics" .Release.Name) | quote }}
-            # OTEL Resource attributes
-            - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
-            {{- end }}
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}
             {{- end }}
