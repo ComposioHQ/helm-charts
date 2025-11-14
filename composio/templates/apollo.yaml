@@ -169,7 +169,10 @@ spec:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
             - name: JWT_SECRET
-              value: {{ .Values.apollo.jwtSecret | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-jwt-secret
+                  key: JWT_SECRET
             - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
               value: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
             # OpenTelemetry configuration

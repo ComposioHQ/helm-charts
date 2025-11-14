@@ -74,9 +74,6 @@ apollo:
   s3Region: "auto"
   s3SignatureVersion: "s3"
   
-  # JWT Secret for session token generation (required for magic link login)
-  jwtSecret: "composio-secure-jwt-secret-7a9f3c8e5d2b1a0c4f6e8d7b3a5c9e1f2d4b6a8c0e2f4a6c8e0b2d4f6a8c0e2f"
-  
   # SMTP Configuration
   smtp:
     enabled: true

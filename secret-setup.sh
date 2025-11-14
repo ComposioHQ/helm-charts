@@ -43,6 +43,7 @@ usage() {
     echo "  • \${release}-encryption-key          (ENCRYPTION_KEY)"
     echo "  • \${release}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)"
     echo "  • \${release}-composio-api-key        (COMPOSIO_API_KEY)"
+    echo "  • \${release}-jwt-secret              (JWT_SECRET)"
     echo "  • \${release}-minio-credentials       (MINIO_ROOT_USER + MINIO_ROOT_PASSWORD)"
     echo ""
     echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
@@ -281,6 +282,7 @@ else
         "${RELEASE_NAME}-encryption-key:ENCRYPTION_KEY" 
         "${RELEASE_NAME}-temporal-encryption-key:TEMPORAL_TRIGGER_ENCRYPTION_KEY"
         "${RELEASE_NAME}-composio-api-key:COMPOSIO_API_KEY"
+        "${RELEASE_NAME}-jwt-secret:JWT_SECRET"
     )
 
     # Handle individual generated secrets
