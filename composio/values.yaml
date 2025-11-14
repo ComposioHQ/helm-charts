@@ -142,6 +142,18 @@ apollo:
     smtpAuthorEmail: "admin@yourdomain.com"
     # credentialsSecret: ""  # Optional: custom secret name (defaults to {release-name}-smtp-credentials)
   
+  # Object storage configuration
+  objectStorage:
+    # Supported: "s3", "azure_blob_storage"
+    backend: "s3"
+    namespaces:
+      # Blob container for temporary files
+      temp: "composio-temp"
+      # Blob container for permanent files
+      permanent: "composio-permanent"
+    # For Azure, the connection string is read from the Secret:
+    #   {release}-azure-connection-string (key: AZURE_CONNECTION_STRING)
+  
   # Note: Secrets are now managed globally in the 'secrets' section
   
   # HPA (Horizontal Pod Autoscaler) configuration
