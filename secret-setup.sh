@@ -37,6 +37,7 @@ usage() {
     echo "  THERMOS_POSTGRES_URL PostgreSQL connection URL for Thermos (postgresql://user:pass@host:port/db)"
     echo "  REDIS_URL            Redis connection URL (redis://user:pass@host:port/db)"
     echo "  OPENAI_API_KEY       OpenAI API key for AI functionality"
+    echo "  AZURE_CONNECTION_STRING Azure Storage connection string for Apollo (when backend=azure)"
     echo "  S3_ACCESS_KEY_ID     S3 access key ID used by Apollo"
     echo "  S3_SECRET_ACCESS_KEY S3 secret access key used by Apollo"
     echo "  SMTP_CONNECTION_STRING SMTP connection string (e.g., smtps://user:pass@smtp.example.com:465)"
@@ -55,6 +56,7 @@ usage() {
     echo "  • external-thermos-postgres-secret    (from THERMOS_POSTGRES_URL)"
     echo "  • external-redis-secret               (from REDIS_URL)"
     echo "  • openai-secret                       (from OPENAI_API_KEY)"
+    echo "  • \${release}-azure-connection-string (from AZURE_CONNECTION_STRING)"
     echo "  • \${release}-s3-credentials          (from S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY)"
     echo "  • \${release}-smtp-credentials        (from SMTP_CONNECTION_STRING)"
     echo ""
@@ -375,6 +377,18 @@ if [[ -n "$OPENAI_API_KEY" ]]; then
     fi
 else
     print_info "OPENAI_API_KEY not provided - skipping OpenAI secret creation"
+fi
+
+# Azure connection string secret (used by apollo.yaml when backend=azure)
+if [[ -n "$AZURE_CONNECTION_STRING" ]]; then
+    azure_secret_name="${RELEASE_NAME}-azure-connection-string"
+    if secret_exists "$azure_secret_name"; then
+        print_warning "Secret already exists: $azure_secret_name"
+    else
+        create_simple_secret "$azure_secret_name" "AZURE_CONNECTION_STRING" "$AZURE_CONNECTION_STRING"
+    fi
+else
+    print_info "AZURE_CONNECTION_STRING not provided - skipping Azure connection secret creation"
 fi
 
 # S3 credentials secret (required by apollo.yaml env valueFrom)
