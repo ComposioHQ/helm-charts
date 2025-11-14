@@ -81,7 +81,10 @@ apollo:
   smtp:
     enabled: true
     smtpAuthorEmail: "no-reply-login-verify@ema.co"
+  
   overwrite_fe_url: "https://dev.composio.ema.co"
+  overwrite_apollo_url: "https://api.dev.composio.ema.co"
+  oauth2_redirect_uri_override: "https://api.dev.composio.ema.co/api/v3/toolkits/auth/callback"
   
   # Ingress Configuration for Apollo Backend
   ingress:
