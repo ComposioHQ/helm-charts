@@ -745,7 +745,7 @@ mercury:
 
   service:
     type: ClusterIP
-    port: 80
+    port: 8080
   
   autoscaling:
     minScale: 1
