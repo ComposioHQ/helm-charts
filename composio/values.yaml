@@ -77,6 +77,13 @@ apollo:
     repository: composio-self-host/apollo
     tag: "495d325"
     pullPolicy: Always
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: "abc.example.com"
+    tls: []
   # nodeSelector: {}
   # tolerations: []
   # affinity: {} 

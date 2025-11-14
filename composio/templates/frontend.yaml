@@ -107,15 +107,25 @@ spec:
                   name: {{ .Release.Name }}-secrets
                   key: PLAIN_SECRET
             {{- end }}
+            {{- if .Values.apollo.ingress.enabled }}
+            - name: OVERRIDE_BACKEND_URL
+              value: {{ printf "https://%s" .Values.apollo.ingress.host }}
+            {{- else }}
             - name: OVERRIDE_BACKEND_URL
               value: {{ .Values.frontend.env.OVERRIDE_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+            {{- end }}
             # Client-side environment variables (prefixed with NEXT_PUBLIC_)
             {{- if .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY }}
             - name: NEXT_PUBLIC_POSTHOG_KEY
               value: {{ .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY | quote }}
             {{- end }}
+            {{- if .Values.apollo.ingress.enabled }}
+            - name: NEXT_PUBLIC_BACKEND_URL
+              value: {{ printf "https://%s" .Values.apollo.ingress.host }}
+            {{- else }}
             - name: NEXT_PUBLIC_BACKEND_URL
               value: {{ .Values.frontend.env.NEXT_PUBLIC_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+            {{- end }}
             {{- if .Values.frontend.env.NEXT_PUBLIC_APP_URL }}
             - name: NEXT_PUBLIC_APP_URL
               value: {{ .Values.frontend.env.NEXT_PUBLIC_APP_URL | quote }}
