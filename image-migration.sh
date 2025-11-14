@@ -15,7 +15,7 @@ echo ""
 
 # Configuration
 ECR_REGISTRY="008971668139.dkr.ecr.us-east-1.amazonaws.com"
-GAR_REGISTRY="us-central1-docker.pkg.dev/infra-dev-464711/test-registry"
+GAR_REGISTRY="us-central1-docker.pkg.dev/infra-dev-464711/docker-registry"
 AWS_REGION="us-east-1"
 
 # IMAGE TAG - Update this for new releases

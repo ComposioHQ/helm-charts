@@ -1,0 +1,50 @@
+{{- if .Values.apollo.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "composio.fullname" . }}-apollo-ingress
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: apollo-ingress
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.apollo.ingress.class }}
+    kubernetes.io/ingress.allow-http: "false"
+    {{ if eq .Values.cloud "azure" }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    {{ if .Values.apollo.ingress.enable_ssl_server_snippet }}
+    nginx.ingress.kubernetes.io/server-snippet: |
+      if ($ssl_server_name != "{{ .Values.apollo.ingress.host }}") { return 444; }
+    {{ end }}
+    {{ else if eq .Values.cloud "gcp" }}
+    {{ if .Values.apollo.ingress.preSharedCert }}
+    ingress.gcp.kubernetes.io/pre-shared-cert: {{ .Values.apollo.ingress.preSharedCert }}
+    {{ end }}
+      {{ if eq .Values.apollo.ingress.class "gce-internal" }}
+    kubernetes.io/ingress.regional-static-ip-name: {{ .Values.apollo.ingress.staticIPName }}
+      {{ else if eq .Values.apollo.ingress.class "gce" }}
+    kubernetes.io/ingress.global-static-ip-name: {{ .Values.apollo.ingress.staticIPName }}
+      {{ end }}
+    {{ end }}
+spec:
+  ingressClassName: {{ .Values.apollo.ingress.class }}
+  {{ if and .Values.apollo.ingress.tls .Values.apollo.ingress.tlsSecretName }}
+  tls:
+  - hosts:
+    - "{{ .Values.apollo.ingress.host }}"
+    secretName: {{ .Values.apollo.ingress.tlsSecretName }}
+  {{ end }}
+  rules:
+  - host: "{{ .Values.apollo.ingress.host }}"
+    http:
+      paths:
+      - path: {{ .Values.apollo.ingress.path | default "/*" }}
+        pathType: {{ .Values.apollo.ingress.pathType | default "ImplementationSpecific" }}
+        backend:
+          service:
+            name: {{ .Release.Name }}-apollo
+            port:
+              number: {{ .Values.apollo.service.port | default 9900 }}
+{{- end }}
+

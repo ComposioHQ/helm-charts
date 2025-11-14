@@ -93,9 +93,9 @@ spec:
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
             - name: BACKEND_URL
-              value: {{ .Values.apollo.overwrite_apollo_url | printf "http://%s-apollo:9900" .Release.Name | quote }}
-            {{- if .Values.apollo.overwrite_fe_url }}
-             - name: OVERWRITE_FE_URL
+              value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+          {{- if .Values.apollo.overwrite_fe_url }}
+            - name: OVERWRITE_FE_URL
               value: {{ .Values.apollo.overwrite_fe_url | quote }}
           {{- end }}
             - name: OVERWRITE_APOLLO_URL
@@ -194,6 +194,14 @@ spec:
               value: "otlp"
             - name: OTEL_LOGS_EXPORTER
               value: "otlp"
+            - name: ENABLE_OTEL_METRICS
+              value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
+            - name: OTEL_METRICS_ENDPOINT
+              value: {{ .Values.otel.apollo.metricsEndpoint | default (printf "http://%s-otel-collector:4318/v1/metrics" .Release.Name) | quote }}
+            # OTEL Resource attributes
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+            {{- end }}
             {{- if .Values.apollo.smtp.enabled }}
             - name: SMTP_CONNECTION_STRING
               valueFrom:
@@ -207,15 +215,6 @@ spec:
               value: {{ .Values.apollo.s3Bucket | quote }}
             - name: TEST_DEBUG
               value: "true"
-            # Custom Apollo variables for backward compatibility
-            - name: ENABLE_OTEL_METRICS
-              value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
-            - name: OTEL_METRICS_ENDPOINT
-              value: {{ .Values.otel.apollo.metricsEndpoint | default (printf "http://%s-otel-collector:4318/v1/metrics" .Release.Name) | quote }}
-            # OTEL Resource attributes
-            - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
-            {{- end }}
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}
             {{- end }}
@@ -241,6 +240,10 @@ metadata:
   labels:
     app: apollo
     release: {{ .Release.Name }}
+  {{- if and (eq .Values.cloud "gcp") (eq .Values.apollo.service.type "ClusterIP") }}
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+  {{- end }}
 spec:
   type: {{ .Values.apollo.service.type }}
   ports:

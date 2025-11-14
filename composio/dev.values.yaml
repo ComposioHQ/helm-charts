@@ -1,6 +1,9 @@
 # Development Override Values for Composio
 # Usage: helm upgrade --install composio ./composio -n composio -f dev.values.yaml
 
+# Cloud Provider Configuration
+cloud: "gcp"  # Options: "gcp", "azure", "aws"
+
 # Global Configuration
 global:
   environment: development
@@ -71,10 +74,24 @@ apollo:
   s3Region: "auto"
   s3SignatureVersion: "s3"
   
+  # JWT Secret for session token generation (required for magic link login)
+  jwtSecret: "composio-secure-jwt-secret-7a9f3c8e5d2b1a0c4f6e8d7b3a5c9e1f2d4b6a8c0e2f4a6c8e0b2d4f6a8c0e2f"
+  
   # SMTP Configuration
   smtp:
-    enabled: false
-    smtpAuthorEmail: "admin@yourdomain.com"
+    enabled: true
+    smtpAuthorEmail: "no-reply-login-verify@ema.co"
+  overwrite_fe_url: "https://dev.composio.ema.co"
+  
+  # Ingress Configuration for Apollo Backend
+  ingress:
+    enabled: true
+    class: gce
+    host: "api.dev.composio.ema.co"
+    staticIPName: "composio-ingress-global-ip"  # Resolves to 34.54.129.98
+    preSharedCert: composio-api-cert  # GCP-managed certificate name
+    path: /*
+    pathType: ImplementationSpecific
   
   # HPA Configuration
   autoscaling:
@@ -188,17 +205,12 @@ frontend:
   
   ingress:
     enabled: true
-    className: "gce"  # GCP GCE ingress controller
+    class: gce
     host: "dev.composio.ema.co"
-    annotations:
-      kubernetes.io/ingress.class: "gce"
-      kubernetes.io/ingress.global-static-ip-name: "composio-ing-global-ip"  # Name of your static IP
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    tls:
-      - hosts:
-          - dev.composio.ema.co
-        secretName: frontend-tls  # Your certificate secret
+    staticIPName: "composio-ing-global-ip"  # Resolves to 34.110.136.46
+    preSharedCert: composio-dev-ssl  # GCP-managed certificate name
+    path: /*
+    pathType: ImplementationSpecific
 
 # OpenTelemetry Configuration - DISABLED for development
 otel:

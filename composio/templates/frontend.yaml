@@ -166,6 +166,10 @@ metadata:
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
+  {{- if and (eq .Values.cloud "gcp") (eq (.Values.frontend.service.type | default "ClusterIP") "ClusterIP") }}
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+  {{- end }}
 spec:
   type: {{ .Values.frontend.service.type | default "ClusterIP" }}
   ports:

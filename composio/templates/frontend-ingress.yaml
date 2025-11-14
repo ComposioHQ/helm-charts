@@ -1,5 +1,4 @@
-{{- if and .Values.frontend.enabled .Values.frontend.ingress.enabled }}
----
+{{- if .Values.frontend.ingress.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -9,33 +8,42 @@ metadata:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend-ingress
   annotations:
-    # Common ingress annotations (non-provider-specific)
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: {{ .Values.frontend.ingress.class }}
+    kubernetes.io/ingress.allow-http: "false"
+    {{ if eq .Values.cloud "azure" }}
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: 50m
-    nginx.ingress.kubernetes.io/use-regex: "true"
-
-    # Allow users to inject platform-specific or static-IP annotations from values.yaml
-    {{- with .Values.frontend.ingress.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    {{ if .Values.frontend.ingress.enable_ssl_server_snippet }}
+    nginx.ingress.kubernetes.io/server-snippet: |
+      if ($ssl_server_name != "{{ .Values.frontend.ingress.host }}") { return 444; }
+    {{ end }}
+    {{ else if eq .Values.cloud "gcp" }}
+    {{ if .Values.frontend.ingress.preSharedCert }}
+    ingress.gcp.kubernetes.io/pre-shared-cert: {{ .Values.frontend.ingress.preSharedCert }}
+    {{ end }}
+      {{ if eq .Values.frontend.ingress.class "gce-internal" }}
+    kubernetes.io/ingress.regional-static-ip-name: {{ .Values.frontend.ingress.staticIPName }}
+      {{ else if eq .Values.frontend.ingress.class "gce" }}
+    kubernetes.io/ingress.global-static-ip-name: {{ .Values.frontend.ingress.staticIPName }}
+      {{ end }}
+    {{ end }}
 spec:
-  {{- if .Values.frontend.ingress.className }}
-  ingressClassName: {{ .Values.frontend.ingress.className }}
-  {{- end }}
-  rules:
-    - host: {{ .Values.frontend.ingress.host | default (printf "app.%s" .Values.global.domain) }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "composio.fullname" . }}-frontend
-                port:
-                  number: {{ .Values.frontend.service.port | default 3000 }}
-  {{- if .Values.frontend.ingress.tls }}
+  ingressClassName: {{ .Values.frontend.ingress.class }}
+  {{ if and .Values.frontend.ingress.tls .Values.frontend.ingress.tlsSecretName }}
   tls:
-    {{- toYaml .Values.frontend.ingress.tls | nindent 4 }}
-  {{- end }}
+  - hosts:
+    - "{{ .Values.frontend.ingress.host }}"
+    secretName: {{ .Values.frontend.ingress.tlsSecretName }}
+  {{ end }}
+  rules:
+  - host: "{{ .Values.frontend.ingress.host }}"
+    http:
+      paths:
+      - path: {{ .Values.frontend.ingress.path | default "/*" }}
+        pathType: {{ .Values.frontend.ingress.pathType | default "ImplementationSpecific" }}
+        backend:
+          service:
+            name: {{ include "composio.fullname" . }}-frontend
+            port:
+              number: {{ .Values.frontend.service.port | default 3000 }}
 {{- end }}
