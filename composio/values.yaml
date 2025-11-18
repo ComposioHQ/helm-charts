@@ -70,6 +70,46 @@ redis:
       enabled: false
 
 
+frontend:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: composio-self-host/frontend
+    tag: "latest"
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "3Gi"
+      cpu: "1"
+  env:
+    # Server-side environment variables
+    PORT: "3000"
+    NODE_ENV: "production"
+    OVERRIDE_BACKEND_URL: ""  # Defaults to apollo service URL
+    NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: "true"
+    NEXT_PUBLIC_SELF_HOSTED: "true"
+  # Optional: Additional environment variables (array format)
+  # extraEnv:
+  #   - name: CUSTOM_VAR
+  #     value: "custom_value"
+  # Secrets configuration for sensitive values (alternative to env)
+  # secrets:
+  #   OPENAI_API_KEY:
+  #     secretName: custom-secret
+  #     secretKey: openai-key
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: ""
+    tls: []
+
 # Apollo service configuration - Development
 apollo:
   replicaCount: 2
@@ -111,6 +151,30 @@ apollo:
       capabilities:
         drop:
           - ALL
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: "abc.example.com"
+    tls: []
+  smtp:
+    enabled: false
+    smtpAuthorEmail: "admin@yourdomain.com"
+    # credentialsSecret: ""  # Optional: custom secret name (defaults to {release-name}-smtp-credentials)
+
+  # Object storage configuration
+  objectStorage:
+    # Supported: "s3", "azure_blob_storage"
+    backend: "s3"
+    namespaces:
+      # Blob container for temporary files
+      temp: "composio-temp"
+      # Blob container for permanent files
+      permanent: "composio-permanent"
+    # For Azure, the connection string is read from the Secret:
+    #   {release}-azure-connection-string (key: AZURE_CONNECTION_STRING)
+
 
   
   service:

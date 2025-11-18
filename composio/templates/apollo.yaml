@@ -26,8 +26,10 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- with .Values.apollo.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.apollo.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.apollo.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -44,8 +46,10 @@ spec:
         - name: apollo
           image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
+          {{- with .Values.apollo.containerSecurityContext }}
           securityContext:
-            {{- toYaml .Values.apollo.containerSecurityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - containerPort: 9900
           livenessProbe:
@@ -69,8 +73,13 @@ spec:
               value: "9900"
             - name: HOSTNAME
               value: "0.0.0.0"
-            - name: NODE_ENV
+            - name: _ENV
               value: "production"
+            {{/* add the GOOGLE_APPLICATION_CREDENTIALS here */}}
+            {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "{{ .Values.apollo.googleServiceAccount.mountPath }}/key.json"
+            {{- end }}
             - name: AWS_REGION
               value: {{ .Values.aws.region | quote }}
             - name: COMPOSIO_ENV
@@ -79,23 +88,74 @@ spec:
               value: "false"
             - name: SELF_HOSTED
               value: "true"
-            - name: NODE_OPTIONS
+            - name: _OPTIONS
               value: "--max-old-space-size=4096"
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
- 
+            - name: BACKEND_URL
+              value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+          {{- if .Values.apollo.overwrite_fe_url }}
+            - name: OVERWRITE_FE_URL
+              value: {{ .Values.apollo.overwrite_fe_url | quote }}
+          {{- end }}
             - name: OVERWRITE_APOLLO_URL
               value: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: OAUTH2_REDIRECT_URI_OVERRIDE
               value: {{ .Values.apollo.oauth2_redirect_uri_override | default (printf "http://%s-apollo:9900/api/v3/toolkits/auth/callback" .Release.Name) | quote }}
             - name: MERCURY_URL
               value: "https://mercury.composio.dev"
+            - name: S3_FORCE_PATH_STYLE
+              value: {{ .Values.apollo.s3ForcePathStyle | default "true" | quote }}
+            - name: S3_ENDPOINT
+              value: {{ .Values.apollo.s3Endpoint | quote }}
+            - name: S3_ENDPOINT_URL
+              value: {{ .Values.apollo.s3EndpointUrl | quote }}
+            - name: S3_REGION
+              value: {{ .Values.apollo.s3Region | quote }}
+            - name: S3_SIGNATURE_VERSION
+              value: {{ .Values.apollo.s3SignatureVersion | quote }}
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_ACCESS_KEY_ID
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_SECRET_ACCESS_KEY
+            # Object storage configuration
+            - name: OBJECT_STORAGE_BACKEND
+              value: {{ .Values.apollo.objectStorage.backend | default "s3" | quote }}
+            {{- if eq (default "s3" .Values.apollo.objectStorage.backend) "azure_blob_storage" }}
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-azure-connection-string
+                  key: AZURE_CONNECTION_STRING
+            {{- end }}
+            {{- if .Values.apollo.objectStorage.namespaces.temp }}
+            - name: TEMP_STORAGE_NAMESPACE
+              value: {{ .Values.apollo.objectStorage.namespaces.temp | quote }}
+            {{- end }}
+            {{- if .Values.apollo.objectStorage.namespaces.permanent }}
+            - name: PERMANENT_STORAGE_NAMESPACE
+              value: {{ .Values.apollo.objectStorage.namespaces.permanent | quote }}
+            {{- end }}
             - name: SERVICE_NAME
               value: "apollo"
             - name: APOLLO_URL
               value: {{ .Values.apollo.apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
             - name: MAX_AUTH_FAILURES_FOR_EXPIRY
               value: "1"
+          {{- if or (.Values.apollo.frontendUrl) (.Values.apollo.overwrite_fe_url) }}
+            - name: FRONTEND_URL
+              value: {{ (.Values.apollo.overwrite_fe_url | default .Values.apollo.frontendUrl | default (printf "https://app.%s" .Values.global.domain)) | quote }}
+          {{ end }}
+          {{- if .Values.apollo.useStaticLogos }}
+            - name: USE_STATIC_LOGOS
+              value: "true"
+          {{ end }}
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
@@ -126,6 +186,13 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-encryption-key
                   key: ENCRYPTION_KEY
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-jwt-secret
+                  key: JWT_SECRET
+            - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
+              value: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
             # OpenTelemetry configuration
             {{- if .Values.otel.enabled }}
             - name: OTEL_ENABLED
@@ -137,9 +204,9 @@ spec:
             - name: OTEL_ENVIRONMENT
               value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "http://%s-otel-collector:4317" .Release.Name) | quote }}
+              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
             - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "http://%s-otel-collector:4317" .Release.Name) | quote }}
+              value: {{ .Values.otel.exporter.otlp.tracesEndpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
             - name: OTEL_EXPORTER_OTLP_INSECURE
               value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
             - name: OTEL_TRACES_EXPORTER
@@ -157,11 +224,36 @@ spec:
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
             {{- end }}
+            {{- if .Values.apollo.smtp.enabled }}
+            - name: SMTP_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.apollo.smtp.credentialsSecret | default (printf "%s-smtp-credentials" .Release.Name) }}
+                  key: SMTP_CONNECTION_STRING
+            {{- end }}
+            - name: SMTP_AUTHOR_EMAIL
+              value: {{ .Values.apollo.smtp.smtpAuthorEmail | quote }}
+            - name: S3_BUCKET
+              value: {{ .Values.apollo.s3Bucket | quote }}
+            - name: TEST_DEBUG
+              value: "true"
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}
             {{- end }}
           resources:
             {{- toYaml .Values.apollo.resources | nindent 12 }}
+          volumeMounts:
+            {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
+            - name: gcp-key
+              mountPath: "{{ .Values.apollo.googleServiceAccount.mountPath }}"
+              readOnly: true
+            {{- end }}
+      {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
+      volumes:
+        - name: gcp-key
+          secret:
+            secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -176,8 +268,8 @@ spec:
     - port: {{ .Values.apollo.service.port }}
       targetPort: 9900
       protocol: TCP
-      {{- if and (eq .Values.apollo.service.type "NodePort") .Values.apollo.service.nodePort }}
-      nodePort: {{ .Values.apollo.service.nodePort }}
+      {{- if and (eq .Values.apollo.service.type "Port") .Values.apollo.service.Port }}
+      Port: {{ .Values.apollo.service.Port }}
       {{- end }}
   selector:
     app: apollo

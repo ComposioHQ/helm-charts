@@ -7,10 +7,10 @@ metadata:
     app: apollo-db-init
     release: {{ .Release.Name }}
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-weight": "-1"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
+  ttlSecondsAfterFinished: 80
   template:
     metadata:
       name: {{ .Release.Name }}-apollo-db-init
@@ -22,8 +22,10 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- with .Values.apollo.dbInit.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.apollo.dbInit.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
       {{- with .Values.apollo.nodeSelector }}
       nodeSelector:
@@ -41,22 +43,10 @@ spec:
         - name: apollo-db-init
           image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
+          {{- with .Values.apollo.dbInit.containerSecurityContext }}
           securityContext:
-            {{- toYaml .Values.apollo.dbInit.containerSecurityContext | nindent 12 }}
-          readinessProbe:
-            exec:
-              command:
-                - ls
-                - /
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          livenessProbe:
-            exec:
-              command:
-                - ls
-                - /
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             # Apollo database URL
             - name: DATABASE_URL
