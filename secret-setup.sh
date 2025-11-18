@@ -37,12 +37,18 @@ usage() {
     echo "  THERMOS_POSTGRES_URL PostgreSQL connection URL for Thermos (postgresql://user:pass@host:port/db)"
     echo "  REDIS_URL            Redis connection URL (redis://user:pass@host:port/db)"
     echo "  OPENAI_API_KEY       OpenAI API key for AI functionality"
+    echo "  AZURE_CONNECTION_STRING Azure Storage connection string for Apollo (when backend=azure)"
+    echo "  S3_ACCESS_KEY_ID     S3 access key ID used by Apollo"
+    echo "  S3_SECRET_ACCESS_KEY S3 secret access key used by Apollo"
+    echo "  SMTP_CONNECTION_STRING SMTP connection string (e.g., smtps://user:pass@smtp.example.com:465)"
+    echo "  SMTP_SECRET_NAME     Optional. Overrides default secret name (\${release}-smtp-credentials)"
     echo ""
     echo -e "${YELLOW}Generated Secrets (auto-created if missing):${NC}"
     echo "  • \${release}-apollo-admin-token      (APOLLO_ADMIN_TOKEN)"
     echo "  • \${release}-encryption-key          (ENCRYPTION_KEY)"
     echo "  • \${release}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)"
     echo "  • \${release}-composio-api-key        (COMPOSIO_API_KEY)"
+    echo "  • \${release}-jwt-secret              (JWT_SECRET)"
     echo "  • \${release}-minio-credentials       (MINIO_ROOT_USER + MINIO_ROOT_PASSWORD)"
     echo ""
     echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
@@ -50,6 +56,9 @@ usage() {
     echo "  • external-thermos-postgres-secret    (from THERMOS_POSTGRES_URL)"
     echo "  • external-redis-secret               (from REDIS_URL)"
     echo "  • openai-secret                       (from OPENAI_API_KEY)"
+    echo "  • \${release}-azure-connection-string (from AZURE_CONNECTION_STRING)"
+    echo "  • \${release}-s3-credentials          (from S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY)"
+    echo "  • \${release}-smtp-credentials        (from SMTP_CONNECTION_STRING)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo "  # Setup with all external secrets"
@@ -182,6 +191,25 @@ create_minio_secret() {
     fi
 }
 
+# Function to create S3 credentials secret (used by apollo.yaml)
+create_s3_secret() {
+    local secret_name=$1
+    local access_key=$2
+    local secret_key=$3
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "[DRY-RUN] Would create secret: $secret_name"
+        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"S3_ACCESS_KEY_ID=$access_key\" --from-literal=\"S3_SECRET_ACCESS_KEY=$secret_key\" -n \"$NAMESPACE\""
+    else
+        print_info "Creating secret: $secret_name"
+        kubectl create secret generic "$secret_name" \
+            --from-literal="S3_ACCESS_KEY_ID=$access_key" \
+            --from-literal="S3_SECRET_ACCESS_KEY=$secret_key" \
+            -n "$NAMESPACE"
+        print_success "Created secret: $secret_name"
+    fi
+}
+
 # Function to parse and create postgres secret
 create_postgres_secret() {
     local url="$1"
@@ -281,6 +309,7 @@ else
         "${RELEASE_NAME}-encryption-key:ENCRYPTION_KEY" 
         "${RELEASE_NAME}-temporal-encryption-key:TEMPORAL_TRIGGER_ENCRYPTION_KEY"
         "${RELEASE_NAME}-composio-api-key:COMPOSIO_API_KEY"
+        "${RELEASE_NAME}-jwt-secret:JWT_SECRET"
     )
 
     # Handle individual generated secrets
@@ -348,6 +377,42 @@ if [[ -n "$OPENAI_API_KEY" ]]; then
     fi
 else
     print_info "OPENAI_API_KEY not provided - skipping OpenAI secret creation"
+fi
+
+# Azure connection string secret (used by apollo.yaml when backend=azure)
+if [[ -n "$AZURE_CONNECTION_STRING" ]]; then
+    azure_secret_name="${RELEASE_NAME}-azure-connection-string"
+    if secret_exists "$azure_secret_name"; then
+        print_warning "Secret already exists: $azure_secret_name"
+    else
+        create_simple_secret "$azure_secret_name" "AZURE_CONNECTION_STRING" "$AZURE_CONNECTION_STRING"
+    fi
+else
+    print_info "AZURE_CONNECTION_STRING not provided - skipping Azure connection secret creation"
+fi
+
+# S3 credentials secret (required by apollo.yaml env valueFrom)
+if [[ -n "$S3_ACCESS_KEY_ID" && -n "$S3_SECRET_ACCESS_KEY" ]]; then
+    s3_secret_name="${RELEASE_NAME}-s3-credentials"
+    if secret_exists "$s3_secret_name"; then
+        print_warning "Secret already exists: $s3_secret_name"
+    else
+        create_s3_secret "$s3_secret_name" "$S3_ACCESS_KEY_ID" "$S3_SECRET_ACCESS_KEY"
+    fi
+else
+    print_info "S3_ACCESS_KEY_ID or S3_SECRET_ACCESS_KEY not provided - skipping S3 credentials secret creation"
+fi
+
+# SMTP secret from environment variable (for apollo.yaml reference at runtime)
+if [[ -n "$SMTP_CONNECTION_STRING" ]]; then
+    smtp_secret_name="${SMTP_SECRET_NAME:-${RELEASE_NAME}-smtp-credentials}"
+    if secret_exists "$smtp_secret_name"; then
+        print_warning "Secret already exists: $smtp_secret_name"
+    else
+        create_simple_secret "$smtp_secret_name" "SMTP_CONNECTION_STRING" "$SMTP_CONNECTION_STRING"
+    fi
+else
+    print_info "SMTP_CONNECTION_STRING not provided - skipping SMTP secret creation"
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
