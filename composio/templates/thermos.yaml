@@ -105,7 +105,7 @@ spec:
             - name: LAMBDA_USE_HTTP
               value: "true"
             - name: LAMBDA_USE_HTTP_ENDPOINT
-              value: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
+              value: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local:{{ .Values.mercury.service.port | default 80 }}"
             - name: AWS_LAMBDA_REGION
               value: {{ .Values.aws.region | quote }}
             - name: AWS_S3_REGION

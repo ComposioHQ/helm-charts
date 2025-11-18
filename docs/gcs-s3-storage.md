@@ -1,8 +1,10 @@
-## Use Google Cloud Storage via S3 API
+## Setting up S3 (or Google Cloud Storage via S3 APIs)
 
-This guide shows how to configure Composio to use Google Cloud Storage (GCS) through its S3-compatible API. Apollo reads its S3 configuration from Helm values and credentials from a Kubernetes Secret.
+This guide shows how to configure Composio to use your own S3 buckets, or Google Cloud Storage (GCS) through its S3-compatible API. Apollo reads its S3 configuration from Helm values and credentials from a Kubernetes Secret.
 
 ### Prerequisites
+
+#### GCS
 - A GCP project with Cloud Storage enabled
 - A GCS bucket (for example: `composio-artifacts`)
 - HMAC credentials for a service account (Access Key ID and Secret) to use the S3 XML API
@@ -12,7 +14,12 @@ Notes:
 - GCS S3 “region” can be set to `auto`.
 - Path-style access must remain enabled for compatibility.
 
-### 1) Create or retrieve GCS HMAC credentials
+#### S3
+- An S3 bucket you have access to
+- Container credentials for pods launched on AWS EKS, OR
+- AWS AccessKey/SecretKey pair with permissions to access this S3 bucket
+
+#### 1) (GCS-only) Create or retrieve GCS HMAC credentials
 You need an Access Key ID and Secret that back a service account. You can create HMAC keys in the Cloud Console or via gcloud:
 
 ```bash
@@ -32,7 +39,10 @@ gcloud storage hmac create \
 # The command prints AccessKeyId and Secret (copy and store securely)
 ```
 
-### 2) Create the Kubernetes Secret for Apollo
+#### 2) Create the Kubernetes Secret for Apollo
+> **NOTE** If you are using container credentials where your running pods automatically have access to said S3 buckets, you
+> can skip this section.
+
 Apollo loads S3 credentials from a namespaced secret named `{release}-s3-credentials` with keys `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`.
 
 ```bash
@@ -44,7 +54,8 @@ kubectl create secret generic composio-s3-credentials \
 
 If your Helm release name or namespace differ, adjust the secret name (`<release>-s3-credentials`) and `-n` accordingly.
 
-### 3) Set Helm values for GCS S3
+#### 3) Set Helm values for GCS S3
+##### For GCS
 Add the following under `apollo:` in your values override file. Example:
 
 ```yaml
@@ -59,7 +70,19 @@ apollo:
 
 For reference, see `values-override.yaml` in this repository which contains similar fields.
 
-### 4) Deploy or upgrade Helm
+#### For S3
+
+```yaml
+apollo:
+  # Optional - use only if you are expecting to override the URL (when using say, minio, or a VPC endpoint)
+  s3EndpointUrl: "..."
+  # Optional - use only if you are expecting to override the URL (when using say, minio, or a VPC endpoint)
+  s3Endpoint: "..."
+  s3Bucket: "bucket-name"
+  s3Region: "your aws region"
+```
+
+#### 4) Deploy or upgrade Helm
 ```bash
 helm upgrade --install composio ./composio \
   -n composio \
@@ -67,7 +90,7 @@ helm upgrade --install composio ./composio \
   -f values-override.yaml
 ```
 
-### 5) Verify configuration
+#### 5) Verify configuration
 Check that Apollo picked up your S3 settings and can talk to GCS:
 
 ```bash
@@ -85,7 +108,6 @@ You should see variables such as `S3_ENDPOINT`, `S3_ENDPOINT_URL`, `S3_FORCE_PAT
 - Do I need a GCP JSON key file for this?  
   No. For S3 interoperability, use HMAC (Access Key ID/Secret) and the `https://storage.googleapis.com` endpoint as shown above.
 
-- Do other services (Mercury/Thermos) need GCS S3?  
-  Apollo is the primary consumer of the S3 settings shown here.
-
-
+- Do other services (Mercury/Thermos) need S3, or GCS?
+  Apollo is the primary consumer of the S3 settings shown here. Composio operates fine without an S3 bucket as well, however, any toolkit
+  functionality that depends on files (for ex., sending email with attachments, or fetching email with attachments, otherwise it won't work).

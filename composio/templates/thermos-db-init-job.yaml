@@ -67,6 +67,10 @@ spec:
                   key: COMPOSIO_API_KEY
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+            {{- if .Values.thermos.dbInit.extraAtlasFlags }}
+            - name: EXTRA_ATLAS_FLAGS
+              value: {{ .Values.thermos.dbInit.extraAtlasFlags | quote }}
+            {{- end }}
           resources:
             requests:
               cpu: 500m

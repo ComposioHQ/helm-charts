@@ -124,6 +124,24 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-s3-credentials
                   key: S3_SECRET_ACCESS_KEY
+            # Object storage configuration
+            - name: OBJECT_STORAGE_BACKEND
+              value: {{ .Values.apollo.objectStorage.backend | default "s3" | quote }}
+            {{- if eq (default "s3" .Values.apollo.objectStorage.backend) "azure_blob_storage" }}
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-azure-connection-string
+                  key: AZURE_CONNECTION_STRING
+            {{- end }}
+            {{- if .Values.apollo.objectStorage.namespaces.temp }}
+            - name: TEMP_STORAGE_NAMESPACE
+              value: {{ .Values.apollo.objectStorage.namespaces.temp | quote }}
+            {{- end }}
+            {{- if .Values.apollo.objectStorage.namespaces.permanent }}
+            - name: PERMANENT_STORAGE_NAMESPACE
+              value: {{ .Values.apollo.objectStorage.namespaces.permanent | quote }}
+            {{- end }}
             - name: SERVICE_NAME
               value: "apollo"
             - name: APOLLO_URL
@@ -197,6 +215,7 @@ spec:
               value: "otlp"
             - name: OTEL_LOGS_EXPORTER
               value: "otlp"
+            # Custom Apollo variables for backward compatibility
             - name: ENABLE_OTEL_METRICS
               value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
             - name: OTEL_METRICS_ENDPOINT
