@@ -73,7 +73,7 @@ spec:
               value: "9900"
             - name: HOSTNAME
               value: "0.0.0.0"
-            - name: _ENV
+            - name: NODE_ENV
               value: "production"
             {{/* add the GOOGLE_APPLICATION_CREDENTIALS here */}}
             {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
@@ -88,7 +88,7 @@ spec:
               value: "false"
             - name: SELF_HOSTED
               value: "true"
-            - name: _OPTIONS
+            - name: NODE_OPTIONS
               value: "--max-old-space-size=4096"
             - name: THERMOS_URL
               value: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
