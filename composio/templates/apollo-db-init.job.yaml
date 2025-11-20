@@ -1,8 +1,9 @@
 {{- if .Values.apollo.dbInit.enabled }}
+{{- $randomHash := include "hash" (dict "data" .Values.apollo.image.tag) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Release.Name }}-apollo-db-init
+  name: {{ .Release.Name }}-apollo-db-init-{{ $randomHash }}
   labels:
     app: apollo-db-init
     release: {{ .Release.Name }}
@@ -10,10 +11,9 @@ metadata:
     "helm.sh/hook-weight": "-1"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
-  ttlSecondsAfterFinished: 80
   template:
     metadata:
-      name: {{ .Release.Name }}-apollo-db-init
+      name: {{ .Release.Name }}-apollo-db-init-{{ $randomHash }}
       labels:
         app: apollo-db-init
         release: {{ .Release.Name }}

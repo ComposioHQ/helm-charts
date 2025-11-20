@@ -5,6 +5,15 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "hash" -}}
+{{- $data := mustToJson .data | toString }}
+{{- $salt := "adskj" }}
+{{- $base := (printf "%s%s" $data $salt) | quote | sha1sum | trunc 5 }}
+{{- $rand := randAlphaNum 3 | lower }}
+{{- printf "%s-%s" $base $rand }}
+{{- end -}}
+
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
