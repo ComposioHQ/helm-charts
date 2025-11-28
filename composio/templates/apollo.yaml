@@ -171,6 +171,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-composio-api-key
                   key: COMPOSIO_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-openai-credentials
+                  key: OPENAI_API_KEY
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
