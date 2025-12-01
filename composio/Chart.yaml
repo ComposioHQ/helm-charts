@@ -14,3 +14,7 @@ dependencies:
     alias: temporal
     version: "0.68.1"
     repository: "file://./charts/temporal"
+  - name: replicated
+    repository: oci://registry.replicated.com/library
+    version: 1.11.2
+    condition: replicated.enabled

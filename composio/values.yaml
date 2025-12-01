@@ -69,7 +69,8 @@ redis:
     sysctl:
       enabled: false
 
-
+replicated:
+  enabled: false
 # Apollo service configuration - Development
 apollo:
   replicaCount: 2

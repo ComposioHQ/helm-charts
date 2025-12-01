@@ -5,5 +5,8 @@ dependencies:
 - name: temporal
   repository: file://./charts/temporal
   version: 0.68.1
-digest: sha256:c1090761b9cf246aa01b955f0df8c2635b581173bdb4b9388162436eeba6f4ca
-generated: "2025-10-27T16:22:50.722053351+05:30"
+- name: replicated
+  repository: oci://registry.replicated.com/library
+  version: 1.11.2
+digest: sha256:0847920fec7c10d3a459e604d8ec68f670f321a18993bbdd02a3576890a0d20c
+generated: "2025-12-01T14:43:31.026558+05:30"
