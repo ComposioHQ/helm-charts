@@ -55,7 +55,7 @@ usage() {
     echo "  • external-postgres-secret            (from POSTGRES_URL)"
     echo "  • external-thermos-postgres-secret    (from THERMOS_POSTGRES_URL)"
     echo "  • external-redis-secret               (from REDIS_URL)"
-    echo "  • openai-secret                       (from OPENAI_API_KEY)"
+    echo "  • \${release}-openai-credentials      (from OPENAI_API_KEY, or uses existing openai-secret if present)"
     echo "  • \${release}-azure-connection-string (from AZURE_CONNECTION_STRING)"
     echo "  • \${release}-s3-credentials          (from S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY)"
     echo "  • \${release}-smtp-credentials        (from SMTP_CONNECTION_STRING)"
@@ -282,7 +282,7 @@ create_redis_secret() {
 # Function to create OpenAI secret
 create_openai_secret() {
     local api_key="$1"
-    local secret_name="openai-secret"
+    local secret_name="${RELEASE_NAME}-openai-credentials"
     
     print_info "Creating OpenAI secret"
     
@@ -369,14 +369,34 @@ else
     print_info "REDIS_URL not provided - skipping Redis secret creation"
 fi
 
-if [[ -n "$OPENAI_API_KEY" ]]; then
-    if secret_exists "openai-secret"; then
-        print_warning "Secret already exists: openai-secret"
+openai_secret_name="${RELEASE_NAME}-openai-credentials"
+# Check for legacy openai-secret first (backward compatibility)
+if secret_exists "openai-secret"; then
+    print_warning "Legacy secret 'openai-secret' already exists - using it for backward compatibility"
+    # Copy legacy secret to new name if new name doesn't exist (so templates can use it)
+    if secret_exists "$openai_secret_name"; then
+        print_warning "Secret already exists: $openai_secret_name"
+    else
+        if [[ "$DRY_RUN" == true ]]; then
+            print_info "[DRY-RUN] Would copy legacy 'openai-secret' to '$openai_secret_name' for backward compatibility"
+            print_info "kubectl get secret openai-secret -n \"$NAMESPACE\" -o json | jq 'del(.metadata.name, .metadata.namespace, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp) | .metadata.name = \"$openai_secret_name\"' | kubectl apply -f -"
+        else
+            print_info "Copying legacy 'openai-secret' to '$openai_secret_name' for backward compatibility"
+            kubectl get secret openai-secret -n "$NAMESPACE" -o json | \
+                jq 'del(.metadata.name, .metadata.namespace, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp) | .metadata.name = "'"$openai_secret_name"'"' | \
+                kubectl apply -f -
+            print_success "Copied legacy secret to: $openai_secret_name"
+        fi
+    fi
+elif [[ -n "$OPENAI_API_KEY" ]]; then
+    # Create new standard secret name (only if legacy doesn't exist)
+    if secret_exists "$openai_secret_name"; then
+        print_warning "Secret already exists: $openai_secret_name"
     else
         create_openai_secret "$OPENAI_API_KEY"
     fi
 else
-    print_info "OPENAI_API_KEY not provided - skipping OpenAI secret creation"
+    print_info "OPENAI_API_KEY not provided and no legacy 'openai-secret' found - skipping OpenAI secret creation"
 fi
 
 # Azure connection string secret (used by apollo.yaml when backend=azure)

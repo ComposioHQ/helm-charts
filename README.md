@@ -476,7 +476,7 @@ These secrets are created from environment variables you provide:
 | `external-postgres-secret` | `POSTGRES_URL` | Apollo database connection |
 | `external-thermos-postgres-secret` | `THERMOS_POSTGRES_URL` | Thermos database connection |
 | `external-redis-secret` | `REDIS_URL` | Redis cache connection |
-| `openai-secret` | `OPENAI_API_KEY` | OpenAI API integration |
+| `{release}-openai-credentials` | `OPENAI_API_KEY` | OpenAI API integration (uses existing `openai-secret` if present for backward compatibility) |
 
 #### Helm-Managed Secrets
 These secrets are managed by Helm templates with existence checks:
