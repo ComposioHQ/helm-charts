@@ -1,0 +1,16 @@
+apiVersion: kots.io/v1beta1
+kind: Config
+metadata:
+  name: composio
+spec:
+  groups:
+    - name: composio_config
+      title: Composio Configuration
+      items:
+        - name: composio_domain
+          title: Ingress Hostname
+          help_text: >
+            The domain name at which you'll access Composio. Don't include
+            the `https://` or any path elements.
+          type: text
+          required: true
