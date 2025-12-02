@@ -1,0 +1,104 @@
+{{/*
+Renders the Support Bundle secret to be used by replicated 
+*/}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    {{- include "replicated.labels" . | nindent 4 }}
+    troubleshoot.sh/kind: support-bundle
+  name: {{ include "replicated.supportBundleName" . }}
+  namespace: {{ include "replicated.namespace" . | quote }}
+  {{- if .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+stringData:
+  support-bundle-spec: |-
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: SupportBundle
+    metadata:
+      name: {{ include "replicated.supportBundleName" . }}
+    spec:
+      collectors:
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-app-updates
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . | quote }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/updates"]
+            timeout: 5s
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-app-history
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . | quote }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/history"]
+            timeout: 5s
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-app-info
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . | quote }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/app/info"]
+            timeout: 5s
+        - exec:
+            name: replicated-sdk
+            collectorName: replicated-license-info
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . | quote }}
+            command: ["curl"]
+            args: ["-s", "http://{{ include "replicated.serviceName" . }}.{{ include "replicated.namespace" . }}:3000/api/v1/license/info"]
+            timeout: 5s
+        - logs:
+            collectorName: replicated-logs
+            selector:
+              {{- range $k, $v := (include "replicated.labels" . | fromYaml) }}
+              - {{ $k }}={{ $v }}
+              {{- end }}
+            namespace: {{ include "replicated.namespace" . | quote }}
+            name: replicated/logs
+        - secret:
+            namespace: {{ include "replicated.namespace" . | quote }}
+            name: replicated-instance-report
+            includeValue: true
+            key: report
+        - secret:
+            namespace: {{ include "replicated.namespace" . | quote }}
+            name: replicated-custom-app-metrics-report
+            includeValue: true
+            key: report
+        - secret:
+            namespace: {{ include "replicated.namespace" . | quote }}
+            name: replicated-meta-data
+            includeValue: true
+            key: instance-tag-data 
+      analyzers:
+        - jsonCompare:
+            checkName: Replicated SDK App Status
+            fileName: replicated-app-info.json
+            path: "appStatus"
+            value: "ready"
+            outcomes:
+              - warn:
+                  when: "false"
+                  message: Replicated SDK App status is not ready.
+              - pass:
+                  when: "true"
+                  message: Replicated SDK App status is ready.
