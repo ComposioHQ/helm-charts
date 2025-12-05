@@ -49,7 +49,6 @@ usage() {
     echo "  • \${release}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)"
     echo "  • \${release}-composio-api-key        (COMPOSIO_API_KEY)"
     echo "  • \${release}-jwt-secret              (JWT_SECRET)"
-    echo "  • \${release}-minio-credentials       (MINIO_ROOT_USER + MINIO_ROOT_PASSWORD)"
     echo ""
     echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
     echo "  • external-postgres-secret            (from POSTGRES_URL)"
@@ -172,24 +171,6 @@ create_simple_secret() {
     fi
 }
 
-# Function to create minio credentials secret
-create_minio_secret() {
-    local secret_name=$1
-    local user=$2
-    local password=$3
-    
-    if [[ "$DRY_RUN" == true ]]; then
-        print_info "[DRY-RUN] Would create secret: $secret_name"
-        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"MINIO_ROOT_USER=$user\" --from-literal=\"MINIO_ROOT_PASSWORD=$password\" -n \"$NAMESPACE\""
-    else
-        print_info "Creating secret: $secret_name"
-        kubectl create secret generic "$secret_name" \
-            --from-literal="MINIO_ROOT_USER=$user" \
-            --from-literal="MINIO_ROOT_PASSWORD=$password" \
-            -n "$NAMESPACE"
-        print_success "Created secret: $secret_name"
-    fi
-}
 
 # Function to create S3 credentials secret (used by apollo.yaml)
 create_s3_secret() {
@@ -325,15 +306,6 @@ else
         fi
     done
 
-    # Handle MinIO credentials (combined secret)
-    minio_secret_name="${RELEASE_NAME}-minio-credentials"
-    if secret_exists "$minio_secret_name"; then
-        print_warning "Secret already exists: $minio_secret_name"
-    else
-        minio_user="minioadmin"
-        minio_password=$(generate_random 16)
-        create_minio_secret "$minio_secret_name" "$minio_user" "$minio_password"
-    fi
 fi
 
 print_info "Checking and creating user-provided secrets..."
