@@ -79,6 +79,56 @@ For additional architectural details, see our [Architecture Diagram](./docs/arch
 > **Detailed guides available**: See our [cloud provider guides](https://composiohq.github.io/helm-charts/guides.html) for GKE, EKS, and AKS specific setup instructions.
 
 
+## Pre-Installation SQL 
+Run below sql queries before deploying helm chart
+
+```sh 
+CREATE USER composio WITH PASSWORD 'superuserpassword';
+
+-- Create databases
+CREATE DATABASE composiodb OWNER composio;
+CREATE DATABASE temporal OWNER composio;
+CREATE DATABASE temporal_visibility OWNER composio;
+CREATE DATABASE thermosdb OWNER composio;
+
+
+\c thermosdb
+GRANT ALL PRIVILEGES ON DATABASE thermosdb TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+
+
+-- Connect to composiodb and grant privileges
+\c composiodb
+GRANT ALL PRIVILEGES ON DATABASE composiodb TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+-- Connect to temporal and grant privileges
+\c temporal
+GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+-- Connect to temporal_visibility and grant privileges
+\c temporal_visibility
+GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+ALTER ROLE composio CREATEDB;
+
+```
+
 ## 🚀 Installation Steps
 
 ### Step 1: Prerequisites Setup
