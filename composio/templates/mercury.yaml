@@ -80,34 +80,6 @@ spec:
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-
-            # Minio credentials
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_USER
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_PASSWORD
-            - name: AWS_LAMBDA_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_USER
-            - name: AWS_LAMBDA_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_PASSWORD
-            - name: AWS_S3_ENDPOINT
-              value: "http://{{ .Release.Name }}-minio:9000"
-            - name: AWS_S3_ENDPOINT_URL
-              value: "http://{{ .Release.Name }}-minio:9000"
-            - name: AWS_S3_FORCE_PATH_STYLE
-              value: "true"
             # OpenAI API Key
             - name: OPENAI_API_KEY
               valueFrom:
