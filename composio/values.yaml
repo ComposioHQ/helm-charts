@@ -75,7 +75,7 @@ apollo:
   replicaCount: 2
   image:
     repository: composio-self-host/apollo
-    tag: "495d325"
+    tag: "release-20251209_00"
     pullPolicy: Always
 
   ingress:
@@ -103,7 +103,7 @@ apollo:
     enabled: true
     image:
       repository: composio-self-host/apollo-db-init
-      tag: "495d325"
+      tag: "release-20251209_00"
       pullPolicy: Always
     # podSecurityContext:
     #   runAsUser: 1000
@@ -177,7 +177,7 @@ thermos:
   replicaCount: 2
   image:
     repository: composio-self-host/thermos
-    tag: "495d325"
+    tag: "release-20251209_00"
     pullPolicy: Always
   # nodeSelector: {}
   # tolerations: []
@@ -200,7 +200,7 @@ thermos:
     enabled: true
     image:
       repository: composio-self-host/thermos-db-init
-      tag: "495d325"
+      tag: "release-20251209_00"
       pullPolicy: Always
     # podSecurityContext:
     #   runAsUser: 1000
@@ -667,7 +667,7 @@ minio:
   
   image:
     repository: composio-self-host/minio
-    tag: "495d325"
+    tag: "release-20251209_00"
     pullPolicy: Always
   
   service:
@@ -714,7 +714,7 @@ mercury:
   replicaCount: 1
   image:
     repository: composio-self-host/mercury
-    tag: "495d325"
+    tag: "release-20251209_00"
     pullPolicy: Always
   # nodeSelector: {}
   # tolerations: []
