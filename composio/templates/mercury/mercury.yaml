@@ -62,25 +62,10 @@ spec:
             tcpSocket:
               port: {{ .Values.mercury.service.port | default 8080 }}
             timeoutSeconds: 1
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-mercury-config
           env:
-            # AWS S3 Configuration (using Minio)
-            - name: AWS_S3_REGION_NAME
-              value: "us-east-1"
-            - name: AWS_DEFAULT_REGION
-              value: "us-east-1"
-            - name: AWS_REGION
-              value: "us-east-1"
-            - name: AWS_S3_LAMBDA_BUCKET
-              value: "tools"
-            - name: AWS_S3_CUSTOM_TOOLS_BUCKET
-              value: "tools"
-            - name: SELF_HOSTED
-              value: "true"
-            - name: BACKEND_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            - name: APOLLO_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-
             # Minio credentials
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
@@ -102,12 +87,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: MINIO_ROOT_PASSWORD
-            - name: AWS_S3_ENDPOINT
-              value: "http://{{ .Release.Name }}-minio:9000"
-            - name: AWS_S3_ENDPOINT_URL
-              value: "http://{{ .Release.Name }}-minio:9000"
-            - name: AWS_S3_FORCE_PATH_STYLE
-              value: "true"
             # OpenAI API Key
             - name: OPENAI_API_KEY
               valueFrom:
@@ -119,28 +98,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-apollo-admin-token
                   key: APOLLO_ADMIN_TOKEN
-            # OpenTelemetry configuration
             {{- if .Values.otel.enabled }}
-            - name: OTEL_ENABLED
-              value: {{ .Values.otel.enabled | quote }}
-            - name: OTEL_SERVICE_NAME
-              value: {{ .Values.otel.mercury.serviceName | default "mercury-openapi" | quote }}
-            - name: OTEL_SERVICE_VERSION
-              value: {{ .Values.otel.mercury.serviceVersion | default "1.0.0" | quote }}
-            - name: OTEL_ENVIRONMENT
-              value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_INSECURE
-              value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
-            - name: OTEL_TRACES_ENABLED
-              value: {{ .Values.otel.traces.enabled | default "true" | quote }}
-            - name: OTEL_METRICS_ENABLED
-              value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
-            - name: OTEL_METRIC_EXPORT_INTERVAL
-              value: {{ .Values.otel.metrics.exportInterval | default "60000" | quote }}
-            - name: USE_APOLLO_GET_DOWNLOAD_URL_API
-              value: "true"
             # OTEL Resource attributes
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
