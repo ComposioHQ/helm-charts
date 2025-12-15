@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-thermos-config
+data:
+  PORT: "8180"
+  HOST: "0.0.0.0"
+  APOLLO_ENDPOINT: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+  COMPOSIO_ENV: "production"
+  LOG_ENCODING: "json"
+  LOG_LEVEL: "info"
+  OPENAPI: "false"
+  POLLING_TRIGGER_SLEEP: "60"
+  REGISTRY_LOOKUP_CACHE_DIR: "/tmp/.lookup"
+  SELF_HOSTED: "true"
+  TEMPORAL_CLOUD_HOST_PORT: "temporal-stack-frontend:7233"
+  TEMPORAL_CLOUD_NAMESPACE: "default"
+  DISABLE_TEMPORAL_TLS: "true"
+  LAMBDA_USE_HTTP: "true"
+  LAMBDA_USE_HTTP_ENDPOINT: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
+  AWS_LAMBDA_REGION: {{ .Values.aws.region | quote }}
+  AWS_S3_REGION: {{ .Values.aws.region | quote }}
+  AWS_S3_LAMBDA_BUCKET_NAME: {{ .Values.aws.s3.lambdaBucketName | quote }}
+  LAMBDA_FUNCTION_NAME: {{ .Values.aws.lambda.functionName | quote }}
+  AWS_S3_ENDPOINT: "http://{{ .Release.Name }}-minio:9000"
+  AWS_S3_FORCE_PATH_STYLE: "true"
+  {{- if .Values.otel.enabled }}
+  OTEL_ENABLED: {{ .Values.otel.enabled | quote }}
+  OTEL_SERVICE_NAME: {{ .Values.otel.thermos.serviceName | default "thermos" | quote }}
+  OTEL_SERVICE_VERSION: {{ .Values.otel.thermos.serviceVersion | default "1.0.0" | quote }}
+  OTEL_ENVIRONMENT: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+  OTEL_EXPORTER_OTLP_INSECURE: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
+  OTEL_EXPORTER_OTLP_HEADERS: {{ .Values.otel.exporter.otlp.headers | default "" | quote }}
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_METRICS_EXPORTER: "otlp"
+  OTEL_LOGS_EXPORTER: "otlp"
+  OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.thermos.serviceName | default "thermos" }},service.version={{ .Values.otel.thermos.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+  {{- end }}
