@@ -69,6 +69,34 @@ redis:
     sysctl:
       enabled: false
 
+openAI: 
+  API_KEY: ""
+
+objectStorage:
+  s3: # S3 compatible storage 
+    S3_ACCESS_KEY_ID: ""
+    S3_SECRET_ACCESS_KEY: ""
+  azure: 
+    connectionString: "" 
+
+# SMTP_CONNECTION_STRING
+smtp: 
+  connectionString: ""
+
+
+database: 
+  apollo: 
+    database: ""
+    port: ""
+    sslmode: "require"
+    user: ""
+    host: ""
+  thermos: 
+    database: ""
+    port: ""
+    sslmode: "require"
+    user: ""
+    host: ""
 
 # Apollo service configuration - Development
 apollo:
