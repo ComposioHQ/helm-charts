@@ -69,8 +69,10 @@ redis:
     sysctl:
       enabled: false
 
-openAI: 
-  API_KEY: ""
+openAI:
+  secretRef: "openai-cred" 
+  key: "API_KEY"
+  
 
 objectStorage:
   s3: # S3 compatible storage 
