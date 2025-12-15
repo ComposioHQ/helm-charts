@@ -81,9 +81,14 @@ objectStorage:
 
 # SMTP_CONNECTION_STRING
 smtp: 
-  connectionString: ""
+  username: ""
+  host: ""
+  port: ""
+  password: 
+    secretRef: "smtppassword"
+    key: "password"
 
-
+# Credentials should be in same namespace
 database: 
   apollo: 
     database: ""
