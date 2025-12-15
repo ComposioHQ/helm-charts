@@ -91,12 +91,27 @@ database:
     sslmode: "require"
     user: ""
     host: ""
+    password: 
+      secretRef: "dbpassword"
+      key: "password"
   thermos: 
     database: ""
     port: ""
     sslmode: "require"
     user: ""
     host: ""
+    password: 
+      secretRef: "dbpassword"
+      key: "password"
+
+redisConnection:
+  username: ""
+  host: ""
+  port: ""
+  password: 
+    secretRef: "redispassword"
+    key: "password"
+
 
 # Apollo service configuration - Development
 apollo:

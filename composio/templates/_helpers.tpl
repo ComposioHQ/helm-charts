@@ -81,6 +81,26 @@ Expand the name of the chart.
 {{- end -}}
 
 {{/*
+Get a decoded value from an existing Kubernetes Secret
+Usage:
+{{ include "mychart.getSecretValue" (dict
+  "name" "db-secret"
+  "namespace" .Release.Namespace
+  "key" "password"
+) }}
+*/}}
+{{- define "getSecretCred" -}}
+{{- $secret := lookup "v1" "Secret" .namespace .name -}}
+{{- if and $secret (hasKey $secret.data .key) -}}
+{{- index $secret.data .key | b64dec -}}
+{{- else -}}
+this secret was not found
+{{- end -}}
+{{- end -}}
+
+
+
+{{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
