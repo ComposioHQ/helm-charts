@@ -66,32 +66,10 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-mercury-config
           env:
-            # Minio credentials
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_USER
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_PASSWORD
-            - name: AWS_LAMBDA_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_USER
-            - name: AWS_LAMBDA_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: MINIO_ROOT_PASSWORD
-            # OpenAI API Key
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Release.Name }}-openai-credentials
                   key: OPENAI_API_KEY
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:

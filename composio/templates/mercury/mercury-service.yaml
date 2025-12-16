@@ -79,27 +79,26 @@ spec:
                   key: APOLLO_ADMIN_TOKEN
             - name: USE_APOLLO_GET_DOWNLOAD_URL_API
               value: "true"
-            # Minio credentials - with AWS key names to be aws sdk compatible
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-minio-credentials
-                  key: MINIO_ROOT_USER
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_ACCESS_KEY_ID
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-minio-credentials
-                  key: MINIO_ROOT_PASSWORD
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_SECRET_ACCESS_KEY
             - name: AWS_LAMBDA_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-minio-credentials
-                  key: MINIO_ROOT_USER
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_ACCESS_KEY_ID
             - name: AWS_LAMBDA_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-minio-credentials
-                  key: MINIO_ROOT_PASSWORD
+                  name: {{ .Release.Name }}-s3-credentials
+                  key: S3_SECRET_ACCESS_KEY
             - name: AWS_S3_ENDPOINT
               value: "http://{{ .Release.Name }}-minio:9000"
             - name: AWS_S3_ENDPOINT_URL
