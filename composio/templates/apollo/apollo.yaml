@@ -72,6 +72,7 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-apollo-config
           env:
+            {{- if eq .Values.apollo.objectStorage.backend "s3"}}
             - name: S3_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
@@ -82,6 +83,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-s3-credentials
                   key: S3_SECRET_ACCESS_KEY
+            {{- end }}
             {{- if eq (default "s3" .Values.apollo.objectStorage.backend) "azure_blob_storage" }}
             - name: AZURE_CONNECTION_STRING
               valueFrom:

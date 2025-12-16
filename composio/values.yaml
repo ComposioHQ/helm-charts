@@ -72,14 +72,6 @@ redis:
 openAI:
   secretRef: "openai-cred" 
   key: "API_KEY"
-  
-
-objectStorage:
-  s3: # S3 compatible storage 
-    S3_ACCESS_KEY_ID: ""
-    S3_SECRET_ACCESS_KEY: ""
-  azure: 
-    connectionString: "" 
 
 # SMTP_CONNECTION_STRING
 smtp: 
@@ -196,6 +188,16 @@ apollo:
   objectStorage:
     # Supported: "s3", "azure_blob_storage"
     backend: "s3"
+    accessKey: 
+      secretName: "s3-cred"
+      key: "S3_ACCESS_KEY_ID"
+    secretKey: 
+      secretName: "s3-cred"
+      key: "S3_SECRET_ACCESS_KEY"
+    azureConnectionString: 
+      secretName: "azure-cred"
+      key: "AZURE_CONNECTION_STRING"
+
     namespaces:
       # Blob container for temporary files
       temp: "composio-temp"
