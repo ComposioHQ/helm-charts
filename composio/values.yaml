@@ -494,7 +494,7 @@ otel:
       # gRPC endpoint for OTLP (no protocol prefix needed for gRPC)
       endpoint: "composio-otel-collector:4317"
       # Separate trace endpoint (optional, defaults to endpoint)
-      tracesEndpoint: "composio-otel-collector:4317"
+      tracesEndpoint: "http://composio-otel-collector:4318/v1/traces"
       # Separate metrics endpoint for gRPC (optional, defaults to endpoint)
       metricsEndpoint: "composio-otel-collector:4317"
       insecure: true
