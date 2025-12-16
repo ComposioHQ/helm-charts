@@ -784,6 +784,11 @@ mercury:
   
   volumeMounts: []
   volumes: []
+  awsLambda:
+    enabled: false 
+    secretRef: 
+      name: "lambda-cred"
+
 
 # Frontend service configuration - Development
 frontend:

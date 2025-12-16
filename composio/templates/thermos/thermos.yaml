@@ -79,17 +79,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-apollo-admin-token
                   key: APOLLO_ADMIN_TOKEN
-            # Minio credentials as AWS S3 environment variables
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-s3-credentials 
-                  key: S3_ACCESS_KEY_ID
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-s3-credentials
-                  key: S3_SECRET_ACCESS_KEY
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
