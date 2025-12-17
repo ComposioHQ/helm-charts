@@ -21,11 +21,33 @@
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-apollo 8080:{{ .Values.apollo.service.port }}
    Then visit: http://127.0.0.1:8080
 
+{{- if .Values.thermos.replicaCount }}
+   Thermos (Workflow Engine):
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-thermos 8180:{{ .Values.thermos.service.port }}
+   Then visit: http://127.0.0.1:8180
+{{- end }}
 
+{{- if and .Values.mercury.enabled (not .Values.mercury.useKnative) }}
+   Mercury (Lambda Runtime):
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-mercury 8080:80
+   Then visit: http://127.0.0.1:8080
+{{- end }}
+
+{{- if .Values.frontend.enabled }}
+   Frontend (Web UI):
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-frontend 3000:{{ .Values.frontend.service.port }}
+   Then visit: http://127.0.0.1:3000
+{{- end }}
 
    Temporal Web UI:
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-temporal-web 8082:8080
    Then visit: http://127.0.0.1:8082
+
+{{- if and .Values.otel.enabled .Values.otel.collector.enabled }}
+   OpenTelemetry Collector (Metrics/Traces):
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-otel-collector 8889:8889
+   Then visit: http://127.0.0.1:8889/metrics
+{{- end }}
 
 
 3. Verify installation:
@@ -33,11 +55,28 @@
 
    All pods should be in 'Running' status.
 
-4. For production use:
+4. Ingress Configuration:
+{{- if .Values.apollo.ingress.enabled }}
+   - Apollo ingress is enabled at: {{ .Values.apollo.ingress.host }}
+{{- end }}
+{{- if and .Values.mercury.enabled .Values.mercury.ingress.enabled }}
+   - Mercury ingress is enabled at: {{ .Values.mercury.ingress.host | default (printf "mercury.%s" .Values.global.domain) }}
+{{- end }}
+{{- if and .Values.frontend.enabled .Values.frontend.ingress.enabled }}
+   - Frontend ingress is enabled at: {{ .Values.frontend.ingress.host | default (printf "app.%s" .Values.global.domain) }}
+{{- end }}
+{{- if not (or .Values.apollo.ingress.enabled (and .Values.mercury.enabled .Values.mercury.ingress.enabled) (and .Values.frontend.enabled .Values.frontend.ingress.enabled)) }}
+   - No ingress configured. Use port-forward commands above or configure ingress in values.yaml
+{{- end }}
+
+5. For production use:
    - Configure external databases (PostgreSQL, Redis)
-   - Set up proper ingress with SSL certificates
-   - Configure monitoring and logging
+   - Set up proper ingress with SSL certificates for Apollo, Mercury, and Frontend
+   - Configure monitoring and logging (OpenTelemetry collector is {{ if .Values.otel.enabled }}enabled{{ else }}disabled{{ end }})
    - Review security settings and secrets management
+{{- if .Values.mercury.useKnative }}
+   - Mercury is configured to use Knative Serving for serverless scaling
+{{- end }}
 
 For more information:
 - Documentation: https://docs.composio.dev
