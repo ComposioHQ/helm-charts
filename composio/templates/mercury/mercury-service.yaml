@@ -52,11 +52,13 @@ spec:
           env:
             - name: SELF_HOSTED
               value: "true"
+            {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-openai-credentials
                   key: OPENAI_API_KEY
+            {{- end }}
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_URL

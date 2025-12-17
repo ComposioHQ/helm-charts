@@ -66,11 +66,13 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-mercury-config
           env:
+            {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-openai-credentials
                   key: OPENAI_API_KEY
+            {{- end }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:

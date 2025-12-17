@@ -75,13 +75,7 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-frontend-config
           env:
-            {{- if and .Values.frontend.secrets .Values.frontend.secrets.OPENAI_API_KEY }}
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretName }}
-                  key: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretKey }}
-            {{- else }}
+            {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:

@@ -69,8 +69,9 @@ redis:
     sysctl:
       enabled: false
 
-#Required for Frontend and Mercury Application (Optional)
+#Required for Frontend, Mercury and Apollo Application (Optional)
 openAI:
+  enabled: false
   secretRef: "openai-cred" 
   key: "API_KEY"
 
@@ -822,11 +823,6 @@ frontend:
   # extraEnv:
   #   - name: CUSTOM_VAR
   #     value: "custom_value"
-  # Secrets configuration for sensitive values (alternative to env)
-  # secrets:
-  #   OPENAI_API_KEY:
-  #     secretName: custom-secret
-  #     secretKey: openai-key
   ingress:
     enabled: false
     className: ""
