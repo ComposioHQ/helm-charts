@@ -1,5 +1,4 @@
 {{- if .Values.mercury.useKnative }}
-{{- if .Values.namespace.create }}
 ---
 apiVersion: v1
 kind: Namespace
@@ -13,7 +12,6 @@ metadata:
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
     "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "-7"
-{{- end }}
 ---
 # Job to configure Knative after installation
 apiVersion: batch/v1
