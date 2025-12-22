@@ -435,6 +435,97 @@ otel:
     exportInterval: 60000  # Export interval in milliseconds
 ```
 
+### ⚙️ Configure TLS for Temporal
+
+To enable TLS for Temporal when connecting to a managed database (for example, **AWS RDS**), follow the steps below.
+
+---
+
+#### 1. Download the RDS CA Certificate
+
+Download the AWS RDS CA bundle to establish a trusted connection between Temporal and your database:
+
+```bash
+curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+````
+
+---
+
+#### 2. Create a Kubernetes Secret
+
+Create a Kubernetes secret containing the downloaded CA private key:
+
+```bash
+kubectl create secret generic temporal-db-tls-secret \
+  --from-file=rds-ca.crt=./global-bundle.pem \
+  -n composio
+```
+
+This secret will be used by Temporal for TLS host verification.
+
+---
+
+#### 3. Update the Temporal Values File
+
+Update your `values.yaml` file to enable TLS and reference the mounted certificate.
+
+```yaml
+default:
+  driver: "sql"
+  sql:
+    driver: "postgres12"
+    host: "HOST"
+    port: 5432
+    database: "temporal"
+    user: "composio"
+    existingSecret: "external-postgres-secret"
+    maxConns: 20
+    maxIdleConns: 20
+    maxConnLifetime: "1h"
+    tls:
+      enabled: true
+      disableHostVerification: true
+      caFile: /etc/certs/rds-ca.crt
+
+# Visibility database (created by schema setup)
+visibility:
+  driver: "sql"
+  sql:
+    driver: "postgres12"
+    host: "HOST"
+    port: 5432
+    database: "temporal_visibility"
+    user: "composio"
+    existingSecret: "external-postgres-secret"
+    maxConns: 20
+    maxIdleConns: 20
+    maxConnLifetime: "1h"
+    tls:
+      enabled: true
+      disableHostVerification: true
+      caFile: /etc/certs/rds-ca.crt
+```
+
+---
+
+#### 4. Mount the Secret in AdminTools
+
+Mount the Kubernetes secret into the `admintools` pod by adding the following configuration:
+
+```yaml
+admintools:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  additionalVolumes:
+    - name: temporal-db-tls
+      secret:
+        secretName: temporal-db-tls-secret
+  additionalVolumeMounts:
+    - name: temporal-db-tls
+      mountPath: /etc/certs
+      readOnly: true
+```
 #### OTEL Collector Configuration
 
 The OTEL collector receives telemetry from services and exports to backends like Google Cloud Monitoring, Prometheus, or other OTLP-compatible systems.

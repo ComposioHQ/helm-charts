@@ -119,7 +119,7 @@ apollo:
   replicaCount: 2
   image:
     repository: composio-self-host/apollo
-    tag: "495d325"
+    tag: "release-20251209_00"
     pullPolicy: Always
 
   ingress:
@@ -147,7 +147,7 @@ apollo:
     enabled: true
     image:
       repository: composio-self-host/apollo-db-init
-      tag: "495d325"
+      tag: "release-20251209_00"
       pullPolicy: Always
     # podSecurityContext:
     #   runAsUser: 1000
@@ -231,7 +231,7 @@ thermos:
   replicaCount: 2
   image:
     repository: composio-self-host/thermos
-    tag: "495d325"
+    tag: "release-20251209_00"
     pullPolicy: Always
   # nodeSelector: {}
   # tolerations: []
@@ -254,7 +254,7 @@ thermos:
     enabled: true
     image:
       repository: composio-self-host/thermos-db-init
-      tag: "495d325"
+      tag: "release-20251209_00"
       pullPolicy: Always
     # podSecurityContext:
     #   runAsUser: 1000
@@ -548,7 +548,7 @@ otel:
       # gRPC endpoint for OTLP (no protocol prefix needed for gRPC)
       endpoint: "composio-otel-collector:4317"
       # Separate trace endpoint (optional, defaults to endpoint)
-      tracesEndpoint: "composio-otel-collector:4317"
+      tracesEndpoint: "http://composio-otel-collector:4318/v1/traces"
       # Separate metrics endpoint for gRPC (optional, defaults to endpoint)
       metricsEndpoint: "composio-otel-collector:4317"
       insecure: true
@@ -715,7 +715,7 @@ mercury:
   replicaCount: 1
   image:
     repository: composio-self-host/mercury
-    tag: "495d325"
+    tag: "release-20251209_00"
     pullPolicy: Always
   # nodeSelector: {}
   # tolerations: []
