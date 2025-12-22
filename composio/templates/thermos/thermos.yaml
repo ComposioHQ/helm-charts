@@ -79,39 +79,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-apollo-admin-token
                   key: APOLLO_ADMIN_TOKEN
-<<<<<<< HEAD:composio/templates/thermos/thermos.yaml
-=======
-            - name: LOG_ENCODING
-              value: "json"
-            - name: LOG_LEVEL
-              value: "info"
-            - name: OPENAPI
-              value: "false"
-            - name: POLLING_TRIGGER_SLEEP
-              value: "60"
-            - name: REGISTRY_LOOKUP_CACHE_DIR
-              value: "/tmp/.lookup"
-            - name: SELF_HOSTED
-              value: "true"
-            - name: TEMPORAL_CLOUD_HOST_PORT
-              value: "temporal-stack-frontend:7233"
-            - name: TEMPORAL_CLOUD_NAMESPACE
-              value: "default"
-            - name: DISABLE_TEMPORAL_TLS
-              value: "true"
-            - name: LAMBDA_USE_HTTP
-              value: "true"
-            - name: LAMBDA_USE_HTTP_ENDPOINT
-              value: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
-            - name: AWS_LAMBDA_REGION
-              value: {{ .Values.aws.region | quote }}
-            - name: AWS_S3_REGION
-              value: {{ .Values.aws.region | quote }}
-            - name: AWS_S3_LAMBDA_BUCKET_NAME
-              value: {{ .Values.aws.s3.lambdaBucketName | quote }}
-            - name: LAMBDA_FUNCTION_NAME
-              value: {{ .Values.aws.lambda.functionName | quote }}
->>>>>>> origin:composio/templates/thermos.yaml
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
