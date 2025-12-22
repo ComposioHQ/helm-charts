@@ -50,23 +50,15 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
-            - name: AWS_S3_REGION_NAME
-              value: "us-east-1"
-            - name: AWS_DEFAULT_REGION
-              value: "us-east-1"
-            - name: AWS_REGION
-              value: "us-east-1"
-            - name: AWS_S3_LAMBDA_BUCKET
-              value: "tools"
-            - name: AWS_S3_CUSTOM_TOOLS_BUCKET
-              value: "tools"
             - name: SELF_HOSTED
               value: "true"
+            {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-openai-credentials
                   key: OPENAI_API_KEY
+            {{- end }}
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_URL
@@ -78,28 +70,6 @@ spec:
                   key: APOLLO_ADMIN_TOKEN
             - name: USE_APOLLO_GET_DOWNLOAD_URL_API
               value: "true"
-            # OpenTelemetry configuration
-            {{- if .Values.otel.enabled }}
-            - name: OTEL_ENABLED
-              value: {{ .Values.otel.enabled | quote }}
-            - name: OTEL_SERVICE_NAME
-              value: {{ .Values.otel.mercury.serviceName | default "mercury-openapi" | quote }}
-            - name: OTEL_SERVICE_VERSION
-              value: {{ .Values.otel.mercury.serviceVersion | default "1.0.0" | quote }}
-            - name: OTEL_ENVIRONMENT
-              value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_INSECURE
-              value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
-            - name: OTEL_TRACES_ENABLED
-              value: {{ .Values.otel.traces.enabled | default "true" | quote }}
-            - name: OTEL_METRICS_ENABLED
-              value: {{ .Values.otel.metrics.enabled | default "true" | quote }}
-            - name: OTEL_METRIC_EXPORT_INTERVAL
-              value: {{ .Values.otel.metrics.exportInterval | default "60000" | quote }}
-            {{- end }}
-
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
           {{- with .Values.mercury.volumeMounts }}

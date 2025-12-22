@@ -14,6 +14,92 @@ Expand the name of the chart.
 {{- end -}}
 
 
+{{- define "apollo-admin-token" -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-apollo-admin-token" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "APOLLO_ADMIN_TOKEN" -}}
+    {{- index $secret.data "APOLLO_ADMIN_TOKEN" | b64dec -}}
+  {{- else -}}
+    {{- randAlphaNum 32 -}}
+  {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "composio-api-key" -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-composio-api-key" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "COMPOSIO_API_KEY" -}}
+    {{- index $secret.data "COMPOSIO_API_KEY" | b64dec -}}
+  {{- else -}}
+    {{- randAlphaNum 32 -}}
+  {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "encryption-key" -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-encryption-key" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "ENCRYPTION_KEY" -}}
+    {{- index $secret.data "ENCRYPTION_KEY" | b64dec -}}
+  {{- else -}}
+    {{- randAlphaNum 32 -}}
+  {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "jwt-secret" -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-jwt-secret" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "JWT_SECRET" -}}
+    {{- index $secret.data "JWT_SECRET" | b64dec -}}
+  {{- else -}}
+    {{- randAlphaNum 32 -}}
+  {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "temporal-encryption-key" -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-temporal-encryption-key" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" -}}
+    {{- index $secret.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" | b64dec -}}
+  {{- else -}}
+    {{- randAlphaNum 32 -}}
+  {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get a decoded value from an existing Kubernetes Secret
+Usage:
+{{ include "mychart.getSecretValue" (dict
+  "name" "db-secret"
+  "namespace" .Release.Namespace
+  "key" "password"
+) }}
+*/}}
+{{- define "getSecretCred" -}}
+{{- $secret := lookup "v1" "Secret" .namespace .name -}}
+{{- if and $secret (hasKey $secret.data .key) -}}
+{{- index $secret.data .key | b64dec -}}
+{{- else -}}
+this secret was not found
+{{- end -}}
+{{- end -}}
+
+
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).

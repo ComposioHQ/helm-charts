@@ -71,23 +71,11 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-frontend-config
           env:
-            # Server-side environment variables
-            - name: PORT
-              value: {{ .Values.frontend.env.PORT | default "3000" | quote }}
-            - name: NODE_ENV
-              value: {{ .Values.frontend.env.NODE_ENV | default "production" | quote }}
-            {{- if .Values.frontend.env.OPENAPI_URL }}
-            - name: OPENAPI_URL
-              value: {{ .Values.frontend.env.OPENAPI_URL | quote }}
-            {{- end }}
-            {{- if and .Values.frontend.secrets .Values.frontend.secrets.OPENAI_API_KEY }}
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretName }}
-                  key: {{ .Values.frontend.secrets.OPENAI_API_KEY.secretKey }}
-            {{- else }}
+            {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -106,61 +94,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: PLAIN_SECRET
-            {{- end }}
-            {{- if .Values.apollo.ingress.enabled }}
-            - name: OVERRIDE_BACKEND_URL
-              value: {{ printf "https://%s" .Values.apollo.ingress.host }}
-            {{- else }}
-            - name: OVERRIDE_BACKEND_URL
-              value: {{ .Values.frontend.env.OVERRIDE_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
-            {{- end }}
-            # Client-side environment variables (prefixed with NEXT_PUBLIC_)
-            {{- if .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY }}
-            - name: NEXT_PUBLIC_POSTHOG_KEY
-              value: {{ .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY | quote }}
-            {{- end }}
-            {{- if .Values.apollo.ingress.enabled }}
-            - name: NEXT_PUBLIC_BACKEND_URL
-              value: {{ printf "https://%s" .Values.apollo.ingress.host }}
-            {{- else }}
-            - name: NEXT_PUBLIC_BACKEND_URL
-              value: {{ .Values.frontend.env.NEXT_PUBLIC_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
-            {{- end }}
-            {{- if .Values.frontend.env.NEXT_PUBLIC_APP_URL }}
-            - name: NEXT_PUBLIC_APP_URL
-              value: {{ .Values.frontend.env.NEXT_PUBLIC_APP_URL | quote }}
-            {{- end }}
-            {{- if .Values.frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN }}
-            - name: NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
-              value: {{ .Values.frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN | quote }}
-            {{- end }}
-            - name: NEXT_PUBLIC_SELF_HOSTED
-              value: {{ .Values.frontend.env.NEXT_PUBLIC_SELF_HOSTED | default "true" | quote }}
-            # OpenTelemetry configuration
-            {{- if .Values.otel.enabled }}
-            - name: OTEL_ENABLED
-              value: {{ .Values.otel.enabled | quote }}
-            - name: OTEL_SERVICE_NAME
-              value: {{ .Values.otel.frontend.serviceName | default "frontend" | quote }}
-            - name: OTEL_SERVICE_VERSION
-              value: {{ .Values.otel.frontend.serviceVersion | default "1.0.0" | quote }}
-            - name: OTEL_ENVIRONMENT
-              value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.tracesEndpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_INSECURE
-              value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
-            - name: OTEL_TRACES_EXPORTER
-              value: "otlp"
-            - name: OTEL_METRICS_EXPORTER
-              value: "otlp"
-            - name: OTEL_LOGS_EXPORTER
-              value: "otlp"
-            # OTEL Resource attributes
-            - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.otel.frontend.serviceName | default "frontend" }},service.version={{ .Values.otel.frontend.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
             {{- end }}
             {{- if .Values.frontend.extraEnv }}
             {{- toYaml .Values.frontend.extraEnv | nindent 12 }}

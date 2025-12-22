@@ -1,0 +1,42 @@
+apiVersion: v1
+entries:
+  composio:
+  - apiVersion: v2
+    appVersion: 1.1.0
+    created: "2025-12-22T10:59:21.038262076+05:30"
+    dependencies:
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.3
+    - alias: temporal
+      name: temporal
+      repository: file://./charts/temporal
+      version: 0.68.1
+    description: A Helm chart for Composio
+    digest: 8c6ff78ca1a459475b7e92249ae3d2da14a2b70c729f6a1a78f41e6a17c90705
+    name: composio
+    type: application
+    urls:
+    - https://composiohq.github.io/helm-charts/helm-release/composio-1.1.0.tgz
+    version: 1.1.0
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2025-12-22T10:59:21.018102786+05:30"
+    dependencies:
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.3
+    - alias: temporal
+      name: temporal
+      repository: file://./charts/temporal
+      version: 0.68.1
+    description: A Helm chart for Composio
+    digest: c64582de77fedada551ed28b3ad3718f9e7c471b1add06b06d5ac9895240c732
+    name: composio
+    type: application
+    urls:
+    - https://composiohq.github.io/helm-charts/helm-release/composio-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-12-22T10:59:21.005540319+05:30"

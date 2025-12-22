@@ -1,0 +1,34 @@
+{{- if and .Values.mercury.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-mercury-config
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mercury
+data:
+  AWS_S3_REGION_NAME: "us-east-1"
+  AWS_DEFAULT_REGION: "us-east-1"
+  AWS_REGION: "us-east-1"
+  AWS_S3_LAMBDA_BUCKET: "tools"
+  AWS_S3_CUSTOM_TOOLS_BUCKET: "tools"
+  SELF_HOSTED: "true"
+  BACKEND_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+  APOLLO_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+  AWS_S3_ENDPOINT: "http://{{ .Release.Name }}-minio:9000"
+  AWS_S3_ENDPOINT_URL: "http://{{ .Release.Name }}-minio:9000"
+  AWS_S3_FORCE_PATH_STYLE: "true"
+  {{- if .Values.otel.enabled }}
+  OTEL_ENABLED: {{ .Values.otel.enabled | toString | quote }}
+  OTEL_SERVICE_NAME: {{ .Values.otel.mercury.serviceName | default "mercury-openapi" | quote }}
+  OTEL_SERVICE_VERSION: {{ .Values.otel.mercury.serviceVersion | default "1.0.0" | quote }}
+  OTEL_ENVIRONMENT: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+  OTEL_EXPORTER_OTLP_INSECURE: {{ .Values.otel.exporter.otlp.insecure | toString | quote }}
+  OTEL_TRACES_ENABLED: {{ .Values.otel.traces.enabled | toString | quote }}
+  OTEL_METRICS_ENABLED: {{ .Values.otel.metrics.enabled | toString | quote }}
+  OTEL_METRIC_EXPORT_INTERVAL: {{ .Values.otel.metrics.exportInterval | toString | quote }}
+  USE_APOLLO_GET_DOWNLOAD_URL_API: "true"
+  OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+  {{- end }}
+{{- end }}

@@ -70,50 +70,15 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-thermos-config
           env:
-            - name: PORT
-              value: "8180"
-            - name: HOST
-              value: "0.0.0.0"
-            - name: APOLLO_ENDPOINT
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            - name: COMPOSIO_ENV
-              value: "production"
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-apollo-admin-token
                   key: APOLLO_ADMIN_TOKEN
-            - name: LOG_ENCODING
-              value: "json"
-            - name: LOG_LEVEL
-              value: "info"
-            - name: OPENAPI
-              value: "false"
-            - name: POLLING_TRIGGER_SLEEP
-              value: "60"
-            - name: REGISTRY_LOOKUP_CACHE_DIR
-              value: "/tmp/.lookup"
-            - name: SELF_HOSTED
-              value: "true"
-            - name: TEMPORAL_CLOUD_HOST_PORT
-              value: "temporal-stack-frontend:7233"
-            - name: TEMPORAL_CLOUD_NAMESPACE
-              value: "default"
-            - name: DISABLE_TEMPORAL_TLS
-              value: "true"
-            - name: LAMBDA_USE_HTTP
-              value: "true"
-            - name: LAMBDA_USE_HTTP_ENDPOINT
-              value: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
-            - name: AWS_LAMBDA_REGION
-              value: {{ .Values.aws.region | quote }}
-            - name: AWS_S3_REGION
-              value: {{ .Values.aws.region | quote }}
-            - name: AWS_S3_LAMBDA_BUCKET_NAME
-              value: {{ .Values.aws.s3.lambdaBucketName | quote }}
-            - name: LAMBDA_FUNCTION_NAME
-              value: {{ .Values.aws.lambda.functionName | quote }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -124,34 +89,6 @@ spec:
                 secretKeyRef:
                   name: external-thermos-postgres-secret
                   key: url
-            # OpenTelemetry configuration
-            {{- if .Values.otel.enabled }}
-            - name: OTEL_ENABLED
-              value: {{ .Values.otel.enabled | quote }}
-            - name: OTEL_SERVICE_NAME
-              value: {{ .Values.otel.thermos.serviceName | default "thermos" | quote }}
-            - name: OTEL_SERVICE_VERSION
-              value: {{ .Values.otel.thermos.serviceVersion | default "1.0.0" | quote }}
-            - name: OTEL_ENVIRONMENT
-              value: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-              value: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
-            - name: OTEL_EXPORTER_OTLP_INSECURE
-              value: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
-            - name: OTEL_EXPORTER_OTLP_HEADERS
-              value: {{ .Values.otel.exporter.otlp.headers | default "" | quote }}
-            - name: OTEL_TRACES_EXPORTER
-              value: "otlp"
-            - name: OTEL_METRICS_EXPORTER
-              value: "otlp"
-            - name: OTEL_LOGS_EXPORTER
-              value: "otlp"
-            # OTEL Resource attributes  
-            - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.otel.thermos.serviceName | default "thermos" }},service.version={{ .Values.otel.thermos.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
-            {{- end }}
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}
