@@ -22,8 +22,6 @@ secrets.yaml
 # charts/*.tgz
 # **/charts/*.tgz
 
-# Helm package files
-*.tgz
 
 # IDE and editor files
 .vscode/
