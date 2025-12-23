@@ -381,9 +381,9 @@ temporal:
         namespace:
           - name: default
             retention: 7d
-          - name: batched-polling.kl3mw
+          - name: batched-polling
             retention: 10d
-          - name: webhook.kl3mw
+          - name: webhook
             retention: 10d
 
     # Frontend service configuration
