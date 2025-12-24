@@ -131,29 +131,17 @@ ALTER ROLE composio CREATEDB;
 
 ## 🚀 Installation Steps
 
-### Step 1: Prerequisites Setup
-Ensure you have the following ready:
-- Kubernetes cluster with at least **9 CPUs** and **24GB RAM** (recommended: 12+ CPUs, 32GB RAM)
-- External PostgreSQL database
-- AWS ECR access configured
-- `kubectl` and Helm 3.x installed
+### Step 1: Install & Configure Knative Components
+```bash
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.19.6/serving-crds.yaml \
+-f https://github.com/knative/serving/releases/download/knative-v1.19.6/serving-core.yaml \
+-f https://github.com/knative-extensions/net-kourier/releases/download/knative-v1.19.5/kourier.yaml
 
-### Step 2: Install Knative Components
-# Install Knative Serving CRDs (latest: v1.19.6)
-kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.19.6/serving-crds.yaml
-
-# Install Knative Serving Core (latest: v1.19.6)
-kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.19.6/serving-core.yaml
-
-# Install Kourier networking layer (latest: v1.19.5)
-kubectl apply -f https://github.com/knative-extensions/net-kourier/releases/download/knative-v1.19.5/kourier.yaml
-
-# Configure Kourier as default ingress
 kubectl patch configmap/config-network \
   --namespace knative-serving \
   --type merge \
   --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
-
+```
 ### Step 3: Configure Secrets
 Set up your database and API credentials using the comprehensive secret management system:
 
