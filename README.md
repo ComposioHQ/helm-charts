@@ -158,24 +158,14 @@ smtp:
 
 # Credentials should be in same namespace
 database: 
-  apollo: 
-    database: "composiodb"
-    port: "5432"
-    sslmode: "disable"
-    user: "composio"
-    host: "postgres-new.db"
-    password: 
-      secretRef: "dbpassword"
-      key: "password"
-  thermos: 
-    database: "thermosdb"
-    port: "5432"
-    sslmode: "disable"
-    user: "composio"
-    host: "postgres-new.db"
-    password: 
-      secretRef: "dbpassword"
-      key: "password"
+  createDb: true
+  port: "5432"
+  sslmode: "disable"
+  user: "composio"
+  host: "postgres-new.db"
+  password: 
+    secretRef: "dbpassword"
+    key: "password"
 
 redisConnection:
   host: "redis-0.redis.db.svc.cluster.local"
