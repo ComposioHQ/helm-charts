@@ -103,7 +103,7 @@ database:
       secretRef: "dbpassword"
       key: "password"
 
-redisConnection:
+redisAuth:
   host: "redis-0.redis.db.svc.cluster.local"
   port: "6379"
   password:

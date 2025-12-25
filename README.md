@@ -167,26 +167,12 @@ database:
     secretRef: "dbpassword"
     key: "password"
 
-redisConnection:
+redisAuth:
   host: "redis-0.redis.db.svc.cluster.local"
   port: "6379"
   password:
     secretRef: "redispassword"
     key: "password"
-
-apollo:
-    objectStorage:
-        # Supported: "s3", "azure_blob_storage"
-        backend: "s3"
-        accessKey: 
-          secretName: "s3-cred"
-          key: "S3_ACCESS_KEY_ID"
-        secretKey: 
-          secretName: "s3-cred"
-          key: "S3_SECRET_ACCESS_KEY"
-        azureConnectionString: 
-          secretName: "azure-cred"
-          key: "AZURE_CONNECTION_STRING"
 ```
 Please check below commond to create kubernetes secrets if you don't have 
  
@@ -201,22 +187,6 @@ kubectl create secret generic dbpassword \
 
 kubectl create secret generic redispassword \
   --from-literal=password='' \
-  -n composio
-
-# Based on objectStorage backend
-kubectl create secret generic s3-cred \
-  --from-literal=S3_ACCESS_KEY_ID='YOUR_S3_ACCESS_KEY_ID' \
-  --from-literal=S3_SECRET_ACCESS_KEY='YOUR_S3_SECRET_ACCESS_KEY' \
-  -n composio
-
-# Based on objectStorage backend
-kubectl create secret generic azure-cred \
-  --from-literal=AZURE_CONNECTION_STRING='YOUR_AZURE_CONNECTION_STRING' \
-  -n composio
-
-# Optional
-kubectl create secret generic openai-cred \
-  --from-literal=API_KEY='OPENAI_API_KEY' \
   -n composio
 ```
 

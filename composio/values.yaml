@@ -86,8 +86,13 @@ smtp:
 
 # Credentials should be in same namespace
 database:
-  createDb: true
-  url: ""
+  port: ""
+  sslmode: "require"
+  user: ""
+  host: ""
+  password: 
+      secretRef: "dbpassword"
+      key: "password"
   apollo: 
     database: ""
     port: ""
@@ -107,7 +112,7 @@ database:
       secretRef: "dbpassword"
       key: "password"
 
-redisConnection:
+redisAuth:
   username: ""
   host: ""
   port: ""
