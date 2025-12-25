@@ -85,7 +85,9 @@ smtp:
     key: "password"
 
 # Credentials should be in same namespace
-database: 
+database:
+  createDb: true
+  url: ""
   apollo: 
     database: ""
     port: ""
