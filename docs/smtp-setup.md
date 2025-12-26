@@ -18,6 +18,18 @@ kubectl create secret generic composio-smtp-credentials \
   -n composio \
   --from-literal=SMTP_CONNECTION_STRING="smtp://<username>:<password>@<host>:<port>"
 ```
+OR reference the secret 
+
+```yaml 
+# SMTP_CONNECTION_STRING
+smtp: 
+  username: ""
+  host: ""
+  port: ""
+  password: 
+    secretRef: "smtppassword"
+    key: "password"
+```
 
 Notes:
 - If you want to use a custom secret name, set `apollo.smtp.credentialsSecret` accordingly (see step 2).

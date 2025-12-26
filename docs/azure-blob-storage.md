@@ -25,6 +25,17 @@ kubectl create secret generic composio-azure-connection-string \
   --from-literal=AZURE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=<name>;AccountKey=<key>;EndpointSuffix=core.windows.net"
 ```
 
+OR reference the secret from values file 
+
+```yaml 
+apollo: 
+    objectStorage:
+        backend: "azure_blob_storage"
+        azureConnectionString: 
+          secretName: "azure-cred"
+          key: "AZURE_CONNECTION_STRING"
+```
+
 ### Configure Helm values
 
 Add the following under `apollo:` in your values override file (e.g., `values-override.yaml`). Update the connection string and namespaces to match your setup.

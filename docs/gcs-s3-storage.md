@@ -43,13 +43,18 @@ gcloud storage hmac create \
 > **NOTE** If you are using container credentials where your running pods automatically have access to said S3 buckets, you
 > can skip this section.
 
-Apollo loads S3 credentials from a namespaced secret named `{release}-s3-credentials` with keys `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`.
-
-```bash
-kubectl create secret generic composio-s3-credentials \
-  -n composio \
-  --from-literal=S3_ACCESS_KEY_ID="<YOUR_ACCESS_KEY_ID>" \
-  --from-literal=S3_SECRET_ACCESS_KEY="<YOUR_SECRET_ACCESS_KEY>"
+Configure S3 credentials for apollo:
+```yaml 
+apollo:
+    objectStorage:
+        # Supported: "s3", "azure_blob_storage"
+        backend: "s3"
+        accessKey: 
+          secretName: "s3-cred"
+          key: "S3_ACCESS_KEY_ID"
+        secretKey: 
+          secretName: "s3-cred"
+          key: "S3_SECRET_ACCESS_KEY"
 ```
 
 If your Helm release name or namespace differ, adjust the secret name (`<release>-s3-credentials`) and `-n` accordingly.
