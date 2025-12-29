@@ -1,88 +1,109 @@
-# Prometheus Pushgateway
+# prometheus-pushgateway
 
-This chart bootstraps a Prometheus [Pushgateway](http://github.com/prometheus/pushgateway) deployment on a [Kubernetes](http://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
+![Version: 2.13.0](https://img.shields.io/badge/Version-2.13.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.8.0](https://img.shields.io/badge/AppVersion-v1.8.0-informational?style=flat-square)
 
-An optional prometheus `ServiceMonitor` can be enabled, should you wish to use this gateway with [Prometheus Operator](https://github.com/coreos/prometheus-operator).
+A Helm chart for prometheus pushgateway
 
-## Get Repository Info
-<!-- textlint-disable terminology -->
-```console
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-```
+**Homepage:** <https://github.com/prometheus/pushgateway>
 
-_See [helm repo](https://helm.sh/docs/helm/helm_repo/) for command documentation._
-<!-- textlint-enable -->
-## Install Chart
+## Maintainers
 
-```console
-helm install [RELEASE_NAME] prometheus-community/prometheus-pushgateway
-```
+| Name | Email | Url |
+| ---- | ------ | --- |
+| gianrubio | <gianrubio@gmail.com> |  |
+| cstaud | <christian.staude@staffbase.com> |  |
+| zeritti | <rootsandtrees@posteo.de> |  |
 
-_See [configuration](#configuration) below._
+## Source Code
 
-_See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
+* <https://github.com/prometheus/pushgateway>
 
-## Uninstall Chart
+## Values
 
-```console
-helm uninstall [RELEASE_NAME]
-```
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| affinity | object | `{}` |  |
+| automountServiceAccountToken | bool | `true` |  |
+| containerSecurityContext | object | `{}` |  |
+| extraArgs | list | `[]` |  |
+| extraContainers | list | `[]` |  |
+| extraInitContainers | list | `[]` |  |
+| extraManifests | list | `[]` |  |
+| extraVars | list | `[]` |  |
+| extraVolumeMounts | list | `[]` |  |
+| extraVolumes | list | `[]` |  |
+| fullnameOverride | string | `""` |  |
+| hostAliases | list | `[]` |  |
+| image.pullPolicy | string | `"IfNotPresent"` |  |
+| image.repository | string | `"quay.io/prometheus/pushgateway"` |  |
+| image.tag | string | `""` |  |
+| imagePullSecrets | list | `[]` |  |
+| ingress.className | string | `""` |  |
+| ingress.enabled | bool | `false` |  |
+| ingress.extraPaths | list | `[]` |  |
+| ingress.path | string | `"/"` |  |
+| ingress.pathType | string | `"ImplementationSpecific"` |  |
+| liveness.enabled | bool | `true` |  |
+| liveness.probe.httpGet.path | string | `"/-/healthy"` |  |
+| liveness.probe.httpGet.port | int | `9091` |  |
+| liveness.probe.initialDelaySeconds | int | `10` |  |
+| liveness.probe.timeoutSeconds | int | `10` |  |
+| nameOverride | string | `""` |  |
+| namespaceOverride | string | `""` |  |
+| networkPolicy | object | `{}` |  |
+| nodeSelector | object | `{}` |  |
+| persistentVolume.accessModes[0] | string | `"ReadWriteOnce"` |  |
+| persistentVolume.annotations | object | `{}` |  |
+| persistentVolume.enabled | bool | `false` |  |
+| persistentVolume.existingClaim | string | `""` |  |
+| persistentVolume.mountPath | string | `"/data"` |  |
+| persistentVolume.size | string | `"2Gi"` |  |
+| persistentVolume.subPath | string | `""` |  |
+| persistentVolumeLabels | object | `{}` |  |
+| podAnnotations | object | `{}` |  |
+| podAntiAffinity | string | `""` |  |
+| podAntiAffinityTopologyKey | string | `"kubernetes.io/hostname"` |  |
+| podDisruptionBudget | object | `{}` |  |
+| podLabels | object | `{}` |  |
+| priorityClassName | string | `nil` |  |
+| readiness.enabled | bool | `true` |  |
+| readiness.probe.httpGet.path | string | `"/-/ready"` |  |
+| readiness.probe.httpGet.port | int | `9091` |  |
+| readiness.probe.initialDelaySeconds | int | `10` |  |
+| readiness.probe.timeoutSeconds | int | `10` |  |
+| replicaCount | int | `1` |  |
+| resources | object | `{}` |  |
+| runAsStatefulSet | bool | `false` |  |
+| securityContext.fsGroup | int | `65534` |  |
+| securityContext.runAsNonRoot | bool | `true` |  |
+| securityContext.runAsUser | int | `65534` |  |
+| service.clusterIP | string | `""` |  |
+| service.ipDualStack.enabled | bool | `false` |  |
+| service.ipDualStack.ipFamilies[0] | string | `"IPv6"` |  |
+| service.ipDualStack.ipFamilies[1] | string | `"IPv4"` |  |
+| service.ipDualStack.ipFamilyPolicy | string | `"PreferDualStack"` |  |
+| service.loadBalancerIP | string | `""` |  |
+| service.loadBalancerSourceRanges | list | `[]` |  |
+| service.port | int | `9091` |  |
+| service.portName | string | `"http"` |  |
+| service.targetPort | int | `9091` |  |
+| service.type | string | `"ClusterIP"` |  |
+| serviceAccount.create | bool | `true` |  |
+| serviceAccount.name | string | `nil` |  |
+| serviceAccountLabels | object | `{}` |  |
+| serviceAnnotations | object | `{}` |  |
+| serviceLabels | object | `{}` |  |
+| serviceMonitor.additionalLabels | object | `{}` |  |
+| serviceMonitor.enabled | bool | `false` |  |
+| serviceMonitor.honorLabels | bool | `true` |  |
+| serviceMonitor.metricRelabelings | list | `[]` |  |
+| serviceMonitor.namespace | string | `"monitoring"` |  |
+| serviceMonitor.relabelings | list | `[]` |  |
+| serviceMonitor.telemetryPath | string | `"/metrics"` |  |
+| strategy.type | string | `"Recreate"` |  |
+| tolerations | list | `[]` |  |
+| topologySpreadConstraints | list | `[]` |  |
+| webConfiguration | object | `{}` | Sets web configuration To enable basic authentication, provide basicAuthUsers as a map |
 
-This removes all the Kubernetes components associated with the chart and deletes the release.
-
-_See [helm uninstall](https://helm.sh/docs/helm/helm_uninstall/) for command documentation._
-
-## Upgrading Chart
-
-```console
-helm upgrade [RELEASE_NAME] prometheus-community/prometheus-pushgateway --install
-```
-
-_See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command documentation._
-
-### To 2.0.0
-
-Chart API version has been upgraded to v2 so Helm 3 is needed from now on.
-
-Docker image tag is used from Chart.yaml appVersion field by default now.
-
-Version 2.0.0 also adapted [Helm label and annotation best practices](https://helm.sh/docs/chart_best_practices/labels/). Specifically, labels mapping is listed below:
-
-```console
-OLD                 => NEW
-----------------------------------------
-heritage            => app.kubernetes.io/managed-by
-chart               => helm.sh/chart
-[container version] => app.kubernetes.io/version
-app                 => app.kubernetes.io/name
-release             => app.kubernetes.io/instance
-```
-
-Therefore, depending on the way you've configured the chart, the previous StatefulSet or Deployment need to be deleted before upgrade.
-
-If `runAsStatefulSet: false` (this is the default):
-
-```console
-kubectl delete deploy -l app=prometheus-pushgateway
-```
-
-If `runAsStatefulSet: true`:
-
-```console
-kubectl delete sts -l app=prometheus-pushgateway
-```
-
-After that do the actual upgrade:
-
-```console
-helm upgrade -i prometheus-pushgateway prometheus-community/prometheus-pushgateway
-```
-
-## Configuration
-
-See [Customizing the Chart Before Installing](https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing). To see all configurable options with detailed comments, visit the chart's [values.yaml](./values.yaml), or run these configuration commands:
-
-```console
-helm show values prometheus-community/prometheus-pushgateway
-```
+----------------------------------------------
+Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

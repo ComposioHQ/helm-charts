@@ -292,11 +292,6 @@ composio: database
 Validate Redis configuration
 */}}
 {{- define "composio.validateValues.redis" -}}
-{{- if and .Values.externalRedis.enabled (not .Values.externalSecrets.redis.url) -}}
-composio: redis
-    You must provide a Redis URL when external Redis is enabled.
-    Please set externalSecrets.redis.url
-{{- end -}}
 {{- if and .Values.externalRedis.enabled .Values.redis.enabled -}}
 composio: redis
     You cannot enable both external Redis and built-in Redis.

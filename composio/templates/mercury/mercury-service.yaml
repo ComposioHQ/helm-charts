@@ -56,8 +56,8 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-openai-credentials
-                  key: OPENAI_API_KEY
+                  name: {{ .Values.openAI.secretRef }}
+                  key: {{ .Values.openAI.key }}
             {{- end }}
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
