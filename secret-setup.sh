@@ -49,13 +49,12 @@ usage() {
     echo "  • \${release}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)"
     echo "  • \${release}-composio-api-key        (COMPOSIO_API_KEY)"
     echo "  • \${release}-jwt-secret              (JWT_SECRET)"
-    echo "  • \${release}-minio-credentials       (MINIO_ROOT_USER + MINIO_ROOT_PASSWORD)"
     echo ""
     echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
     echo "  • external-postgres-secret            (from POSTGRES_URL)"
     echo "  • external-thermos-postgres-secret    (from THERMOS_POSTGRES_URL)"
     echo "  • external-redis-secret               (from REDIS_URL)"
-    echo "  • openai-secret                       (from OPENAI_API_KEY)"
+    echo "  • \${release}-openai-credentials      (from OPENAI_API_KEY, or uses existing openai-secret if present)"
     echo "  • \${release}-azure-connection-string (from AZURE_CONNECTION_STRING)"
     echo "  • \${release}-s3-credentials          (from S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY)"
     echo "  • \${release}-smtp-credentials        (from SMTP_CONNECTION_STRING)"
@@ -172,24 +171,6 @@ create_simple_secret() {
     fi
 }
 
-# Function to create minio credentials secret
-create_minio_secret() {
-    local secret_name=$1
-    local user=$2
-    local password=$3
-    
-    if [[ "$DRY_RUN" == true ]]; then
-        print_info "[DRY-RUN] Would create secret: $secret_name"
-        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"MINIO_ROOT_USER=$user\" --from-literal=\"MINIO_ROOT_PASSWORD=$password\" -n \"$NAMESPACE\""
-    else
-        print_info "Creating secret: $secret_name"
-        kubectl create secret generic "$secret_name" \
-            --from-literal="MINIO_ROOT_USER=$user" \
-            --from-literal="MINIO_ROOT_PASSWORD=$password" \
-            -n "$NAMESPACE"
-        print_success "Created secret: $secret_name"
-    fi
-}
 
 # Function to create S3 credentials secret (used by apollo.yaml)
 create_s3_secret() {
@@ -282,7 +263,7 @@ create_redis_secret() {
 # Function to create OpenAI secret
 create_openai_secret() {
     local api_key="$1"
-    local secret_name="openai-secret"
+    local secret_name="${RELEASE_NAME}-openai-credentials"
     
     print_info "Creating OpenAI secret"
     
@@ -325,15 +306,6 @@ else
         fi
     done
 
-    # Handle MinIO credentials (combined secret)
-    minio_secret_name="${RELEASE_NAME}-minio-credentials"
-    if secret_exists "$minio_secret_name"; then
-        print_warning "Secret already exists: $minio_secret_name"
-    else
-        minio_user="minioadmin"
-        minio_password=$(generate_random 16)
-        create_minio_secret "$minio_secret_name" "$minio_user" "$minio_password"
-    fi
 fi
 
 print_info "Checking and creating user-provided secrets..."
@@ -369,14 +341,34 @@ else
     print_info "REDIS_URL not provided - skipping Redis secret creation"
 fi
 
-if [[ -n "$OPENAI_API_KEY" ]]; then
-    if secret_exists "openai-secret"; then
-        print_warning "Secret already exists: openai-secret"
+openai_secret_name="${RELEASE_NAME}-openai-credentials"
+# Check for legacy openai-secret first (backward compatibility)
+if secret_exists "openai-secret"; then
+    print_warning "Legacy secret 'openai-secret' already exists - using it for backward compatibility"
+    # Copy legacy secret to new name if new name doesn't exist (so templates can use it)
+    if secret_exists "$openai_secret_name"; then
+        print_warning "Secret already exists: $openai_secret_name"
+    else
+        if [[ "$DRY_RUN" == true ]]; then
+            print_info "[DRY-RUN] Would copy legacy 'openai-secret' to '$openai_secret_name' for backward compatibility"
+            print_info "kubectl get secret openai-secret -n \"$NAMESPACE\" -o json | jq 'del(.metadata.name, .metadata.namespace, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp) | .metadata.name = \"$openai_secret_name\"' | kubectl apply -f -"
+        else
+            print_info "Copying legacy 'openai-secret' to '$openai_secret_name' for backward compatibility"
+            kubectl get secret openai-secret -n "$NAMESPACE" -o json | \
+                jq 'del(.metadata.name, .metadata.namespace, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp) | .metadata.name = "'"$openai_secret_name"'"' | \
+                kubectl apply -f -
+            print_success "Copied legacy secret to: $openai_secret_name"
+        fi
+    fi
+elif [[ -n "$OPENAI_API_KEY" ]]; then
+    # Create new standard secret name (only if legacy doesn't exist)
+    if secret_exists "$openai_secret_name"; then
+        print_warning "Secret already exists: $openai_secret_name"
     else
         create_openai_secret "$OPENAI_API_KEY"
     fi
 else
-    print_info "OPENAI_API_KEY not provided - skipping OpenAI secret creation"
+    print_info "OPENAI_API_KEY not provided and no legacy 'openai-secret' found - skipping OpenAI secret creation"
 fi
 
 # Azure connection string secret (used by apollo.yaml when backend=azure)

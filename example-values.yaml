@@ -69,20 +69,15 @@ redis:
     sysctl:
       enabled: false
 
-replicated:
-  enabled: false
-
-#Required for Frontend, Mercury and Apollo Application (Optional)
 openAI:
-  enabled: false
   secretRef: "openai-cred" 
   key: "API_KEY"
 
 # SMTP_CONNECTION_STRING
 smtp: 
-  username: ""
-  host: ""
-  port: ""
+  username: "test"
+  host: "host.smtp.io"
+  port: "5432"
   password: 
     secretRef: "smtppassword"
     key: "password"
@@ -90,39 +85,37 @@ smtp:
 # Credentials should be in same namespace
 database: 
   apollo: 
-    database: ""
-    port: ""
-    sslmode: "require"
-    user: ""
-    host: ""
+    database: "composiodb"
+    port: "5432"
+    sslmode: "disable"
+    user: "composio"
+    host: "postgres-new.db"
     password: 
       secretRef: "dbpassword"
       key: "password"
   thermos: 
-    database: ""
-    port: ""
-    sslmode: "require"
-    user: ""
-    host: ""
+    database: "thermosdb"
+    port: "5432"
+    sslmode: "disable"
+    user: "composio"
+    host: "postgres-new.db"
     password: 
       secretRef: "dbpassword"
       key: "password"
 
 redisConnection:
-  username: ""
-  host: ""
-  port: ""
-  password: 
+  host: "redis-0.redis.db.svc.cluster.local"
+  port: "6379"
+  password:
     secretRef: "redispassword"
     key: "password"
-
 
 # Apollo service configuration - Development
 apollo:
   replicaCount: 2
   image:
     repository: composio-self-host/apollo
-    tag: "release-20251209_00"
+    tag: "release-20251216_00"
     pullPolicy: Always
 
   ingress:
@@ -150,7 +143,7 @@ apollo:
     enabled: true
     image:
       repository: composio-self-host/apollo-db-init
-      tag: "release-20251209_00"
+      tag: "release-20251216_00"
       pullPolicy: Always
     # podSecurityContext:
     #   runAsUser: 1000
@@ -234,7 +227,7 @@ thermos:
   replicaCount: 2
   image:
     repository: composio-self-host/thermos
-    tag: "release-20251209_00"
+    tag: "release-20251216_00"
     pullPolicy: Always
   # nodeSelector: {}
   # tolerations: []
@@ -257,7 +250,7 @@ thermos:
     enabled: true
     image:
       repository: composio-self-host/thermos-db-init
-      tag: "release-20251209_00"
+      tag: "release-20251216_00"
       pullPolicy: Always
     # podSecurityContext:
     #   runAsUser: 1000
@@ -356,7 +349,7 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "override_some_ip_address_here"
+            host: "postgres-new.db"
             port: 5432
             database: "temporal"
             user: "postgres"
@@ -370,7 +363,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "override_some_ip_address_here"
+            host: "postgres-new.db"
             port: 5432
             database: "temporal_visibility"
             user: "postgres"
@@ -384,10 +377,6 @@ temporal:
         namespace:
           - name: default
             retention: 7d
-          - name: batched-polling
-            retention: 10d
-          - name: webhook
-            retention: 10d
 
     # Frontend service configuration
     frontend:
@@ -555,7 +544,7 @@ otel:
       # gRPC endpoint for OTLP (no protocol prefix needed for gRPC)
       endpoint: "composio-otel-collector:4317"
       # Separate trace endpoint (optional, defaults to endpoint)
-      tracesEndpoint: "http://composio-otel-collector:4318/v1/traces"
+      tracesEndpoint: "composio-otel-collector:4317"
       # Separate metrics endpoint for gRPC (optional, defaults to endpoint)
       metricsEndpoint: "composio-otel-collector:4317"
       insecure: true
@@ -722,7 +711,7 @@ mercury:
   replicaCount: 1
   image:
     repository: composio-self-host/mercury
-    tag: "release-20251209_00"
+    tag: "release-20251216_00"
     pullPolicy: Always
   # nodeSelector: {}
   # tolerations: []
@@ -803,11 +792,11 @@ mercury:
 
 # Frontend service configuration - Development
 frontend:
-  enabled: false
+  enabled: true
   replicaCount: 1
   image:
     repository: composio-self-host/frontend
-    tag: "latest"
+    tag: "release-20251216_00"
     pullPolicy: Always
   service:
     type: ClusterIP
@@ -830,10 +819,16 @@ frontend:
   # extraEnv:
   #   - name: CUSTOM_VAR
   #     value: "custom_value"
+  # Secrets configuration for sensitive values (alternative to env)
+  # secrets:
+  #   OPENAI_API_KEY:
+  #     secretName: custom-secret
+  #     secretKey: openai-key
   ingress:
     enabled: false
     className: ""
     annotations: {}
     host: ""
     tls: []
+
 

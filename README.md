@@ -79,6 +79,56 @@ For additional architectural details, see our [Architecture Diagram](./docs/arch
 > **Detailed guides available**: See our [cloud provider guides](https://composiohq.github.io/helm-charts/guides.html) for GKE, EKS, and AKS specific setup instructions.
 
 
+## Pre-Installation SQL 
+Run below sql queries before deploying helm chart
+
+```sh 
+CREATE USER composio WITH PASSWORD 'superuserpassword';
+
+-- Create databases
+CREATE DATABASE composiodb OWNER composio;
+CREATE DATABASE temporal OWNER composio;
+CREATE DATABASE temporal_visibility OWNER composio;
+CREATE DATABASE thermosdb OWNER composio;
+
+
+\c thermosdb
+GRANT ALL PRIVILEGES ON DATABASE thermosdb TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+
+
+-- Connect to composiodb and grant privileges
+\c composiodb
+GRANT ALL PRIVILEGES ON DATABASE composiodb TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+-- Connect to temporal and grant privileges
+\c temporal
+GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+-- Connect to temporal_visibility and grant privileges
+\c temporal_visibility
+GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
+GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
+
+ALTER ROLE composio CREATEDB;
+
+```
+
 ## 🚀 Installation Steps
 
 ### Step 1: Prerequisites Setup
@@ -107,40 +157,215 @@ kubectl patch configmap/config-network \
 ### Step 3: Configure Secrets
 Set up your database and API credentials using the comprehensive secret management system:
 
-#### Option A: Full External Dependencies (Recommended for Production)
-```bash
-# Required: PostgreSQL for Apollo
-export POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
+Kindly ensure above Kubernetes exists so they can be referenced in values file. 
 
-# Optional: Separate PostgreSQL for Thermos
-export THERMOS_POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
+```yaml 
+smtp: 
+  username: "test"
+  host: "host.smtp.io"
+  port: "5432"
+  password: 
+    secretRef: "smtppassword"
+    key: "password"
 
-# Optional: External Redis (uses built-in Redis if not provided)
-export REDIS_URL="redis://<username>:<password>@<host>:6379/0"
+# Credentials should be in same namespace
+database: 
+  apollo: 
+    database: "composiodb"
+    port: "5432"
+    sslmode: "disable"
+    user: "composio"
+    host: "postgres-new.db"
+    password: 
+      secretRef: "dbpassword"
+      key: "password"
+  thermos: 
+    database: "thermosdb"
+    port: "5432"
+    sslmode: "disable"
+    user: "composio"
+    host: "postgres-new.db"
+    password: 
+      secretRef: "dbpassword"
+      key: "password"
 
-# Optional: OpenAI API for AI functionality
-export OPENAI_API_KEY="sk-1234567890abcdef..."
+redisConnection:
+  host: "redis-0.redis.db.svc.cluster.local"
+  port: "6379"
+  password:
+    secretRef: "redispassword"
+    key: "password"
 
-# Run the secret setup script
-./secret-setup.sh -r composio -n composio
+apollo:
+    objectStorage:
+        # Supported: "s3", "azure_blob_storage"
+        backend: "s3"
+        accessKey: 
+          secretName: "s3-cred"
+          key: "S3_ACCESS_KEY_ID"
+        secretKey: 
+          secretName: "s3-cred"
+          key: "S3_SECRET_ACCESS_KEY"
+        azureConnectionString: 
+          secretName: "azure-cred"
+          key: "AZURE_CONNECTION_STRING"
+```
+Please check below commond to create kubernetes secrets if you don't have 
+ 
+```yaml 
+kubectl create secret generic smtppassword \
+  --from-literal=password='random' \
+  -n composio
+
+kubectl create secret generic dbpassword \
+  --from-literal=password='devtesting123' \
+  -n composio
+
+kubectl create secret generic redispassword \
+  --from-literal=password='' \
+  -n composio
+
+# Based on objectStorage backend
+kubectl create secret generic s3-cred \
+  --from-literal=S3_ACCESS_KEY_ID='YOUR_S3_ACCESS_KEY_ID' \
+  --from-literal=S3_SECRET_ACCESS_KEY='YOUR_S3_SECRET_ACCESS_KEY' \
+  -n composio
+
+# Based on objectStorage backend
+kubectl create secret generic azure-cred \
+  --from-literal=AZURE_CONNECTION_STRING='YOUR_AZURE_CONNECTION_STRING' \
+  -n composio
+
+# Optional
+kubectl create secret generic openai-cred \
+  --from-literal=API_KEY='OPENAI_API_KEY' \
+  -n composio
 ```
 
-#### Option B: Minimal Setup (Development)
-```bash
-# Only provide required PostgreSQL, let script generate other secrets
-export POSTGRES_URL="postgresql://<username>:<password>@<host_ip>:5432/<database_name>?sslmode=require"
+### Step 3.1: Temporal Configuration 
 
-# Run secret setup (will auto-generate missing secrets)
-./secret-setup.sh -r composio -n composio
+You need to configure Temporal with the database host 
+
+```yaml
+temporal:
+  server:
+    enabled: true
+    config:
+        default:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            host: "<YOUR DATABASE HOST>"
+            port: 5432
+            database: "temporal"
+            user: "postgres"
+            existingSecret: "external-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+        visibility:
+          driver: "sql" 
+          sql:
+            driver: "postgres12"
+            host: "<YOUR DATABASE HOST>"
+            port: 5432
+            database: "temporal_visibility"
+            user: "postgres"
+            existingSecret: "external-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
 ```
 
-#### Option C: Dry Run (Preview)
+### Step 3.2⚙️ Configure TLS for Temporal
+
+To enable TLS for Temporal when connecting to a managed database (for example, **AWS RDS**), follow the steps below.
+
+---
+
+#### 3.2a. Download the RDS CA Certificate
+
+Download the AWS RDS CA bundle to establish a trusted connection between Temporal and your database:
+
 ```bash
-# Preview what secrets would be created without making changes
-./secret-setup.sh -r composio -n composio --dry-run
+curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+````
+
+---
+
+#### 3.2b. Create a Kubernetes Secret
+
+Create a Kubernetes secret containing the downloaded CA private key:
+
+```bash
+kubectl create secret generic temporal-db-tls-secret \
+  --from-file=rds-ca.crt=./global-bundle.pem \
+  -n composio
 ```
 
-> **Secret Management**: The `secret-setup.sh` script handles both auto-generated secrets (tokens, keys) and user-provided secrets (database URLs, API keys). All secrets are protected from recreation during Helm upgrades.
+This secret will be used by Temporal for TLS host verification.
+
+---
+
+#### 3.2c. Update the Temporal Values File
+
+Update your `values.yaml` file to enable TLS and reference the mounted certificate.
+
+```yaml
+default:
+  driver: "sql"
+  sql:
+    driver: "postgres12"
+    host: "HOST"
+    port: 5432
+    database: "temporal"
+    user: "composio"
+    existingSecret: "external-postgres-secret"
+    maxConns: 20
+    maxIdleConns: 20
+    maxConnLifetime: "1h"
+    tls:
+      enabled: true
+      disableHostVerification: true
+      caFile: /etc/certs/rds-ca.crt
+
+# Visibility database (created by schema setup)
+visibility:
+  driver: "sql"
+  sql:
+    driver: "postgres12"
+    host: "HOST"
+    port: 5432
+    database: "temporal_visibility"
+    user: "composio"
+    existingSecret: "external-postgres-secret"
+    maxConns: 20
+    maxIdleConns: 20
+    maxConnLifetime: "1h"
+    tls:
+      enabled: true
+      disableHostVerification: true
+      caFile: /etc/certs/rds-ca.crt
+```
+
+#### 3.2d. Mount the Secret in AdminTools
+
+Mount the Kubernetes secret into the `admintools` pod by adding the following configuration:
+
+```yaml
+admintools:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  additionalVolumes:
+    - name: temporal-db-tls
+      secret:
+        secretName: temporal-db-tls-secret
+  additionalVolumeMounts:
+    - name: temporal-db-tls
+      mountPath: /etc/certs
+      readOnly: true
+```
 
 ### Step 4: Deploy Composio with Helm
 ```bash
@@ -150,6 +375,7 @@ helm install composio ./composio \
   --namespace composio \
   --set namespace.name=composio \
   --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
+  -f ./custom-values-file.yaml
   --debug
 ```
 
@@ -209,6 +435,97 @@ otel:
     exportInterval: 60000  # Export interval in milliseconds
 ```
 
+### ⚙️ Configure TLS for Temporal
+
+To enable TLS for Temporal when connecting to a managed database (for example, **AWS RDS**), follow the steps below.
+
+---
+
+#### 1. Download the RDS CA Certificate
+
+Download the AWS RDS CA bundle to establish a trusted connection between Temporal and your database:
+
+```bash
+curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+````
+
+---
+
+#### 2. Create a Kubernetes Secret
+
+Create a Kubernetes secret containing the downloaded CA private key:
+
+```bash
+kubectl create secret generic temporal-db-tls-secret \
+  --from-file=rds-ca.crt=./global-bundle.pem \
+  -n composio
+```
+
+This secret will be used by Temporal for TLS host verification.
+
+---
+
+#### 3. Update the Temporal Values File
+
+Update your `values.yaml` file to enable TLS and reference the mounted certificate.
+
+```yaml
+default:
+  driver: "sql"
+  sql:
+    driver: "postgres12"
+    host: "HOST"
+    port: 5432
+    database: "temporal"
+    user: "composio"
+    existingSecret: "external-postgres-secret"
+    maxConns: 20
+    maxIdleConns: 20
+    maxConnLifetime: "1h"
+    tls:
+      enabled: true
+      disableHostVerification: true
+      caFile: /etc/certs/rds-ca.crt
+
+# Visibility database (created by schema setup)
+visibility:
+  driver: "sql"
+  sql:
+    driver: "postgres12"
+    host: "HOST"
+    port: 5432
+    database: "temporal_visibility"
+    user: "composio"
+    existingSecret: "external-postgres-secret"
+    maxConns: 20
+    maxIdleConns: 20
+    maxConnLifetime: "1h"
+    tls:
+      enabled: true
+      disableHostVerification: true
+      caFile: /etc/certs/rds-ca.crt
+```
+
+---
+
+#### 4. Mount the Secret in AdminTools
+
+Mount the Kubernetes secret into the `admintools` pod by adding the following configuration:
+
+```yaml
+admintools:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  additionalVolumes:
+    - name: temporal-db-tls
+      secret:
+        secretName: temporal-db-tls-secret
+  additionalVolumeMounts:
+    - name: temporal-db-tls
+      mountPath: /etc/certs
+      readOnly: true
+```
 #### OTEL Collector Configuration
 
 The OTEL collector receives telemetry from services and exports to backends like Google Cloud Monitoring, Prometheus, or other OTLP-compatible systems.
@@ -476,7 +793,7 @@ These secrets are created from environment variables you provide:
 | `external-postgres-secret` | `POSTGRES_URL` | Apollo database connection |
 | `external-thermos-postgres-secret` | `THERMOS_POSTGRES_URL` | Thermos database connection |
 | `external-redis-secret` | `REDIS_URL` | Redis cache connection |
-| `openai-secret` | `OPENAI_API_KEY` | OpenAI API integration |
+| `{release}-openai-credentials` | `OPENAI_API_KEY` | OpenAI API integration (uses existing `openai-secret` if present for backward compatibility) |
 
 #### Helm-Managed Secrets
 These secrets are managed by Helm templates with existence checks:
