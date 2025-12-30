@@ -64,14 +64,14 @@ thermos:
     key: "uri"
   image:
     repository: composio-self-host/thermos
-    tag: "release-20251209_00"
+    tag: "release-20251223_00"
     pullPolicy: Always
   # Thermos database initialization container
   dbInit:
     enabled: true
     image:
       repository: composio-self-host/thermos-db-init
-      tag: "release-20251209_00"
+      tag: "release-20251223_00"
       pullPolicy: Always
  
 otel:
