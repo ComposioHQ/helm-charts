@@ -74,38 +74,6 @@ thermos:
       tag: "release-20251209_00"
       pullPolicy: Always
  
-# NOTE: For Database with TLS enabled you need to provide certificates to temporal components 
-temporal:
-    image:
-      repository: temporalio/server
-      tag: 1.28.0
-      pullPolicy: IfNotPresent
-    config:
-        default:
-          driver: "sql"
-          sql:
-            driver: "postgres12"
-            host: "<database-host>"
-            port: 5432
-            database: "temporal"
-            user: "composio"
-            existingSecret: "<secretName with password key for database>"
-            maxConns: 20
-            maxIdleConns: 20
-            maxConnLifetime: "1h"
-        visibility:
-          driver: "sql" 
-          sql:
-            driver: "postgres12"
-            host: "override_some_ip_address_here"
-            port: 5432
-            database: "<database-host>"
-            user: "composio"
-            existingSecret: "<secretName with password key for database>"
-            maxConns: 20
-            maxIdleConns: 20
-            maxConnLifetime: "1h"
-      
 otel:
   enabled: false
 
@@ -125,5 +93,5 @@ frontend:
   replicaCount: 1
   image:
     repository: composio-self-host/frontend
-    tag: "latest"
+    tag: "release-20251209_00"
     pullPolicy: Always

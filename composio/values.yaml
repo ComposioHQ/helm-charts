@@ -169,7 +169,7 @@ apollo:
     # -- Email address for outgoing emails
     smtpAuthorEmail: "admin@yourdomain.com"
     # -- Secret reference containing SMTP connection string
-    secretRef: "connectionString"
+    secretRef: "connectionstring"
     # -- Key name in the secret
     key: "SMTP_CONNECTION_STRING"   
   
@@ -372,7 +372,7 @@ temporal:
             # -- SQL driver name
             driver: "postgres12"
             # -- Database host
-            host: "<database-host>"
+            host: "postgres-new.db"
             # -- Database port
             port: 5432
             # -- Database name
@@ -380,7 +380,7 @@ temporal:
             # -- Database user
             user: "composio"
             # -- Secret name containing database password
-            existingSecret: "<secretName with password key for database>"
+            existingSecret: "temporal-password-secret"
             # -- Maximum number of database connections
             maxConns: 20
             # -- Maximum number of idle connections
@@ -397,15 +397,15 @@ temporal:
             # -- SQL driver name
             driver: "postgres12"
             # -- Database host
-            host: "override_some_ip_address_here"
+            host: "postgres-new.db"
             # -- Database port
             port: 5432
             # -- Database name
-            database: "<database-host>"
+            database: "temporal_visibility"
             # -- Database user
             user: "composio"
             # -- Secret name containing database password
-            existingSecret: "<secretName with password key for database>"
+            existingSecret: "temporal-password-secret"
             # -- Maximum number of database connections
             maxConns: 20
             # -- Maximum number of idle connections
@@ -863,7 +863,7 @@ mercury:
   # -- Enable Mercury service
   enabled: true
   # -- Use Knative for serverless deployment
-  useKnative: true
+  useKnative: false
   # -- Number of Mercury pod replicas (when not using Knative)
   replicaCount: 1
   # Mercury container image configuration
