@@ -71,124 +71,122 @@ Set up your database and API credentials using the comprehensive secret manageme
 
 Kindly ensure Kubernetes secrets exists so they can be referenced in values file. 
 
-```yaml 
-smtp: 
-  username: "test"
-  host: "host.smtp.io"
-  port: "5432"
-  password: 
-    secretRef: "smtppassword"
-    key: "password"
-
-# Credentials should be in same namespace
-database: 
-  apollo: 
-    database: "composiodb"
-    port: "5432"
-    sslmode: "disable"
-    user: "composio"
-    host: "postgres-new.db"
-    password: 
-      secretRef: "dbpassword"
-      key: "password"
-  thermos: 
-    database: "thermosdb"
-    port: "5432"
-    sslmode: "disable"
-    user: "composio"
-    host: "postgres-new.db"
-    password: 
-      secretRef: "dbpassword"
-      key: "password"
-
-redisConnection:
-  host: "redis-0.redis.db.svc.cluster.local"
-  port: "6379"
-  password:
-    secretRef: "redispassword"
-    key: "password"
-
-apollo:
-    objectStorage:
-        # Supported: "s3", "azure_blob_storage" 
-        backend: "s3"
-        accessKey: 
-          secretName: "s3-cred"
-          key: "S3_ACCESS_KEY_ID"
-        secretKey: 
-          secretName: "s3-cred"
-          key: "S3_SECRET_ACCESS_KEY"
-        azureConnectionString: 
-          secretName: "azure-cred"
-          key: "AZURE_CONNECTION_STRING"
-```
-Please check below commond to create kubernetes secrets if you don't have 
- 
-```yaml 
-kubectl create secret generic smtppassword \
-  --from-literal=password='random' \
-  -n composio
-
-kubectl create secret generic dbpassword \
-  --from-literal=password='devtesting123' \
-  -n composio
-
-kubectl create secret generic redispassword \
-  --from-literal=password='' \
-  -n composio
-
-# Based on objectStorage backend
-kubectl create secret generic s3-cred \
-  --from-literal=S3_ACCESS_KEY_ID='YOUR_S3_ACCESS_KEY_ID' \
-  --from-literal=S3_SECRET_ACCESS_KEY='YOUR_S3_SECRET_ACCESS_KEY' \
-  -n composio
-
-# Based on objectStorage backend
-kubectl create secret generic azure-cred \
-  --from-literal=AZURE_CONNECTION_STRING='YOUR_AZURE_CONNECTION_STRING' \
-  -n composio
-
-# Optional
-kubectl create secret generic openai-cred \
-  --from-literal=API_KEY='OPENAI_API_KEY' \
-  -n composio
-```
-
-### Step 3.1: Temporal Configuration 
-
-You need to configure Temporal with the database host 
-
 ```yaml
-temporal:
-  server:
-    enabled: true
+apollo: 
+  smtp:
+    enabled: false
+    smtpAuthorEmail: "admin@yourdomain.com"
+    secretRef: "connectionstring"
+    key: "SMTP_CONNECTION_STRING" 
+   # Apollo database configuration. Pass the complete DATABASE URI
+  database:
+    # Database URL secret reference
+    urlSecret:
+      # -- Secret name containing database URL
+      name: "external-postgres-secret"
+      # -- Key name in the secret
+      key: "url"
+  # Select the objectStorage backend
+  objectStorage:
+    # -- Storage backend type (s3 or azure_blob_storage)
+    backend: "s3"
+    # S3 access key configuration
+    accessKey: 
+      # -- Secret name containing S3 access key
+      secretName: "s3-cred"
+      # -- Key name in the secret
+      key: "S3_ACCESS_KEY_ID"
+    # S3 secret key configuration
+    secretKey: 
+      # -- Secret name containing S3 secret key
+      secretName: "s3-cred"
+      # -- Key name in the secret
+      key: "S3_SECRET_ACCESS_KEY"
+    # Azure Blob Storage connection string configuration
+    azureConnectionString: 
+      # -- Secret name containing Azure connection string
+      secretName: "azure-cred"
+      # -- Key name in the secret
+      key: "AZURE_CONNECTION_STRING"
+
+# Database credentials for thermos
+thermos:
+  # Pass the complete DATABASE URI
+  database: 
+    # -- Secret reference containing database URI
+    secretRef: "thermosdb"
+    # -- Key name in the secret
+    key: "uri"
+
+
+# Temporal Database configuration 
+
+temporal: 
+  server: 
     config:
+      persistence:
         default:
-          driver: "sql"
           sql:
             driver: "postgres12"
-            host: "<YOUR DATABASE HOST>"
+            host: "postgres-new.db"
             port: 5432
             database: "temporal"
             user: "composio"
-            existingSecret: "external-postgres-secret"
+            existingSecret: "temporal-password-secret"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
         visibility:
-          driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "<YOUR DATABASE HOST>"
+            host: "postgres-new.db"
             port: 5432
             database: "temporal_visibility"
             user: "composio"
-            existingSecret: "external-postgres-secret"
+            existingSecret: "temporal-password-secret"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
 ```
+You can use below commonds to create Kubernetes secrets 
 
+```bash 
+kubectl create secret generic openai-cred \
+  --from-literal=API_KEY="sk-dummyopenaikey" \
+  -n composio
+
+kubectl create secret generic external-postgres-secret \
+  --from-literal=url="postgresql://composio:devtesting123@postgres-new.db:5432/composiodb?sslmode=disable" \
+  -n composio
+
+kubectl create secret generic thermosdb \
+  --from-literal=uri="postgresql://composio:devtesting123@postgres-new.db:5432/thermosdb?sslmode=disable" \
+  -n composio
+
+kubectl create secret generic temporal-password-secret \
+  --from-literal=password="devtesting123" \
+  -n composio
+
+kubectl create secret generic s3-cred \
+  --from-literal=S3_ACCESS_KEY_ID="dummy-access-key" \
+  --from-literal=S3_SECRET_ACCESS_KEY="dummy-secret-key" \
+  -n composio
+
+kubectl create secret generic azure-cred \
+  --from-literal=AZURE_CONNECTION_STRING="dummy-string" \
+  -n composio
+
+kubectl create secret generic connectionstring \
+  --from-literal=SMTP_CONNECTION_STRING="smtp://user:pass@smtp.resend.com:587" \
+  -n composio
+
+kubectl create secret generic redis-cred \
+  --from-literal=url="redis://redis-0.redis.db.svc.cluster.local:6379/0" \
+  -n composio
+```
+
+
+### Step 3.1: Temporal Configuration 
 
 > **Note**
 > Kindly follow **Step 3** to configure Temporal with TLS.  

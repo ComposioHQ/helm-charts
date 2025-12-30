@@ -60,7 +60,7 @@ A Helm chart for Composio
 | apollo.service.type | string | `"NodePort"` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | apollo.smtp.enabled | bool | `false` | Enable SMTP |
 | apollo.smtp.key | string | `"SMTP_CONNECTION_STRING"` | Key name in the secret |
-| apollo.smtp.secretRef | string | `"connectionString"` | Secret reference containing SMTP connection string |
+| apollo.smtp.secretRef | string | `"connectionstring"` | Secret reference containing SMTP connection string |
 | apollo.smtp.smtpAuthorEmail | string | `"admin@yourdomain.com"` | Email address for outgoing emails |
 | aws.lambda.functionName | string | `"mercury"` | Lambda function name |
 | aws.region | string | `"us-east-1"` | AWS region |
@@ -138,7 +138,7 @@ A Helm chart for Composio
 | mercury.service.port | int | `8080` | Service port |
 | mercury.service.type | string | `"ClusterIP"` | Service type |
 | mercury.timeoutSeconds | int | `300` | Request timeout in seconds |
-| mercury.useKnative | bool | `true` | Use Knative for serverless deployment |
+| mercury.useKnative | bool | `false` | Use Knative for serverless deployment |
 | mercury.volumeMounts | list | `[]` | Additional volume mounts |
 | mercury.volumes | list | `[]` | Additional volumes |
 | namespace.create | bool | `false` | Whether to create namespaces automatically |
@@ -165,17 +165,17 @@ A Helm chart for Composio
 | otel.collector.config.receivers.otlp.protocols.grpc.endpoint | string | `"0.0.0.0:4317"` | OTLP gRPC endpoint |
 | otel.collector.config.receivers.otlp.protocols.http.endpoint | string | `"0.0.0.0:4318"` | OTLP HTTP endpoint |
 | otel.collector.config.service.extensions | list | `["health_check","pprof","zpages"]` | Extensions to enable |
-| otel.collector.config.service.pipelines.metrics.exporters | list | `["debug","prometheus","googlecloud"]` | Metrics exporters |
+| otel.collector.config.service.pipelines.metrics.exporters | list | `["debug","prometheus"]` | Metrics exporters |
 | otel.collector.config.service.pipelines.metrics.processors | list | `["memory_limiter","batch"]` | Metrics processors |
 | otel.collector.config.service.pipelines.metrics.receivers | list | `["otlp"]` | Metrics receivers |
-| otel.collector.config.service.pipelines.traces.exporters | list | `["debug","googlecloud"]` | Trace exporters |
+| otel.collector.config.service.pipelines.traces.exporters | list | `["debug"]` | Trace exporters |
 | otel.collector.config.service.pipelines.traces.processors | list | `["memory_limiter","batch"]` | Trace processors |
 | otel.collector.config.service.pipelines.traces.receivers | list | `["otlp","jaeger"]` | Trace receivers |
 | otel.collector.enabled | bool | `true` | Enable OTEL collector |
-| otel.collector.googleCloud.enabled | bool | `true` | Enable Google Cloud integration |
+| otel.collector.googleCloud.enabled | bool | `false` | Enable Google Cloud integration |
 | otel.collector.googleCloud.projectId | string | `"self-host-kubernetes"` | GCP project ID |
 | otel.collector.googleCloud.serviceAccount.annotations | object | `{"iam.gke.io/gcp-service-account":"otel-collector@self-host-kubernetes.iam.gserviceaccount.com"}` | Service account annotations (for Workload Identity) |
-| otel.collector.googleCloud.serviceAccount.create | bool | `true` | Create service account |
+| otel.collector.googleCloud.serviceAccount.create | bool | `false` | Create service account |
 | otel.collector.googleCloud.serviceAccount.name | string | `"otel-collector"` | Service account name |
 | otel.collector.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | otel.collector.image.repository | string | `"otel/opentelemetry-collector-contrib"` | Collector image repository |
@@ -265,13 +265,13 @@ A Helm chart for Composio
 | temporal.schema.update.enabled | bool | `true` | Enable schema updates |
 | temporal.server.config.logLevel | string | `"info"` | Log level (debug, info, warn, error) |
 | temporal.server.config.namespaces.create | bool | `true` | Enable namespace creation |
-| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling.kl3mw","retention":"10d"},{"name":"webhook.kl3mw","retention":"10d"}]` | List of namespaces to create |
+| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"}]` | List of namespaces to create |
 | temporal.server.config.numHistoryShards | int | `512` | Number of history shards (affects scalability) |
 | temporal.server.config.persistence.default.driver | string | `"sql"` | Database driver |
 | temporal.server.config.persistence.default.sql.database | string | `"temporal"` | Database name |
 | temporal.server.config.persistence.default.sql.driver | string | `"postgres12"` | SQL driver name |
-| temporal.server.config.persistence.default.sql.existingSecret | string | `"<secretName with password key for database>"` | Secret name containing database password |
-| temporal.server.config.persistence.default.sql.host | string | `"<database-host>"` | Database host |
+| temporal.server.config.persistence.default.sql.existingSecret | string | `"temporal-password-secret"` | Secret name containing database password |
+| temporal.server.config.persistence.default.sql.host | string | `"postgres-new.db"` | Database host |
 | temporal.server.config.persistence.default.sql.maxConnLifetime | string | `"1h"` | Maximum connection lifetime |
 | temporal.server.config.persistence.default.sql.maxConns | int | `20` | Maximum number of database connections |
 | temporal.server.config.persistence.default.sql.maxIdleConns | int | `20` | Maximum number of idle connections |
@@ -279,10 +279,10 @@ A Helm chart for Composio
 | temporal.server.config.persistence.default.sql.user | string | `"composio"` | Database user |
 | temporal.server.config.persistence.defaultStore | string | `"default"` | Default persistence store |
 | temporal.server.config.persistence.visibility.driver | string | `"sql"` | Database driver |
-| temporal.server.config.persistence.visibility.sql.database | string | `"<database-host>"` | Database name |
+| temporal.server.config.persistence.visibility.sql.database | string | `"temporal_visibility"` | Database name |
 | temporal.server.config.persistence.visibility.sql.driver | string | `"postgres12"` | SQL driver name |
-| temporal.server.config.persistence.visibility.sql.existingSecret | string | `"<secretName with password key for database>"` | Secret name containing database password |
-| temporal.server.config.persistence.visibility.sql.host | string | `"override_some_ip_address_here"` | Database host |
+| temporal.server.config.persistence.visibility.sql.existingSecret | string | `"temporal-password-secret"` | Secret name containing database password |
+| temporal.server.config.persistence.visibility.sql.host | string | `"postgres-new.db"` | Database host |
 | temporal.server.config.persistence.visibility.sql.maxConnLifetime | string | `"1h"` | Maximum connection lifetime |
 | temporal.server.config.persistence.visibility.sql.maxConns | int | `20` | Maximum number of database connections |
 | temporal.server.config.persistence.visibility.sql.maxIdleConns | int | `20` | Maximum number of idle connections |

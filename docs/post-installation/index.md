@@ -10,21 +10,6 @@ kubectl get ksvc -n composio
 kubectl get pods -n knative-serving
 ```
 
-
-## 🔄 Upgrade Deployment
-
-
-Before upgrading Kindly take a backup of kubernetes secrets in composio namespace. You can use below command 
-
-```bash 
-kubectl get secrets -n composio -oyaml > backup-secrets.yaml
-```
-
-```bash
-
-```
-
-
 ### OpenTelemetry (OTEL) Configuration
 
 The chart includes built-in OpenTelemetry support for collecting metrics and traces from all services.
@@ -45,97 +30,6 @@ otel:
     exportInterval: 60000  # Export interval in milliseconds
 ```
 
-### ⚙️ Configure TLS for Temporal
-
-To enable TLS for Temporal when connecting to a managed database (for example, **AWS RDS**), follow the steps below.
-
----
-
-#### 1. Download the RDS CA Certificate
-
-Download the AWS RDS CA bundle to establish a trusted connection between Temporal and your database:
-
-```bash
-curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
-````
-
----
-
-#### 2. Create a Kubernetes Secret
-
-Create a Kubernetes secret containing the downloaded CA private key:
-
-```bash
-kubectl create secret generic temporal-db-tls-secret \
-  --from-file=rds-ca.crt=./global-bundle.pem \
-  -n composio
-```
-
-This secret will be used by Temporal for TLS host verification.
-
----
-
-#### 3. Update the Temporal Values File
-
-Update your `values.yaml` file to enable TLS and reference the mounted certificate.
-
-```yaml
-default:
-  driver: "sql"
-  sql:
-    driver: "postgres12"
-    host: "HOST"
-    port: 5432
-    database: "temporal"
-    user: "composio"
-    existingSecret: "external-postgres-secret"
-    maxConns: 20
-    maxIdleConns: 20
-    maxConnLifetime: "1h"
-    tls:
-      enabled: true
-      disableHostVerification: true
-      caFile: /etc/certs/rds-ca.crt
-
-# Visibility database (created by schema setup)
-visibility:
-  driver: "sql"
-  sql:
-    driver: "postgres12"
-    host: "HOST"
-    port: 5432
-    database: "temporal_visibility"
-    user: "composio"
-    existingSecret: "external-postgres-secret"
-    maxConns: 20
-    maxIdleConns: 20
-    maxConnLifetime: "1h"
-    tls:
-      enabled: true
-      disableHostVerification: true
-      caFile: /etc/certs/rds-ca.crt
-```
-
----
-
-#### 4. Mount the Secret in AdminTools
-
-Mount the Kubernetes secret into the `admintools` pod by adding the following configuration:
-
-```yaml
-admintools:
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  additionalVolumes:
-    - name: temporal-db-tls
-      secret:
-        secretName: temporal-db-tls-secret
-  additionalVolumeMounts:
-    - name: temporal-db-tls
-      mountPath: /etc/certs
-      readOnly: true
-```
 #### OTEL Collector Configuration
 
 The OTEL collector receives telemetry from services and exports to backends like Google Cloud Monitoring, Prometheus, or other OTLP-compatible systems.
@@ -323,8 +217,6 @@ otel:
 
 #### External Services Configuration
 
-External services (PostgreSQL, Redis, OpenAI) are configured via the `secret-setup.sh` script before deploying. See **Quick Installation** section above for details.
-
 **Supported Environment Variables:**
 - `POSTGRES_URL`: PostgreSQL connection URL
 - `REDIS_URL`: External Redis connection URL (optional, uses built-in Redis if not provided)
@@ -388,8 +280,6 @@ Composio uses a comprehensive secret management system that handles both auto-ge
 
 ### Secret Types
 
-#### Auto-Generated Secrets
-These secrets are automatically created by the `secret-setup.sh` script:
 
 | Secret Name | Purpose | Key |
 |-------------|---------|-----|
@@ -397,7 +287,6 @@ These secrets are automatically created by the `secret-setup.sh` script:
 | `{release}-encryption-key` | Application data encryption | `ENCRYPTION_KEY` |
 | `{release}-temporal-encryption-key` | Temporal workflow encryption | `TEMPORAL_TRIGGER_ENCRYPTION_KEY` |
 | `{release}-composio-api-key` | Composio API authentication | `COMPOSIO_API_KEY` |
-| `{release}-minio-credentials` | MinIO object storage credentials | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` |
 
 #### User-Provided Secrets
 These secrets are created from environment variables you provide:
@@ -407,7 +296,7 @@ These secrets are created from environment variables you provide:
 | `external-postgres-secret` | `POSTGRES_URL` | Apollo database connection |
 | `external-thermos-postgres-secret` | `THERMOS_POSTGRES_URL` | Thermos database connection |
 | `external-redis-secret` | `REDIS_URL` | Redis cache connection |
-| `{release}-openai-credentials` | `OPENAI_API_KEY` | OpenAI API integration (uses existing `openai-secret` if present for backward compatibility) |
+| `openai-credentials` | `OPENAI_API_KEY` | OpenAI API integration (uses existing `openai-secret` if present for backward compatibility) |
 
 #### Helm-Managed Secrets
 These secrets are managed by Helm templates with existence checks:
@@ -428,49 +317,7 @@ These secrets are managed by Helm templates with existence checks:
 > 
 > **If you lose the ENCRYPTION_KEY, you will lose access to all encrypted data in your database.**
 
-### Secret Setup Process
-
-#### Initial Setup
-```bash
-# Set up external secrets using the script (recommended)
-export POSTGRES_URL="postgresql://user:pass@host:port/db"
-export THERMOS_POSTGRES_URL="postgresql://user:pass@host:port/db"  # Optional
-export REDIS_URL="redis://user:pass@host:port/db"  # Optional
-export OPENAI_API_KEY="sk-..."  # Optional
-
-# Run secret setup
-./secret-setup.sh -r composio -n composio
-```
-
-#### Dry Run Mode
-```bash
-# Preview what secrets would be created
-./secret-setup.sh -r composio -n composio --dry-run
-```
-
-#### Skip Generated Secrets
-```bash
-# Only create user-provided secrets
-./secret-setup.sh -r composio -n composio --skip-generated
-```
-
 ### Retrieving Secrets
-
-#### Get Specific Secret Values
-```bash
-# Get Apollo admin token
-kubectl get secret composio-apollo-admin-token -n composio -o jsonpath="{.data.APOLLO_ADMIN_TOKEN}" | base64 -d
-
-# Get MinIO credentials
-kubectl get secret composio-minio-credentials -n composio -o jsonpath="{.data.MINIO_ROOT_USER}" | base64 -d
-kubectl get secret composio-minio-credentials -n composio -o jsonpath="{.data.MINIO_ROOT_PASSWORD}" | base64 -d
-
-# Get external database URL
-kubectl get secret external-postgres-secret -n composio -o jsonpath="{.data.url}" | base64 -d
-
-# Get ENCRYPTION_KEY (CRITICAL - backup this immediately!)
-kubectl get secret composio-encryption-key -n composio -o jsonpath="{.data.ENCRYPTION_KEY}" | base64 -d
-```
 
 #### List All Secrets
 ```bash
@@ -494,7 +341,6 @@ kubectl get secret <secret-name> -n composio -o jsonpath="{.data.<key>}" | base6
 
 All secrets are protected from recreation during Helm upgrades:
 
-- **Auto-generated secrets**: Never recreated by Helm, only by `secret-setup.sh`
 - **User-provided secrets**: Only created if they don't exist
 - **Helm-managed secrets**: Use existence checks to prevent recreation
 
