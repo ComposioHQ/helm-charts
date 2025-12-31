@@ -58,6 +58,10 @@ A Helm chart for Composio
 | apollo.service.nodePort | int | `30900` | NodePort for external access (only applicable when type is NodePort) |
 | apollo.service.port | int | `9900` | Service port |
 | apollo.service.type | string | `"NodePort"` | Service type (ClusterIP, NodePort, LoadBalancer) |
+| apollo.serviceAccount.annotations | object | `{}` | Annotations to add to the service account |
+| apollo.serviceAccount.enabled | bool | `false` | Enable service account creation |
+| apollo.serviceAccount.labels | object | `{}` | Labels to add to the service account |
+| apollo.serviceAccount.name | string | `"composio-apollo"` | Name of the service account to create or use |
 | apollo.smtp.enabled | bool | `false` | Enable SMTP |
 | apollo.smtp.key | string | `"SMTP_CONNECTION_STRING"` | Key name in the secret |
 | apollo.smtp.secretRef | string | `"connectionstring"` | Secret reference containing SMTP connection string |

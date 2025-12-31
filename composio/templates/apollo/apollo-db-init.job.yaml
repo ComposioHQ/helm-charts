@@ -18,6 +18,9 @@ spec:
         app: apollo-db-init
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.apollo.serviceAccount.enabled }}
+      serviceAccountName: {{ include "composio.serviceAccountName" . }}
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}

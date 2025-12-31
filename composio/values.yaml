@@ -105,6 +105,16 @@ apollo:
     # -- Image pull policy
     pullPolicy: Always
 
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: true
+    # -- Name of the service account to create or use
+    name: "composio-apollo"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Ingress configuration for Apollo
   ingress:
     # -- Enable ingress
