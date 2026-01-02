@@ -1,0 +1,78 @@
+name: Release to Replicated (unstable)
+
+on:
+  workflow_dispatch:
+    inputs:
+      releaseTag:
+        description: "Release tag to publish (e.g. v1.2.3)"
+        required: true
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CHANNEL_ALIAS: unstableChannel
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        run: |
+          if [ -z "${{ inputs.releaseTag }}" ]; then
+            echo "releaseTag input is required" >&2
+            exit 1
+          fi
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.14.4
+
+      - name: Build chart package
+        run: |
+          helm dependency update composio
+          mkdir -p helm-release
+          helm package composio --destination helm-release
+          ls -l helm-release
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.releaseTag }}
+          name: ${{ inputs.releaseTag }}
+          generate_release_notes: true
+          files: |
+            helm-release/*.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Replicated CLI
+        run: |
+          curl -sSL "https://api.replicated.com/cli/v1/replicated/download?platform=Linux" \
+            | sudo tar -xz -C /usr/local/bin replicated
+          replicated version
+
+      - name: Promote release to unstableChannel
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          APP_SLUG: ${{ secrets.REPLICATED_APP_SLUG }}
+          RELEASE_TAG: ${{ inputs.releaseTag }}
+          CHANNEL_ALIAS: ${{ env.CHANNEL_ALIAS }}
+        run: |
+          if [ -z "$REPLICATED_API_TOKEN" ] || [ -z "$APP_SLUG" ]; then
+            echo "Missing REPLICATED_API_TOKEN or REPLICATED_APP_SLUG secret" >&2
+            exit 1
+          fi
+
+          replicated login --token "$REPLICATED_API_TOKEN"
+          replicated release promote \
+            --app "$APP_SLUG" \
+            --channel "$CHANNEL_ALIAS" \
+            --version "$RELEASE_TAG"
+
