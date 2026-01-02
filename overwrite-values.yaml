@@ -1,0 +1,97 @@
+global:
+  registry: 
+    name: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
+  imagePullSecrets:
+    - name: ecr-secret
+externalSecrets:
+  ecr:
+    token: ""
+    server: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
+    username: "AWS" 
+externalRedis:
+  enabled: true
+  secretRef: "redis-cred"
+  key: "url"
+    
+redis:
+  enabled: false
+
+  # OpenAI API configuration (required for Frontend, Mercury and Apollo)
+openAI:
+  # -- Enable OpenAI integration
+  enabled: true
+  # -- Secret name containing OpenAI API key
+  secretRef: "openai-cred" 
+  # -- Key name in the secret
+  key: "API_KEY"
+
+# Apollo service configuration (main API service)
+apollo:
+  image:
+    repository: composio-self-host/apollo
+    tag: "release-20251209_00"
+    pullPolicy: Always
+  ingress:
+    enabled: false
+  # Apollo database initialization container
+  dbInit:
+    enabled: true
+    image:
+      repository: composio-self-host/apollo-db-init
+      tag: "release-20251209_00"
+      pullPolicy: Always
+  # Apollo database configuration
+  database:
+    urlSecret:
+      name: "external-postgres-secret"
+      key: "url"
+  # SMTP configuration for email notifications
+  smtp:
+    enabled: false
+  objectStorage:
+    backend: "s3"
+    accessKey: 
+      secretName: "s3-cred"
+      key: "S3_ACCESS_KEY_ID"
+    secretKey: 
+      secretName: "s3-cred"
+      key: "S3_SECRET_ACCESS_KEY"
+
+# Thermos service configuration (workflow execution service)
+thermos:
+  database: 
+    secretRef: "thermosdb"
+    key: "uri"
+  image:
+    repository: composio-self-host/thermos
+    tag: "release-20251209_00"
+    pullPolicy: Always
+  # Thermos database initialization container
+  dbInit:
+    enabled: true
+    image:
+      repository: composio-self-host/thermos-db-init
+      tag: "release-20251209_00"
+      pullPolicy: Always
+ 
+otel:
+  enabled: false
+
+# Mercury service configuration (OpenAPI tool execution service)
+mercury:
+  enabled: true
+  useKnative: true
+  replicaCount: 1
+  image:
+    repository: composio-self-host/mercury
+    tag: "release-20251209_00"
+    pullPolicy: Always
+
+# Frontend service configuration (web UI)
+frontend:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: composio-self-host/frontend
+    tag: "release-20251209_00"
+    pullPolicy: Always

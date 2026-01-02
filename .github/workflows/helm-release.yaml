@@ -1,0 +1,94 @@
+name: Helm Chart Release
+
+on:
+  push:
+    tags:
+      - 'release-*'  # Triggers on tags like release-20251209_00
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-helm-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#release-}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update Chart.yaml versions
+        run: |
+          VERSION=${{ steps.extract_version.outputs.version }}
+          sed -i "s/^version:.*/version: $VERSION/" composio/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"$VERSION\"/" composio/Chart.yaml
+          
+          echo "Updated Chart.yaml:"
+          cat composio/Chart.yaml
+
+      - name: Package Helm chart
+        run: |
+          helm package composio/ -d helm-release/
+          echo "Packaged charts:"
+          ls -la helm-release/
+
+      - name: Update Helm repository index
+        run: |
+          helm repo index . --url https://composiohq.github.io/helm-charts --merge index.yaml
+          echo "Updated index.yaml"
+
+      - name: Create release branch and commit
+        run: |
+          VERSION=${{ steps.extract_version.outputs.version }}
+          git checkout -b $VERSION
+          git add helm-release/ index.yaml composio/
+          git commit -m "Release Helm chart version $VERSION" || echo "No changes to commit"
+          git push origin $VERSION
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.extract_version.outputs.version }}
+          base: master
+          title: "Release Helm Chart ${{ steps.extract_version.outputs.version }}"
+          body: |
+            ## Helm Chart Release ${{ steps.extract_version.outputs.version }}
+            
+            This PR was automatically created by the Helm release workflow.
+            
+            **Changes:**
+            - Updated `composio/Chart.yaml` version to `${{ steps.extract_version.outputs.version }}`
+            - Updated `composio/Chart.yaml` appVersion to `${{ steps.extract_version.outputs.version }}`
+            - Packaged Helm chart to `helm-release/` directory
+            - Updated `index.yaml` with new chart version
+            
+            **Triggered by tag:** `${{ steps.extract_version.outputs.tag_name }}`
+            
+            **Helm Repository URL:** https://composiohq.github.io/helm-charts
+            
+            Please review and merge to complete the release.
+          labels: |
+            helm-release
+            automated

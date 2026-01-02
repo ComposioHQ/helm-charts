@@ -1,6 +1,41 @@
-## Setting up S3 (or Google Cloud Storage via S3 APIs)
+# Configuring S3 and GCS for File Storage
 
 This guide shows how to configure Composio to use your own S3 buckets, or Google Cloud Storage (GCS) through its S3-compatible API. Apollo reads its S3 configuration from Helm values and credentials from a Kubernetes Secret.
+
+### There are two ways to provide credentials to Apollo:
+1. Using a Service Account with Annotations (Recommended for AWS and GCP)
+
+
+
+### 1. Using a Service Account with Annotations (Recommended)
+You can use IAM roles for service accounts (IRSA) on AWS or Workload Identity on GCP to provide permissions to Apollo without managing secrets manually.
+
+#### For AWS (IAM Roles for Service Accounts - IRSA)
+Add the following annotations to your `values.yaml` under `apollo.serviceAccount.annotations`:
+
+```yaml
+apollo:
+  serviceAccount:
+    enabled: true
+    name: "composio-apollo"
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<IAM_ROLE_NAME>"
+```
+
+#### For GCP (Workload Identity)
+Add the following annotations to your `values.yaml` under `apollo.serviceAccount.annotations`:
+
+```yaml
+apollo:
+  serviceAccount:
+    enabled: true
+    name: "composio-apollo"
+    annotations:
+      iam.gke.io/gcp-service-account: "<GCP_SERVICE_ACCOUNT_EMAIL>"
+```
+
+
+### 2. Creating a Kubernetes Secret with Credentials
 
 ### Prerequisites
 
@@ -43,13 +78,18 @@ gcloud storage hmac create \
 > **NOTE** If you are using container credentials where your running pods automatically have access to said S3 buckets, you
 > can skip this section.
 
-Apollo loads S3 credentials from a namespaced secret named `{release}-s3-credentials` with keys `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`.
-
-```bash
-kubectl create secret generic composio-s3-credentials \
-  -n composio \
-  --from-literal=S3_ACCESS_KEY_ID="<YOUR_ACCESS_KEY_ID>" \
-  --from-literal=S3_SECRET_ACCESS_KEY="<YOUR_SECRET_ACCESS_KEY>"
+Configure S3 credentials for apollo:
+```yaml 
+apollo:
+    objectStorage:
+        # Supported: "s3", "azure_blob_storage"
+        backend: "s3"
+        accessKey: 
+          secretName: "s3-cred"
+          key: "S3_ACCESS_KEY_ID"
+        secretKey: 
+          secretName: "s3-cred"
+          key: "S3_SECRET_ACCESS_KEY"
 ```
 
 If your Helm release name or namespace differ, adjust the secret name (`<release>-s3-credentials`) and `-n` accordingly.
