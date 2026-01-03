@@ -79,8 +79,8 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-openai-credentials
-                  key: OPENAI_API_KEY
+                  name: {{ .Values.openAI.secretRef }}
+                  key: {{ .Values.openAI.key }}
             {{- end }}
             {{- if and .Values.frontend.secrets .Values.frontend.secrets.PLAIN_SECRET }}
             - name: PLAIN_SECRET

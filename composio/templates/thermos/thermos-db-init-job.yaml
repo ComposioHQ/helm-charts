@@ -52,14 +52,14 @@ spec:
             - name: POSTGRES_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-thermos-postgres-secret
-                  key: url
+                  name: {{ .Values.thermos.database.secretRef }}
+                  key: {{ .Values.thermos.database.key }}
             # Keep DATABASE_URL for backward compatibility with Atlas
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-thermos-postgres-secret
-                  key: url
+                  name: {{ .Values.thermos.database.secretRef }}
+                  key: {{ .Values.thermos.database.key }}
             - name: COMPOSIO_API_KEY
               valueFrom:
                 secretKeyRef:

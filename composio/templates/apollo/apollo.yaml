@@ -1,3 +1,6 @@
+{{- if eq .Values.redis.enabled .Values.externalRedis.enabled }}
+{{- fail "Error: Either redis.enabled or externalRedis.enabled must be true, but not both" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,6 +25,9 @@ spec:
         app: apollo
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.apollo.serviceAccount.enabled }}
+      serviceAccountName: {{ include "composio.serviceAccountName" . }}
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
@@ -76,26 +82,32 @@ spec:
             - name: S3_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-s3-credentials
-                  key: S3_ACCESS_KEY_ID
+                  name: {{ .Values.apollo.objectStorage.accessKey.secretName }}
+                  key: {{ .Values.apollo.objectStorage.accessKey.key }}
             - name: S3_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-s3-credentials
-                  key: S3_SECRET_ACCESS_KEY
+                  name: {{ .Values.apollo.objectStorage.secretKey.secretName }}
+                  key: {{ .Values.apollo.objectStorage.secretKey.key }}
             {{- end }}
             {{- if eq (default "s3" .Values.apollo.objectStorage.backend) "azure_blob_storage" }}
             - name: AZURE_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-azure-connection-string
-                  key: AZURE_CONNECTION_STRING
-            {{- end }}
+                  name: {{ .Values.apollo.objectStorage.azureConnectionString.secretName }}
+                  key: {{ .Values.apollo.objectStorage.azureConnectionString.key }}
+            {{- end }} 
+            {{- if .Values.externalRedis.enabled }}
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-redis-secret
-                  key: url
+                  name: {{ .Values.externalRedis.secretRef }}
+                  key: {{ .Values.externalRedis.key }}
+            {{- end }}
+            {{- if .Values.redis.enabled }}
+            - name: REDIS_URL
+              value: "redis://:{{ .Values.redis.auth.password }}@{{ .Release.Name }}-redis-master:6379"
+            {{- end }}
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
@@ -110,8 +122,8 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-openai-credentials
-                  key: OPENAI_API_KEY
+                  name: {{ .Values.openAI.secretRef }}
+                  key: {{ .Values.openAI.key }}
             {{- end }} 
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
@@ -121,8 +133,8 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-postgres-secret
-                  key: url
+                  name: {{ .Values.apollo.database.urlSecret.name }}
+                  key: {{ .Values.apollo.database.urlSecret.key }}
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
@@ -137,8 +149,8 @@ spec:
             - name: SMTP_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.apollo.smtp.credentialsSecret | default (printf "%s-smtp-credentials" .Release.Name) }}
-                  key: SMTP_CONNECTION_STRING
+                  name: {{ .Values.apollo.smtp.secretRef | default (printf "%s-smtp-credentials" .Release.Name) }}
+                  key: {{ .Values.apollo.smtp.key }}
             {{- end }}
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}

@@ -18,6 +18,9 @@ spec:
         app: apollo-db-init
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.apollo.serviceAccount.enabled }}
+      serviceAccountName: {{ include "composio.serviceAccountName" . }}
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
@@ -52,8 +55,8 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: external-postgres-secret
-                  key: url
+                  name: {{ .Values.apollo.database.urlSecret.name }}
+                  key: {{ .Values.apollo.database.urlSecret.key }}
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

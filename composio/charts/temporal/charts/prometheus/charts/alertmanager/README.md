@@ -1,62 +1,137 @@
-# Alertmanager
+# alertmanager
 
-As per [prometheus.io documentation](https://prometheus.io/docs/alerting/latest/alertmanager/):
-> The Alertmanager handles alerts sent by client applications such as the
-> Prometheus server. It takes care of deduplicating, grouping, and routing them
-> to the correct receiver integration such as email, PagerDuty, or OpsGenie. It
-> also takes care of silencing and inhibition of alerts.
+![Version: 1.11.0](https://img.shields.io/badge/Version-1.11.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.27.0](https://img.shields.io/badge/AppVersion-v0.27.0-informational?style=flat-square)
 
-## Prerequisites
+The Alertmanager handles alerts sent by client applications such as the Prometheus server.
 
-Kubernetes 1.14+
+**Homepage:** <https://prometheus.io/>
 
-## Get Repository Info
+## Maintainers
 
-```console
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-```
+| Name | Email | Url |
+| ---- | ------ | --- |
+| monotek | <monotek23@gmail.com> |  |
+| naseemkullah | <naseem@transit.app> |  |
 
-_See [`helm repo`](https://helm.sh/docs/helm/helm_repo/) for command documentation._
+## Source Code
 
-## Install Chart
+* <https://github.com/prometheus/alertmanager>
 
-```console
-helm install [RELEASE_NAME] prometheus-community/alertmanager
-```
+## Requirements
 
-_See [configuration](#configuration) below._
+Kubernetes: `>=1.19.0-0`
 
-_See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
+## Values
 
-## Uninstall Chart
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| additionalPeers | list | `[]` |  |
+| affinity | object | `{}` |  |
+| automountServiceAccountToken | bool | `true` |  |
+| baseURL | string | `""` |  |
+| command | list | `[]` |  |
+| config.enabled | bool | `true` |  |
+| config.global | object | `{}` |  |
+| config.receivers[0].name | string | `"default-receiver"` |  |
+| config.route.group_interval | string | `"5m"` |  |
+| config.route.group_wait | string | `"10s"` |  |
+| config.route.receiver | string | `"default-receiver"` |  |
+| config.route.repeat_interval | string | `"3h"` |  |
+| config.templates[0] | string | `"/etc/alertmanager/*.tmpl"` |  |
+| configAnnotations | object | `{}` |  |
+| configmapReload.enabled | bool | `false` |  |
+| configmapReload.extraArgs | object | `{}` |  |
+| configmapReload.extraEnv | list | `[]` |  |
+| configmapReload.extraVolumeMounts | list | `[]` |  |
+| configmapReload.image.pullPolicy | string | `"IfNotPresent"` |  |
+| configmapReload.image.repository | string | `"quay.io/prometheus-operator/prometheus-config-reloader"` |  |
+| configmapReload.image.tag | string | `"v0.66.0"` |  |
+| configmapReload.name | string | `"configmap-reload"` |  |
+| configmapReload.resources | object | `{}` |  |
+| configmapReload.securityContext | object | `{}` |  |
+| dnsConfig | object | `{}` |  |
+| extraArgs | object | `{}` |  |
+| extraContainers | list | `[]` |  |
+| extraEnv | list | `[]` |  |
+| extraInitContainers | list | `[]` |  |
+| extraSecretMounts | list | `[]` |  |
+| extraVolumeMounts | list | `[]` |  |
+| extraVolumes | list | `[]` |  |
+| fullnameOverride | string | `""` |  |
+| hostAliases | list | `[]` |  |
+| image.pullPolicy | string | `"IfNotPresent"` |  |
+| image.repository | string | `"quay.io/prometheus/alertmanager"` |  |
+| image.tag | string | `""` |  |
+| imagePullSecrets | list | `[]` |  |
+| ingress.annotations | object | `{}` |  |
+| ingress.className | string | `""` |  |
+| ingress.enabled | bool | `false` |  |
+| ingress.hosts[0].host | string | `"alertmanager.domain.com"` |  |
+| ingress.hosts[0].paths[0].path | string | `"/"` |  |
+| ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |  |
+| ingress.tls | list | `[]` |  |
+| ingressPerReplica.annotations | object | `{}` |  |
+| ingressPerReplica.className | string | `""` |  |
+| ingressPerReplica.enabled | bool | `false` |  |
+| ingressPerReplica.hostDomain | string | `"domain.com"` |  |
+| ingressPerReplica.hostPrefix | string | `"alertmanager"` |  |
+| ingressPerReplica.labels | object | `{}` |  |
+| ingressPerReplica.pathType | string | `"ImplementationSpecific"` |  |
+| ingressPerReplica.paths[0] | string | `"/"` |  |
+| ingressPerReplica.tlsSecretName | string | `""` |  |
+| ingressPerReplica.tlsSecretPerReplica.enabled | bool | `false` |  |
+| ingressPerReplica.tlsSecretPerReplica.prefix | string | `"alertmanager"` |  |
+| livenessProbe.httpGet.path | string | `"/"` |  |
+| livenessProbe.httpGet.port | string | `"http"` |  |
+| minReadySeconds | int | `0` |  |
+| nameOverride | string | `""` |  |
+| namespaceOverride | string | `""` |  |
+| nodeSelector | object | `{}` |  |
+| persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
+| persistence.enabled | bool | `true` |  |
+| persistence.size | string | `"50Mi"` |  |
+| podAnnotations | object | `{}` |  |
+| podAntiAffinity | string | `""` |  |
+| podAntiAffinityTopologyKey | string | `"kubernetes.io/hostname"` |  |
+| podDisruptionBudget | object | `{}` |  |
+| podLabels | object | `{}` |  |
+| podSecurityContext.fsGroup | int | `65534` |  |
+| priorityClassName | string | `""` |  |
+| readinessProbe.httpGet.path | string | `"/"` |  |
+| readinessProbe.httpGet.port | string | `"http"` |  |
+| replicaCount | int | `1` |  |
+| resources | object | `{}` |  |
+| revisionHistoryLimit | int | `10` |  |
+| schedulerName | string | `""` |  |
+| securityContext.runAsGroup | int | `65534` |  |
+| securityContext.runAsNonRoot | bool | `true` |  |
+| securityContext.runAsUser | int | `65534` |  |
+| service.annotations | object | `{}` |  |
+| service.clusterPort | int | `9094` |  |
+| service.extraPorts | list | `[]` |  |
+| service.ipDualStack.enabled | bool | `false` |  |
+| service.ipDualStack.ipFamilies[0] | string | `"IPv6"` |  |
+| service.ipDualStack.ipFamilies[1] | string | `"IPv4"` |  |
+| service.ipDualStack.ipFamilyPolicy | string | `"PreferDualStack"` |  |
+| service.labels | object | `{}` |  |
+| service.loadBalancerIP | string | `""` |  |
+| service.loadBalancerSourceRanges | list | `[]` |  |
+| service.port | int | `9093` |  |
+| service.type | string | `"ClusterIP"` |  |
+| serviceAccount.annotations | object | `{}` |  |
+| serviceAccount.create | bool | `true` |  |
+| serviceAccount.name | string | `""` |  |
+| servicePerReplica.annotations | object | `{}` |  |
+| servicePerReplica.enabled | bool | `false` |  |
+| servicePerReplica.externalTrafficPolicy | string | `"Cluster"` |  |
+| servicePerReplica.loadBalancerSourceRanges | list | `[]` |  |
+| servicePerReplica.type | string | `"ClusterIP"` |  |
+| statefulSet.annotations | object | `{}` |  |
+| templates | object | `{}` |  |
+| testFramework.annotations."helm.sh/hook" | string | `"test-success"` |  |
+| testFramework.enabled | bool | `false` |  |
+| tolerations | list | `[]` |  |
+| topologySpreadConstraints | list | `[]` |  |
 
-```console
-helm uninstall [RELEASE_NAME]
-```
-
-This removes all the Kubernetes components associated with the chart and deletes the release.
-
-_See [helm uninstall](https://helm.sh/docs/helm/helm_uninstall/) for command documentation._
-
-## Upgrading Chart
-
-```console
-helm upgrade [RELEASE_NAME] [CHART] --install
-```
-
-_See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command documentation._
-
-### To 1.0
-
-The [configmap-reload](https://github.com/jimmidyson/configmap-reload) container was replaced by the [prometheus-config-reloader](https://github.com/prometheus-operator/prometheus-operator/tree/main/cmd/prometheus-config-reloader).
-Extra command-line arguments specified via configmapReload.prometheus.extraArgs are not compatible and will break with the new prometheus-config-reloader, refer to the [sources](https://github.com/prometheus-operator/prometheus-operator/blob/main/cmd/prometheus-config-reloader/main.go) in order to make the appropriate adjustment to the extea command-line arguments.
-The `networking.k8s.io/v1beta1` is no longer supported. use [`networking.k8s.io/v1`](https://kubernetes.io/docs/reference/using-api/deprecation-guide/#ingressclass-v122).
-
-## Configuration
-
-See [Customizing the Chart Before Installing](https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing). To see all configurable options with detailed comments, visit the chart's [values.yaml](./values.yaml), or run these configuration commands:
-
-```console
-helm show values prometheus-community/alertmanager
-```
+----------------------------------------------
+Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

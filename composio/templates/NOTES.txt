@@ -45,7 +45,44 @@ For more information:
 - Support: https://discord.gg/composio
 
 
-{{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
+## 🚨 CRITICAL: Database Encryption Keys (DO NOT SKIP)
 
+**These encryption keys are REQUIRED to decrypt your database.**
+If you lose them, **your data is permanently inaccessible.**
+No backups. No override.
+
+👉 **Store these keys securely (password manager / vault / offline backup).**
+
+---
+
+### 🔐 Composio Database Encryption Key
+
+Run the command below to retrieve the encryption key:
+
+```bash
+kubectl get secret \
+  --namespace {{ .Release.Namespace }} \
+  {{ .Release.Name }}-encryption-key \
+  -o jsonpath='{.data.ENCRYPTION_KEY}' | base64 -d
+```
+
+### 🔐 Temporal Database Encryption Key
+
+Run the command below to retrieve the Temporal encryption key:
+
+```bash
+kubectl get secret \
+  --namespace {{ .Release.Namespace }} \
+  {{ .Release.Name }}-encryption-key \
+  -o jsonpath='{.data.TEMPORAL_TRIGGER_ENCRYPTION_KEY}' | base64 -d
+```
+### ⚠️ IMPORTANT NOTES
+
+* These keys are **generated once**
+* They are **not recoverable**
+* Losing them = **irreversible data loss**
+
+---
+{{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
 INFO: Redis password will be auto-managed by the chart for security.
-{{- end }} 
+{{- end }}
