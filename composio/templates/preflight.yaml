@@ -12,29 +12,30 @@ stringData:
       name: "{{ .Release.Name }}-secrets-preflight"
     spec:
       collectors:
+        {{- $coreSecret := include "composio.coreSecretName" . }}
         # --- Always: check chart-managed Secrets exist (useful on upgrades; warns/fails if missing) ---
         - secret:
-            name: "{{ .Release.Name }}-apollo-admin-token"
+            name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "APOLLO_ADMIN_TOKEN"
             includeValue: false
         - secret:
-            name: "{{ .Release.Name }}-composio-api-key"
+            name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "COMPOSIO_API_KEY"
             includeValue: false
         - secret:
-            name: "{{ .Release.Name }}-encryption-key"
+            name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "ENCRYPTION_KEY"
             includeValue: false
         - secret:
-            name: "{{ .Release.Name }}-jwt-secret"
+            name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "JWT_SECRET"
             includeValue: false
         - secret:
-            name: "{{ .Release.Name }}-temporal-encryption-key"
+            name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
             includeValue: false
@@ -53,7 +54,7 @@ stringData:
                     - name: COMPOSIO_API_KEY
                       valueFrom:
                         secretKeyRef:
-                          name: "{{ .Release.Name }}-composio-api-key"
+                          name: "{{ $coreSecret }}"
                           key: "COMPOSIO_API_KEY"
                           optional: true
                   command: ["/bin/sh", "-c"]
@@ -174,58 +175,58 @@ stringData:
         # --- Chart-managed secrets ---
         - secret:
             checkName: "Apollo admin token secret present"
-            secretName: "{{ .Release.Name }}-apollo-admin-token"
+            secretName: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "APOLLO_ADMIN_TOKEN"
             outcomes:
               - fail:
-                  message: "Missing {{ .Release.Name }}-apollo-admin-token or key APOLLO_ADMIN_TOKEN."
+                  message: "Missing {{ $coreSecret }} or key APOLLO_ADMIN_TOKEN."
               - pass:
-                  message: "Found {{ .Release.Name }}-apollo-admin-token (APOLLO_ADMIN_TOKEN)."
+                  message: "Found {{ $coreSecret }} (APOLLO_ADMIN_TOKEN)."
 
         - secret:
             checkName: "Composio API key secret present"
-            secretName: "{{ .Release.Name }}-composio-api-key"
+            secretName: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "COMPOSIO_API_KEY"
             outcomes:
               - fail:
-                  message: "Missing {{ .Release.Name }}-composio-api-key or key COMPOSIO_API_KEY."
+                  message: "Missing {{ $coreSecret }} or key COMPOSIO_API_KEY."
               - pass:
-                  message: "Found {{ .Release.Name }}-composio-api-key (COMPOSIO_API_KEY)."
+                  message: "Found {{ $coreSecret }} (COMPOSIO_API_KEY)."
 
         - secret:
             checkName: "Encryption key secret present"
-            secretName: "{{ .Release.Name }}-encryption-key"
+            secretName: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "ENCRYPTION_KEY"
             outcomes:
               - fail:
-                  message: "Missing {{ .Release.Name }}-encryption-key or key ENCRYPTION_KEY."
+                  message: "Missing {{ $coreSecret }} or key ENCRYPTION_KEY."
               - pass:
-                  message: "Found {{ .Release.Name }}-encryption-key (ENCRYPTION_KEY)."
+                  message: "Found {{ $coreSecret }} (ENCRYPTION_KEY)."
 
         - secret:
             checkName: "JWT secret present"
-            secretName: "{{ .Release.Name }}-jwt-secret"
+            secretName: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "JWT_SECRET"
             outcomes:
               - fail:
-                  message: "Missing {{ .Release.Name }}-jwt-secret or key JWT_SECRET."
+                  message: "Missing {{ $coreSecret }} or key JWT_SECRET."
               - pass:
-                  message: "Found {{ .Release.Name }}-jwt-secret (JWT_SECRET)."
+                  message: "Found {{ $coreSecret }} (JWT_SECRET)."
 
         - secret:
             checkName: "Temporal encryption key secret present"
-            secretName: "{{ .Release.Name }}-temporal-encryption-key"
+            secretName: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
             outcomes:
               - fail:
-                  message: "Missing {{ .Release.Name }}-temporal-encryption-key or key TEMPORAL_TRIGGER_ENCRYPTION_KEY."
+                  message: "Missing {{ $coreSecret }} or key TEMPORAL_TRIGGER_ENCRYPTION_KEY."
               - pass:
-                  message: "Found {{ .Release.Name }}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)."
+                  message: "Found {{ $coreSecret }} (TEMPORAL_TRIGGER_ENCRYPTION_KEY)."
 
         # --- Composio API key validity ---
         - textAnalyze:

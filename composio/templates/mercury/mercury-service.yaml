@@ -50,6 +50,7 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
+            {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: SELF_HOSTED
               value: "true"
             {{- if .Values.openAI.enabled }}
@@ -66,7 +67,7 @@ spec:
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-apollo-admin-token
+                  name: {{ $coreSecret }}
                   key: APOLLO_ADMIN_TOKEN
             - name: USE_APOLLO_GET_DOWNLOAD_URL_API
               value: "true"

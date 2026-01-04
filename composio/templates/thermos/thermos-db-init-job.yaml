@@ -48,6 +48,7 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
+            {{- $coreSecret := include "composio.coreSecretName" . }}
             # Thermos database URL
             - name: POSTGRES_URL
               valueFrom:
@@ -63,7 +64,7 @@ spec:
             - name: COMPOSIO_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-composio-api-key
+                  name: {{ $coreSecret }}
                   key: COMPOSIO_API_KEY
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}

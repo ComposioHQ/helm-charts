@@ -44,11 +44,7 @@ usage() {
     echo "  SMTP_SECRET_NAME     Optional. Overrides default secret name (\${release}-smtp-credentials)"
     echo ""
     echo -e "${YELLOW}Generated Secrets (auto-created if missing):${NC}"
-    echo "  • \${release}-apollo-admin-token      (APOLLO_ADMIN_TOKEN)"
-    echo "  • \${release}-encryption-key          (ENCRYPTION_KEY)"
-    echo "  • \${release}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)"
-    echo "  • \${release}-composio-api-key        (COMPOSIO_API_KEY)"
-    echo "  • \${release}-jwt-secret              (JWT_SECRET)"
+    echo "  • \${release}-composio-secrets (contains APOLLO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, COMPOSIO_API_KEY, JWT_SECRET)"
     echo ""
     echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
     echo "  • external-postgres-secret            (from POSTGRES_URL)"
@@ -151,6 +147,13 @@ generate_random() {
 secret_exists() {
     local secret_name=$1
     kubectl get secret "$secret_name" -n "$NAMESPACE" >/dev/null 2>&1
+}
+
+# Function to fetch and decode an existing secret value (returns empty string if missing)
+get_secret_value() {
+    local secret_name=$1
+    local key=$2
+    kubectl get secret "$secret_name" -n "$NAMESPACE" -o jsonpath="{.data.$key}" 2>/dev/null | base64 --decode 2>/dev/null || true
 }
 
 # Function to create secret with single key-value
@@ -279,32 +282,51 @@ create_openai_secret() {
     fi
 }
 
+CORE_SECRET_NAME="${RELEASE_NAME}-composio-secrets"
+
 if [[ "$SKIP_GENERATED" == true ]]; then
     print_info "Skipping generated secrets due to --skip-generated flag"
 else
     print_info "Checking and creating generated secrets..."
 
-    # Generated secrets - create separate secret objects
-    GENERATED_SECRETS=(
-        "${RELEASE_NAME}-apollo-admin-token:APOLLO_ADMIN_TOKEN"
-        "${RELEASE_NAME}-encryption-key:ENCRYPTION_KEY" 
-        "${RELEASE_NAME}-temporal-encryption-key:TEMPORAL_TRIGGER_ENCRYPTION_KEY"
-        "${RELEASE_NAME}-composio-api-key:COMPOSIO_API_KEY"
-        "${RELEASE_NAME}-jwt-secret:JWT_SECRET"
-    )
+    if secret_exists "$CORE_SECRET_NAME"; then
+        print_warning "Secret already exists: $CORE_SECRET_NAME"
+    else
+        print_info "Creating consolidated core secret: $CORE_SECRET_NAME"
 
-    # Handle individual generated secrets
-    for secret_def in "${GENERATED_SECRETS[@]}"; do
-        secret_name=$(echo "$secret_def" | cut -d':' -f1)
-        secret_key=$(echo "$secret_def" | cut -d':' -f2)
-        
-        if secret_exists "$secret_name"; then
-            print_warning "Secret already exists: $secret_name"
+        apollo_admin_token="$(get_secret_value "${RELEASE_NAME}-apollo-admin-token" "APOLLO_ADMIN_TOKEN")"
+        encryption_key="$(get_secret_value "${RELEASE_NAME}-encryption-key" "ENCRYPTION_KEY")"
+        temporal_encryption_key="$(get_secret_value "${RELEASE_NAME}-temporal-encryption-key" "TEMPORAL_TRIGGER_ENCRYPTION_KEY")"
+        composio_api_key="$(get_secret_value "${RELEASE_NAME}-composio-api-key" "COMPOSIO_API_KEY")"
+        jwt_secret="$(get_secret_value "${RELEASE_NAME}-jwt-secret" "JWT_SECRET")"
+
+        [[ -z "$apollo_admin_token" ]] && apollo_admin_token="$(generate_random 32)"
+        [[ -z "$encryption_key" ]] && encryption_key="$(generate_random 32)"
+        [[ -z "$temporal_encryption_key" ]] && temporal_encryption_key="$(generate_random 32)"
+        [[ -z "$composio_api_key" ]] && composio_api_key="$(generate_random 32)"
+        [[ -z "$jwt_secret" ]] && jwt_secret="$(generate_random 32)"
+
+        if [[ "$DRY_RUN" == true ]]; then
+            print_info "[DRY-RUN] Would create secret: $CORE_SECRET_NAME"
+            print_info "kubectl create secret generic \"$CORE_SECRET_NAME\" \\"
+            print_info "  --from-literal=\"APOLLO_ADMIN_TOKEN=$apollo_admin_token\" \\"
+            print_info "  --from-literal=\"ENCRYPTION_KEY=$encryption_key\" \\"
+            print_info "  --from-literal=\"TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key\" \\"
+            print_info "  --from-literal=\"COMPOSIO_API_KEY=$composio_api_key\" \\"
+            print_info "  --from-literal=\"JWT_SECRET=$jwt_secret\" \\"
+            print_info "  -n \"$NAMESPACE\""
         else
-            secret_value=$(generate_random 32)
-            create_simple_secret "$secret_name" "$secret_key" "$secret_value"
+            kubectl create secret generic "$CORE_SECRET_NAME" \
+                --from-literal="APOLLO_ADMIN_TOKEN=$apollo_admin_token" \
+                --from-literal="ENCRYPTION_KEY=$encryption_key" \
+                --from-literal="TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key" \
+                --from-literal="COMPOSIO_API_KEY=$composio_api_key" \
+                --from-literal="JWT_SECRET=$jwt_secret" \
+                -n "$NAMESPACE"
+
+            print_success "Created secret: $CORE_SECRET_NAME"
         fi
-    done
+    fi
 
 fi
 

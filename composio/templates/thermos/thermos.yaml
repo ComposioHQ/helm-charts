@@ -74,10 +74,11 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-thermos-config
           env:
+            {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-apollo-admin-token
+                  name: {{ $coreSecret }}
                   key: APOLLO_ADMIN_TOKEN
             - name: DATABASE_URL
               valueFrom:
