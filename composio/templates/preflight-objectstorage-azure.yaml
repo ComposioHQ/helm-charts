@@ -3,8 +3,6 @@ kind: Secret
 metadata:
   labels:
     troubleshoot.sh/kind: preflight
-  annotations:
-    kots.io/when: '{{ eq .Values.apollo.objectStorage.backend "azure_blob_storage" }}'
   name: "{{ .Release.Name }}-preflight-objectstorage-azure"
 stringData:
   preflight.yaml: |
@@ -13,6 +11,7 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-objectstorage-azure-preflight"
     spec:
+      {{- if eq .Values.apollo.objectStorage.backend "azure_blob_storage" }}
       collectors:
         - secret:
             name: "{{ .Values.apollo.objectStorage.azureConnectionString.secretName }}"
@@ -31,4 +30,8 @@ stringData:
                   message: "Missing Azure Secret {{ .Values.apollo.objectStorage.azureConnectionString.secretName }} or key {{ .Values.apollo.objectStorage.azureConnectionString.key }}."
               - pass:
                   message: "Found Azure connection string Secret."
+      {{- else }}
+      collectors: []
+      analyzers: []
+      {{- end }}
 

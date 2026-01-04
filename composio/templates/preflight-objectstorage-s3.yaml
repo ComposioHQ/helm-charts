@@ -3,8 +3,6 @@ kind: Secret
 metadata:
   labels:
     troubleshoot.sh/kind: preflight
-  annotations:
-    kots.io/when: '{{ eq .Values.apollo.objectStorage.backend "s3" }}'
   name: "{{ .Release.Name }}-preflight-objectstorage-s3"
 stringData:
   preflight.yaml: |
@@ -13,6 +11,7 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-objectstorage-s3-preflight"
     spec:
+      {{- if eq .Values.apollo.objectStorage.backend "s3" }}
       collectors:
         # --- Source S3 secrets referenced by your values ---
         - secret:
@@ -48,4 +47,7 @@ stringData:
                   message: "Missing S3 secretKey Secret {{ .Values.apollo.objectStorage.secretKey.secretName }} or key {{ .Values.apollo.objectStorage.secretKey.key }}."
               - pass:
                   message: "Found S3 secretKey Secret."
-
+      {{- else }}
+      collectors: []
+      analyzers: []
+      {{- end }}

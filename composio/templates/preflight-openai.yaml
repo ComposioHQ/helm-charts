@@ -3,8 +3,6 @@ kind: Secret
 metadata:
   labels:
     troubleshoot.sh/kind: preflight
-  annotations:
-    kots.io/when: "{{ .Values.openAI.enabled }}"
   name: "{{ .Release.Name }}-preflight-openai-config"
 stringData:
   preflight.yaml: |
@@ -13,6 +11,7 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-openai-preflight"
     spec:
+      {{- if .Values.openAI.enabled }}
       collectors:
         # --- Source OpenAI secret referenced by your values ---
         - secret:
@@ -84,4 +83,7 @@ stringData:
                   message: "OpenAI API key rejected (HTTP {{ .Code }})."
               - warn:
                   message: "Could not confirm OpenAI key (RESULT={{ .Result }}, HTTP={{ .Code }}). Check egress/DNS/firewall."
-
+      {{- else }}
+      collectors: []
+      analyzers: []
+      {{- end }}
