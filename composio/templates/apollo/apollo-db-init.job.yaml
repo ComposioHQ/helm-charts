@@ -56,8 +56,8 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.apollo.database.urlSecret.name }}
-                  key: {{ .Values.apollo.database.urlSecret.key }}
+                  name: {{ $coreSecret }}
+                  key: POSTGRES_URL
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

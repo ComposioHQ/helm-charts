@@ -28,7 +28,7 @@ A Helm chart for Composio
 | apollo.autoscaling.targetCPUUtilizationPercentage | int | `70` | Target CPU utilization percentage |
 | apollo.autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage |
 | apollo.database.urlSecret.key | string | `"url"` | Key name in the secret |
-| apollo.database.urlSecret.name | string | `"external-postgres-secret"` | Secret name containing database URL |
+| apollo.database.urlSecret.name | string | `"composio-composio-secrets"` | Secret name containing database URL |
 | apollo.dbInit.enabled | bool | `true` | Enable database initialization |
 | apollo.dbInit.image.pullPolicy | string | `"Always"` | Image pull policy |
 | apollo.dbInit.image.repository | string | `"composio-self-host/apollo-db-init"` | Database init image repository |
@@ -149,7 +149,7 @@ A Helm chart for Composio
 | namespace.name | string | `"composio"` | Name of the namespace where Composio services will be deployed (defaults to "composio" if not specified) |
 | openAI.enabled | bool | `true` | Enable OpenAI integration |
 | openAI.key | string | `"API_KEY"` | Key name in the secret |
-| openAI.secretRef | string | `"openai-cred"` | Secret name containing OpenAI API key |
+| openAI.secretRef | string | `"composio-composio-secrets"` | Secret name containing OpenAI API key |
 | otel.apollo.metricsEndpoint | string | `"http://composio-otel-collector:4318/v1/metrics"` | HTTP endpoint for metrics |
 | otel.apollo.serviceName | string | `"apollo"` | Apollo service name |
 | otel.apollo.serviceVersion | string | `"1.0.0"` | Apollo service version |

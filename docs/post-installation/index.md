@@ -294,6 +294,10 @@ kubectl create secret generic <release>-composio-secrets \
   --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=<temporal-key> \
   --from-literal=COMPOSIO_API_KEY=<api-key> \
   --from-literal=JWT_SECRET=<jwt-secret> \
+  --from-literal=POSTGRES_URL=<postgres_url> \
+  --from-literal=THERMOS_DATABASE_URL=<thermos_database_url> \
+  # --from-literal=REDIS_URL=<redis_url> \
+  --from-literal=OPENAI_API_KEY=<openai_api_key> \
   -n <namespace>
 ```
 
@@ -302,10 +306,10 @@ These secrets are created from environment variables you provide:
 
 | Secret Name | Environment Variable | Purpose |
 |-------------|---------------------|---------|
-| `external-postgres-secret` | `POSTGRES_URL` | Apollo database connection |
-| `external-thermos-postgres-secret` | `THERMOS_POSTGRES_URL` | Thermos database connection |
-| `external-redis-secret` | `REDIS_URL` | Redis cache connection |
-| `openai-credentials` | `OPENAI_API_KEY` | OpenAI API integration (uses existing `openai-secret` if present for backward compatibility) |
+| `{release}-composio-secrets` | `POSTGRES_URL` | Apollo database connection |
+| `{release}-composio-secrets` | `THERMOS_DATABASE_URL` | Thermos database connection |
+| `{release}-composio-secrets` | `REDIS_URL` | Redis cache connection |
+| `{release}-composio-secrets` | `OPENAI_API_KEY` | OpenAI API integration |
 
 #### Helm-Managed Secrets
 These secrets are managed by Helm templates with existence checks:
@@ -428,12 +432,11 @@ kubectl logs -n composio -l serving.knative.dev/service=composio-mercury
 kubectl logs -n composio deployment/composio-apollo
 
 # Check if database secrets exist
-kubectl get secret external-postgres-secret -n composio
-kubectl get secret external-thermos-postgres-secret -n composio
+kubectl get secret composio-composio-secrets -n composio
 
 # Test database connection manually
 kubectl run -it --rm debug --image=postgres:15 --restart=Never -- \
-  psql "$(kubectl get secret external-postgres-secret -n composio -o jsonpath='{.data.url}' | base64 -d)"
+  psql "$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.POSTGRES_URL}' | base64 -d)"
 ```
 
 #### Secret Management Issues
