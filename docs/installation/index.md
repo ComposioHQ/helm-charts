@@ -83,7 +83,7 @@ apollo:
     # Database URL secret reference
     urlSecret:
       # -- Secret name containing database URL
-      name: "external-postgres-secret"
+      name: "composio-composio-secrets"
       # -- Key name in the secret
       key: "url"
   # Select the objectStorage backend
@@ -148,19 +148,19 @@ temporal:
             maxIdleConns: 20
             maxConnLifetime: "1h"
 ```
-You can use below commonds to create Kubernetes secrets 
+You can use below command to create the consolidated Kubernetes secret:
 
-```bash 
-kubectl create secret generic openai-cred \
-  --from-literal=API_KEY="sk-dummyopenaikey" \
-  -n composio
-
-kubectl create secret generic external-postgres-secret \
-  --from-literal=url="postgresql://composio:devtesting123@postgres-new.db:5432/composiodb?sslmode=disable" \
-  -n composio
-
-kubectl create secret generic thermosdb \
-  --from-literal=uri="postgresql://composio:devtesting123@postgres-new.db:5432/thermosdb?sslmode=disable" \
+```bash
+kubectl create secret generic composio-composio-secrets \
+  --from-literal=APOLLO_ADMIN_TOKEN="changeme-apollo" \
+  --from-literal=ENCRYPTION_KEY="changeme-encryption" \
+  --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY="changeme-temporal" \
+  --from-literal=COMPOSIO_API_KEY="changeme-api-key" \
+  --from-literal=JWT_SECRET="changeme-jwt" \
+  --from-literal=POSTGRES_URL="postgresql://composio:devtesting123@postgres-new.db:5432/composiodb?sslmode=disable" \
+  --from-literal=THERMOS_DATABASE_URL="postgresql://composio:devtesting123@postgres-new.db:5432/thermosdb?sslmode=disable" \
+  --from-literal=REDIS_URL="redis://user:pass@redis.example.com:6379/0" \
+  --from-literal=OPENAI_API_KEY="sk-dummyopenaikey" \
   -n composio
 
 kubectl create secret generic temporal-password-secret \
@@ -238,7 +238,7 @@ default:
     port: 5432
     database: "temporal"
     user: "composio"
-    existingSecret: "external-postgres-secret"
+    existingSecret: "composio-composio-secrets"
     maxConns: 20
     maxIdleConns: 20
     maxConnLifetime: "1h"
@@ -256,7 +256,7 @@ visibility:
     port: 5432
     database: "temporal_visibility"
     user: "composio"
-    existingSecret: "external-postgres-secret"
+    existingSecret: "composio-composio-secrets"
     maxConns: 20
     maxIdleConns: 20
     maxConnLifetime: "1h"

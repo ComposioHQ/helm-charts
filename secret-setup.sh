@@ -32,7 +32,7 @@ usage() {
     echo "  -d, --dry-run       Show what would be done without making actual changes"
     echo "  --skip-generated    Skip creating auto-generated secrets, only create user-provided ones"
     echo ""
-    echo -e "${YELLOW}Optional Environment Variables for User-Provided Secrets:${NC}"
+    echo -e "${YELLOW}Optional Environment Variables stored in \${release}-composio-secrets:${NC}"
     echo "  POSTGRES_URL         PostgreSQL connection URL for Apollo (postgresql://user:pass@host:port/db)"
     echo "  THERMOS_POSTGRES_URL PostgreSQL connection URL for Thermos (postgresql://user:pass@host:port/db)"
     echo "  REDIS_URL            Redis connection URL (redis://user:pass@host:port/db)"
@@ -44,20 +44,7 @@ usage() {
     echo "  SMTP_SECRET_NAME     Optional. Overrides default secret name (\${release}-smtp-credentials)"
     echo ""
     echo -e "${YELLOW}Generated Secrets (auto-created if missing):${NC}"
-    echo "  • \${release}-apollo-admin-token      (APOLLO_ADMIN_TOKEN)"
-    echo "  • \${release}-encryption-key          (ENCRYPTION_KEY)"
-    echo "  • \${release}-temporal-encryption-key (TEMPORAL_TRIGGER_ENCRYPTION_KEY)"
-    echo "  • \${release}-composio-api-key        (COMPOSIO_API_KEY)"
-    echo "  • \${release}-jwt-secret              (JWT_SECRET)"
-    echo ""
-    echo -e "${YELLOW}User-Provided Secrets (created if env vars provided):${NC}"
-    echo "  • external-postgres-secret            (from POSTGRES_URL)"
-    echo "  • external-thermos-postgres-secret    (from THERMOS_POSTGRES_URL)"
-    echo "  • external-redis-secret               (from REDIS_URL)"
-    echo "  • \${release}-openai-credentials      (from OPENAI_API_KEY, or uses existing openai-secret if present)"
-    echo "  • \${release}-azure-connection-string (from AZURE_CONNECTION_STRING)"
-    echo "  • \${release}-s3-credentials          (from S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY)"
-    echo "  • \${release}-smtp-credentials        (from SMTP_CONNECTION_STRING)"
+    echo "  • \${release}-composio-secrets (contains APOLLO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, COMPOSIO_API_KEY, JWT_SECRET, and optional user-provided URLs/keys)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo "  # Setup with all external secrets"
@@ -153,6 +140,13 @@ secret_exists() {
     kubectl get secret "$secret_name" -n "$NAMESPACE" >/dev/null 2>&1
 }
 
+# Function to fetch and decode an existing secret value (returns empty string if missing)
+get_secret_value() {
+    local secret_name=$1
+    local key=$2
+    kubectl get secret "$secret_name" -n "$NAMESPACE" -o jsonpath="{.data.$key}" 2>/dev/null | base64 --decode 2>/dev/null || true
+}
+
 # Function to create secret with single key-value
 create_simple_secret() {
     local secret_name=$1
@@ -191,184 +185,80 @@ create_s3_secret() {
     fi
 }
 
-# Function to parse and create postgres secret
-create_postgres_secret() {
-    local url="$1"
-    local secret_name="external-postgres-secret"
-    
-    print_info "Creating Apollo PostgreSQL secret from URL"
-    
-    # Parse URL to extract password
-    local url_without_protocol=$(echo "$url" | sed -E 's|^[^:]+://||')
-    local userpass_and_rest=$(echo "$url_without_protocol" | cut -d'@' -f1)
-    local password=$(echo "$userpass_and_rest" | cut -d':' -f2)
-    
-    if [[ "$DRY_RUN" == true ]]; then
-        print_info "[DRY-RUN] Would create Apollo PostgreSQL secret: $secret_name"
-        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"url=$url\" --from-literal=\"password=$password\" -n \"$NAMESPACE\""
-    else
-        kubectl create secret generic "$secret_name" \
-            --from-literal="url=$url" \
-            --from-literal="password=$password" \
-            -n "$NAMESPACE"
-        
-        print_success "Created Apollo PostgreSQL secret: $secret_name"
-    fi
-}
-
-# Function to parse and create thermos postgres secret
-create_thermos_postgres_secret() {
-    local url="$1"
-    local secret_name="external-thermos-postgres-secret"
-    
-    print_info "Creating Thermos PostgreSQL secret from URL"
-    
-    # Parse URL to extract password
-    local url_without_protocol=$(echo "$url" | sed -E 's|^[^:]+://||')
-    local userpass_and_rest=$(echo "$url_without_protocol" | cut -d'@' -f1)
-    local password=$(echo "$userpass_and_rest" | cut -d':' -f2)
-    
-    if [[ "$DRY_RUN" == true ]]; then
-        print_info "[DRY-RUN] Would create Thermos PostgreSQL secret: $secret_name"
-        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"url=$url\" --from-literal=\"password=$password\" -n \"$NAMESPACE\""
-    else
-        kubectl create secret generic "$secret_name" \
-            --from-literal="url=$url" \
-            --from-literal="password=$password" \
-            -n "$NAMESPACE"
-        
-        print_success "Created Thermos PostgreSQL secret: $secret_name"
-    fi
-}
-
-# Function to parse and create redis secret  
-create_redis_secret() {
-    local url="$1"
-    local secret_name="external-redis-secret"
-    
-    print_info "Creating Redis secret from URL"
-    
-    if [[ "$DRY_RUN" == true ]]; then
-        print_info "[DRY-RUN] Would create Redis secret: $secret_name"
-        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"url=$url\" -n \"$NAMESPACE\""
-    else
-        kubectl create secret generic "$secret_name" \
-            --from-literal="url=$url" \
-            -n "$NAMESPACE"
-        
-        print_success "Created Redis secret: $secret_name"
-    fi
-}
-
-# Function to create OpenAI secret
-create_openai_secret() {
-    local api_key="$1"
-    local secret_name="${RELEASE_NAME}-openai-credentials"
-    
-    print_info "Creating OpenAI secret"
-    
-    if [[ "$DRY_RUN" == true ]]; then
-        print_info "[DRY-RUN] Would create OpenAI secret: $secret_name"
-        print_info "kubectl create secret generic \"$secret_name\" --from-literal=\"OPENAI_API_KEY=$api_key\" -n \"$NAMESPACE\""
-    else
-        kubectl create secret generic "$secret_name" \
-            --from-literal="OPENAI_API_KEY=$api_key" \
-            -n "$NAMESPACE"
-        
-        print_success "Created OpenAI secret: $secret_name"
-    fi
-}
+CORE_SECRET_NAME="${RELEASE_NAME}-composio-secrets"
 
 if [[ "$SKIP_GENERATED" == true ]]; then
     print_info "Skipping generated secrets due to --skip-generated flag"
 else
     print_info "Checking and creating generated secrets..."
 
-    # Generated secrets - create separate secret objects
-    GENERATED_SECRETS=(
-        "${RELEASE_NAME}-apollo-admin-token:APOLLO_ADMIN_TOKEN"
-        "${RELEASE_NAME}-encryption-key:ENCRYPTION_KEY" 
-        "${RELEASE_NAME}-temporal-encryption-key:TEMPORAL_TRIGGER_ENCRYPTION_KEY"
-        "${RELEASE_NAME}-composio-api-key:COMPOSIO_API_KEY"
-        "${RELEASE_NAME}-jwt-secret:JWT_SECRET"
-    )
+    if secret_exists "$CORE_SECRET_NAME"; then
+        print_warning "Secret already exists: $CORE_SECRET_NAME"
+        patch_fields=()
+        [[ -n "$POSTGRES_URL" ]] && patch_fields+=("\"POSTGRES_URL\":\"$POSTGRES_URL\"")
+        [[ -n "$THERMOS_POSTGRES_URL" ]] && patch_fields+=("\"THERMOS_DATABASE_URL\":\"$THERMOS_POSTGRES_URL\"")
+        [[ -n "$REDIS_URL" ]] && patch_fields+=("\"REDIS_URL\":\"$REDIS_URL\"")
+        [[ -n "$OPENAI_API_KEY" ]] && patch_fields+=("\"OPENAI_API_KEY\":\"$OPENAI_API_KEY\"")
 
-    # Handle individual generated secrets
-    for secret_def in "${GENERATED_SECRETS[@]}"; do
-        secret_name=$(echo "$secret_def" | cut -d':' -f1)
-        secret_key=$(echo "$secret_def" | cut -d':' -f2)
-        
-        if secret_exists "$secret_name"; then
-            print_warning "Secret already exists: $secret_name"
-        else
-            secret_value=$(generate_random 32)
-            create_simple_secret "$secret_name" "$secret_key" "$secret_value"
+        if [[ ${#patch_fields[@]} -gt 0 ]]; then
+            patch_json="{\"stringData\":{${patch_fields[*]}}}"
+            if [[ "$DRY_RUN" == true ]]; then
+                print_info "[DRY-RUN] Would patch $CORE_SECRET_NAME with: $patch_json"
+            else
+                print_info "Patching $CORE_SECRET_NAME with provided connection values"
+                kubectl patch secret "$CORE_SECRET_NAME" -n "$NAMESPACE" -p "$patch_json"
+                print_success "Patched $CORE_SECRET_NAME"
+            fi
         fi
-    done
-
-fi
-
-print_info "Checking and creating user-provided secrets..."
-
-# Handle user-provided secrets from environment variables
-if [[ -n "$POSTGRES_URL" ]]; then
-    if secret_exists "external-postgres-secret"; then
-        print_warning "Secret already exists: external-postgres-secret"
     else
-        create_postgres_secret "$POSTGRES_URL"
-    fi
-else
-    print_info "POSTGRES_URL not provided - skipping Apollo PostgreSQL secret creation"
-fi
+        print_info "Creating consolidated core secret: $CORE_SECRET_NAME"
 
-if [[ -n "$THERMOS_POSTGRES_URL" ]]; then
-    if secret_exists "external-thermos-postgres-secret"; then
-        print_warning "Secret already exists: external-thermos-postgres-secret"
-    else
-        create_thermos_postgres_secret "$THERMOS_POSTGRES_URL"
-    fi
-else
-    print_info "THERMOS_POSTGRES_URL not provided - skipping Thermos PostgreSQL secret creation"
-fi
+        apollo_admin_token="$(get_secret_value "${RELEASE_NAME}-apollo-admin-token" "APOLLO_ADMIN_TOKEN")"
+        encryption_key="$(get_secret_value "${RELEASE_NAME}-encryption-key" "ENCRYPTION_KEY")"
+        temporal_encryption_key="$(get_secret_value "${RELEASE_NAME}-temporal-encryption-key" "TEMPORAL_TRIGGER_ENCRYPTION_KEY")"
+        composio_api_key="$(get_secret_value "${RELEASE_NAME}-composio-api-key" "COMPOSIO_API_KEY")"
+        jwt_secret="$(get_secret_value "${RELEASE_NAME}-jwt-secret" "JWT_SECRET")"
 
-if [[ -n "$REDIS_URL" ]]; then
-    if secret_exists "external-redis-secret"; then
-        print_warning "Secret already exists: external-redis-secret"  
-    else
-        create_redis_secret "$REDIS_URL"
-    fi
-else
-    print_info "REDIS_URL not provided - skipping Redis secret creation"
-fi
+        [[ -z "$apollo_admin_token" ]] && apollo_admin_token="$(generate_random 32)"
+        [[ -z "$encryption_key" ]] && encryption_key="$(generate_random 32)"
+        [[ -z "$temporal_encryption_key" ]] && temporal_encryption_key="$(generate_random 32)"
+        [[ -z "$composio_api_key" ]] && composio_api_key="$(generate_random 32)"
+        [[ -z "$jwt_secret" ]] && jwt_secret="$(generate_random 32)"
 
-openai_secret_name="${RELEASE_NAME}-openai-credentials"
-# Check for legacy openai-secret first (backward compatibility)
-if secret_exists "openai-secret"; then
-    print_warning "Legacy secret 'openai-secret' already exists - using it for backward compatibility"
-    # Copy legacy secret to new name if new name doesn't exist (so templates can use it)
-    if secret_exists "$openai_secret_name"; then
-        print_warning "Secret already exists: $openai_secret_name"
-    else
         if [[ "$DRY_RUN" == true ]]; then
-            print_info "[DRY-RUN] Would copy legacy 'openai-secret' to '$openai_secret_name' for backward compatibility"
-            print_info "kubectl get secret openai-secret -n \"$NAMESPACE\" -o json | jq 'del(.metadata.name, .metadata.namespace, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp) | .metadata.name = \"$openai_secret_name\"' | kubectl apply -f -"
+            print_info "[DRY-RUN] Would create secret: $CORE_SECRET_NAME"
+            print_info "kubectl create secret generic \"$CORE_SECRET_NAME\" \\"
+            print_info "  --from-literal=\"APOLLO_ADMIN_TOKEN=$apollo_admin_token\" \\"
+            print_info "  --from-literal=\"ENCRYPTION_KEY=$encryption_key\" \\"
+            print_info "  --from-literal=\"TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key\" \\"
+            print_info "  --from-literal=\"COMPOSIO_API_KEY=$composio_api_key\" \\"
+            print_info "  --from-literal=\"JWT_SECRET=$jwt_secret\" \\"
+            [[ -n "$POSTGRES_URL" ]] && print_info "  --from-literal=\"POSTGRES_URL=$POSTGRES_URL\" \\"
+            [[ -n "$THERMOS_POSTGRES_URL" ]] && print_info "  --from-literal=\"THERMOS_DATABASE_URL=$THERMOS_POSTGRES_URL\" \\"
+            [[ -n "$REDIS_URL" ]] && print_info "  --from-literal=\"REDIS_URL=$REDIS_URL\" \\"
+            [[ -n "$OPENAI_API_KEY" ]] && print_info "  --from-literal=\"OPENAI_API_KEY=$OPENAI_API_KEY\" \\"
+            print_info "  -n \"$NAMESPACE\""
         else
-            print_info "Copying legacy 'openai-secret' to '$openai_secret_name' for backward compatibility"
-            kubectl get secret openai-secret -n "$NAMESPACE" -o json | \
-                jq 'del(.metadata.name, .metadata.namespace, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp) | .metadata.name = "'"$openai_secret_name"'"' | \
-                kubectl apply -f -
-            print_success "Copied legacy secret to: $openai_secret_name"
+            create_args=(
+                kubectl create secret generic "$CORE_SECRET_NAME"
+                --from-literal="APOLLO_ADMIN_TOKEN=$apollo_admin_token"
+                --from-literal="ENCRYPTION_KEY=$encryption_key"
+                --from-literal="TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key"
+                --from-literal="COMPOSIO_API_KEY=$composio_api_key"
+                --from-literal="JWT_SECRET=$jwt_secret"
+                -n "$NAMESPACE"
+            )
+            [[ -n "$POSTGRES_URL" ]] && create_args+=(--from-literal="POSTGRES_URL=$POSTGRES_URL")
+            [[ -n "$THERMOS_POSTGRES_URL" ]] && create_args+=(--from-literal="THERMOS_DATABASE_URL=$THERMOS_POSTGRES_URL")
+            [[ -n "$REDIS_URL" ]] && create_args+=(--from-literal="REDIS_URL=$REDIS_URL")
+            [[ -n "$OPENAI_API_KEY" ]] && create_args+=(--from-literal="OPENAI_API_KEY=$OPENAI_API_KEY")
+
+            "${create_args[@]}"
+
+            print_success "Created secret: $CORE_SECRET_NAME"
         fi
     fi
-elif [[ -n "$OPENAI_API_KEY" ]]; then
-    # Create new standard secret name (only if legacy doesn't exist)
-    if secret_exists "$openai_secret_name"; then
-        print_warning "Secret already exists: $openai_secret_name"
-    else
-        create_openai_secret "$OPENAI_API_KEY"
-    fi
-else
-    print_info "OPENAI_API_KEY not provided and no legacy 'openai-secret' found - skipping OpenAI secret creation"
+
 fi
 
 # Azure connection string secret (used by apollo.yaml when backend=azure)
@@ -414,7 +304,7 @@ else
     print_success "Secret setup completed successfully!"
     
     print_info "Summary of secrets in namespace '$NAMESPACE':"
-    kubectl get secrets -n "$NAMESPACE" | grep -E "($RELEASE_NAME|external-|openai-)" || print_warning "No matching secrets found"
+    kubectl get secrets -n "$NAMESPACE" | grep -E "($RELEASE_NAME)" || print_warning "No matching secrets found"
 fi
 
 print_info "To view a specific secret:"

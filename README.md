@@ -21,6 +21,20 @@ For installation instructions, please see the [Installation Guide](./docs/instal
 
 For post-installation steps, please see the [Post-Installation Guide](./docs/post-installation/index.md).
 
+## Core Secret Setup
+
+Create the consolidated composio secret (contains APOLLO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, COMPOSIO_API_KEY, JWT_SECRET):
+
+```bash
+kubectl create secret generic <release>-composio-secrets \
+  --from-literal=APOLLO_ADMIN_TOKEN=<token> \
+  --from-literal=ENCRYPTION_KEY=<encryption-key> \
+  --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=<temporal-key> \
+  --from-literal=COMPOSIO_API_KEY=<api-key> \
+  --from-literal=JWT_SECRET=<jwt-secret> \
+  -n <namespace>
+```
+
 ## 🔄 Upgradation
 
 For upgradation steps, please see the [Upgradation Guide](./docs/upgradation/index.md).

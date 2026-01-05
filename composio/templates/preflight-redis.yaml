@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    troubleshoot.sh/kind: preflight
+  name: "{{ .Release.Name }}-preflight-redis"
+stringData:
+  preflight.yaml: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    metadata:
+      name: "{{ .Release.Name }}-redis-preflight"
+    spec:
+      {{- if .Values.externalRedis.enabled }}
+      collectors:
+        # Password secret is optional in your chart; still check if provided
+        - secret:
+            name: "{{ .Values.redisConnection.password.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.redisConnection.password.key }}"
+            includeValue: false
+
+        - runPod:
+            collectorName: "validate-redis"
+            namespace: "{{ .Release.Namespace }}"
+            timeout: 60s
+            podSpec:
+              restartPolicy: Never
+              containers:
+                - name: check
+                  image: redis:7-alpine
+                  env:
+                    - name: REDIS_HOST
+                      value: "{{ .Values.redisConnection.host }}"
+                    - name: REDIS_PORT
+                      value: "{{ .Values.redisConnection.port | quote }}"
+                    - name: REDIS_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: "{{ .Values.redisConnection.password.secretRef }}"
+                          key: "{{ .Values.redisConnection.password.key }}"
+                          optional: true
+                  command: ["/bin/sh", "-c"]
+                  args:
+                    - |
+                      if [ -n "${REDIS_PASSWORD:-}" ]; then
+                        redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" PING >/dev/null 2>&1
+                      else
+                        redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" PING >/dev/null 2>&1
+                      fi
+
+                      if [ "$?" = "0" ]; then
+                        echo "RESULT=OK"
+                      else
+                        echo "RESULT=ERROR"
+                      fi
+
+      analyzers:
+        - secret:
+            checkName: "Redis password secret present (if used)"
+            secretName: "{{ .Values.redisConnection.password.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.redisConnection.password.key }}"
+            outcomes:
+              - warn:
+                  message: "Redis password Secret/key not found (OK if Redis is unauthenticated)."
+              - pass:
+                  message: "Found Redis password Secret/key."
+
+        - textAnalyze:
+            checkName: "Redis connectivity"
+            fileName: "/validate-redis.log"
+            regexGroups: 'RESULT=(?P<Result>[A-Z_]+)'
+            outcomes:
+              - pass:
+                  when: 'Result == "OK"'
+                  message: "Can connect to Redis and PING."
+              - fail:
+                  message: "Cannot connect to Redis (check host/port/network/password)."
+      {{- else }}
+      collectors: []
+      analyzers: []
+      {{- end }}

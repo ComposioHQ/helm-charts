@@ -13,70 +13,85 @@ Expand the name of the chart.
 {{- printf "%s-%s" $base $rand }}
 {{- end -}}
 
+{{/* Core secret name shared by chart-managed secrets */}}
+{{- define "composio.coreSecretName" -}}
+{{- printf "%s-composio-secrets" .Release.Name -}}
+{{- end -}}
+
 
 {{- define "apollo-admin-token" -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-apollo-admin-token" .Release.Name) -}}
-{{- if $secret -}}
-  {{- if hasKey $secret.data "APOLLO_ADMIN_TOKEN" -}}
-    {{- index $secret.data "APOLLO_ADMIN_TOKEN" | b64dec -}}
+{{- $coreName := include "composio.coreSecretName" . -}}
+{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
+{{- if and $core (hasKey $core.data "APOLLO_ADMIN_TOKEN") -}}
+  {{- index $core.data "APOLLO_ADMIN_TOKEN" | b64dec -}}
+{{- else -}}
+  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-apollo-admin-token" .Release.Name) -}}
+  {{- if and $legacy (hasKey $legacy.data "APOLLO_ADMIN_TOKEN") -}}
+    {{- index $legacy.data "APOLLO_ADMIN_TOKEN" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
-{{- else -}}
-  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "composio-api-key" -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-composio-api-key" .Release.Name) -}}
-{{- if $secret -}}
-  {{- if hasKey $secret.data "COMPOSIO_API_KEY" -}}
-    {{- index $secret.data "COMPOSIO_API_KEY" | b64dec -}}
+{{- $coreName := include "composio.coreSecretName" . -}}
+{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
+{{- if and $core (hasKey $core.data "COMPOSIO_API_KEY") -}}
+  {{- index $core.data "COMPOSIO_API_KEY" | b64dec -}}
+{{- else -}}
+  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-composio-api-key" .Release.Name) -}}
+  {{- if and $legacy (hasKey $legacy.data "COMPOSIO_API_KEY") -}}
+    {{- index $legacy.data "COMPOSIO_API_KEY" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
-{{- else -}}
-  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
 
 {{- define "encryption-key" -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-encryption-key" .Release.Name) -}}
-{{- if $secret -}}
-  {{- if hasKey $secret.data "ENCRYPTION_KEY" -}}
-    {{- index $secret.data "ENCRYPTION_KEY" | b64dec -}}
+{{- $coreName := include "composio.coreSecretName" . -}}
+{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
+{{- if and $core (hasKey $core.data "ENCRYPTION_KEY") -}}
+  {{- index $core.data "ENCRYPTION_KEY" | b64dec -}}
+{{- else -}}
+  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-encryption-key" .Release.Name) -}}
+  {{- if and $legacy (hasKey $legacy.data "ENCRYPTION_KEY") -}}
+    {{- index $legacy.data "ENCRYPTION_KEY" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
-{{- else -}}
-  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "jwt-secret" -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-jwt-secret" .Release.Name) -}}
-{{- if $secret -}}
-  {{- if hasKey $secret.data "JWT_SECRET" -}}
-    {{- index $secret.data "JWT_SECRET" | b64dec -}}
+{{- $coreName := include "composio.coreSecretName" . -}}
+{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
+{{- if and $core (hasKey $core.data "JWT_SECRET") -}}
+  {{- index $core.data "JWT_SECRET" | b64dec -}}
+{{- else -}}
+  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-jwt-secret" .Release.Name) -}}
+  {{- if and $legacy (hasKey $legacy.data "JWT_SECRET") -}}
+    {{- index $legacy.data "JWT_SECRET" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
-{{- else -}}
-  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "temporal-encryption-key" -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-temporal-encryption-key" .Release.Name) -}}
-{{- if $secret -}}
-  {{- if hasKey $secret.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" -}}
-    {{- index $secret.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" | b64dec -}}
+{{- $coreName := include "composio.coreSecretName" . -}}
+{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
+{{- if and $core (hasKey $core.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY") -}}
+  {{- index $core.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" | b64dec -}}
+{{- else -}}
+  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-temporal-encryption-key" .Release.Name) -}}
+  {{- if and $legacy (hasKey $legacy.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY") -}}
+    {{- index $legacy.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
-{{- else -}}
-  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 

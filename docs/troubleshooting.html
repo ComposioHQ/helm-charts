@@ -102,8 +102,8 @@ kubectl describe nodes</code></pre>
                                     <div class="code-block">
                                         <pre><code class="language-bash"># Check secrets
 kubectl get secrets -n composio
-kubectl describe secret composio-secrets -n composio
-kubectl describe secret external-postgres-secret -n composio</code></pre>
+kubectl describe secret composio-composio-secrets -n composio
+kubectl describe secret composio-composio-secrets -n composio</code></pre>
                                     </div>
                                 </li>
                             </ul>
@@ -227,16 +227,16 @@ kubectl logs -n composio -l serving.knative.dev/service=composio-mercury</code><
 
                             <h4>Diagnosis:</h4>
                             <div class="code-block">
-                                <pre><code class="language-bash"># Check database secret
-kubectl get secret external-postgres-secret -n composio -o yaml
+<pre><code class="language-bash"># Check database secret
+kubectl get secret composio-composio-secrets -n composio -o yaml
 
 # Decode database URL
-kubectl get secret external-postgres-secret -n composio \
-    -o jsonpath='{.data.url}' | base64 -d
+kubectl get secret composio-composio-secrets -n composio \
+    -o jsonpath='{.data.POSTGRES_URL}' | base64 -d
 
 # Test connectivity from pod
 kubectl run test-db --rm -i --tty --image=postgres:15 --restart=Never -- \
-    psql "$(kubectl get secret external-postgres-secret -n composio -o jsonpath='{.data.url}' | base64 -d)"
+    psql "$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.POSTGRES_URL}' | base64 -d)"
 
 # Check Apollo logs for connection errors
 kubectl logs -n composio deployment/composio-apollo | grep -i "database\|postgres"</code></pre>

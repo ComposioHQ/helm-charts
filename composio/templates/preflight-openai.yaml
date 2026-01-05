@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    troubleshoot.sh/kind: preflight
+  name: "{{ .Release.Name }}-preflight-openai-config"
+stringData:
+  preflight.yaml: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    metadata:
+      name: "{{ .Release.Name }}-openai-preflight"
+    spec:
+      {{- if .Values.openAI.enabled }}
+      collectors:
+        # --- Source OpenAI secret referenced by your values ---
+        - secret:
+            name: "{{ .Values.openAI.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.openAI.key }}"
+            includeValue: false
+
+        # --- Validate OpenAI key by real HTTP request ---
+        - runPod:
+            collectorName: "validate-openai-api-key"
+            namespace: "{{ .Release.Namespace }}"
+            timeout: 60s
+            podSpec:
+              restartPolicy: Never
+              containers:
+                - name: check
+                  image: curlimages/curl:latest
+                  env:
+                    - name: OPENAI_API_KEY
+                      valueFrom:
+                        secretKeyRef:
+                          name: "{{ .Values.openAI.secretRef }}"
+                          key: "{{ .Values.openAI.key }}"
+                          optional: true
+                  command: ["/bin/sh", "-c"]
+                  args:
+                    - |
+                      if [ -z "${OPENAI_API_KEY:-}" ]; then
+                        echo "RESULT=MISSING HTTP_CODE=000"
+                        exit 0
+                      fi
+
+                      CODE="$(curl -sS -o /tmp/body -w '%{http_code}' \
+                        -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+                        https://api.openai.com/v1/models || true)"
+
+                      if [ -z "${CODE}" ]; then CODE="000"; fi
+                      if [ "${CODE}" = "200" ]; then
+                        echo "RESULT=OK HTTP_CODE=${CODE}"
+                      elif [ "${CODE}" = "401" ] || [ "${CODE}" = "403" ]; then
+                        echo "RESULT=INVALID HTTP_CODE=${CODE}"
+                      else
+                        echo "RESULT=ERROR HTTP_CODE=${CODE}"
+                      fi
+
+      analyzers:
+        - secret:
+            checkName: "OpenAI source secret present"
+            secretName: "{{ .Values.openAI.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.openAI.key }}"
+            outcomes:
+              - fail:
+                  message: "Missing OpenAI source Secret {{ .Values.openAI.secretRef }} or key {{ .Values.openAI.key }}."
+              - pass:
+                  message: "Found OpenAI source Secret {{ .Values.openAI.secretRef }} (key {{ .Values.openAI.key }})."
+
+        - textAnalyze:
+            checkName: "OpenAI API key is valid"
+            fileName: "/validate-openai-api-key.log"
+            regexGroups: 'RESULT=(?P<Result>[A-Z_]+) HTTP_CODE=(?P<Code>\d+)'
+            outcomes:
+              - pass:
+                  when: "Code == 200"
+                  message: "OpenAI API key validated (HTTP {{ .Code }})."
+              - fail:
+                  when: "Code == 401 || Code == 403"
+                  message: "OpenAI API key rejected (HTTP {{ .Code }})."
+              - warn:
+                  message: "Could not confirm OpenAI key (RESULT={{ .Result }}, HTTP={{ .Code }}). Check egress/DNS/firewall."
+      {{- else }}
+      collectors: []
+      analyzers: []
+      {{- end }}

@@ -283,20 +283,33 @@ Composio uses a comprehensive secret management system that handles both auto-ge
 
 | Secret Name | Purpose | Key |
 |-------------|---------|-----|
-| `{release}-apollo-admin-token` | Apollo API admin authentication | `APOLLO_ADMIN_TOKEN` |
-| `{release}-encryption-key` | Application data encryption | `ENCRYPTION_KEY` |
-| `{release}-temporal-encryption-key` | Temporal workflow encryption | `TEMPORAL_TRIGGER_ENCRYPTION_KEY` |
-| `{release}-composio-api-key` | Composio API authentication | `COMPOSIO_API_KEY` |
+| `{release}-composio-secrets` | Consolidated chart-managed secrets | `APOLLO_ADMIN_TOKEN`, `ENCRYPTION_KEY`, `TEMPORAL_TRIGGER_ENCRYPTION_KEY`, `COMPOSIO_API_KEY`, `JWT_SECRET` |
+
+To create or rotate the consolidated secret manually:
+
+```bash
+kubectl create secret generic <release>-composio-secrets \
+  --from-literal=APOLLO_ADMIN_TOKEN=<token> \
+  --from-literal=ENCRYPTION_KEY=<encryption-key> \
+  --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=<temporal-key> \
+  --from-literal=COMPOSIO_API_KEY=<api-key> \
+  --from-literal=JWT_SECRET=<jwt-secret> \
+  --from-literal=POSTGRES_URL=<postgres_url> \
+  --from-literal=THERMOS_DATABASE_URL=<thermos_database_url> \
+  # --from-literal=REDIS_URL=<redis_url> \
+  --from-literal=OPENAI_API_KEY=<openai_api_key> \
+  -n <namespace>
+```
 
 #### User-Provided Secrets
 These secrets are created from environment variables you provide:
 
 | Secret Name | Environment Variable | Purpose |
 |-------------|---------------------|---------|
-| `external-postgres-secret` | `POSTGRES_URL` | Apollo database connection |
-| `external-thermos-postgres-secret` | `THERMOS_POSTGRES_URL` | Thermos database connection |
-| `external-redis-secret` | `REDIS_URL` | Redis cache connection |
-| `openai-credentials` | `OPENAI_API_KEY` | OpenAI API integration (uses existing `openai-secret` if present for backward compatibility) |
+| `{release}-composio-secrets` | `POSTGRES_URL` | Apollo database connection |
+| `{release}-composio-secrets` | `THERMOS_DATABASE_URL` | Thermos database connection |
+| `{release}-composio-secrets` | `REDIS_URL` | Redis cache connection |
+| `{release}-composio-secrets` | `OPENAI_API_KEY` | OpenAI API integration |
 
 #### Helm-Managed Secrets
 These secrets are managed by Helm templates with existence checks:
@@ -419,12 +432,11 @@ kubectl logs -n composio -l serving.knative.dev/service=composio-mercury
 kubectl logs -n composio deployment/composio-apollo
 
 # Check if database secrets exist
-kubectl get secret external-postgres-secret -n composio
-kubectl get secret external-thermos-postgres-secret -n composio
+kubectl get secret composio-composio-secrets -n composio
 
 # Test database connection manually
 kubectl run -it --rm debug --image=postgres:15 --restart=Never -- \
-  psql "$(kubectl get secret external-postgres-secret -n composio -o jsonpath='{.data.url}' | base64 -d)"
+  psql "$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.POSTGRES_URL}' | base64 -d)"
 ```
 
 #### Secret Management Issues
@@ -433,7 +445,7 @@ kubectl run -it --rm debug --image=postgres:15 --restart=Never -- \
 kubectl get secrets -n composio | grep -E "(composio-|external-|openai-)"
 
 # Verify secret contents (base64 encoded)
-kubectl get secret composio-apollo-admin-token -n composio -o yaml
+kubectl get secret composio-composio-secrets -n composio -o yaml
 
 # Check secret setup script logs
 ./secret-setup.sh -r composio -n composio --dry-run
@@ -457,10 +469,10 @@ kubectl exec -n composio deployment/composio-apollo -- env | grep -E "(POSTGRES|
 #### ENCRYPTION_KEY Issues
 ```bash
 # Check if ENCRYPTION_KEY exists
-kubectl get secret composio-encryption-key -n composio
+kubectl get secret composio-composio-secrets -n composio
 
 # Verify ENCRYPTION_KEY value (backup this!)
-kubectl get secret composio-encryption-key -n composio -o jsonpath="{.data.ENCRYPTION_KEY}" | base64 -d
+kubectl get secret composio-composio-secrets -n composio -o jsonpath="{.data.ENCRYPTION_KEY}" | base64 -d
 
 # If ENCRYPTION_KEY is missing, recreate it (WARNING: This will make existing encrypted data inaccessible!)
 ./secret-setup.sh -r composio -n composio

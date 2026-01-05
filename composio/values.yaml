@@ -39,9 +39,9 @@ externalRedis:
   # -- Enable external Redis. Set to true to use an external Redis instance
   enabled: true
   # -- Secret name containing Redis connection URL
-  secretRef: "redis-cred"
+  secretRef: "composio-composio-secrets"
   # -- Key name in the secret containing the Redis URL
-  key: "url"
+  key: "REDIS_URL"
     
 # Internal Redis configuration (embedded Redis instance)
 redis:
@@ -88,9 +88,9 @@ openAI:
   # -- Enable OpenAI integration
   enabled: true
   # -- Secret name containing OpenAI API key
-  secretRef: "openai-cred" 
+  secretRef: "composio-composio-secrets" 
   # -- Key name in the secret
-  key: "API_KEY"
+  key: "OPENAI_API_KEY"
 
 # Apollo service configuration (main API service)
 apollo:
@@ -168,9 +168,9 @@ apollo:
     # Database URL secret reference
     urlSecret:
       # -- Secret name containing database URL
-      name: "external-postgres-secret"
+      name: "composio-composio-secrets"
       # -- Key name in the secret
-      key: "url"
+      key: "POSTGRES_URL"
   
   # SMTP configuration for email notifications
   smtp:
@@ -246,9 +246,9 @@ thermos:
   # Thermos database configuration
   database: 
     # -- Secret reference containing database URI
-    secretRef: "thermosdb"
+    secretRef: "composio-composio-secrets"
     # -- Key name in the secret
-    key: "uri"
+    key: "THERMOS_DATABASE_URL"
   # Thermos container image configuration
   image:
     # -- Thermos image repository

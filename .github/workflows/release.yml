@@ -1,0 +1,215 @@
+name: Release to Replicated (unstable)
+
+on:
+  workflow_dispatch:
+    inputs:
+      releaseTag:
+        description: "Release tag to publish (e.g. v1.2.3)"
+        required: true
+        default: ""
+        type: string
+      ecrTag:
+        description: "ECR image tag for internal services"
+        required: true
+        default: ""
+        type: string
+  pull_request:
+    branches: [ release-stable, master ]
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CHANNEL_ALIAS: Unstable
+
+jobs:
+  prepare_pr:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        run: |
+          if [ -z "${{ inputs.releaseTag }}" ]; then
+            echo "releaseTag input is required" >&2
+            exit 1
+          fi
+          if [ -z "${{ inputs.ecrTag }}" ]; then
+            echo "ecrTag input is required" >&2
+            exit 1
+          fi
+
+      - name: Install yq
+        run: |
+          YQ_VERSION=v4.44.3
+          curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o yq
+          sudo mv yq /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Set release tag on internal images
+        env:
+          ECR_TAG: ${{ inputs.ecrTag }}
+        run: |
+          yq -i '
+            .apollo.image.tag = strenv(ECR_TAG) |
+            .apollo.dbInit.image.tag = strenv(ECR_TAG) |
+            .thermos.image.tag = strenv(ECR_TAG) |
+            .thermos.dbInit.image.tag = strenv(ECR_TAG) |
+            .mercury.image.tag = strenv(ECR_TAG) |
+            .frontend.image.tag = strenv(ECR_TAG)
+          ' composio/values.yaml
+          echo "Updated composio/values.yaml image tags to ${ECR_TAG}"
+
+      - name: Set chart version and appVersion
+        env:
+          RELEASE_TAG: ${{ inputs.releaseTag }}
+        run: |
+          yq -i '
+            .version = strenv(RELEASE_TAG) |
+            .appVersion = strenv(RELEASE_TAG)
+          ' composio/Chart.yaml
+          yq -i '
+            .spec.chart.chartVersion = strenv(RELEASE_TAG)
+          ' manifests/composio.yaml
+          yq -i '
+            .metadata.labels."app.kubernetes.io/version" = strenv(RELEASE_TAG) |
+            .spec.descriptor.version = strenv(RELEASE_TAG)
+          ' manifests/k8s-app.yaml
+          echo "Updated composio/Chart.yaml version fields and manifests/composio.yaml chartVersion to ${RELEASE_TAG}"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.14.4
+
+      - name: Create release PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: release/${{ inputs.releaseTag }}
+          title: "Release ${{ inputs.releaseTag }} to unstable channel"
+          commit-message: "chore: set release tag ${{ inputs.releaseTag }} (images: ${{ inputs.ecrTag }})"
+          body: |
+            This PR sets the release tag to `${{ inputs.releaseTag }}` across internal images in `composio/values.yaml`.
+
+            Merging this PR will trigger the release workflow (on push to master) to package the chart, create the GitHub release, and promote it to the `unstableChannel` in Replicated.
+          labels: release
+
+  release:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/') &&
+      contains(github.event.pull_request.labels.*.name, 'release')
+    environment:
+      name: release
+    concurrency:
+      group: release-${{ github.event.pull_request.head.ref }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install yq
+        run: |
+          YQ_VERSION=v4.44.3
+          curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o yq
+          sudo mv yq /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Read tags from chart and values.yaml
+        id: read-tag
+        run: |
+          chart_tag=$(yq '.version' composio/Chart.yaml)
+          app_tag=$(yq '.appVersion' composio/Chart.yaml)
+          if [ -z "$chart_tag" ] || [ "$chart_tag" = "latest" ]; then
+            echo "Invalid chart version in composio/Chart.yaml: '$chart_tag'" >&2
+            exit 1
+          fi
+
+          if [ "$chart_tag" != "$app_tag" ]; then
+            echo "Chart version ($chart_tag) does not match appVersion ($app_tag)" >&2
+            exit 1
+          fi
+
+          ecr_tag=$(yq '.apollo.image.tag' composio/values.yaml)
+          if [ -z "$ecr_tag" ] || [ "$ecr_tag" = "latest" ]; then
+            echo "Invalid ECR tag in composio/values.yaml: '$ecr_tag'" >&2
+            exit 1
+          fi
+
+          # Ensure all internal images share the same ECR tag
+          for path in \
+            .apollo.image.tag \
+            .apollo.dbInit.image.tag \
+            .thermos.image.tag \
+            .thermos.dbInit.image.tag \
+            .mercury.image.tag \
+            .frontend.image.tag
+          do
+            val=$(yq "$path" composio/values.yaml)
+            if [ "$val" != "$ecr_tag" ]; then
+              echo "Mismatch: $path is '$val' but expected '$ecr_tag'" >&2
+              exit 1
+            fi
+          done
+
+          branch="${GITHUB_HEAD_REF:-${{ github.event.pull_request.head.ref }}}"
+          branch_tag="${branch#release/}"
+          if [ "$branch_tag" != "$chart_tag" ]; then
+            echo "Branch tag ($branch_tag) does not match chart version ($chart_tag)" >&2
+            exit 1
+          fi
+
+          echo "chart_tag=$chart_tag" >> "$GITHUB_OUTPUT"
+          echo "ecr_tag=$ecr_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.2.0
+        with:
+          version: v3.14.4
+
+      - name: Build chart package
+        run: |
+          helm dependency update composio
+          helm package composio --destination manifests
+          ls -l manifests
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.read-tag.outputs.chart_tag }}
+          name: ${{ steps.read-tag.outputs.chart_tag }}
+          generate_release_notes: true
+          files: |
+            manifests/*.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Replicated CLI
+        run: |
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls \
+            "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
+            -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+          sudo mv replicated /usr/local/bin/replicated
+          replicated version
+
+      - name: Promote release to unstableChannel
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP_SLUG }}
+          RELEASE_TAG: ${{ steps.read-tag.outputs.chart_tag }}
+          CHANNEL_ALIAS: ${{ env.CHANNEL_ALIAS }}
+        run: |
+          cd manifests && replicated release create --yaml-dir . --promote "$CHANNEL_ALIAS" --version "$RELEASE_TAG"
+

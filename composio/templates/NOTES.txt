@@ -62,7 +62,7 @@ Run the command below to retrieve the encryption key:
 ```bash
 kubectl get secret \
   --namespace {{ .Release.Namespace }} \
-  {{ .Release.Name }}-encryption-key \
+  {{ include "composio.coreSecretName" . }} \
   -o jsonpath='{.data.ENCRYPTION_KEY}' | base64 -d
 ```
 
@@ -73,7 +73,7 @@ Run the command below to retrieve the Temporal encryption key:
 ```bash
 kubectl get secret \
   --namespace {{ .Release.Namespace }} \
-  {{ .Release.Name }}-encryption-key \
+  {{ include "composio.coreSecretName" . }} \
   -o jsonpath='{.data.TEMPORAL_TRIGGER_ENCRYPTION_KEY}' | base64 -d
 ```
 ### ⚠️ IMPORTANT NOTES

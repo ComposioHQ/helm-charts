@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    troubleshoot.sh/kind: preflight
+  annotations:
+    kots.io/when: "true"
+  name: "{{ .Release.Name }}-preflight-config"
+stringData:
+  preflight.yaml: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    metadata:
+      name: "{{ .Release.Name }}-preflight-config"
+    spec:
+      {{- $coreSecret := include "composio.coreSecretName" . }}
+      collectors:
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "APOLLO_ADMIN_TOKEN"
+            includeValue: false
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "COMPOSIO_API_KEY"
+            includeValue: false
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "ENCRYPTION_KEY"
+            includeValue: false
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "JWT_SECRET"
+            includeValue: false
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
+            includeValue: false
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "POSTGRES_URL"
+            includeValue: false
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "THERMOS_DATABASE_URL"
+            includeValue: false
+        - secret:
+            name: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "REDIS_URL"
+            includeValue: false
+
+      analyzers:
+        # --- Chart-managed secrets ---
+        - secret:
+            checkName: "Apollo admin token secret present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "APOLLO_ADMIN_TOKEN"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key APOLLO_ADMIN_TOKEN."
+              - pass:
+                  message: "Found {{ $coreSecret }} (APOLLO_ADMIN_TOKEN)."
+
+        - secret:
+            checkName: "Composio API key secret present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "COMPOSIO_API_KEY"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key COMPOSIO_API_KEY."
+              - pass:
+                  message: "Found {{ $coreSecret }} (COMPOSIO_API_KEY)."
+
+        - secret:
+            checkName: "Encryption key secret present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "ENCRYPTION_KEY"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key ENCRYPTION_KEY."
+              - pass:
+                  message: "Found {{ $coreSecret }} (ENCRYPTION_KEY)."
+
+        - secret:
+            checkName: "JWT secret present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "JWT_SECRET"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key JWT_SECRET."
+              - pass:
+                  message: "Found {{ $coreSecret }} (JWT_SECRET)."
+
+        - secret:
+            checkName: "Temporal encryption key secret present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key TEMPORAL_TRIGGER_ENCRYPTION_KEY."
+              - pass:
+                  message: "Found {{ $coreSecret }} (TEMPORAL_TRIGGER_ENCRYPTION_KEY)."
+        - secret:
+            checkName: "Apollo Postgres URL present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "POSTGRES_URL"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key POSTGRES_URL."
+              - pass:
+                  message: "Found {{ $coreSecret }} (POSTGRES_URL)."
+        - secret:
+            checkName: "Thermos Postgres URL present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "THERMOS_DATABASE_URL"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key THERMOS_DATABASE_URL."
+              - pass:
+                  message: "Found {{ $coreSecret }} (THERMOS_DATABASE_URL)."
+        - secret:
+            checkName: "Redis URL present"
+            secretName: "{{ $coreSecret }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "REDIS_URL"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $coreSecret }} or key REDIS_URL."
+              - pass:
+                  message: "Found {{ $coreSecret }} (REDIS_URL)."

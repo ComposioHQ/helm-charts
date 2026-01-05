@@ -78,6 +78,7 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-apollo-config
           env:
+            {{- $coreSecret := include "composio.coreSecretName" . }}
             {{- if eq .Values.apollo.objectStorage.backend "s3"}}
             - name: S3_ACCESS_KEY_ID
               valueFrom:
@@ -111,12 +112,12 @@ spec:
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-encryption-key
+                  name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
             - name: COMPOSIO_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-composio-api-key
+                  name: {{ $coreSecret }}
                   key: COMPOSIO_API_KEY
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
@@ -128,22 +129,22 @@ spec:
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-apollo-admin-token
+                  name: {{ $coreSecret }}
                   key: APOLLO_ADMIN_TOKEN
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.apollo.database.urlSecret.name }}
-                  key: {{ .Values.apollo.database.urlSecret.key }}
+                  name: {{ $coreSecret }}
+                  key: POSTGRES_URL
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-encryption-key
+                  name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-jwt-secret
+                  name: {{ $coreSecret }}
                   key: JWT_SECRET
             {{- if .Values.apollo.smtp.enabled }}
             - name: SMTP_CONNECTION_STRING

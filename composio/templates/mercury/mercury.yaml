@@ -66,6 +66,7 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-mercury-config
           env:
+            {{- $coreSecret := include "composio.coreSecretName" . }}
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
@@ -76,7 +77,7 @@ spec:
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-apollo-admin-token
+                  name: {{ $coreSecret }}
                   key: APOLLO_ADMIN_TOKEN
             {{- if .Values.otel.enabled }}
             # OTEL Resource attributes

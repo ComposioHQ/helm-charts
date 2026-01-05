@@ -21,7 +21,7 @@ openAI:
   # -- Enable OpenAI integration
   enabled: true
   # -- Secret name containing OpenAI API key
-  secretRef: "openai-cred" 
+  secretRef: "composio-composio-secrets" 
   # -- Key name in the secret
   key: "API_KEY"
 
@@ -43,7 +43,7 @@ apollo:
   # Apollo database configuration
   database:
     urlSecret:
-      name: "external-postgres-secret"
+      name: "composio-composio-secrets"
       key: "url"
   # SMTP configuration for email notifications
   smtp:

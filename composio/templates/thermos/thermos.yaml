@@ -74,21 +74,22 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-thermos-config
           env:
+            {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-apollo-admin-token
+                  name: {{ $coreSecret }}
                   key: APOLLO_ADMIN_TOKEN
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.thermos.database.secretRef }}
-                  key: {{ .Values.thermos.database.key }}
+                  name: {{ $coreSecret }}
+                  key: THERMOS_DATABASE_URL
             - name: THERMOS_DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.thermos.database.secretRef }}
-                  key: {{ .Values.thermos.database.key }}
+                  name: {{ $coreSecret }}
+                  key: THERMOS_DATABASE_URL
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}
