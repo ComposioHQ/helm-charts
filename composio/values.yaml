@@ -1040,3 +1040,84 @@ frontend:
     host: ""
     # -- TLS configuration
     tls: []
+
+# Weaviate service configuration (vector database for search)
+weaviate:
+  # -- Enable Weaviate service
+  enabled: true
+  # -- Number of Weaviate pod replicas
+  replicaCount: 1
+  # Weaviate container image configuration
+  image:
+    # -- Weaviate image repository
+    repository: composio-self-host/weaviate
+    # -- Weaviate image tag
+    tag: "release-20251209_00"
+    # -- Image pull policy
+    pullPolicy: Always
+  # Weaviate service configuration
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- HTTP service port
+    port: 8080
+    # -- gRPC service port
+    grpcPort: 50051
+  # Weaviate authentication configuration
+  auth:
+    # -- Enable anonymous access (set to "false" for production)
+    anonymousAccess: "true"
+  # -- Default vectorizer module
+  vectorizer: "none"
+  # -- Enabled Weaviate modules
+  modules: "text2vec-openai,text2vec-cohere,text2vec-huggingface,ref2vec-centroid,generative-openai,qna-openai"
+  # Persistence configuration for Weaviate data
+  persistence:
+    # -- Enable persistent storage
+    enabled: true
+    # -- Size of persistent volume
+    size: "10Gi"
+    # -- Storage class name (empty for default)
+    storageClass: ""
+  # Liveness probe configuration
+  livenessProbe:
+    # -- Initial delay before first probe (seconds)
+    initialDelaySeconds: 60
+    # -- Probe interval (seconds)
+    periodSeconds: 30
+    # -- Probe timeout (seconds)
+    timeoutSeconds: 10
+    # -- Failure threshold
+    failureThreshold: 3
+  # Readiness probe configuration
+  readinessProbe:
+    # -- Initial delay before first probe (seconds)
+    initialDelaySeconds: 30
+    # -- Probe interval (seconds)
+    periodSeconds: 10
+    # -- Probe timeout (seconds)
+    timeoutSeconds: 5
+    # -- Failure threshold
+    failureThreshold: 3
+  # Resource requests and limits for Weaviate pods
+  resources:
+    requests:
+      # -- Memory request for Weaviate
+      memory: "2Gi"
+      # -- CPU request for Weaviate
+      cpu: "1"
+    limits:
+      # -- Memory limit for Weaviate
+      memory: "4Gi"
+      # -- CPU limit for Weaviate
+      cpu: "2"
+  # -- Node selector for pod placement
+  # nodeSelector: {}
+  # -- Tolerations for pod scheduling
+  # tolerations: []
+  # -- Affinity rules for pod placement
+  # affinity: {}
+  # -- Security context for Weaviate container
+  # securityContext: {}
+  # -- Additional environment variables
+  # env: []

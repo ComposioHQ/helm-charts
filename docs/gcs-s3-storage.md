@@ -151,3 +151,4 @@ You should see variables such as `S3_ENDPOINT`, `S3_ENDPOINT_URL`, `S3_FORCE_PAT
 - Do other services (Mercury/Thermos) need S3, or GCS?
   Apollo is the primary consumer of the S3 settings shown here. Composio operates fine without an S3 bucket as well, however, any toolkit
   functionality that depends on files (for ex., sending email with attachments, or fetching email with attachments, otherwise it won't work).
+
