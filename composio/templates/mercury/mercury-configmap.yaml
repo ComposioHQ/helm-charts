@@ -18,6 +18,7 @@ data:
   AWS_S3_ENDPOINT: "http://{{ .Release.Name }}-minio:9000"
   AWS_S3_ENDPOINT_URL: "http://{{ .Release.Name }}-minio:9000"
   AWS_S3_FORCE_PATH_STYLE: "true"
+  USE_APOLLO_GET_DOWNLOAD_URL_API: "true"
   {{- if .Values.otel.enabled }}
   OTEL_ENABLED: {{ .Values.otel.enabled | toString | quote }}
   OTEL_SERVICE_NAME: {{ .Values.otel.mercury.serviceName | default "mercury-openapi" | quote }}
@@ -28,7 +29,6 @@ data:
   OTEL_TRACES_ENABLED: {{ .Values.otel.traces.enabled | toString | quote }}
   OTEL_METRICS_ENABLED: {{ .Values.otel.metrics.enabled | toString | quote }}
   OTEL_METRIC_EXPORT_INTERVAL: {{ .Values.otel.metrics.exportInterval | toString | quote }}
-  USE_APOLLO_GET_DOWNLOAD_URL_API: "true"
   OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
   {{- end }}
 {{- end }}

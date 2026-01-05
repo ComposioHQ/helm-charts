@@ -22,6 +22,29 @@ apollo:
       eks.amazonaws.com/role-arn: "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<IAM_ROLE_NAME>"
 ```
 
+Ensure the IAM role’s trust policy allows the EKS OIDC provider and the service account to assume it. Example:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::519602868852:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/<OIDC_ID>"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.us-east-1.amazonaws.com/id/<OIDC_ID>:sub": "system:serviceaccount:composio:composio-apollo",
+          "oidc.eks.us-east-1.amazonaws.com/id/<OIDC_ID>:aud": "sts.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+```
+
 #### For GCP (Workload Identity)
 Add the following annotations to your `values.yaml` under `apollo.serviceAccount.annotations`:
 
