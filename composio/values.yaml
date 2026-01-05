@@ -143,6 +143,16 @@ apollo:
   #     drop:
   #       - ALL
   # Apollo DB init container configuration
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: true
+    # -- Name of the service account to create or use
+    name: "composio-apollo"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   dbInit:
     enabled: true
     image:
