@@ -1,10 +1,15 @@
 CREATE USER composio WITH PASSWORD 'devtesting123';
 
--- Create databases
-CREATE DATABASE composiodb OWNER composio;
-CREATE DATABASE temporal OWNER composio;
-CREATE DATABASE temporal_visibility OWNER composio;
-CREATE DATABASE thermosdb OWNER composio;
+CREATE DATABASE composiodb;
+CREATE DATABASE temporal;
+CREATE DATABASE temporal_visibility;
+CREATE DATABASE thermosdb;
+
+-- Then change ownership
+ALTER DATABASE composiodb OWNER TO composio;
+ALTER DATABASE temporal OWNER TO composio;
+ALTER DATABASE temporal_visibility OWNER TO composio;
+ALTER DATABASE thermosdb OWNER TO composio;
 
 -- Grant database creation privilege
 ALTER ROLE composio CREATEDB;
