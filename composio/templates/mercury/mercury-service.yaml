@@ -3,7 +3,7 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: {{ include "composio.fullname" . }}-mercury
-  namespace: {{ include "composio.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: mercury

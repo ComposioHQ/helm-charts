@@ -37,7 +37,7 @@ externalSecrets:
 # External Redis configuration (recommended for production)
 externalRedis:
   # -- Enable external Redis. Set to true to use an external Redis instance
-  enabled: true
+  enabled: false
   # -- Secret name containing Redis connection URL
   secretRef: "composio-composio-secrets"
   # -- Key name in the secret containing the Redis URL
@@ -46,7 +46,7 @@ externalRedis:
 # Internal Redis configuration (embedded Redis instance)
 redis:
   # -- Enable internal Redis. Set to false when using externalRedis
-  enabled: false
+  enabled: true
   # Redis authentication configuration
   auth:
     # -- Enable Redis authentication
@@ -86,7 +86,7 @@ redis:
 # OpenAI API configuration (required for Frontend, Mercury and Apollo)
 openAI:
   # -- Enable OpenAI integration
-  enabled: true
+  enabled: false
   # -- Secret name containing OpenAI API key
   secretRef: "composio-composio-secrets" 
   # -- Key name in the secret
@@ -186,7 +186,7 @@ apollo:
   # Object storage configuration (S3 or Azure Blob Storage)
   objectStorage:
     # -- Storage backend type (s3 or azure_blob_storage)
-    backend: "s3"
+    backend: ""
     # S3 access key configuration
     accessKey: 
       # -- Secret name containing S3 access key
@@ -435,7 +435,7 @@ temporal:
             # -- Database user
             user: "composio"
             # -- Secret name containing database password
-            existingSecret: "temporal-password-secret"
+            existingSecret: "composio-composio-secrets"
             # -- Maximum number of database connections
             maxConns: 20
             # -- Maximum number of idle connections
@@ -460,7 +460,7 @@ temporal:
             # -- Database user
             user: "composio"
             # -- Secret name containing database password
-            existingSecret: "temporal-password-secret"
+            existingSecret: "composio-composio-secrets"
             # -- Maximum number of database connections
             maxConns: 20
             # -- Maximum number of idle connections

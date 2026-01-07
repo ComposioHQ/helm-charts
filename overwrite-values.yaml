@@ -1,21 +1,12 @@
+# Check Helm docs for parameters
 global:
   registry: 
     name: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
   imagePullSecrets:
     - name: ecr-secret
-externalRedis:
-  enabled: true
-  secretRef: "redis-cred"
-  key: "url"
-    
   # OpenAI API configuration (required for Frontend, Mercury and Apollo)
 openAI:
-  # -- Enable OpenAI integration
-  enabled: true
-  # -- Secret name containing OpenAI API key
-  secretRef: "composio-composio-secrets" 
-  # -- Key name in the secret
-  key: "API_KEY"
+  enabled: false
 
 # Apollo service configuration (main API service)
 apollo:
@@ -59,14 +50,14 @@ temporal:
             port: 5432
             database: "temporal"
             user: "composio"
-            existingSecret: "temporal-password-secret"
+            existingSecret: "composio-composio-secrets"
         visibility:
           sql:
             host: "postgres-new.db"
             port: 5432
             database: "temporal_visibility"
             user: "composio"
-            existingSecret: "temporal-password-secret"
+            existingSecret: "composio-composio-secrets"
 # Mercury service configuration (OpenAPI tool execution service)
 mercury:
   enabled: true

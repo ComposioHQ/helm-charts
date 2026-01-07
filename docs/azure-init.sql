@@ -1,4 +1,4 @@
-CREATE USER composio WITH PASSWORD 'devtesting123';
+CREATE USER composio WITH PASSWORD '<DATABASE_PASSWORD>';
 
 -- Create databases
 CREATE DATABASE composiodb OWNER composio;

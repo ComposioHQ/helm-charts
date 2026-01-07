@@ -1,5 +1,5 @@
 -- Create user with necessary privileges
-CREATE USER composio WITH PASSWORD 'devtesting123';
+CREATE USER composio WITH PASSWORD '<DATABASE_PASSWORD>';
 ALTER USER composio WITH CREATEROLE CREATEDB;
 
 -- Grant Cloud SQL superuser role (required for GCP managed instances)

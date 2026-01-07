@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "composio.fullname" . }}-mercury
-  namespace: {{ include "composio.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: mercury

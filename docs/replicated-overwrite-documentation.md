@@ -58,6 +58,15 @@ temporal:
         default:
           driver: "sql"
           sql:
+            driver: "postgres12"
+            host: "<DATABASE HOST>"
+            port: 5432
+            database: "temporal"
+            user: "composio"
+            existingSecret: "composio-composio-secrets"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
             tls:
               enabled: true
               disableHostVerification: true
@@ -65,6 +74,15 @@ temporal:
         visibility:
           driver: "sql"
           sql:
+            driver: "postgres12"
+            host: "<DATABASE HOST>"
+            port: 5432
+            database: "temporal_visibility"
+            user: "composio"
+            existingSecret: "composio-composio-secrets"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
             tls:
               enabled: true
               disableHostVerification: true

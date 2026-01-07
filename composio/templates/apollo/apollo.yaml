@@ -91,7 +91,7 @@ spec:
                   name: {{ .Values.apollo.objectStorage.secretKey.secretName }}
                   key: {{ .Values.apollo.objectStorage.secretKey.key }}
             {{- end }}
-            {{- if eq (default "s3" .Values.apollo.objectStorage.backend) "azure_blob_storage" }}
+            {{- if eq .Values.apollo.objectStorage.backend "azure_blob_storage" }}
             - name: AZURE_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
