@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    troubleshoot.sh/kind: preflight
+  annotations:
+    kots.io/when: "true"
+  name: "{{ .Release.Name }}-preflight-resources"
+stringData:
+  preflight.yaml: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    metadata:
+      name: "{{ .Release.Name }}-preflight-resources"
+    spec:
+      collectors:
+        - clusterResources: {}
+        - clusterInfo: {}
+
+      analyzers:
+        # --- Apollo Service Resource Checks ---
+        - nodeResources:
+            checkName: "Apollo CPU Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(cpuAllocatable) < {{ .Values.apollo.resources.requests.cpu | default "1VCPU " }}"
+                  message: "Cluster does not have enough allocatable CPU for Apollo service (requires {{ .Values.apollo.resources.requests.cpu | default "1VCPU" }})."
+              - pass:
+                  message: "Cluster has sufficient CPU for Apollo service."
+
+        - nodeResources:
+            checkName: "Apollo Memory Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(memoryAllocatable) < {{ .Values.apollo.resources.requests.memory | default "5Gi" }}"
+                  message: "Cluster does not have enough allocatable memory for Apollo service (requires {{ .Values.apollo.resources.requests.memory | default "5Gi" }})."
+              - pass:
+                  message: "Cluster has sufficient memory for Apollo service."
+
+        # --- Thermos Service Resource Checks ---
+        - nodeResources:
+            checkName: "Thermos CPU Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(cpuAllocatable) < {{ .Values.thermos.resources.requests.cpu | default "2" }}"
+                  message: "Cluster does not have enough allocatable CPU for Thermos service (requires {{ .Values.thermos.resources.requests.cpu | default "2VCPU" }})."
+              - pass:
+                  message: "Cluster has sufficient CPU for Thermos service."
+
+        - nodeResources:
+            checkName: "Thermos Memory Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(memoryAllocatable) < {{ .Values.thermos.resources.requests.memory | default "4Gi" }}"
+                  message: "Cluster does not have enough allocatable memory for Apollo service (requires {{ .Values.thermos.resources.requests.memory | default "4Gi" }})."
+              - pass:
+                  message: "Cluster has sufficient memory for Thermos service."
+
+        # --- Mercury Service Resource Checks ---
+        - nodeResources:
+            checkName: "Thermos CPU Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(cpuAllocatable) < {{ .Values.mercury.resources.requests.cpu | default "1" }}"
+                  message: "Cluster does not have enough allocatable CPU for Mercury service (requires {{ .Values.mercury.resources.requests.cpu | default "1VCPU" }})."
+              - pass:
+                  message: "Cluster has sufficient CPU for Mercury service."
+
+        - nodeResources:
+            checkName: "Mercury Memory Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(memoryAllocatable) < {{ .Values.mercury.resources.requests.memory | default "2Gi" }}"
+                  message: "Cluster does not have enough allocatable memory for Apollo service (requires {{ .Values.mercury.resources.requests.memory | default "2Gi" }})."
+              - pass:
+                  message: "Cluster has sufficient memory for Mercury service."
+        {{- if .Values.frontend.enabled }} 
+        # --- Frontend Service Resource Checks ---
+        - nodeResources:
+            checkName: "Frontend CPU Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(cpuAllocatable) < {{ .Values.frontend.resources.requests.cpu | default "1" }}"
+                  message: "Cluster does not have enough allocatable CPU for Frontend service (requires {{ .Values.frontend.resources.requests.cpu | default "1VCPU" }})."
+              - pass:
+                  message: "Cluster has sufficient CPU for Frontend service."
+
+        - nodeResources:
+            checkName: "Frontend Memory Request - Cluster Capacity"
+            outcomes:
+              - fail:
+                  when: "sum(memoryAllocatable) < {{ .Values.frontend.resources.requests.memory | default "2Gi" }}"
+                  message: "Cluster does not have enough allocatable memory for Frontend service (requires {{ .Values.frontend.resources.requests.memory | default "2Gi" }})."
+              - pass:
+                  message: "Cluster has sufficient memory for Frontend service."
+        {{- end }}
+
