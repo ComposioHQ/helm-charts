@@ -65,3 +65,44 @@ data:
   SMTP_AUTHOR_EMAIL: {{ .Values.apollo.smtp.smtpAuthorEmail | quote }}
   S3_BUCKET: {{ .Values.apollo.s3Bucket | quote }}
   TEST_DEBUG: "true"
+  {{- if .Values.weaviate.enabled }}
+  WEAVIATE_URL: {{ printf "http://%s-weaviate:%d" .Release.Name (.Values.weaviate.service.port | default 8080) | quote }}
+  WEAVIATE_HOST: {{ printf "%s-weaviate" .Release.Name | quote }}
+  WEAVIATE_PORT: {{ .Values.weaviate.service.port | default 8080 | quote }}
+  WEAVIATE_COLLECTION: {{ .Values.apollo.search.weaviate.collection | default "ToolSchemas" | quote }}
+  {{- if .Values.apollo.search.weaviate.apiKey }}
+  WEAVIATE_API_KEY: {{ .Values.apollo.search.weaviate.apiKey | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.apollo.search.enabled }}
+  # Master Toggle
+  UNIFIED_SEARCH_ENABLED: {{ .Values.apollo.search.unified.enabled | default false | toString | quote }}
+  # Vector Store Provider Selection
+  {{- if .Values.weaviate.enabled }}
+  VECTOR_STORE_PROVIDER: {{ .Values.apollo.search.vectorStoreProvider | default "weaviate" | quote }}
+  {{- if .Values.apollo.search.unified.enabled }}
+  UNIFIED_VECTOR_STORE_PROVIDER: {{ .Values.apollo.search.unified.vectorStoreProvider | default "weaviate" | quote }}
+  {{- end }}
+  {{- end }}
+  # Embeddings Provider Configuration
+  {{- if .Values.openAI.enabled }}
+  EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.embeddings.provider | default "openai" | quote }}
+  EMBEDDINGS_MODEL: {{ .Values.apollo.search.embeddings.model | default "text-embedding-3-large" | quote }}
+  EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.embeddings.dimensions | default 1024 | toString | quote }}
+  {{- if .Values.apollo.search.unified.enabled }}
+  UNIFIED_EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.unified.embeddings.provider | default "openai" | quote }}
+  UNIFIED_EMBEDDINGS_MODEL: {{ .Values.apollo.search.unified.embeddings.model | default "text-embedding-3-large" | quote }}
+  UNIFIED_EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.unified.embeddings.dimensions | default 1024 | toString | quote }}
+  {{- end }}
+  {{- end }}
+  # Unified Search Index Configuration
+  {{- if .Values.apollo.search.unified.enabled }}
+  UNIFIED_VECTOR_STORE_INDEX_TOOL: {{ .Values.apollo.search.unified.indexTool | default "tool-lookup-jayesh-v6" | quote }}
+  UNIFIED_VECTOR_STORE_INDEX_PLAN: {{ .Values.apollo.search.unified.indexPlan | default "usecase_plans_prod" | quote }}
+  {{- end }}
+  # Reranker Configuration
+  RERANKER_MODEL: {{ .Values.apollo.search.reranker.model | default "gemini" | quote }}
+  {{- if .Values.apollo.search.reranker.openaiCompatBaseUrl }}
+  RERANKER_OPENAI_COMPAT_BASE_URL: {{ .Values.apollo.search.reranker.openaiCompatBaseUrl | quote }}
+  {{- end }}
+  {{- end }}

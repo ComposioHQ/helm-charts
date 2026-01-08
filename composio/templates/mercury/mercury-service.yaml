@@ -71,14 +71,6 @@ spec:
                   key: APOLLO_ADMIN_TOKEN
             - name: USE_APOLLO_GET_DOWNLOAD_URL_API
               value: "true"
-            {{- if .Values.weaviate.enabled }}
-            - name: WEAVIATE_URL
-              value: {{ printf "http://%s-weaviate:%d" .Release.Name (.Values.weaviate.service.port | default 8080) | quote }}
-            - name: WEAVIATE_HOST
-              value: {{ printf "%s-weaviate" .Release.Name | quote }}
-            - name: WEAVIATE_PORT
-              value: {{ .Values.weaviate.service.port | default 8080 | quote }}
-            {{- end }}
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
           {{- with .Values.mercury.volumeMounts }}
