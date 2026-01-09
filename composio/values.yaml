@@ -31,9 +31,20 @@ externalSecrets:
     server: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
     username: "AWS"
 
+# Database migration (This will create database required for Composio). You can find more details at https://github.com/ComposioHQ/helm-charts
+# Ensure the database user is named "composio" and it is superadmin 
+databaseMigration: 
+  image: "postgres:15-alpine"
+  enabled: true
+  host: "<DATABASE_HOST>"
+  port: "<DATABASE_PORT>"
+  user: "composio"
+  password:
+    secretRef: "composio-composio-secrets"
+    key: "password"
+
 # Global secrets configuration for development
 # All secrets will be auto-generated for security
-
 externalPostgreSQL:
   enabled: true
 
@@ -44,6 +55,9 @@ externalPostgreSQL:
 # 3. Provide Redis URL via: --set externalSecrets.redis.url="redis://user:pass@host:port/db"
 externalRedis:
   enabled: true
+  secretRef: "redispassword"
+  key: "url"
+    
     
 redis:
   # Note: Set enabled to false when using external Redis (externalRedis.enabled: true)
@@ -75,43 +89,6 @@ openAI:
   secretRef: "openai-cred" 
   key: "API_KEY"
 
-# SMTP_CONNECTION_STRING
-smtp: 
-  username: ""
-  host: ""
-  port: ""
-  password: 
-    secretRef: "smtppassword"
-    key: "password"
-
-# Credentials should be in same namespace
-database: 
-  apollo: 
-    database: ""
-    port: ""
-    sslmode: "require"
-    user: ""
-    host: ""
-    password: 
-      secretRef: "dbpassword"
-      key: "password"
-  thermos: 
-    database: ""
-    port: ""
-    sslmode: "require"
-    user: ""
-    host: ""
-    password: 
-      secretRef: "dbpassword"
-      key: "password"
-
-redisConnection:
-  username: ""
-  host: ""
-  port: ""
-  password: 
-    secretRef: "redispassword"
-    key: "password"
 
 
 # Apollo service configuration - Development
@@ -194,6 +171,8 @@ apollo:
   smtp:
     enabled: false
     smtpAuthorEmail: "admin@yourdomain.com"
+    secretRef: "<secretName>"
+    key: "SMTP_CONNECTION_STRING"
     # credentialsSecret: ""  # Optional: custom secret name (defaults to {release-name}-smtp-credentials)
   
   # Object storage configuration
@@ -363,10 +342,10 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "override_some_ip_address_here"
+            host: "<DATABASE_HOST>"
             port: 5432
             database: "temporal"
-            user: "postgres"
+            user: "composio"
             existingSecret: "external-postgres-secret"
             maxConns: 20
             maxIdleConns: 20
@@ -377,10 +356,10 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "override_some_ip_address_here"
+            host: "<DATABASE_HOST>"
             port: 5432
             database: "temporal_visibility"
-            user: "postgres"
+            user: "composio"
             existingSecret: "external-postgres-secret"
             maxConns: 20
             maxIdleConns: 20
@@ -556,7 +535,7 @@ serviceAccount:
 
 # OpenTelemetry configuration
 otel:
-  enabled: true
+  enabled: false
   exporter:
     otlp:
       # gRPC endpoint for OTLP (no protocol prefix needed for gRPC)
@@ -725,7 +704,7 @@ aws:
 # Mercury service configuration - Development
 mercury:
   enabled: true
-  useKnative: true
+  useKnative: false
   replicaCount: 1
   image:
     repository: composio-self-host/mercury
@@ -810,7 +789,7 @@ mercury:
 
 # Frontend service configuration - Development
 frontend:
-  enabled: false
+  enabled: true
   replicaCount: 1
   image:
     repository: composio-self-host/frontend

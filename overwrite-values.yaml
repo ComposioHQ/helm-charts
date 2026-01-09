@@ -1,0 +1,122 @@
+databaseMigration: 
+  image: "postgres:15-alpine"
+  enabled: true
+  host: "postgres-new.db"
+  port: "5432"
+  user: "composio"
+  password:
+    secretRef: "composio-composio-secrets"
+    key: "password"
+
+# Global secrets configuration for development
+# All secrets will be auto-generated for security
+externalPostgreSQL:
+  enabled: true
+
+# External Redis configuration
+# To use external Redis:
+# 1. Set externalRedis.enabled: true
+# 2. Set redis.enabled: false
+# 3. Provide Redis URL via: --set externalSecrets.redis.url="redis://user:pass@host:port/db"
+externalRedis:
+  enabled: true
+  secretRef: "redis-cred"
+  key: "url"
+    
+redis:
+  enabled: false
+
+openAI:
+  enabled: false
+  
+apollo:
+  replicaCount: 1
+  image:
+    repository: composio-self-host/apollo
+    tag: "release-20251209_00"
+  serviceAccount:
+    enabled: true
+    name: "composio-apollo"
+  dbInit:
+    enabled: true
+    image:
+      repository: composio-self-host/apollo-db-init
+      tag: "release-20251209_00"
+      pullPolicy: Always
+  # SMTP configuration
+  smtp:
+    enabled: false
+  objectStorage: # ServiceAccount based authentication is also supported. If using serviceAccount based auth provide dummy values
+    backend: "s3"
+    accessKey: 
+      secretName: "s3-cred"
+      key: "S3_ACCESS_KEY_ID"
+    secretKey: 
+      secretName: "s3-cred"
+      key: "S3_SECRET_ACCESS_KEY"
+
+thermos:
+  replicaCount: 1
+  image:
+    repository: composio-self-host/thermos
+    tag: "release-20251209_00"
+    pullPolicy: Always
+  dbInit:
+    enabled: true
+    image:
+      repository: composio-self-host/thermos-db-init
+      tag: "release-20251209_00"
+      pullPolicy: Always
+
+# VALUES File Will Change if Database has TLS configured
+# Temporal configuration - Using official helm chart as dependency with external PostgreSQL
+temporal:
+  fullnameOverride: "temporal-stack"
+  
+  server:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: temporalio/server
+      tag: 1.28.0
+      pullPolicy: IfNotPresent
+    
+    config:
+      logLevel: "info"
+      numHistoryShards: 512
+      persistence:
+        defaultStore: default
+        default:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            host: "postgres-new.db"
+            port: 5432
+            database: "temporal"
+            user: "composio"
+            existingSecret: "external-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+        
+        # Visibility database (will be created by schema setup)
+        visibility:
+          driver: "sql" 
+          sql:
+            driver: "postgres12"
+            host: "postgres-new.db"
+            port: 5432
+            database: "temporal_visibility"
+            user: "composio"
+            existingSecret: "external-postgres-secret"
+# OpenTelemetry configuration
+otel:
+  enabled: false
+# Frontend service configuration - Development
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: composio-self-host/frontend
+    tag: "release-20251209_00"
+    pullPolicy: Always
