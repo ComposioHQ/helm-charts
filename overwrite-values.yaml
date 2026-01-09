@@ -1,7 +1,7 @@
 databaseMigration: 
   image: "postgres:15-alpine"
   enabled: true
-  host: "postgres-new.db"
+  host: "<DATABASE_HOST>"
   port: "5432"
   user: "composio"
   password:
@@ -92,7 +92,7 @@ temporal:
             driver: "postgres12"
             host: "postgres-new.db"
             port: 5432
-            database: "temporal"
+            database: "<DATABASE_HOST>"
             user: "composio"
             existingSecret: "external-postgres-secret"
             maxConns: 20
@@ -104,7 +104,7 @@ temporal:
           driver: "sql" 
           sql:
             driver: "postgres12"
-            host: "postgres-new.db"
+            host: "<DATABASE_HOST>"
             port: 5432
             database: "temporal_visibility"
             user: "composio"
