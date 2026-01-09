@@ -239,6 +239,51 @@ apollo:
     # -- Number of pods to scale up at once
     scaleUpPods: 4
 
+  # Search System Configuration
+  search:
+    # -- Enable search system
+    enabled: true
+    # Vector Store Provider (when unified disabled)
+    vectorStoreProvider: "weaviate"  # Options: "turbopuffer", "weaviate"
+    # Embeddings Configuration
+    embeddings:
+      # -- Embeddings provider (openai, cohere, voyage)
+      provider: "openai"
+      # -- Embeddings model name
+      model: "text-embedding-3-large"  # Default OpenAI model
+      # -- Embedding vector dimensions
+      dimensions: 1024
+    # Unified Search Configuration
+    unified:
+      # -- Enable unified search
+      enabled: false
+      # -- Vector store provider for unified search
+      vectorStoreProvider: "weaviate"  # Options: "turbopuffer", "weaviate"
+      # Unified embeddings configuration
+      embeddings:
+        # -- Embeddings provider for unified search
+        provider: "openai"  # Options: "openai", "cohere", "voyage"
+        # -- Embeddings model for unified search
+        model: "text-embedding-3-large"  # Default OpenAI model
+        # -- Embedding dimensions for unified search
+        dimensions: 1024
+      # -- Index/collection name for tool search
+      indexTool: "tool-lookup-jayesh-v6"
+      # -- Index/collection name for plan search
+      indexPlan: "usecase_plans_prod"
+    # Weaviate Configuration
+    weaviate:
+      # -- Default collection name for Weaviate
+      collection: "ToolSchemas"
+      # -- Weaviate API key (optional, only needed for Weaviate Cloud)
+      # apiKey: ""
+    # Reranker Configuration
+    reranker:
+      # -- Reranker model (format: "provider:model" or just "gemini")
+      model: "gemini"  # Format: "provider:model" (e.g., "groq:openai/gpt-oss-120b", "openai:gpt-5-nano", "gemini:gemini-3-flash-preview")
+      # -- Custom base URL for OpenAI-compatible reranker APIs (optional)
+      # openaiCompatBaseUrl: ""
+
 # Thermos service configuration (workflow execution service)
 thermos:
   # -- Number of Thermos pod replicas
