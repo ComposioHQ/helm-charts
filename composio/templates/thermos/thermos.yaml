@@ -44,7 +44,7 @@ spec:
       {{- end }}
       containers:
         - name: thermos
-          image: "{{ .Values.global.registry.name }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
+          image: "{{ include "chart.registry" . }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
           imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
           command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"

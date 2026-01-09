@@ -33,7 +33,7 @@ spec:
       timeoutSeconds: {{ .Values.mercury.timeoutSeconds | default 300 }}
       containers:
         - name: mercury
-          image: "{{ .Values.global.registry.name }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
+          image: "{{ include "chart.registry" . }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
           {{- if and .Values.mercury.command (gt (len .Values.mercury.command) 0) }}
           command:

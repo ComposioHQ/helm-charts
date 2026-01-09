@@ -47,7 +47,7 @@ spec:
       {{- end }}
       containers:
         - name: frontend
-          image: "{{ .Values.global.registry.name }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          image: "{{ include "chart.registry" . }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:

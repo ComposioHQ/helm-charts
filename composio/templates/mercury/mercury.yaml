@@ -38,7 +38,7 @@ spec:
       {{- end }}
       containers:
         - name: mercury
-          image: "{{ .Values.global.registry.name }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag }}"
+          image: "{{ include "chart.registry" . }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag }}"
           imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.mercury.service.port | default 8080 }}

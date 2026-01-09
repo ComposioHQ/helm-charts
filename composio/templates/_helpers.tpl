@@ -313,3 +313,15 @@ composio: redis
     Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
 {{- end -}} 
+
+
+{{/*
+Replicated configuration
+*/}}
+{{- define "chart.registry" -}}
+{{- if .Values.replicated.enabled -}}
+{{- printf "%s/proxy/%s/%s" .Values.replicated.registry .Values.replicated.app  .Values.global.registry.name -}}
+{{- else -}}
+{{- .Values.global.registry.name -}}
+{{- end -}}
+{{- end -}}

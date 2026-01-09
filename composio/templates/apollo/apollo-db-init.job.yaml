@@ -44,7 +44,7 @@ spec:
       {{- end }}
       containers:
         - name: apollo-db-init
-          image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
+          image: "{{ include "chart.registry" . }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
           {{- with .Values.apollo.dbInit.containerSecurityContext }}
           securityContext:

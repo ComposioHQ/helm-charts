@@ -41,7 +41,7 @@ spec:
       {{- end }}
       containers:
         - name: thermos-db-init
-          image: "{{ .Values.global.registry.name }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
+          image: "{{ include "chart.registry" . }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
           imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
           {{- with .Values.thermos.dbInit.containerSecurityContext }}
           securityContext:

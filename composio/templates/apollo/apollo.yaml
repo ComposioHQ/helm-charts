@@ -50,7 +50,7 @@ spec:
       {{- end }}
       containers:
         - name: apollo
-          image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
+          image: "{{ include "chart.registry" . }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
           imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
           {{- with .Values.apollo.containerSecurityContext }}
           securityContext:

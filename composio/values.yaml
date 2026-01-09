@@ -9,6 +9,12 @@ namespace:
   # -- Name of the namespace where Composio services will be deployed (defaults to "composio" if not specified)
   name: "composio"
 
+# replicated based installation. This requires user to authenticate with replicated to download our helm chart. More info on replicated dashboard
+replicated: 
+  enabled: false
+  registry: proxy.replicated.com # Change for custom domain
+  app: "dev-silkworm"
+
 # Global configuration applied across all services
 global:
   # -- Environment name (e.g., development, staging, production)
