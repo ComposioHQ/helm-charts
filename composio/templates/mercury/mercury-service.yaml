@@ -25,9 +25,14 @@ spec:
         # Force new revision only when image changes
         composio.dev/image-tag: "{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
     spec:
+      {{- if .Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- end }}
+      {{- if not .Values.replicated.enabled }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
       {{- end }}
       containerConcurrency: {{ .Values.mercury.containerConcurrency | default 0 }}
       timeoutSeconds: {{ .Values.mercury.timeoutSeconds | default 300 }}

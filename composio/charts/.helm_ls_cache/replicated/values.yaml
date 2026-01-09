@@ -1,0 +1,318 @@
+# Default values for replicated.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings shared across multiple charts
+global:
+  imageRegistry: ""  # Optional registry override to use for all images
+  imagePullSecrets: [] # List of secrets containing docker registry credentials
+
+# Additional labels to add to all resources created by this chart
+# Useful for organizational or filtering purposes
+commonLabels: {}
+  # app.kubernetes.io/part-of: my-app
+  # environment: production
+
+# Additional annotations to add to all resources created by this chart
+commonAnnotations: {}
+  # example.com/annotation: value
+  # prometheus.io/scrape: "true"
+
+# Pod restart policy
+# Controls how pods are restarted when they exit or fail
+# Options: Always, OnFailure, Never
+restartPolicy: Always
+
+# Deprecated: Use .Values.image instead of .Values.images
+# The following properties for the Replicated SDK image are deprecated:
+#
+# images:
+#   replicated-sdk: ${REPLICATED_REGISTRY}/replicated/replicated-sdk:${REPLICATED_TAG}
+
+# Replicated SDK image properties
+# If .Values.images is set, it takes precedence over the following settings.
+image:
+  registry: proxy.replicated.com              # Registry where the image is hosted
+  repository: "library/replicated-sdk-image"  # Image repository
+  tag: "1.12.1"                                # Image tag, replaced in our pipeline
+  pullPolicy: IfNotPresent                    # Image pull policy: Always, IfNotPresent, Never
+
+# Additional labels to add to the pod template only
+# These will not be applied to other resources
+podLabels: {}
+  # example.com/custom-label: value
+
+# Additional environment variables for the container
+# Added as key-value pairs to the container specification
+extraEnv: []
+# - name: LOG_LEVEL
+#   value: "debug"
+# - name: API_KEY
+#   valueFrom:
+#     secretKeyRef:
+#       name: api-secrets
+#       key: api-key
+
+# Pod security context
+# Controls pod-level security attributes and common container settings
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+podSecurityContext:
+  runAsUser: 1001                # User ID to run all containers as
+  runAsGroup: 1001               # Group ID to run all containers as
+  fsGroup: 1001                  # Group ID for volume ownership
+  supplementalGroups: [1001]     # Additional groups for the pod
+  seccompProfile:
+    type: "RuntimeDefault"       # Seccomp profile type for syscall restriction
+
+# Container security context
+# Controls container-level security attributes and capabilities
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+containerSecurityContext:
+  runAsNonRoot: true                   # Ensures container doesn't run as root
+  readOnlyRootFilesystem: true         # Makes root filesystem read-only
+  allowPrivilegeEscalation: false      # Prevents privilege escalation
+  capabilities:
+    drop: ["ALL"]                      # Drops all Linux capabilities
+
+# Readiness probe configuration
+# Determines when the container is ready to serve traffic
+# Note: The scheme will automatically be set to HTTPS if tlsCertSecretName is provided
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+readinessProbe:
+  httpGet:                         # Uses HTTP GET request to check health
+    path: /healthz                 # Endpoint to query
+    port: 3000                     # Port to use
+    scheme: HTTP                   # Protocol (HTTP or HTTPS) - automatically set to HTTPS when TLS is enabled
+  failureThreshold: 3              # Number of failures before marking unready
+  initialDelaySeconds: 10          # Delay before first check
+  periodSeconds: 10                # How often to check
+  timeoutSeconds: 1                # Timeout for each check
+  successThreshold: 1              # Number of successes to mark as ready
+
+# Liveness probe configuration
+# Determines if the container is alive and should be restarted if unhealthy
+# Note: The scheme will automatically be set to HTTPS if tlsCertSecretName is provided
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+# Example configuration (no defaults provided - configure as needed):
+# livenessProbe:
+#   httpGet:                       # Uses HTTP GET request to check health
+#     path: /healthz               # Endpoint to query
+#     port: 3000                   # Port to use
+#     scheme: HTTP                 # Protocol (HTTP or HTTPS) - automatically set to HTTPS when TLS is enabled
+#   failureThreshold: 3            # Number of failures before restarting container
+#   initialDelaySeconds: 30        # Delay before first check
+#   periodSeconds: 10              # How often to check
+#   timeoutSeconds: 1              # Timeout for each check
+#   successThreshold: 1            # Number of successes to mark as healthy (must be 1 for liveness)
+livenessProbe: ~
+
+# Container resource requirements
+# Controls CPU and memory allocation for the container
+# Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+resources:
+  limits:                        # Maximum resources the container can use
+    cpu: 500m                    # 500 milliCPU = 0.5 CPU cores
+    memory: 500Mi                # 500 MiB memory
+  requests:                      # Minimum resources guaranteed to the container
+    cpu: 100m                    # 100 milliCPU = 0.1 CPU cores
+    memory: 100Mi                # 100 MiB memory
+
+# Init containers to run before the app container starts
+# Useful for setup tasks that must complete before the main app runs
+# Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+initContainers: []
+  # - name: init-myservice           # Wait for a service to be ready
+  #   image: busybox:latest
+  #   command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+  # - name: init-db                  # Wait for database to be ready
+  #   image: busybox:latest
+  #   command: ['sh', '-c', 'until nc -z -w1 postgresql 5432; do echo waiting for database; sleep 2; done;']
+
+# Extra volumes to add to the pod
+# Useful for mounting ConfigMaps, Secrets, or other storage
+# Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+extraVolumes: []
+  # - name: config-volume            # Mount a ConfigMap as a volume
+  #   configMap:
+  #     name: app-config
+  # - name: secret-volume            # Mount a Secret as a volume
+  #   secret:
+  #     secretName: app-secrets
+
+# Extra volume mounts to add to the container
+# Specifies where volumes should be mounted in the container
+extraVolumeMounts: []
+  # - name: config-volume            # Reference to a volume defined in extraVolumes
+  #   mountPath: /etc/app/config     # Path where volume should be mounted
+  #   readOnly: true                 # Whether the mount should be read-only
+  # - name: secret-volume
+  #   mountPath: /etc/app/secrets
+  #   readOnly: true
+
+# Use an existing secret instead of creating a new one
+existingSecret:
+  # Name of the existing secret to use
+  name: ""
+
+# Name of the service account to use
+# If not set and serviceAccount.create is true, a name is generated
+serviceAccountName: ""
+
+# Name of the cluster role to use
+# Only used if service account needs cluster-wide permissions
+clusterRole: ""
+
+# Image pull secrets for private registries
+# List of secrets containing docker registry credentials
+imagePullSecrets: []
+# - name: my-registry-secret
+
+# Override the chart name
+nameOverride: ""
+
+# Override the chart namespace
+namespaceOverride: ""
+
+# ConfigMap containing private CA certificates
+# Used to trust custom certificate authorities
+privateCAConfigmap: ~
+
+# Secret containing private CA certificates
+# Alternative to privateCAConfigmap
+privateCASecret: ~
+
+# Whether to automatically mount the service account token
+# Set to false to improve security when token is not needed
+automountServiceAccountToken: false
+
+# Use the host network namespace
+# Gives the pod access to the host's network interfaces
+hostNetwork: false
+
+# Use the host IPC namespace
+# Gives the pod access to the host's IPC mechanisms
+hostIPC: false
+
+# Host aliases for the pod's /etc/hosts file
+# Adds custom host-to-IP mappings
+hostAliases: []
+#  - ip: "192.168.1.10"
+#    hostnames:
+#    - "example.com"
+#    - "www.example.com"
+
+# Pod topology spread constraints
+# Controls how pods are distributed across the cluster
+# Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+topologySpreadConstraints: []
+#  - maxSkew: 1                      # Maximum difference between zones
+#    topologyKey: kubernetes.io/hostname  # Key to spread by (node, zone, etc)
+#    whenUnsatisfiable: DoNotSchedule     # What to do if constraint can't be met
+#    labelSelector:                       # Which pods to consider for spreading
+#      matchLabels:
+#        app.kubernetes.io/name: replicated-sdk
+
+# Pod priority class name
+# Sets the priority of the pod relative to other pods
+# Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+priorityClassName: ""
+
+# Name of the scheduler to use
+# Can be used to select a custom scheduler
+schedulerName: ""
+
+# Grace period for pod termination in seconds
+# How long to wait for pod to terminate gracefully before force killing
+terminationGracePeriodSeconds: 30
+
+# Node tolerations for pod scheduling
+# Allow pods to be scheduled on nodes with matching taints
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+tolerations: []
+# - key: "key"
+#   operator: "Equal"
+#   value: "value"
+#   effect: "NoSchedule"
+
+# Pod affinity/anti-affinity rules
+# Control which nodes the pod can be scheduled on
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+affinity: ~
+# podAntiAffinity:
+#   requiredDuringSchedulingIgnoredDuringExecution:
+#   - labelSelector:
+#       matchExpressions:
+#       - key: app.kubernetes.io/name
+#         operator: In
+#         values:
+#         - replicated-sdk
+#     topologyKey: "kubernetes.io/hostname"
+
+# Node selector for pod scheduling
+# Only schedule pods on nodes matching these labels
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+nodeSelector: {}
+# kubernetes.io/os: linux
+# node-type: worker
+
+# Service configuration
+# Controls how the pod is exposed
+# Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  type: ClusterIP    # Service type: ClusterIP, NodePort, LoadBalancer, ExternalName
+  port: 3000         # Port the service will be available on
+
+# "integration" mode related values.
+integration:
+  licenseID: ""
+  # enabled: false
+  mockData: ""
+
+isAirgap: false
+
+replicatedID: ""
+appID: ""
+
+# NOTE: The following values are typically injected by the Replicated Registry and should not be modified directly
+license: ""
+licenseFields: ""
+appName: ""
+channelID: ""
+channelName: ""
+channelSequence: -1
+releaseSequence: -1
+releaseCreatedAt: ""
+releaseNotes: ""
+versionLabel: ""
+parentChartURL: ""
+statusInformers: null
+replicatedAppEndpoint: ""
+releaseImages: []
+
+# Domain for the Replicated App Service - takes precedence over replicatedAppEndpoint if set
+# If not specified, the default domain "replicated.app" will be used
+# Should not include the protocol, just the domain name
+replicatedAppDomain: ""
+
+# TLS Certificate Secret Name - the name of the secret containing a TLS certificate and key
+# If not specified, TLS will not be enabled
+tlsCertSecretName: ""
+
+# Use a more restrictive RBAC policy for the Replicated SDK. This requires setting statusInformers directly
+# in order to generate the correct RBAC rules.
+minimalRBAC: false
+
+# Report all images running in the cluster, not just those in the releaseImages list
+# When true, the SDK will report every image+digest in the cluster regardless of the releaseImages filter
+# When false (default), only images matching the releaseImages list will be reported
+reportAllImages: false
+
+# Proxy configuration for outbound connections
+# Configure HTTPS proxy settings for the Replicated SDK
+# These values can also be set via global.replicated.httpsProxy and global.replicated.noProxy
+# when used as a subchart. Local values take precedence over global values.
+# Configuring noProxy should not be required in normal usage, as the SDK will 
+# automatically bypass the proxy when making requests to cluster APIs.
+proxy:
+  httpsProxy: ""   # HTTPS proxy URL (e.g., "https://proxy.example.com:8080")
+  noProxy: ""      # Comma-separated list of hosts to bypass proxy (e.g., "localhost,127.0.0.1")

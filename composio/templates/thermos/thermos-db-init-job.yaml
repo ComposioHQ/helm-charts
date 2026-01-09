@@ -18,9 +18,14 @@ spec:
         app: thermos-db-init
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- end }}
+      {{- if not .Values.replicated.enabled }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
       {{- end }}
       {{- with .Values.thermos.dbInit.podSecurityContext }}
       securityContext:
