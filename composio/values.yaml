@@ -34,6 +34,18 @@ externalSecrets:
     # -- ECR username (typically "AWS")
     username: "AWS" 
 
+# Database migration (This will create database required for Composio). You can find more details at https://github.com/ComposioHQ/helm-charts
+# Ensure the database user is named "composio" and it is superadmin 
+databaseMigration: 
+  image: "postgres:15-alpine"
+  enabled: false
+  host: "<DATABASE_HOST>"
+  port: "<DATABASE_PORT>"
+  user: "composio"
+  password:
+    secretRef: "composio-composio-secrets"
+    key: "password"
+
 # External Redis configuration (recommended for production)
 externalRedis:
   # -- Enable external Redis. Set to true to use an external Redis instance
