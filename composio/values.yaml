@@ -1125,7 +1125,7 @@ weaviate:
   # Persistence configuration for Weaviate data
   persistence:
     # -- Enable persistent storage
-    enabled: true
+    enabled: false
     # -- Size of persistent volume
     size: "10Gi"
     # -- Storage class name (empty for default)
