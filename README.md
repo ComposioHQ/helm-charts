@@ -25,14 +25,20 @@ For post-installation steps, please see the [Post-Installation Guide](./docs/pos
 
 Create the consolidated composio secret (contains APOLLO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, COMPOSIO_API_KEY, JWT_SECRET):
 
-```bash
-kubectl create secret generic <release>-composio-secrets \
-  --from-literal=APOLLO_ADMIN_TOKEN=<token> \
-  --from-literal=ENCRYPTION_KEY=<encryption-key> \
-  --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=<temporal-key> \
-  --from-literal=COMPOSIO_API_KEY=<api-key> \
-  --from-literal=JWT_SECRET=<jwt-secret> \
-  -n <namespace>
+
+```bash 
+kubectl create secret generic composio-composio-secrets \
+  --from-literal=APOLLO_ADMIN_TOKEN=dummy-token \
+  --from-literal=ENCRYPTION_KEY=dummy-key \
+  --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=dummy-key \
+  --from-literal=COMPOSIO_API_KEY=dummy-key \
+  --from-literal=JWT_SECRET=dummy-key \
+  --from-literal=POSTGRES_URL=postgresql://composio:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/composiodb?sslmode=disable \
+  --from-literal=THERMOS_DATABASE_URL=postgresql://composio:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/thermosdb?sslmode=disable \
+  --from-literal=OPENAI_API_KEY=dummy-key \
+  --from-literal=password=<DATABASE_PASSWORD> \
+  -n composio
+
 ```
 
 ## 🔄 Upgradation
