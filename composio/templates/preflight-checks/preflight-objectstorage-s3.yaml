@@ -1,3 +1,4 @@
+{{- if eq (.Values.apollo.objectStorage.backend) "s3" }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -51,3 +52,4 @@ stringData:
       collectors: []
       analyzers: []
       {{- end }}
+{{- end }}

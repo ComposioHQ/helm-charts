@@ -1,3 +1,4 @@
+{{- if eq (.Values.apollo.objectStorage.backend) "azure_blob_storage" }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -34,4 +35,4 @@ stringData:
       collectors: []
       analyzers: []
       {{- end }}
-
+{{- end }}
