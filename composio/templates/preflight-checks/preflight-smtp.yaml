@@ -1,4 +1,6 @@
 {{- if .Values.apollo.smtp.enabled }}
+{{- $smtpContext := dict "secretRef" .Values.apollo.smtp.secretRef "key" .Values.apollo.smtp.key "namespace" .Release.Namespace }}
+{{- $smtp := include "apollo.parseSmtpUrl" $smtpContext | fromJson }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -15,11 +17,10 @@ stringData:
       {{- if .Values.apollo.smtp.enabled }}
       collectors:
         - secret:
-            name: "{{ .Values.smtp.password.secretRef }}"
+            name: "{{ .Values.apollo.smtp.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "{{ .Values.smtp.password.key }}"
+            key: "{{ .Values.apollo.smtp.key }}"
             includeValue: false
-
         # Optional: basic TCP connectivity to SMTP host:port (does not validate auth)
         - runPod:
             collectorName: "check-smtp-tcp"
@@ -34,24 +35,22 @@ stringData:
                   args:
                     - |
                       apk add --no-cache busybox-extras >/dev/null 2>&1 || true
-                      if nc -vz -w 5 "{{ .Values.smtp.host }}" "{{ .Values.smtp.port }}"; then
+                      if nc -vz -w 5 "{{ $smtp.host }}" "{{ $smtp.port }}"; then
                         echo "RESULT=OK"
                       else
                         echo "RESULT=ERROR"
                       fi
-
       analyzers:
         - secret:
             checkName: "SMTP password source secret present"
-            secretName: "{{ .Values.smtp.password.secretRef }}"
+            secretName: "{{ .Values.apollo.smtp.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "{{ .Values.smtp.password.key }}"
+            key: "{{ .Values.apollo.smtp.key }}"
             outcomes:
               - fail:
-                  message: "Missing SMTP password Secret {{ .Values.smtp.password.secretRef }} or key {{ .Values.smtp.password.key }}."
+                  message: "Missing SMTP connection string Secret {{ .Values.apollo.smtp.secretRef }} or key {{ .Values.apollo.smtp.key }}."
               - pass:
-                  message: "Found SMTP password Secret."
-
+                  message: "Found SMTP connection string Secret."
         - textAnalyze:
             checkName: "SMTP host reachable (TCP)"
             fileName: "/check-smtp-tcp.log"
@@ -59,9 +58,9 @@ stringData:
             outcomes:
               - pass:
                   when: 'Result == "OK"'
-                  message: "SMTP {{ .Values.smtp.host }}:{{ .Values.smtp.port }} is reachable."
+                  message: "SMTP {{ $smtp.host }}:{{ $smtp.port }} is reachable."
               - fail:
-                  message: "Cannot reach SMTP {{ .Values.smtp.host }}:{{ .Values.smtp.port }} from the cluster."
+                  message: "Cannot reach SMTP {{ $smtp.host }}:{{ $smtp.port }} from the cluster."
       {{- else }}
       collectors: []
       analyzers: []

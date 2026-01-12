@@ -3,6 +3,7 @@ values-override.yaml
 values.override.yaml
 **/values-override.yaml
 **/values.override.yaml
+**/.helm_ls_cache
 
 # Local development overrides
 values.local.yaml

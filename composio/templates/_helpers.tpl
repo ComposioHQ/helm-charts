@@ -366,3 +366,77 @@ imagePullSecrets:
     {{- end }}
   {{- end }}
 {{- end -}}
+
+
+{{/*
+Parse SMTP connection string from secret
+Expects format: smtp://<username>:<password>@<host>:<port>
+Returns a map with keys: username, password, host, port
+Usage: 
+  {{- $smtp := include "apollo.parseSmtpUrl" (dict "secretRef" .Values.apollo.smtp.secretRef "key" .Values.apollo.smtp.key "namespace" .Release.Namespace) | fromJson }}
+  {{- $smtp.host }}
+  {{- $smtp.port }}
+*/}}
+{{- define "apollo.parseSmtpUrl" -}}
+{{- $secretRef := .secretRef -}}
+{{- $key := .key -}}
+{{- $namespace := .namespace -}}
+{{- $secret := lookup "v1" "Secret" $namespace $secretRef -}}
+{{- if $secret -}}
+  {{- $smtpUrl := index $secret.data $key | b64dec -}}
+  {{- /* Remove smtp:// prefix */ -}}
+  {{- $withoutScheme := regexReplaceAll "^smtp://" $smtpUrl "" -}}
+  {{- /* Split on @ to separate credentials from host:port */ -}}
+  {{- $parts := regexSplit "@" $withoutScheme -1 -}}
+  {{- if eq (len $parts) 2 -}}
+    {{- $credentials := index $parts 0 -}}
+    {{- $hostPort := index $parts 1 -}}
+    {{- /* Split credentials on : */ -}}
+    {{- $credParts := regexSplit ":" $credentials 2 -}}
+    {{- /* Split host:port on : */ -}}
+    {{- $hostPortParts := regexSplit ":" $hostPort 2 -}}
+    {{- if and (eq (len $credParts) 2) (eq (len $hostPortParts) 2) -}}
+      {{- $result := dict "username" (index $credParts 0) "password" (index $credParts 1) "host" (index $hostPortParts 0) "port" (index $hostPortParts 1) -}}
+      {{- $result | toJson -}}
+    {{- else -}}
+      {{- dict "error" "Invalid SMTP URL format" | toJson -}}
+    {{- end -}}
+  {{- else -}}
+    {{- dict "error" "Invalid SMTP URL format - missing @" | toJson -}}
+  {{- end -}}
+{{- else -}}
+  {{- dict "error" "Secret not found" | toJson -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get SMTP host from connection string
+*/}}
+{{- define "apollo.smtpHost" -}}
+{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
+{{- $smtp.host -}}
+{{- end -}}
+
+{{/*
+Get SMTP port from connection string
+*/}}
+{{- define "apollo.smtpPort" -}}
+{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
+{{- $smtp.port -}}
+{{- end -}}
+
+{{/*
+Get SMTP username from connection string
+*/}}
+{{- define "apollo.smtpUsername" -}}
+{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
+{{- $smtp.username -}}
+{{- end -}}
+
+{{/*
+Get SMTP password from connection string
+*/}}
+{{- define "apollo.smtpPassword" -}}
+{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
+{{- $smtp.password -}}
+{{- end -}}

@@ -36,7 +36,8 @@ kubectl create secret generic composio-composio-secrets \
   --from-literal=POSTGRES_URL=postgresql://composio:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/composiodb?sslmode=disable \
   --from-literal=THERMOS_DATABASE_URL=postgresql://composio:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/thermosdb?sslmode=disable \
   --from-literal=OPENAI_API_KEY=dummy-key \
-  --from-literal=password=<DATABASE_PASSWORD> \
+  --from-literal=password=<DATABASE_PASSWORD> \ 
+  --from-literal=SMTP_CONNECTION_STRING=<SMTP_URL>\
   -n composio
 
 ```
