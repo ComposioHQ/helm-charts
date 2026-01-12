@@ -185,7 +185,7 @@ apollo:
     # -- Email address for outgoing emails
     smtpAuthorEmail: "admin@yourdomain.com"
     # -- Secret reference containing SMTP connection string
-    secretRef: "connectionstring"
+    secretRef: "composio-composio-secrets"
     # -- Key name in the secret
     key: "SMTP_CONNECTION_STRING"   
   
