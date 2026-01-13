@@ -51,6 +51,10 @@ externalRedis:
     
 # Internal Redis configuration (embedded Redis instance)
 redis:
+  image:
+  registry: docker.io
+  repository: redis
+  tag: latest 
   # -- Enable internal Redis. Set to false when using externalRedis
   enabled: true
   # Redis authentication configuration
