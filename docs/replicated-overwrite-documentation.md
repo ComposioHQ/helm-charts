@@ -1,42 +1,56 @@
-# Overwrite Documentation 
+## Configuring overwrite-values.yaml before installation
 
-## Database Configuration Documentation
+### Step 0: Copy and review `overwrite-values.yaml`
 
-Review the [overwrite-values.yaml](https://github.com/ComposioHQ/helm-charts/blob/release-stable/overwrite-values.yaml) file for configuration options.
+1. Copy the base [overwrite-values.yaml](https://github.com/ComposioHQ/helm-charts/blob/release-stable/overwrite-values.yaml) file into your working directory
 
-If your database has TLS enabled, follow the documentation below and update your `overwrite-values.yaml` file accordingly.
+2. Open the copied `overwrite-values.yaml` file and:
+
+   * Review all configuration values
+   * Update database host, credentials, and any environment-specific settings
+   * Configure any required overrides for your setup
+
+3. While reviewing the file, determine **whether your database has TLS enabled**.
+
+   * You will use this information in **Step 1**.
+
+> ⚠️ Do not skip this step. All further configuration depends on values defined here.
+
+---
+
+### Step 1: Check if database TLS is enabled
+
+* **If TLS is disabled on your database:**
+  Skip the TLS section below and proceed directly to **Next Steps**.
+* **If TLS is enabled on your database:**
+  Continue to **Step 2** to configure TLS for Temporal.
 
 ---
 
 ## TLS Configuration for Temporal
 
-### Important Notes
+*(Only required if database TLS is enabled)*
 
-**If TLS is enabled on your database:**
-- You must complete the steps below to configure Temporal with TLS
-- Skipping these steps will cause the Helm installation to fail
+### Important notes
 
-**If TLS is disabled on your database:**
-- Skip this section and proceed directly to the Helm chart installation
+* If your database **has TLS enabled**, you **must** complete Steps 2–4 below.
+* Skipping these steps will cause the **Helm installation to fail**.
 
 ---
 
-### Configure TLS for Temporal
+### Step 2: Download the CA certificate
 
-Follow these steps to enable TLS for Temporal when connecting to a database with TLS enabled.
+Download the CA bundle so Temporal can establish a trusted TLS connection.
 
-#### Step 1: Download CA Certificate
-
-Download the CA bundle to establish a trusted connection.
-
-Example for AWS RDS:
-
+**Example (AWS RDS):**
 
 ```bash
 curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 ```
 
-#### Step 2: Create Kubernetes Secret
+---
+
+### Step 3: Create a Kubernetes secret with the CA certificate
 
 Create a Kubernetes secret containing the downloaded CA certificate:
 
@@ -46,9 +60,12 @@ kubectl create secret generic temporal-db-tls-secret \
   -n composio
 ```
 
-#### Step 3: Update Temporal Configuration
+---
 
-Add the following configuration to your `overwrite-values.yaml` file:
+### Step 4: Update `overwrite-values.yaml` with TLS settings
+
+Add the following configuration to your `overwrite-values.yaml` file
+(replace `"<DATABASE HOST>"` with your actual database host):
 
 ```yaml
 temporal:
@@ -87,19 +104,16 @@ temporal:
               enabled: true
               disableHostVerification: true
               caFile: /etc/certs/rds-ca.crt
+
   admintools:
-      additionalVolumes:
-        - name: temporal-db-tls
-          secret:
-            secretName: temporal-db-tls-secret
-      additionalVolumeMounts:
-        - name: temporal-db-tls
-          mountPath: /etc/certs
-          readOnly: true
+    additionalVolumes:
+      - name: temporal-db-tls
+        secret:
+          secretName: temporal-db-tls-secret
+    additionalVolumeMounts:
+      - name: temporal-db-tls
+        mountPath: /etc/certs
+        readOnly: true
 ```
 
 ---
-
-## Next Steps
-
-After completing the appropriate configuration steps above, proceed with the Helm chart installation.
