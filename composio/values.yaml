@@ -262,7 +262,7 @@ apollo:
     # Unified Search Configuration
     unified:
       # -- Enable unified search
-      enabled: false
+      enabled: true
       # -- Vector store provider for unified search
       vectorStoreProvider: "weaviate"  # Options: "turbopuffer", "weaviate"
       # Unified embeddings configuration
@@ -274,9 +274,9 @@ apollo:
         # -- Embedding dimensions for unified search
         dimensions: 1024
       # -- Index/collection name for tool search
-      indexTool: "tool-lookup-jayesh-v6"
+      indexTool: "ToolData"
       # -- Index/collection name for plan search
-      indexPlan: "usecase_plans_prod"
+      indexPlan: "UsecasePlans"
     # Weaviate Configuration
     weaviate:
       # -- Default collection name for Weaviate
@@ -286,9 +286,9 @@ apollo:
     # Reranker Configuration
     reranker:
       # -- Reranker model (format: "provider:model" or just "gemini")
-      model: "gemini"  # Format: "provider:model" (e.g., "groq:openai/gpt-oss-120b", "openai:gpt-5-nano", "gemini:gemini-3-flash-preview")
+      model: "openai:gpt-5.2"  # Format: "provider:model" (e.g., "groq:openai/gpt-oss-120b", "openai:gpt-5.2", "gemini:gemini-3-flash-preview")
       # -- Custom base URL for OpenAI-compatible reranker APIs (optional)
-      # openaiCompatBaseUrl: ""
+      openaiCompatBaseUrl: "https://api.openai.com/v1"
 
 # Thermos service configuration (workflow execution service)
 thermos:

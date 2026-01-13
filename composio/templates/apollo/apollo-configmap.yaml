@@ -97,12 +97,14 @@ data:
   {{- end }}
   # Unified Search Index Configuration
   {{- if .Values.apollo.search.unified.enabled }}
-  UNIFIED_VECTOR_STORE_INDEX_TOOL: {{ .Values.apollo.search.unified.indexTool | default "tool-lookup-jayesh-v6" | quote }}
-  UNIFIED_VECTOR_STORE_INDEX_PLAN: {{ .Values.apollo.search.unified.indexPlan | default "usecase_plans_prod" | quote }}
+  UNIFIED_VECTOR_STORE_INDEX_TOOL: {{ .Values.apollo.search.unified.indexTool | default "ToolData" | quote }}
+  UNIFIED_VECTOR_STORE_INDEX_PLAN: {{ .Values.apollo.search.unified.indexPlan | default "UsecasePlans" | quote }}
   {{- end }}
   # Reranker Configuration
-  RERANKER_MODEL: {{ .Values.apollo.search.reranker.model | default "gemini" | quote }}
+  RERANKER_MODEL: {{ .Values.apollo.search.reranker.model | default "openai:gpt-5.2" | quote }}
   {{- if .Values.apollo.search.reranker.openaiCompatBaseUrl }}
   RERANKER_OPENAI_COMPAT_BASE_URL: {{ .Values.apollo.search.reranker.openaiCompatBaseUrl | quote }}
+  {{- else }}
+  RERANKER_OPENAI_COMPAT_BASE_URL: "https://api.openai.com/v1"
   {{- end }}
   {{- end }}
