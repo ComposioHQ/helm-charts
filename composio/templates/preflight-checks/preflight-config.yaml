@@ -50,11 +50,13 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "THERMOS_DATABASE_URL"
             includeValue: false
+        {{ if .Values.externalRedis.enabled }}
         - secret:
             name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "REDIS_URL"
             includeValue: false
+        {{ end }}
 
       analyzers:
         # --- Chart-managed secrets ---
@@ -132,6 +134,7 @@ stringData:
                   message: "Missing {{ $coreSecret }} or key THERMOS_DATABASE_URL."
               - pass:
                   message: "Found {{ $coreSecret }} (THERMOS_DATABASE_URL)."
+        {{ if .Values.externalRedis.enabled }}
         - secret:
             checkName: "Redis URL present"
             secretName: "{{ $coreSecret }}"
@@ -142,3 +145,4 @@ stringData:
                   message: "Missing {{ $coreSecret }} or key REDIS_URL."
               - pass:
                   message: "Found {{ $coreSecret }} (REDIS_URL)."
+        {{ end }}

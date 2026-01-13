@@ -11,7 +11,7 @@ namespace:
 
 # replicated based installation. This requires user to authenticate with replicated to download our helm chart. More info on replicated dashboard
 replicated: 
-  enabled: false
+  enabled: true
   registry: proxy.replicated.com # Change for custom domain
   app: "dev-silkworm"
 
