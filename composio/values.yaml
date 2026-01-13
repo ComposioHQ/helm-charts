@@ -29,6 +29,16 @@ global:
   imagePullSecrets:
     - name: ecr-secret
 
+databaseMigration: 
+  image: "postgres:15-alpine"
+  enabled: true
+  host: "<DATABASE_HOST>"
+  port: "<DATABASE_PORT>"
+  user: "postgres"
+  password:
+    secretRef: "composio-composio-secrets"
+    key: "password"
+
 # External secrets configuration. Pass these during helm install using --set flags
 externalSecrets:
   # ECR authentication credentials
@@ -443,7 +453,7 @@ temporal:
             # -- Database name
             database: "temporal"
             # -- Database user
-            user: "composio"
+            user: "postgres"
             # -- Secret name containing database password
             existingSecret: "composio-composio-secrets"
             # -- Maximum number of database connections
@@ -468,7 +478,7 @@ temporal:
             # -- Database name
             database: "temporal_visibility"
             # -- Database user
-            user: "composio"
+            user: "postgres"
             # -- Secret name containing database password
             existingSecret: "composio-composio-secrets"
             # -- Maximum number of database connections

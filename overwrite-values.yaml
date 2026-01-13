@@ -9,6 +9,15 @@ openAI:
   enabled: false
 
 # Apollo service configuration (main API service)
+databaseMigration: 
+  image: "postgres:15-alpine"
+  enabled: true
+  host: "<DATABASE_HOST>"
+  port: "5432"
+  user: "postgres"
+  password:
+    secretRef: "composio-composio-secrets"
+    key: "password"
 apollo:
   # Apollo database initialization container
   dbInit:
@@ -18,24 +27,12 @@ apollo:
     urlSecret:
       name: "composio-composio-secrets"
       key: "url"
-  objectStorage:
-    backend: "s3"
-    accessKey: 
-      secretName: "s3-cred"
-      key: "S3_ACCESS_KEY_ID"
-    secretKey: 
-      secretName: "s3-cred"
-      key: "S3_SECRET_ACCESS_KEY"
 
 # Thermos service configuration (workflow execution service)
 thermos:
   database: 
     secretRef: "thermosdb"
     key: "uri"
-  # Thermos database initialization container
-  dbInit:
-    enabled: true
- 
 otel:
   enabled: false
 
@@ -46,18 +43,35 @@ temporal:
         default:
           driver: "sql"
           sql:
-            host: "<DATABASE HOST>"
+            host: "<DATABASE_HOST>"
             port: 5432
             database: "temporal"
-            user: "composio"
+            user: "postgres"
             existingSecret: "composio-composio-secrets"
+            # tls:
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
         visibility:
           sql:
-            host: "postgres-new.db"
+            host: "<DATABASE_HOST>"
             port: 5432
             database: "temporal_visibility"
-            user: "composio"
+            user: "postgres"
             existingSecret: "composio-composio-secrets"
+            # tls:
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
+  # admintools:
+  #   additionalVolumes:
+  #     - name: temporal-db-tls
+  #       secret:
+  #         secretName: temporal-db-tls-secret
+  #   additionalVolumeMounts:
+  #     - name: temporal-db-tls
+  #       mountPath: /etc/certs
+  #       readOnly: true
 # Mercury service configuration (OpenAPI tool execution service)
 mercury:
   enabled: true

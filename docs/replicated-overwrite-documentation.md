@@ -87,7 +87,7 @@ temporal:
               enabled: true
               disableHostVerification: true
               caFile: /etc/certs/rds-ca.crt
-    admintools:
+  admintools:
       additionalVolumes:
         - name: temporal-db-tls
           secret:

@@ -1,0 +1,90 @@
+{{- if .Values.databaseMigration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "composio.fullname" . }}-db-init-create
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      name: {{ include "composio.fullname" . }}-db-init-create
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: postgres-init
+        image: {{ .Values.databaseMigration.image }}
+        env:
+        - name: PGHOST
+          value: {{ .Values.databaseMigration.host | quote }}
+        - name: PGPORT
+          value: {{ .Values.databaseMigration.port | quote }}
+        - name: PGUSER
+          value: {{ .Values.databaseMigration.user | quote }}
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.databaseMigration.password.secretRef }}
+              key: {{ .Values.databaseMigration.password.key }}
+        - name: PGDATABASE
+          value: "postgres"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          cat <<'EOF' | psql
+          
+
+          -- Create databases
+          CREATE DATABASE composiodb;
+          CREATE DATABASE temporal;
+          CREATE DATABASE temporal_visibility;
+          CREATE DATABASE thermosdb;
+          
+          -- Alter Database 
+          ALTER DATABASE composiodb OWNER TO {{ .Values.databaseMigration.user }};
+          ALTER DATABASE temporal OWNER TO {{ .Values.databaseMigration.user }};
+          ALTER DATABASE temporal_visibility OWNER TO {{ .Values.databaseMigration.user }};
+          ALTER DATABASE thermosdb OWNER TO {{ .Values.databaseMigration.user }};
+
+          -- Grant privileges on thermosdb
+          \c thermosdb
+          GRANT ALL PRIVILEGES ON DATABASE thermosdb TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+
+          -- Grant privileges on composiodb
+          \c composiodb
+          GRANT ALL PRIVILEGES ON DATABASE composiodb TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+
+          -- Grant privileges on temporal
+          \c temporal
+          GRANT ALL PRIVILEGES ON DATABASE temporal TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+
+          -- Grant privileges on temporal_visibility
+          \c temporal_visibility
+          GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+
+          -- Grant database creation privilege
+          \c postgres
+          EOF
+{{- end }}
