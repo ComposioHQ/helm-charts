@@ -81,20 +81,19 @@ spec:
             periodSeconds: {{ .Values.weaviate.readinessProbe.periodSeconds | default 10 }}
             timeoutSeconds: {{ .Values.weaviate.readinessProbe.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.weaviate.readinessProbe.failureThreshold | default 3 }}
+          {{- if .Values.weaviate.persistence.enabled }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/weaviate
+          {{- end }}
           resources:
             {{- toYaml .Values.weaviate.resources | nindent 12 }}
+      {{- if .Values.weaviate.persistence.enabled }}
       volumes:
-        {{- if .Values.weaviate.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-weaviate-pvc
-        {{- else }}
-        - name: data
-          emptyDir: {}
-        {{- end }}
+      {{- end }}
 ---
 {{- if .Values.weaviate.persistence.enabled }}
 apiVersion: v1
