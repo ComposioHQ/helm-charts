@@ -65,6 +65,7 @@ data:
   SMTP_AUTHOR_EMAIL: {{ .Values.apollo.smtp.smtpAuthorEmail | quote }}
   S3_BUCKET: {{ .Values.apollo.s3Bucket | quote }}
   TEST_DEBUG: "true"
+  SIDECAR_FILE_CACHE_PATH: "/base/sidecar_export.json"
   {{- if .Values.weaviate.enabled }}
   WEAVIATE_URL: {{ printf "http://%s-weaviate:%v" .Release.Name (.Values.weaviate.service.port | default 8080) | quote }}
   WEAVIATE_HOST: {{ printf "%s-weaviate" .Release.Name | quote }}

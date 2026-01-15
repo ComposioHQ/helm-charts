@@ -158,8 +158,6 @@ spec:
                   name: {{ .Values.apollo.smtp.secretRef | default (printf "%s-smtp-credentials" .Release.Name) }}
                   key: {{ .Values.apollo.smtp.key }}
             {{- end }}
-            - name: SIDECAR_FILE_CACHE_PATH
-              value: "/base/sidecar_export.json"
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}
             {{- end }}
