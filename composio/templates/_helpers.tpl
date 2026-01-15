@@ -15,7 +15,7 @@ Expand the name of the chart.
 
 {{/* Core secret name shared by chart-managed secrets */}}
 {{- define "composio.coreSecretName" -}}
-{{- printf "%s-composio-secrets" .Release.Name -}}
+{{- printf "%s" .Values.secret.name -}}
 {{- end -}}
 
 

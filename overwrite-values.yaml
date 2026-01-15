@@ -1,40 +1,10 @@
-# Check Helm docs for parameters
-global:
-  registry: 
-    name: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
-  imagePullSecrets:
-    - name: ecr-secret
-  # OpenAI API configuration (required for Frontend, Mercury and Apollo)
-openAI:
-  enabled: false
-
-# Apollo service configuration (main API service)
+## Important Note
+## Please ensure `composio-composio-secret` is present. If you have changed the name, then please update `secret.name` and `existingSecret` in the Temporal configuration.
 databaseMigration: 
-  image: "postgres:15-alpine"
   enabled: true
   host: "<DATABASE_HOST>"
   port: "5432"
   user: "postgres"
-  password:
-    secretRef: "composio-composio-secrets"
-    key: "password"
-apollo:
-  # Apollo database initialization container
-  dbInit:
-    enabled: true
-  # Apollo database configuration
-  database:
-    urlSecret:
-      name: "composio-composio-secrets"
-      key: "url"
-
-# Thermos service configuration (workflow execution service)
-thermos:
-  database: 
-    secretRef: "thermosdb"
-    key: "uri"
-otel:
-  enabled: false
 
 temporal:
   server:
@@ -72,12 +42,3 @@ temporal:
   #     - name: temporal-db-tls
   #       mountPath: /etc/certs
   #       readOnly: true
-# Mercury service configuration (OpenAPI tool execution service)
-mercury:
-  enabled: true
-  useKnative: false
-  replicaCount: 1
-
-# Frontend service configuration (web UI)
-frontend:
-  enabled: false

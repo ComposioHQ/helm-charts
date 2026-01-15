@@ -2,6 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Composio Application Secrets
+secret:
+  name: "composio-composio-secrets"
 # Namespace configuration for Composio services
 namespace:
   # -- Whether to create namespaces automatically
@@ -36,7 +39,6 @@ databaseMigration:
   port: "<DATABASE_PORT>"
   user: "postgres"
   password:
-    secretRef: "composio-composio-secrets"
     key: "password"
 
 # External secrets configuration. Pass these during helm install using --set flags
@@ -183,15 +185,6 @@ apollo:
       # -- CPU limit for Apollo
       cpu: "1"
   
-  # Apollo database configuration
-  database:
-    # Database URL secret reference
-    urlSecret:
-      # -- Secret name containing database URL
-      name: "composio-composio-secrets"
-      # -- Key name in the secret
-      key: "POSTGRES_URL"
-  
   # SMTP configuration for email notifications
   smtp:
     # -- Enable SMTP
@@ -308,12 +301,6 @@ apollo:
 thermos:
   # -- Number of Thermos pod replicas
   replicaCount: 2
-  # Thermos database configuration
-  database: 
-    # -- Secret reference containing database URI
-    secretRef: "composio-composio-secrets"
-    # -- Key name in the secret
-    key: "THERMOS_DATABASE_URL"
   # Thermos container image configuration
   image:
     # -- Thermos image repository
@@ -1051,7 +1038,7 @@ mercury:
 # Frontend service configuration (web UI)
 frontend:
   # -- Enable frontend service
-  enabled: true
+  enabled: false
   # -- Number of frontend pod replicas
   replicaCount: 1
   # Frontend container image configuration

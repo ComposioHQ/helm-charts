@@ -29,7 +29,7 @@ spec:
         - name: PGPASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.databaseMigration.password.secretRef }}
+              name: {{ .Values.secret.name }}
               key: {{ .Values.databaseMigration.password.key }}
         - name: PGDATABASE
           value: "postgres"

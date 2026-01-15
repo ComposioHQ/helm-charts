@@ -1,0 +1,123 @@
+{{- if .Values.databaseMigration.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    troubleshoot.sh/kind: preflight
+  name: "{{ .Release.Name }}-preflight-postgres-config"
+stringData:
+  preflight.yaml: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    metadata:
+      name: "{{ .Release.Name }}-postgres-preflight"
+    spec:
+      {{- if .Values.databaseMigration.enabled }}
+      collectors:
+        # --- Source PostgreSQL secret referenced by your values ---
+        - secret:
+            name: "{{ .Values.secret.name }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.databaseMigration.password.key }}"
+            includeValue: false
+        # --- Validate PostgreSQL connection by real connection test ---
+        - runPod:
+            collectorName: "validate-postgres-connection"
+            namespace: "{{ .Release.Namespace }}"
+            timeout: 60s
+            podSpec:
+              restartPolicy: Never
+              containers:
+                - name: check
+                  image: postgres:15-alpine
+                  env:
+                    - name: PGHOST
+                      value: {{ .Values.databaseMigration.host | quote }}
+                    - name: PGPORT
+                      value: {{ .Values.databaseMigration.port | quote }}
+                    - name: PGUSER
+                      value: {{ .Values.databaseMigration.user | quote }}
+                    - name: PGPASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: "{{ .Values.secret.name }}"
+                          key: "{{ .Values.databaseMigration.password.key }}"
+                          optional: true
+                    - name: PGDATABASE
+                      value: "postgres"
+                  command: ["/bin/sh", "-c"]
+                  args:
+                    - |
+                      if [ -z "${PGPASSWORD:-}" ]; then
+                        echo "RESULT=MISSING_PASSWORD EXIT_CODE=1"
+                        exit 0
+                      fi
+                      if [ -z "${PGHOST:-}" ] || [ -z "${PGUSER:-}" ]; then
+                        echo "RESULT=MISSING_CONFIG EXIT_CODE=1"
+                        exit 0
+                      fi
+                      
+                      # Attempt to connect and run a simple query
+                      if psql -c "SELECT 1;" > /tmp/output 2>&1; then
+                        echo "RESULT=OK EXIT_CODE=0"
+                      else
+                        EXIT_CODE=$?
+                        ERROR=$(cat /tmp/output 2>/dev/null || echo "Unknown error")
+                        
+                        # Check for common errors
+                        if echo "${ERROR}" | grep -qi "authentication failed\|password authentication failed"; then
+                          echo "RESULT=AUTH_FAILED EXIT_CODE=${EXIT_CODE}"
+                        elif echo "${ERROR}" | grep -qi "could not translate host name\|could not connect\|Connection refused"; then
+                          echo "RESULT=CONNECTION_FAILED EXIT_CODE=${EXIT_CODE}"
+                        elif echo "${ERROR}" | grep -qi "database.*does not exist"; then
+                          echo "RESULT=DB_NOT_FOUND EXIT_CODE=${EXIT_CODE}"
+                        elif echo "${ERROR}" | grep -qi "role.*does not exist"; then
+                          echo "RESULT=USER_NOT_FOUND EXIT_CODE=${EXIT_CODE}"
+                        else
+                          echo "RESULT=ERROR EXIT_CODE=${EXIT_CODE}"
+                        fi
+                      fi
+      analyzers:
+        - secret:
+            checkName: "PostgreSQL password secret present"
+            secretName: "{{ .Values.secret.name }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.databaseMigration.password.key }}"
+            outcomes:
+              - fail:
+                  message: "Missing PostgreSQL password Secret {{ .Values.secret.name }} or key {{ .Values.databaseMigration.password.key }}."
+              - pass:
+                  message: "Found PostgreSQL password Secret {{ .Values.secret.name }} (key {{ .Values.databaseMigration.password.key }})."
+        - textAnalyze:
+            checkName: "PostgreSQL connection is valid"
+            fileName: "/validate-postgres-connection.log"
+            regexGroups: 'RESULT=(?P<Result>[A-Z_]+) EXIT_CODE=(?P<Code>\d+)'
+            outcomes:
+              - pass:
+                  when: "Result == OK"
+                  message: "PostgreSQL connection successful to {{ .Values.databaseMigration.host }}:{{ .Values.databaseMigration.port }}."
+              - fail:
+                  when: "Result == AUTH_FAILED"
+                  message: "PostgreSQL authentication failed. Check username ({{ .Values.databaseMigration.user }}) and password in secret {{ .Values.secret.name }}."
+              - fail:
+                  when: "Result == CONNECTION_FAILED"
+                  message: "Cannot connect to PostgreSQL at {{ .Values.databaseMigration.host }}:{{ .Values.databaseMigration.port }}. Check host, port, and network connectivity."
+              - fail:
+                  when: "Result == USER_NOT_FOUND"
+                  message: "PostgreSQL user '{{ .Values.databaseMigration.user }}' does not exist on the database server."
+              - fail:
+                  when: "Result == DB_NOT_FOUND"
+                  message: "PostgreSQL database 'postgres' does not exist. This is unusual and may indicate server misconfiguration."
+              - fail:
+                  when: "Result == MISSING_PASSWORD"
+                  message: "PostgreSQL password not found in secret {{ .Values.secret.name }}."
+              - fail:
+                  when: "Result == MISSING_CONFIG"
+                  message: "PostgreSQL connection configuration incomplete. Check host, port, and user values."
+              - fail:
+                  message: "PostgreSQL connection test failed"
+      {{- else }}
+      collectors: []
+      analyzers: []
+      {{- end }}
+{{- end }}
