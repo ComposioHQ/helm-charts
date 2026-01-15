@@ -1,9 +1,10 @@
+# Please replace DATABASE_HOST and DATABASE_USER
 databaseMigration: 
   image: "postgres:15-alpine"
   enabled: true
   host: "<DATABASE_HOST>"
   port: "5432"
-  user: "composio"
+  user: "<DATABASE_USER>" # Ensure this is a superuser 
   password:
     secretRef: "composio-composio-secrets"
     key: "password"
@@ -46,14 +47,6 @@ apollo:
   # SMTP configuration
   smtp:
     enabled: false
-  objectStorage: # ServiceAccount based authentication is also supported. If using serviceAccount based auth provide dummy values
-    backend: "s3"
-    accessKey: 
-      secretName: "s3-cred"
-      key: "S3_ACCESS_KEY_ID"
-    secretKey: 
-      secretName: "s3-cred"
-      key: "S3_SECRET_ACCESS_KEY"
 
 thermos:
   replicaCount: 1
@@ -93,8 +86,8 @@ temporal:
             host: "postgres-new.db"
             port: 5432
             database: "<DATABASE_HOST>"
-            user: "composio"
-            existingSecret: "external-postgres-secret"
+            user: "<DATABASE_USER>"
+            existingSecret: "composio-composio-secrets"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
@@ -107,8 +100,8 @@ temporal:
             host: "<DATABASE_HOST>"
             port: 5432
             database: "temporal_visibility"
-            user: "composio"
-            existingSecret: "external-postgres-secret"
+            user: "<DATABASE_USER>"
+            existingSecret: "composio-composio-secrets"
 # OpenTelemetry configuration
 otel:
   enabled: false

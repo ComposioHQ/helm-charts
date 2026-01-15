@@ -178,7 +178,7 @@ apollo:
   # Object storage configuration
   objectStorage:
     # Supported: "s3", "azure_blob_storage"
-    backend: "s3"
+    backend: ""
     accessKey: 
       secretName: "s3-cred"
       key: "S3_ACCESS_KEY_ID"

@@ -90,6 +90,8 @@ Run below sql queries before deploying helm chart
 
 Create composio user using below command 
 
+if you are using postgres user please skip creating new user
+
 ```sql
 CREATE USER composio WITH SUPERUSER CREATEDB PASSWORD '<DATABASE_PASSWORD_COMPOSIO_USER>';
 ```
@@ -103,11 +105,13 @@ kubectl create secret generic composio-composio-secrets \
   --from-literal=password="<DATABASE_PASSWORD_COMPOSIO_USER>" \
   -n composio
 
+#(Optional: If you want to enabled s3 for apollo)
 kubectl create secret generic s3-cred \
   --from-literal=S3_ACCESS_KEY_ID="dummy-access-key" \
   --from-literal=S3_SECRET_ACCESS_KEY="dummy-secret-key" \
   -n composio
 
+# External redis url
 kubectl create secret generic redis-cred \
   --from-literal=url="redis://redis-0.redis.db.svc.cluster.local:6379/0" \
   -n composio 
