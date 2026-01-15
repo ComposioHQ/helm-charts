@@ -4,6 +4,7 @@ values.override.yaml
 **/values-override.yaml
 **/values.override.yaml
 **/.helm_ls_cache
+values-internal.yaml
 
 # Local development overrides
 values.local.yaml

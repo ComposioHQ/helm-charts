@@ -19,7 +19,7 @@ data:
   TEMPORAL_BATCHED_POLLING_NAMESPACE: "batched-polling"
   DISABLE_TEMPORAL_TLS: "true"
   LAMBDA_USE_HTTP: "true"
-  LAMBDA_USE_HTTP_ENDPOINT: "http://{{ include "composio.fullname" . }}-mercury.composio.svc.cluster.local"
+  LAMBDA_USE_HTTP_ENDPOINT: "http://{{ include "composio.fullname" . }}-mercury.{{ .Release.Namespace }}.svc.cluster.local"
   AWS_LAMBDA_REGION: {{ .Values.aws.region | quote }}
   AWS_S3_REGION: {{ .Values.aws.region | quote }}
   AWS_S3_LAMBDA_BUCKET_NAME: {{ .Values.aws.s3.lambdaBucketName | quote }}

@@ -116,4 +116,64 @@ temporal:
         readOnly: true
 ```
 
+## Example CloudSQL - GCP 
+
+Create a new file gcp-cert.crt. Download `client-key.pem` `client-cert.pem` and `server-ca.pem` from CloudSQL
+
+server-ca.pem
+
+
+Create a Kubernetes secret containing the downloaded CA certificate:
+
+```bash
+kubectl create secret generic temporal-db-tls-secret \
+  --from-file=gcp-cert.crt=./gcp-cert.crt \
+  -n <NAMESPACE>
+```
+
+Update `overwrite-values.yaml` with TLS settings
+
+> NOTE: If you are using DATABASE_HOST IP please ensure `enableHostVerification` is set to false Or we recommend using CloudSQL proxy as a domain for DATABASE_HOST and in that case you can set `disableHostVerification` to true and remove enableHostVerification 
+
+```yaml
+temporal:
+  server:
+    config:
+      persistence:
+        default:
+          driver: "sql"
+          sql:
+            host: "192.168.1.1"
+            port: 5432
+            database: "temporal"
+            user: "postgres"
+            existingSecret: "composio-composio-secrets"
+            tls:
+              enabled: true
+              # disableHostVerification: true
+              enableHostVerification: false
+              caFile: /etc/certs/gcp-cert.crt
+        visibility:
+          sql:
+            host: "192.168.1.1"
+            port: 5432
+            database: "temporal_visibility"
+            user: "postgres"
+            existingSecret: "composio-composio-secrets"
+            tls:
+              enabled: true
+              enableHostVerification: false
+              # disableHostVerification: true
+              caFile: /etc/certs/gcp-cert.crt
+  admintools:
+    additionalVolumes:
+      - name: temporal-db-tls
+        secret:
+          secretName: temporal-db-tls-secret
+    additionalVolumeMounts:
+      - name: temporal-db-tls
+        mountPath: /etc/certs
+        readOnly: true
+```
+
 ---

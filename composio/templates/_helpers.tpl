@@ -217,7 +217,7 @@ Create the name of the service account to use
 Return the namespace to use for Composio services
 */}}
 {{- define "composio.namespace" -}}
-{{- default "composio" .Values.namespace.name }}
+{{- printf "%s" .Release.Namespace }}
 {{- end }}
 
 {{/*
