@@ -57,7 +57,7 @@ Create a Kubernetes secret containing the downloaded CA certificate:
 ```bash
 kubectl create secret generic temporal-db-tls-secret \
   --from-file=rds-ca.crt=./global-bundle.pem \
-  -n composio
+  -n <NAMESPACE>
 ```
 
 ---
