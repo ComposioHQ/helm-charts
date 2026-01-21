@@ -42,6 +42,9 @@ jobs:
           echo "✅ Tag: $TAG_NAME"
           echo "✅ Promote: $PROMOTE"
       
+      - name: Install yq
+        uses: mikefarah/yq@v4
+      
       - name: Install Replicated CLI
         run: |
           version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
@@ -72,7 +75,7 @@ jobs:
         id: version
         run: |
           cd ./composio
-          CURRENT_APPVERSION=$(grep '^appVersion:' ./Chart.yaml | awk '{print $2}' | tr -d '"')
+          CURRENT_APPVERSION=$(yq eval '.appVersion' ./Chart.yaml)
           NEW_APPVERSION=$(echo "$CURRENT_APPVERSION" | awk -F. '{$NF = $NF + 1} 1' OFS=.)
           echo "current=$CURRENT_APPVERSION" >> $GITHUB_OUTPUT
           echo "new=$NEW_APPVERSION" >> $GITHUB_OUTPUT
@@ -82,16 +85,18 @@ jobs:
       - name: Update Chart.yaml versions
         run: |
           cd ./composio
-          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.new }}\"/" ./Chart.yaml
-          sed -i "s/^version:.*/version: \"${{ steps.version.outputs.new }}\"/" ./Chart.yaml
+          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          yq eval -i '.appVersion = strenv(NEW_VERSION)' ./Chart.yaml
+          yq eval -i '.version = strenv(NEW_VERSION)' ./Chart.yaml
           echo "Updated Chart.yaml"
 
       - name: Update manifest versions
         run: |
           cd ./manifests
-          sed -i "s|^\s*app.kubernetes.io/version:.*|    app.kubernetes.io/version: \"${{ steps.version.outputs.new }}\"|" ./k8s-app.yaml
-          sed -i "s|^\([[:space:]]*\)version:.*|\1version: \"${{ steps.version.outputs.new }}\"|" ./k8s-app.yaml
-          sed -i "s|^\([[:space:]]*\)chartVersion:.*|\1chartVersion: ${{ steps.version.outputs.new }}|" ./composio.yaml
+          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          yq eval -i '.metadata.labels."app.kubernetes.io/version" = strenv(NEW_VERSION)' ./k8s-app.yaml
+          yq eval -i '.spec.descriptor.version = strenv(NEW_VERSION)' ./k8s-app.yaml
+          yq eval -i '.spec.chart.chartVersion = strenv(NEW_VERSION)' ./composio.yaml
           echo "Updated manifest files"
 
       - name: Clean old packages
@@ -138,6 +143,9 @@ jobs:
           echo "✅ Tag: $TAG_NAME"
           echo "✅ Promote: Stable"
       
+      - name: Install yq
+        uses: mikefarah/yq@v4
+      
       - name: Install Replicated CLI
         run: |
           version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
@@ -164,7 +172,7 @@ jobs:
         id: version
         run: |
           cd ./composio
-          CURRENT_APPVERSION=$(grep '^appVersion:' ./Chart.yaml | awk '{print $2}' | tr -d '"')
+          CURRENT_APPVERSION=$(yq eval '.appVersion' ./Chart.yaml)
           NEW_APPVERSION=$(echo "$CURRENT_APPVERSION" | awk -F. '{$NF = $NF + 1} 1' OFS=.)
           echo "current=$CURRENT_APPVERSION" >> $GITHUB_OUTPUT
           echo "new=$NEW_APPVERSION" >> $GITHUB_OUTPUT
@@ -174,16 +182,18 @@ jobs:
       - name: Update Chart.yaml versions
         run: |
           cd ./composio
-          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.new }}\"/" ./Chart.yaml
-          sed -i "s/^version:.*/version: \"${{ steps.version.outputs.new }}\"/" ./Chart.yaml
+          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          yq eval -i '.appVersion = strenv(NEW_VERSION)' ./Chart.yaml
+          yq eval -i '.version = strenv(NEW_VERSION)' ./Chart.yaml
           echo "Updated Chart.yaml"
 
       - name: Update manifest versions
         run: |
           cd ./manifests
-          sed -i "s|^\s*app.kubernetes.io/version:.*|    app.kubernetes.io/version: \"${{ steps.version.outputs.new }}\"|" ./k8s-app.yaml
-          sed -i "s|^\([[:space:]]*\)version:.*|\1version: \"${{ steps.version.outputs.new }}\"|" ./k8s-app.yaml
-          sed -i "s|^\([[:space:]]*\)chartVersion:.*|\1chartVersion: ${{ steps.version.outputs.new }}|" ./composio.yaml
+          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          yq eval -i '.metadata.labels."app.kubernetes.io/version" = strenv(NEW_VERSION)' ./k8s-app.yaml
+          yq eval -i '.spec.descriptor.version = strenv(NEW_VERSION)' ./k8s-app.yaml
+          yq eval -i '.spec.chart.chartVersion = strenv(NEW_VERSION)' ./composio.yaml
           echo "Updated manifest files"
 
       - name: Clean old packages
@@ -204,58 +214,46 @@ jobs:
           REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
           REPLICATED_APP: composio-rodent
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Create feature branch and commit changes
-        id: branch
-        run: |
-          BRANCH_NAME="release-${{ steps.version.outputs.new }}-$(date +%F)"
-          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          
-          git checkout -b "$BRANCH_NAME"
-          git add . 
-          git commit -m "chore: bump helm chart version to ${{ steps.version.outputs.new }}" || echo "No changes to commit"
-          git push origin "$BRANCH_NAME"
-
       - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ secrets.TOKEN_GITHUB_HELM }}
-        run: |
-          gh pr create \
-            --base release-stable \
-            --head "${{ steps.branch.outputs.branch }}" \
-            --title "Release: Helm Chart v${{ steps.version.outputs.new }}" \
-            --body "## Helm Chart Release
-          
-          This PR contains version updates for the Helm chart release.
-          
-          ### Changes
-          - **Previous Version:** ${{ steps.version.outputs.current }}
-          - **New Version:** ${{ steps.version.outputs.new }}
-          - **Release Tag:** ${{ steps.metadata.outputs.tag }}
-          - **Channel:** Stable
-          
-          ### Updated Files
-          - \`composio/Chart.yaml\` - Updated appVersion and version
-          - \`manifests/k8s-app.yaml\` - Updated app version
-          - \`manifests/composio.yaml\` - Updated chart version
-          - \`manifests/*.tgz\` - New Helm package
-          
-          ### Replicated Release
-          Created Replicated release with version ${{ steps.version.outputs.current }} and promoted to Stable channel.
-          
-          ---
-          *Automated PR created by Helm Chart Release workflow*" \
-            || echo "PR may already exist"
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.TOKEN_GITHUB_HELM }}
+          commit-message: "chore: bump helm chart version to ${{ steps.version.outputs.new }}"
+          branch: release-${{ steps.version.outputs.new }}-${{ github.run_number }}
+          base: release-stable
+          title: "Release: Helm Chart v${{ steps.version.outputs.new }}"
+          body: |
+            ## Helm Chart Release
+            
+            This PR contains version updates for the Helm chart release.
+            
+            ### Changes
+            - **Previous Version:** ${{ steps.version.outputs.current }}
+            - **New Version:** ${{ steps.version.outputs.new }}
+            - **Release Tag:** ${{ steps.metadata.outputs.tag }}
+            - **Channel:** Stable
+            
+            ### Updated Files
+            - `composio/Chart.yaml` - Updated appVersion and version
+            - `manifests/k8s-app.yaml` - Updated app version
+            - `manifests/composio.yaml` - Updated chart version
+            - `manifests/*.tgz` - New Helm package
+            
+            ### Replicated Release
+            Created Replicated release with version ${{ steps.version.outputs.current }} and promoted to Stable channel.
+            
+            ---
+            *Automated PR created by Helm Chart Release workflow*
+          labels: |
+            release
+            automated
+          assignees: ${{ github.actor }}
 
       - name: PR Summary
         run: |
           echo "### Helm Chart Release PR Created 🚀" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ steps.version.outputs.new }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ steps.branch.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** release-${{ steps.version.outputs.new }}-${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Target:** release-stable" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag:** ${{ steps.metadata.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
