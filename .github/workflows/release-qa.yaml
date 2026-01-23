@@ -60,7 +60,7 @@ jobs:
         run: |
           echo "🔧 Generating deployment values override..."
           cat > values-override.yaml << EOF
-           $VALUES_OVERRIDE
+          $VALUES_OVERRIDE
           EOF
 
       - name: Install Replicated CLI
@@ -100,15 +100,14 @@ jobs:
           REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }} 
           HELM_URL: ${{ secrets.HELM_REGISTRY }}
           REPLICATED_REGISTRY: ${{ secrets.REPLICATED_REGISTRY }}
-        run: | 
-          
-          helm registry login $REPLICATED_REGISTRY --username $REPLICATED_USERNAME --password $AUTH_TOKEN 
+        run: |
 
+          helm registry login $REPLICATED_REGISTRY --username $REPLICATED_USERNAME --password $AUTH_TOKEN 
           helm upgrade composio $HELM_URL  \
             --install \
             --create-namespace \
             --namespace composio \
-            --values values-override.yaml \
+            --values ./values-override.yaml \
             --wait \
             --timeout 20m \
             --version ${{ steps.get_version.outputs.unstable }} 
