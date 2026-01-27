@@ -14,51 +14,27 @@ Apollo reads SMTP credentials from a secret named `{release}-smtp-credentials` w
 Example (for release `composio` and namespace `composio`):
 
 ```bash
-kubectl create secret generic composio-smtp-credentials \
+kubectl create secret generic composio-composio-secrets \
   -n composio \
   --from-literal=SMTP_CONNECTION_STRING="smtp://<username>:<password>@<host>:<port>"
 ```
 OR reference the secret 
 
-```yaml 
-# SMTP_CONNECTION_STRING
-smtp: 
-  username: ""
-  host: ""
-  port: ""
-  password: 
-    secretRef: "smtppassword"
-    key: "password"
+```yaml
+ apollo: 
+    smtp:
+    enabled: false
+    smtpAuthorEmail: "admin@yourdomain.com"
+    secretRef: "composio-composio-secrets"
+    key: "SMTP_CONNECTION_STRING"   
 ```
 
 Notes:
 - If you want to use a custom secret name, set `apollo.smtp.credentialsSecret` accordingly (see step 2).
 - For Resend, the connection can look like: `smtp://resend:<API_KEY>@smtp.resend.com:2587`
 
-### 2) Set Helm Values
-Enable SMTP and configure the author email in your values override file:
 
-```yaml
-apollo:
-  smtp:
-    enabled: true
-    smtpAuthorEmail: "you@yourdomain.com"
-    # Optional: if you used a non-default secret name
-    # credentialsSecret: "my-custom-smtp-secret"
-  # Important for magic link URLs in emails
-  # Set this to your public frontend base URL
-  overwrite_fe_url: "https://your-frontend.example.com"
-```
-
-### 3) Deploy or Upgrade
-```bash
-helm upgrade --install composio ./composio \
-  -n composio \
-  --create-namespace \
-  -f values-override.yaml
-```
-
-### 4) Verify
+### 2) Verify
 ```bash
 # Check Apollo env contains SMTP variables
 kubectl exec -n composio deploy/composio-apollo -- env | grep SMTP

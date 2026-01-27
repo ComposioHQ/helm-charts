@@ -1,85 +1,57 @@
+# Installation Prerequisites
 
-Before installing the Helm chart, create the required Kubernetes secrets in the `composio` namespace. These secrets provide credentials and encryption keys needed by the platform and its dependencies.
+Please ensure you have the following before installation:
 
----
+1. Sufficient compute resources for the Composio Helm chart deployment. Check compute requirement docs [docs](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/prerequisites/compute.md).
 
-## Database Setup
+2. A self-hosted PostgreSQL database instance (Recommended version 17+)
 
-### Create PostgreSQL Databases and Users
+3. Kubernetes Namespace to install Composio Helm chart
 
-Below are the SQL queries for self hosted postgres. Check below docs for cloud managed database 
 
-1. [AWS RDS PostgreSQL](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/aws-init.sql)
-2. [GCP Cloud SQL PostgreSQL](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/gcp-init.sql)
-3. [Azure Flexible Server PostgreSQL](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/azure-init.sql
-)
 
-> **Kindly update the DATABASE_PASSWORD for composio user**
+# Kubernetes Secrets Configuration
 
-```sql
-CREATE USER composio WITH PASSWORD '<DATABASE_PASSWORD>';
+## Create Composio Application Secrets
 
--- Create databases
-CREATE DATABASE composiodb OWNER composio;
-CREATE DATABASE temporal OWNER composio;
-CREATE DATABASE temporal_visibility OWNER composio;
-CREATE DATABASE thermosdb OWNER composio;
+Replace the placeholder values:
 
--- Grant privileges on thermosdb
-\c thermosdb
-GRANT ALL PRIVILEGES ON DATABASE thermosdb TO composio;
-GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
-
--- Grant privileges on composiodb
-\c composiodb
-GRANT ALL PRIVILEGES ON DATABASE composiodb TO composio;
-GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
-
--- Grant privileges on temporal
-\c temporal
-GRANT ALL PRIVILEGES ON DATABASE temporal TO composio;
-GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
-
--- Grant privileges on temporal_visibility
-\c temporal_visibility
-GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO composio;
-GRANT ALL PRIVILEGES ON SCHEMA public TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO composio;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO composio;
-
--- Grant database creation privilege
-ALTER ROLE composio CREATEDB;
-```
-
----
-
-## Kubernetes Secrets Configuration
-
-### Step 1: Create Composio Application Secrets
-
-Replace the placeholder values with your actual tokens, keys, and connection strings:
-
+Based on your database configured change `sslmode=require` for **POSTGRES_URL** **THERMOS_DATABASE_URL**
 
 ```bash
 kubectl create secret generic composio-composio-secrets \
-  --from-literal=APOLLO_ADMIN_TOKEN=dummy-token \
-  --from-literal=ENCRYPTION_KEY=dummy-key \
-  --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=dummy-key \
-  --from-literal=COMPOSIO_API_KEY=dummy-key \
-  --from-literal=JWT_SECRET=dummy-key \
-  --from-literal=POSTGRES_URL=postgresql://composio:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/composiodb?sslmode=disable \
-  --from-literal=THERMOS_DATABASE_URL=postgresql://composio:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/thermosdb?sslmode=disable \
-  --from-literal=OPENAI_API_KEY=dummy-key \
-  --from-literal=password=<DATABASE_PASSWORD> \
-  -n composio
+  --from-literal=APOLLO_ADMIN_TOKEN=<CREATE_RANDOM_TOKEN-A> \
+  --from-literal=ENCRYPTION_KEY=<ENCRYPTION_KEY_FOR_DATABASE> \
+  --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=<ENCRYPTION_KEY_FOR_DATABASE_TEMPORAL> \
+  --from-literal=COMPOSIO_API_KEY=<CREATE_RANDOM_TOKEN-B> \
+  --from-literal=JWT_SECRET=<CREATE_RANDOM_TOKEN-C> \
+  --from-literal=POSTGRES_URL="postgresql://<DATABASE_USER>:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/composiodb?sslmode=require" \
+  --from-literal=THERMOS_DATABASE_URL="postgresql://<DATABASE_USER>:<DATABASE_PASSWORD>@<DATABASE_HOST>:5432/thermosdb?sslmode=require" \
+  --from-literal=password="<DATABASE_PASSWORD>" \
+  -n <RELEASE_NAMESPACE>
 ```
+
+**NOTE**: These secrets are required. The recommended secret name is `composio-composio-secret`. If you want to use another secret name, please reference it in your override values file as `secret.name: <your-custom-secret-name>`.
+
+**CRITICAL**: Please store the following keys securely. If they are lost, **all data will be permanently inaccessible**.
+
+## Sensitive Keys and Secrets
+1. **ENCRYPTION_KEY**  
+   Used by the Composio application for database encryption.
+2. **TEMPORAL_TRIGGER_ENCRYPTION_KEY**  
+   Used by Temporal for database encryption.
+3. **APOLLO_ADMIN_TOKEN**  
+   API token for the Composio Apollo application.
+4. **COMPOSIO_API_KEY**  
+   API key for Composio applications.
+5. **JWT_SECRET**  
+   Secret key used for signing and verifying JWT tokens.
+6. **POSTGRES_URL**  
+   Database connection URI for the Composio Apollo database.
+7. **THERMOS_DATABASE_URL**  
+   Database connection URI for the Composio Thermos database.
+8. **OPENAI_API_KEY**  
+   OpenAI API key.
+9. **password**  
+   Database password used by the Composio and Temporal applications.
+

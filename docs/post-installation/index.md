@@ -1,15 +1,3 @@
-### Step 5: Verify Installation
-```bash
-# Check all pods are running (may take 5-10 minutes)
-kubectl get pods -n composio
-
-# Verify Knative services
-kubectl get ksvc -n composio
-
-# Check Knative infrastructure
-kubectl get pods -n knative-serving
-```
-
 ### OpenTelemetry (OTEL) Configuration
 
 The chart includes built-in OpenTelemetry support for collecting metrics and traces from all services.
@@ -311,25 +299,6 @@ These secrets are created from environment variables you provide:
 | `{release}-composio-secrets` | `REDIS_URL` | Redis cache connection |
 | `{release}-composio-secrets` | `OPENAI_API_KEY` | OpenAI API integration |
 
-#### Helm-Managed Secrets
-These secrets are managed by Helm templates with existence checks:
-
-| Secret Name | Purpose | When Created |
-|-------------|---------|--------------|
-| `ecr-secret` | AWS ECR authentication | When `externalSecrets.ecr.token` is provided |
-| `{release}-support-bundle` | Troubleshoot.sh integration | When `supportBundle.enabled=true` |
-
-> **⚠️ CRITICAL: ENCRYPTION_KEY Security**
-> 
-> The `ENCRYPTION_KEY` is **CRITICAL** and **MUST NOT BE LOST**:
-> - **Encrypts database data**: All sensitive data in the database is encrypted with this key
-> - **Cannot be recovered**: If lost, encrypted data becomes permanently inaccessible
-> - **Must persist across deployments**: The same key must be used for all upgrades
-> - **Backup required**: Always backup this key before any deployment changes
-> - **Secure storage**: Store this key in a secure location (password manager, secure vault)
-> 
-> **If you lose the ENCRYPTION_KEY, you will lose access to all encrypted data in your database.**
-
 ### Retrieving Secrets
 
 #### List All Secrets
@@ -376,32 +345,6 @@ kubectl patch secret my-secret -n composio \
 kubectl delete secret my-secret -n composio
 ```
 
-### Secret Management Best Practices
-
-#### 1. Production Deployment
-- **Use external databases**: Always provide `POSTGRES_URL` for production
-- **Separate databases**: Use different databases for Apollo and Thermos
-- **External Redis**: Use `REDIS_URL` for better performance and persistence
-- **Backup secrets**: Keep secure backups of all generated secrets
-- **ENCRYPTION_KEY backup**: **CRITICAL** - Backup the ENCRYPTION_KEY immediately after first deployment
-
-#### 2. Development Setup
-- **Minimal configuration**: Only provide `POSTGRES_URL`, let script generate others
-- **Local databases**: Use local PostgreSQL instances for development
-- **Built-in services**: Use built-in Redis and MinIO for simplicity
-
-#### 3. Security Considerations
-- **Secret rotation**: Regularly rotate auto-generated secrets in production
-- **Access control**: Use RBAC to limit secret access
-- **External secret management**: Consider using AWS Secrets Manager or HashiCorp Vault
-- **Network policies**: Implement network policies to restrict secret access
-
-#### 4. Upgrade Strategy
-- **Secrets are preserved**: All secrets survive Helm upgrades
-- **New secrets**: Only new secrets are created, existing ones are never modified
-- **Backup before upgrade**: Always backup critical secrets before major upgrades
-- **Test upgrades**: Test secret management in non-production environments
-
 ## 🛠️ Troubleshooting
 
 > **Comprehensive troubleshooting guide**: Visit [troubleshooting page](https://composiohq.github.io/helm-charts/troubleshooting.html) for detailed solutions.
@@ -447,11 +390,6 @@ kubectl get secrets -n composio | grep -E "(composio-|external-|openai-)"
 # Verify secret contents (base64 encoded)
 kubectl get secret composio-composio-secrets -n composio -o yaml
 
-# Check secret setup script logs
-./secret-setup.sh -r composio -n composio --dry-run
-
-# Recreate missing secrets
-./secret-setup.sh -r composio -n composio
 ```
 
 #### Secret Access Issues
@@ -473,9 +411,6 @@ kubectl get secret composio-composio-secrets -n composio
 
 # Verify ENCRYPTION_KEY value (backup this!)
 kubectl get secret composio-composio-secrets -n composio -o jsonpath="{.data.ENCRYPTION_KEY}" | base64 -d
-
-# If ENCRYPTION_KEY is missing, recreate it (WARNING: This will make existing encrypted data inaccessible!)
-./secret-setup.sh -r composio -n composio
 
 # Check if pods can access ENCRYPTION_KEY
 kubectl exec -n composio deployment/composio-apollo -- env | grep ENCRYPTION_KEY
@@ -533,95 +468,4 @@ kubectl logs -n kube-system -l app=gke-ingress
 
 # Check firewall rules
 gcloud compute firewall-rules list --filter="name~composio"
-```
-
-#### Container Registry Issues
-```bash
-# Verify ECR access from GKE
-kubectl create secret docker-registry ecr-secret \
-  --docker-server=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com \
-  --docker-username=AWS \
-  --docker-password="$(aws ecr get-login-password --region us-east-1)" \
-  --namespace=composio --dry-run=client -o yaml
-
-# Test image pull
-kubectl run test-pull --image=AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo:v2.5 \
-  --dry-run=client -o yaml
-```
-
-### Resource Requirements
-
-#### Minimum Cluster Requirements
-- **Minimum**: 9 CPUs, 24GB RAM (based on actual resource requests)
-- **Recommended**: 12+ CPUs, 32GB RAM (for buffer and temporal)
-- **Storage**: 20GB minimum for persistent volumes
-
-#### Recommended Resource Limits (Per Service)
-
-| Service | CPU Request | Memory Request | CPU Limit | Memory Limit |
-|---------|-------------|----------------|-----------|--------------|
-| **Apollo** | 1 | 5Gi | 1 | 6Gi |
-| **MCP** | 1 | 5Gi | 1 | 6Gi |
-| **Thermos** | 2 | 4Gi | 2 | 5Gi |
-| **Mercury** | 1 | 2Gi | 2 | 4Gi |
-| **Minio** | 2 | 4Gi | 2 | 4Gi |
-| **Redis** (if enabled) | 2 | 4Gi | 2 | 4Gi |
-| **Temporal** | Default | Default | Default | Default |
-
-**Total Recommended Resources**: 9+ CPUs, 24+ GB RAM
-
-> **Note**: All values are configurable via values.yaml
-
-### 📚 Documentation
-
-- **Documentation Website**: https://composiohq.github.io/helm-charts/index.html
-- **Architecture Guide**: https://composiohq.github.io/helm-charts/architecture.html
-- **Configuration Reference**: https://composiohq.github.io/helm-charts/configuration.html
-- **Cloud Provider Guides**: https://composiohq.github.io/helm-charts/guides.html
-- **Troubleshooting**: https://composiohq.github.io/helm-charts/troubleshooting.html
-- **Secret Management**: [SECRETS.md](./SECRETS.md) - Detailed secret management documentation
-- **GCS via S3 Storage Guide**: [docs/gcs-s3-storage.md](./docs/gcs-s3-storage.md)
- - **SMTP Setup Guide**: [docs/smtp-setup.md](./docs/smtp-setup.md)
- - **Frontend Setup Guide**: [docs/frontend-setup.md](./docs/frontend-setup.md)
-- **Composio Docs**: https://docs.composio.dev
-- **GitHub**: https://github.com/composio/helm-charts
-- **Support**: https://discord.gg/composio
-
-
-### Uninstall Composio
-
-```bash
-# Uninstall Helm release
-helm uninstall composio -n composio
-
-# Delete namespace (optional)
-kubectl delete namespace composio
-```
-
-
-### Delete GKE Resources
-
-```bash
-# Delete Cloud SQL instance (optional)
-gcloud sql instances delete composio-postgres --quiet
-
-# Delete GKE cluster
-gcloud container clusters delete $CLUSTER_NAME --region=$REGION --quiet
-
-# Clean up local resources
-rm -rf ./composio/charts/ 
-rm -f ./composio/Chart.lock
-
-# Clean up environment variables
-unset PROJECT_ID REGION CLUSTER_NAME CLOUD_SQL_CONNECTION_NAME POSTGRES_IP
-```
-
-## 🔖 Version Compatibility
-
-| Composio Version | Knative Version | Kubernetes Version | GKE Version |
-|------------------|-----------------|-------------------|-------------|
-| 1.0.0 | 1.15.0 | 1.28+ | 1.28+ |
-
-Contact our team for enterprise support and advanced deployment configurations.
-
 ```
