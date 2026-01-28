@@ -12,6 +12,9 @@ features:
   # -- Enable triggers functionality (requires Temporal)
   # When set to true, also set temporal.enabled: true
   triggers: false
+  # -- Enable tool router functionality (requires Weaviate)
+  # When set to true, Weaviate will be deployed automatically
+  tool_router: false
 
 # Composio Application Secrets
 secret:
@@ -1126,8 +1129,6 @@ frontend:
 
 # Weaviate service configuration (vector database for search)
 weaviate:
-  # -- Enable Weaviate service
-  enabled: true
   # -- Number of Weaviate pod replicas
   replicaCount: 1
   # Weaviate container image configuration
