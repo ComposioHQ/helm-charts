@@ -48,35 +48,39 @@ spec:
         - |
           cat <<'EOF' | psql
 
-
           -- Create databases
-          CREATE DATABASE composiodb;
+          CREATE DATABASE {{ .Values.database.apolloDatabase }};
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           CREATE DATABASE temporal;
           CREATE DATABASE temporal_visibility;
-          CREATE DATABASE thermosdb;
+          {{- end }}
+          CREATE DATABASE {{ .Values.database.thermosDatabase }};
 
           -- Alter Database
-          ALTER DATABASE composiodb OWNER TO {{ .Values.database.adminUser }};
+          ALTER DATABASE {{ .Values.database.apolloDatabase }} OWNER TO {{ .Values.database.adminUser }};
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           ALTER DATABASE temporal OWNER TO {{ .Values.database.adminUser }};
           ALTER DATABASE temporal_visibility OWNER TO {{ .Values.database.adminUser }};
-          ALTER DATABASE thermosdb OWNER TO {{ .Values.database.adminUser }};
+          {{- end }}
+          ALTER DATABASE {{ .Values.database.thermosDatabase }} OWNER TO {{ .Values.database.adminUser }};
 
-          -- Grant privileges on thermosdb
-          \c thermosdb
-          GRANT ALL PRIVILEGES ON DATABASE thermosdb TO {{ .Values.database.adminUser }};
+          -- Grant privileges on {{ .Values.database.thermosDatabase }}
+          \c {{ .Values.database.thermosDatabase }}
+          GRANT ALL PRIVILEGES ON DATABASE {{ .Values.database.thermosDatabase }} TO {{ .Values.database.adminUser }};
           GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.database.adminUser }};
 
-          -- Grant privileges on composiodb
-          \c composiodb
-          GRANT ALL PRIVILEGES ON DATABASE composiodb TO {{ .Values.database.adminUser }};
+          -- Grant privileges on {{ .Values.database.apolloDatabase }}
+          \c {{ .Values.database.apolloDatabase }}
+          GRANT ALL PRIVILEGES ON DATABASE {{ .Values.database.apolloDatabase }} TO {{ .Values.database.adminUser }};
           GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.database.adminUser }};
 
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           -- Grant privileges on temporal
           \c temporal
           GRANT ALL PRIVILEGES ON DATABASE temporal TO {{ .Values.database.adminUser }};
@@ -92,6 +96,7 @@ spec:
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.database.adminUser }};
+          {{- end }}
 
           -- Grant database creation privilege
           \c postgres
