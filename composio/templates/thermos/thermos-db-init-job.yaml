@@ -54,23 +54,31 @@ spec:
           {{- end }}
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
-            # Thermos database URL
-            - name: POSTGRES_URL
+            # Thermos database configuration
+            - name: DATABASE_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: THERMOS_DATABASE_URL
-            # Keep DATABASE_URL for backward compatibility with Atlas
-            - name: DATABASE_URL
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.hostKey }}
+            - name: DATABASE_PORT
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: THERMOS_DATABASE_URL
-            - name: COMPOSIO_API_KEY
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.portKey }}
+            - name: DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: COMPOSIO_API_KEY
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.usernameKey }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.passwordKey }}
+            - name: DATABASE_NAME
+              value: {{ .Values.database.thermosDatabase | quote }}
+            - name: DATABASE_SSLMODE
+              value: {{ .Values.database.sslMode | quote }}
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
             {{- if .Values.thermos.dbInit.extraAtlasFlags }}
