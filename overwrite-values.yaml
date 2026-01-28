@@ -1,11 +1,26 @@
 ## Important Note
 ## Please ensure `composio-composio-secret` is present. If you have changed the name, then please update `secret.name` and `existingSecret` in the Temporal configuration.
-databaseMigration: 
-  enabled: true
-  host: "<DATABASE_HOST>"
-  port: "5432"
-  user: "postgres"
+database:
+  # -- Secret containing database credentials
+  secretRef: "composio-composio-secrets"
+  # -- Secret key for database host
+  hostKey: "DATABASE_HOST"
+  # -- Secret key for database port
+  portKey: "DATABASE_PORT"
+  # -- Secret key for database username
+  usernameKey: "DATABASE_USERNAME"
+  # -- Secret key for database password
+  passwordKey: "DATABASE_PASSWORD"
+  # -- Database admin username (used for SQL statements in init jobs, should match value in secret)
+  adminUser: "postgres"
+  # -- Database name for Apollo service
+  apolloDatabase: "composiodb"
+  # -- Database name for Thermos service
+  thermosDatabase: "thermosdb"
+  # -- SSL mode for database connections
+  sslMode: "require"
 
+# Please pass the DATABASE_HOST value below. 
 temporal:
   server:
     config:
