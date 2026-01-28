@@ -26,6 +26,7 @@ kubectl create secret generic composio-composio-secrets \
   --from-literal=DATABASE_PORT=5432 \
   --from-literal=DATABASE_USERNAME=<DATABASE_USER> \
   --from-literal=DATABASE_PASSWORD=<DATABASE_PASSWORD> \
+  --from-literal=password=<DATABASE_PASSWORD>
   -n <RELEASE_NAMESPACE>
 ```
 
