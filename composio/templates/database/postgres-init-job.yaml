@@ -51,14 +51,18 @@ spec:
 
           -- Create databases
           CREATE DATABASE composiodb;
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           CREATE DATABASE temporal;
           CREATE DATABASE temporal_visibility;
+          {{- end }}
           CREATE DATABASE thermosdb;
 
           -- Alter Database
           ALTER DATABASE composiodb OWNER TO {{ .Values.database.adminUser }};
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           ALTER DATABASE temporal OWNER TO {{ .Values.database.adminUser }};
           ALTER DATABASE temporal_visibility OWNER TO {{ .Values.database.adminUser }};
+          {{- end }}
           ALTER DATABASE thermosdb OWNER TO {{ .Values.database.adminUser }};
 
           -- Grant privileges on thermosdb
@@ -77,6 +81,7 @@ spec:
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.database.adminUser }};
 
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           -- Grant privileges on temporal
           \c temporal
           GRANT ALL PRIVILEGES ON DATABASE temporal TO {{ .Values.database.adminUser }};
@@ -92,6 +97,7 @@ spec:
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.database.adminUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.database.adminUser }};
+          {{- end }}
 
           -- Grant database creation privilege
           \c postgres

@@ -2,6 +2,17 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Feature flags for optional functionality
+# These control whether certain features (and their dependencies) are enabled
+# NOTE: When enabling auth_refresh or triggers, you must also set temporal.enabled=true
+features:
+  # -- Enable auth token refresh functionality (requires Temporal)
+  # When set to true, also set temporal.enabled: true
+  auth_refresh: false
+  # -- Enable triggers functionality (requires Temporal)
+  # When set to true, also set temporal.enabled: true
+  triggers: false
+
 # Composio Application Secrets
 secret:
   name: "composio-composio-secrets"
@@ -400,10 +411,14 @@ dbInit:
     restartPolicy: OnFailure
 
 # Temporal workflow engine configuration
+# Temporal is required when features.auth_refresh or features.triggers is enabled
+# When disabled, Temporal-dependent features will not be available
 temporal:
+  # -- Enable Temporal deployment. Set to true when features.auth_refresh or features.triggers is enabled
+  enabled: false
   # -- Override the full name of Temporal resources
   fullnameOverride: "temporal-stack"
-  
+
   # Temporal server configuration
   server:
     # -- Enable Temporal server

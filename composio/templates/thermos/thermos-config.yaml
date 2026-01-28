@@ -13,11 +13,13 @@ data:
   POLLING_TRIGGER_SLEEP: "60"
   REGISTRY_LOOKUP_CACHE_DIR: "/tmp/.lookup"
   SELF_HOSTED: "true"
+  {{- if eq (include "composio.temporalEnabled" .) "true" }}
   TEMPORAL_CLOUD_HOST_PORT: "temporal-stack-frontend:7233"
   TEMPORAL_CLOUD_NAMESPACE: "default"
   TEMPORAL_WEBHOOK_NAMESPACE: "webhook"
   TEMPORAL_BATCHED_POLLING_NAMESPACE: "batched-polling"
   DISABLE_TEMPORAL_TLS: "true"
+  {{- end }}
   LAMBDA_USE_HTTP: "true"
   LAMBDA_USE_HTTP_ENDPOINT: "http://{{ include "composio.fullname" . }}-mercury.{{ .Release.Namespace }}.svc.cluster.local"
   AWS_LAMBDA_REGION: {{ .Values.aws.region | quote }}
