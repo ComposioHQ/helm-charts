@@ -32,9 +32,13 @@ usage() {
     echo "  -d, --dry-run       Show what would be done without making actual changes"
     echo "  --skip-generated    Skip creating auto-generated secrets, only create user-provided ones"
     echo ""
+    echo -e "${YELLOW}Required Database Environment Variables stored in \${release}-composio-secrets:${NC}"
+    echo "  DATABASE_HOST        PostgreSQL database host"
+    echo "  DATABASE_PORT        PostgreSQL database port (default: 5432)"
+    echo "  DATABASE_USERNAME    PostgreSQL database username"
+    echo "  DATABASE_PASSWORD    PostgreSQL database password"
+    echo ""
     echo -e "${YELLOW}Optional Environment Variables stored in \${release}-composio-secrets:${NC}"
-    echo "  POSTGRES_URL         PostgreSQL connection URL for Apollo (postgresql://user:pass@host:port/db)"
-    echo "  THERMOS_POSTGRES_URL PostgreSQL connection URL for Thermos (postgresql://user:pass@host:port/db)"
     echo "  REDIS_URL            Redis connection URL (redis://user:pass@host:port/db)"
     echo "  OPENAI_API_KEY       OpenAI API key for AI functionality"
     echo "  AZURE_CONNECTION_STRING Azure Storage connection string for Apollo (when backend=azure)"
@@ -44,13 +48,14 @@ usage() {
     echo "  SMTP_SECRET_NAME     Optional. Overrides default secret name (\${release}-smtp-credentials)"
     echo ""
     echo -e "${YELLOW}Generated Secrets (auto-created if missing):${NC}"
-    echo "  • \${release}-composio-secrets (contains APOLLO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, COMPOSIO_API_KEY, JWT_SECRET, and optional user-provided URLs/keys)"
+    echo "  • \${release}-composio-secrets (contains COMPOSIO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, JWT_SECRET, and optional user-provided URLs/keys)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
-    echo "  # Setup with all external secrets"
-    echo "  POSTGRES_URL=\"postgresql://user:pass@apollo-db.example.com:5432/apollo\" \\"
-    echo "  THERMOS_POSTGRES_URL=\"postgresql://user:pass@thermos-db.example.com:5432/thermos\" \\"
-    echo "  REDIS_URL=\"redis://user:pass@redis.example.com:6379/0\" \\"
+    echo "  # Setup with database credentials"
+    echo "  DATABASE_HOST=\"db.example.com\" \\"
+    echo "  DATABASE_PORT=\"5432\" \\"
+    echo "  DATABASE_USERNAME=\"postgres\" \\"
+    echo "  DATABASE_PASSWORD=\"secretpassword\" \\"
     echo "  OPENAI_API_KEY=\"sk-1234567890abcdef...\" \\"
     echo "  $0 -r composio -n composio"
     echo ""
@@ -195,8 +200,10 @@ else
     if secret_exists "$CORE_SECRET_NAME"; then
         print_warning "Secret already exists: $CORE_SECRET_NAME"
         patch_fields=()
-        [[ -n "$POSTGRES_URL" ]] && patch_fields+=("\"POSTGRES_URL\":\"$POSTGRES_URL\"")
-        [[ -n "$THERMOS_POSTGRES_URL" ]] && patch_fields+=("\"THERMOS_DATABASE_URL\":\"$THERMOS_POSTGRES_URL\"")
+        [[ -n "$DATABASE_HOST" ]] && patch_fields+=("\"DATABASE_HOST\":\"$DATABASE_HOST\"")
+        [[ -n "$DATABASE_PORT" ]] && patch_fields+=("\"DATABASE_PORT\":\"$DATABASE_PORT\"")
+        [[ -n "$DATABASE_USERNAME" ]] && patch_fields+=("\"DATABASE_USERNAME\":\"$DATABASE_USERNAME\"")
+        [[ -n "$DATABASE_PASSWORD" ]] && patch_fields+=("\"DATABASE_PASSWORD\":\"$DATABASE_PASSWORD\"")
         [[ -n "$REDIS_URL" ]] && patch_fields+=("\"REDIS_URL\":\"$REDIS_URL\"")
         [[ -n "$OPENAI_API_KEY" ]] && patch_fields+=("\"OPENAI_API_KEY\":\"$OPENAI_API_KEY\"")
 
@@ -213,43 +220,43 @@ else
     else
         print_info "Creating consolidated core secret: $CORE_SECRET_NAME"
 
-        apollo_admin_token="$(get_secret_value "${RELEASE_NAME}-apollo-admin-token" "APOLLO_ADMIN_TOKEN")"
+        composio_admin_token="$(get_secret_value "${RELEASE_NAME}-composio-admin-token" "COMPOSIO_ADMIN_TOKEN")"
         encryption_key="$(get_secret_value "${RELEASE_NAME}-encryption-key" "ENCRYPTION_KEY")"
         temporal_encryption_key="$(get_secret_value "${RELEASE_NAME}-temporal-encryption-key" "TEMPORAL_TRIGGER_ENCRYPTION_KEY")"
-        composio_api_key="$(get_secret_value "${RELEASE_NAME}-composio-api-key" "COMPOSIO_API_KEY")"
         jwt_secret="$(get_secret_value "${RELEASE_NAME}-jwt-secret" "JWT_SECRET")"
 
-        [[ -z "$apollo_admin_token" ]] && apollo_admin_token="$(generate_random 32)"
+        [[ -z "$composio_admin_token" ]] && composio_admin_token="$(generate_random 32)"
         [[ -z "$encryption_key" ]] && encryption_key="$(generate_random 32)"
         [[ -z "$temporal_encryption_key" ]] && temporal_encryption_key="$(generate_random 32)"
-        [[ -z "$composio_api_key" ]] && composio_api_key="$(generate_random 32)"
         [[ -z "$jwt_secret" ]] && jwt_secret="$(generate_random 32)"
 
         if [[ "$DRY_RUN" == true ]]; then
             print_info "[DRY-RUN] Would create secret: $CORE_SECRET_NAME"
             print_info "kubectl create secret generic \"$CORE_SECRET_NAME\" \\"
-            print_info "  --from-literal=\"APOLLO_ADMIN_TOKEN=$apollo_admin_token\" \\"
+            print_info "  --from-literal=\"COMPOSIO_ADMIN_TOKEN=$composio_admin_token\" \\"
             print_info "  --from-literal=\"ENCRYPTION_KEY=$encryption_key\" \\"
             print_info "  --from-literal=\"TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key\" \\"
-            print_info "  --from-literal=\"COMPOSIO_API_KEY=$composio_api_key\" \\"
             print_info "  --from-literal=\"JWT_SECRET=$jwt_secret\" \\"
-            [[ -n "$POSTGRES_URL" ]] && print_info "  --from-literal=\"POSTGRES_URL=$POSTGRES_URL\" \\"
-            [[ -n "$THERMOS_POSTGRES_URL" ]] && print_info "  --from-literal=\"THERMOS_DATABASE_URL=$THERMOS_POSTGRES_URL\" \\"
+            [[ -n "$DATABASE_HOST" ]] && print_info "  --from-literal=\"DATABASE_HOST=$DATABASE_HOST\" \\"
+            [[ -n "$DATABASE_PORT" ]] && print_info "  --from-literal=\"DATABASE_PORT=$DATABASE_PORT\" \\"
+            [[ -n "$DATABASE_USERNAME" ]] && print_info "  --from-literal=\"DATABASE_USERNAME=$DATABASE_USERNAME\" \\"
+            [[ -n "$DATABASE_PASSWORD" ]] && print_info "  --from-literal=\"DATABASE_PASSWORD=$DATABASE_PASSWORD\" \\"
             [[ -n "$REDIS_URL" ]] && print_info "  --from-literal=\"REDIS_URL=$REDIS_URL\" \\"
             [[ -n "$OPENAI_API_KEY" ]] && print_info "  --from-literal=\"OPENAI_API_KEY=$OPENAI_API_KEY\" \\"
             print_info "  -n \"$NAMESPACE\""
         else
             create_args=(
                 kubectl create secret generic "$CORE_SECRET_NAME"
-                --from-literal="APOLLO_ADMIN_TOKEN=$apollo_admin_token"
+                --from-literal="COMPOSIO_ADMIN_TOKEN=$composio_admin_token"
                 --from-literal="ENCRYPTION_KEY=$encryption_key"
                 --from-literal="TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key"
-                --from-literal="COMPOSIO_API_KEY=$composio_api_key"
                 --from-literal="JWT_SECRET=$jwt_secret"
                 -n "$NAMESPACE"
             )
-            [[ -n "$POSTGRES_URL" ]] && create_args+=(--from-literal="POSTGRES_URL=$POSTGRES_URL")
-            [[ -n "$THERMOS_POSTGRES_URL" ]] && create_args+=(--from-literal="THERMOS_DATABASE_URL=$THERMOS_POSTGRES_URL")
+            [[ -n "$DATABASE_HOST" ]] && create_args+=(--from-literal="DATABASE_HOST=$DATABASE_HOST")
+            [[ -n "$DATABASE_PORT" ]] && create_args+=(--from-literal="DATABASE_PORT=$DATABASE_PORT")
+            [[ -n "$DATABASE_USERNAME" ]] && create_args+=(--from-literal="DATABASE_USERNAME=$DATABASE_USERNAME")
+            [[ -n "$DATABASE_PASSWORD" ]] && create_args+=(--from-literal="DATABASE_PASSWORD=$DATABASE_PASSWORD")
             [[ -n "$REDIS_URL" ]] && create_args+=(--from-literal="REDIS_URL=$REDIS_URL")
             [[ -n "$OPENAI_API_KEY" ]] && create_args+=(--from-literal="OPENAI_API_KEY=$OPENAI_API_KEY")
 

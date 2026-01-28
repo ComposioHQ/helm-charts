@@ -57,12 +57,31 @@ spec:
           {{- end }}
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
-            # Apollo database URL
-            - name: DATABASE_URL
+            # Apollo database configuration
+            - name: DATABASE_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: POSTGRES_URL
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.hostKey }}
+            - name: DATABASE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.portKey }}
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.usernameKey }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretRef }}
+                  key: {{ .Values.database.passwordKey }}
+            - name: DATABASE_NAME
+              value: {{ .Values.database.apolloDatabase | quote }}
+            - name: DATABASE_SSLMODE
+              value: {{ .Values.database.sslMode | quote }}
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
@@ -73,11 +92,6 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
-            - name: COMPOSIO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: COMPOSIO_API_KEY
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
           resources:
