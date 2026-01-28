@@ -1,4 +1,4 @@
-{{- if .Values.weaviate.enabled }}
+{{- if and .Values.features .Values.features.tool_router }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
