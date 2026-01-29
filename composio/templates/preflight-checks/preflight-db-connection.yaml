@@ -14,11 +14,16 @@ stringData:
     spec:
       {{- if .Values.databaseMigration.enabled }}
       collectors:
-        # --- Source PostgreSQL secret referenced by your values ---
+        # --- Source PostgreSQL secrets referenced by your values ---
         - secret:
-            name: "{{ .Values.secret.name }}"
+            name: "{{ .Values.database.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "{{ .Values.databaseMigration.password.key }}"
+            key: "{{ .Values.database.hostKey }}"
+            includeValue: false
+        - secret:
+            name: "{{ .Values.database.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.database.passwordKey }}"
             includeValue: false
         # --- Validate PostgreSQL connection by real connection test ---
         - runPod:
@@ -32,16 +37,28 @@ stringData:
                   image: postgres:15-alpine
                   env:
                     - name: PGHOST
-                      value: {{ .Values.databaseMigration.host | quote }}
+                      valueFrom:
+                        secretKeyRef:
+                          name: "{{ .Values.database.secretRef }}"
+                          key: "{{ .Values.database.hostKey }}"
+                          optional: true
                     - name: PGPORT
-                      value: {{ .Values.databaseMigration.port | quote }}
+                      valueFrom:
+                        secretKeyRef:
+                          name: "{{ .Values.database.secretRef }}"
+                          key: "{{ .Values.database.portKey }}"
+                          optional: true
                     - name: PGUSER
-                      value: {{ .Values.databaseMigration.user | quote }}
+                      valueFrom:
+                        secretKeyRef:
+                          name: "{{ .Values.database.secretRef }}"
+                          key: "{{ .Values.database.usernameKey }}"
+                          optional: true
                     - name: PGPASSWORD
                       valueFrom:
                         secretKeyRef:
-                          name: "{{ .Values.secret.name }}"
-                          key: "{{ .Values.databaseMigration.password.key }}"
+                          name: "{{ .Values.database.secretRef }}"
+                          key: "{{ .Values.database.passwordKey }}"
                           optional: true
                     - name: PGDATABASE
                       value: "postgres"
@@ -56,14 +73,14 @@ stringData:
                         echo "RESULT=MISSING_CONFIG EXIT_CODE=1"
                         exit 0
                       fi
-                      
+
                       # Attempt to connect and run a simple query
                       if psql -c "SELECT 1;" > /tmp/output 2>&1; then
                         echo "RESULT=OK EXIT_CODE=0"
                       else
                         EXIT_CODE=$?
                         ERROR=$(cat /tmp/output 2>/dev/null || echo "Unknown error")
-                        
+
                         # Check for common errors
                         if echo "${ERROR}" | grep -qi "authentication failed\|password authentication failed"; then
                           echo "RESULT=AUTH_FAILED EXIT_CODE=${EXIT_CODE}"
@@ -80,14 +97,14 @@ stringData:
       analyzers:
         - secret:
             checkName: "PostgreSQL password secret present"
-            secretName: "{{ .Values.secret.name }}"
+            secretName: "{{ .Values.database.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "{{ .Values.databaseMigration.password.key }}"
+            key: "{{ .Values.database.passwordKey }}"
             outcomes:
               - fail:
-                  message: "Missing PostgreSQL password Secret {{ .Values.secret.name }} or key {{ .Values.databaseMigration.password.key }}."
+                  message: "Missing PostgreSQL password Secret {{ .Values.database.secretRef }} or key {{ .Values.database.passwordKey }}."
               - pass:
-                  message: "Found PostgreSQL password Secret {{ .Values.secret.name }} (key {{ .Values.databaseMigration.password.key }})."
+                  message: "Found PostgreSQL password Secret {{ .Values.database.secretRef }} (key {{ .Values.database.passwordKey }})."
         - textAnalyze:
             checkName: "PostgreSQL connection is valid"
             fileName: "/validate-postgres-connection.log"
@@ -95,25 +112,25 @@ stringData:
             outcomes:
               - pass:
                   when: "Result == OK"
-                  message: "PostgreSQL connection successful to {{ .Values.databaseMigration.host }}:{{ .Values.databaseMigration.port }}."
+                  message: "PostgreSQL connection successful."
               - fail:
                   when: "Result == AUTH_FAILED"
-                  message: "PostgreSQL authentication failed. Check username ({{ .Values.databaseMigration.user }}) and password in secret {{ .Values.secret.name }}."
+                  message: "PostgreSQL authentication failed. Check username and password in secret {{ .Values.database.secretRef }}."
               - fail:
                   when: "Result == CONNECTION_FAILED"
-                  message: "Cannot connect to PostgreSQL at {{ .Values.databaseMigration.host }}:{{ .Values.databaseMigration.port }}. Check host, port, and network connectivity."
+                  message: "Cannot connect to PostgreSQL. Check host, port, and network connectivity."
               - fail:
                   when: "Result == USER_NOT_FOUND"
-                  message: "PostgreSQL user '{{ .Values.databaseMigration.user }}' does not exist on the database server."
+                  message: "PostgreSQL user does not exist on the database server."
               - fail:
                   when: "Result == DB_NOT_FOUND"
                   message: "PostgreSQL database 'postgres' does not exist. This is unusual and may indicate server misconfiguration."
               - fail:
                   when: "Result == MISSING_PASSWORD"
-                  message: "PostgreSQL password not found in secret {{ .Values.secret.name }}."
+                  message: "PostgreSQL password not found in secret {{ .Values.database.secretRef }}."
               - fail:
                   when: "Result == MISSING_CONFIG"
-                  message: "PostgreSQL connection configuration incomplete. Check host, port, and user values."
+                  message: "PostgreSQL connection configuration incomplete. Check host, port, and user values in secret."
               - fail:
                   message: "PostgreSQL connection test failed"
       {{- else }}

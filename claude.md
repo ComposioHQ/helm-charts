@@ -134,7 +134,7 @@ apollo:
 - `composio.name` - Chart name expansion
 - `composio.coreSecretName` - Core secret reference
 - `chart.registry` - Container registry formatting
-- Secret lookups: `apollo-admin-token`, `composio-api-key`, `encryption-key`, `jwt-secret`
+- Secret lookups: `composio-admin-token`, `encryption-key`, `jwt-secret`
 
 ## CI/CD Workflows
 

@@ -206,7 +206,10 @@ otel:
 #### External Services Configuration
 
 **Supported Environment Variables:**
-- `POSTGRES_URL`: PostgreSQL connection URL
+- `DATABASE_HOST`: PostgreSQL database host
+- `DATABASE_PORT`: PostgreSQL database port
+- `DATABASE_USERNAME`: PostgreSQL database username
+- `DATABASE_PASSWORD`: PostgreSQL database password
 - `REDIS_URL`: External Redis connection URL (optional, uses built-in Redis if not provided)
 - `OPENAI_API_KEY`: OpenAI API key for AI functionality (optional)
 
@@ -271,19 +274,20 @@ Composio uses a comprehensive secret management system that handles both auto-ge
 
 | Secret Name | Purpose | Key |
 |-------------|---------|-----|
-| `{release}-composio-secrets` | Consolidated chart-managed secrets | `APOLLO_ADMIN_TOKEN`, `ENCRYPTION_KEY`, `TEMPORAL_TRIGGER_ENCRYPTION_KEY`, `COMPOSIO_API_KEY`, `JWT_SECRET` |
+| `{release}-composio-secrets` | Consolidated chart-managed secrets | `COMPOSIO_ADMIN_TOKEN`, `ENCRYPTION_KEY`, `TEMPORAL_TRIGGER_ENCRYPTION_KEY`, `JWT_SECRET`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` |
 
 To create or rotate the consolidated secret manually:
 
 ```bash
 kubectl create secret generic <release>-composio-secrets \
-  --from-literal=APOLLO_ADMIN_TOKEN=<token> \
+  --from-literal=COMPOSIO_ADMIN_TOKEN=<token> \
   --from-literal=ENCRYPTION_KEY=<encryption-key> \
   --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=<temporal-key> \
-  --from-literal=COMPOSIO_API_KEY=<api-key> \
   --from-literal=JWT_SECRET=<jwt-secret> \
-  --from-literal=POSTGRES_URL=<postgres_url> \
-  --from-literal=THERMOS_DATABASE_URL=<thermos_database_url> \
+  --from-literal=DATABASE_HOST=<database_host> \
+  --from-literal=DATABASE_PORT=<database_port> \
+  --from-literal=DATABASE_USERNAME=<database_username> \
+  --from-literal=DATABASE_PASSWORD=<database_password> \
   # --from-literal=REDIS_URL=<redis_url> \
   --from-literal=OPENAI_API_KEY=<openai_api_key> \
   -n <namespace>
@@ -294,8 +298,10 @@ These secrets are created from environment variables you provide:
 
 | Secret Name | Environment Variable | Purpose |
 |-------------|---------------------|---------|
-| `{release}-composio-secrets` | `POSTGRES_URL` | Apollo database connection |
-| `{release}-composio-secrets` | `THERMOS_DATABASE_URL` | Thermos database connection |
+| `{release}-composio-secrets` | `DATABASE_HOST` | PostgreSQL database host |
+| `{release}-composio-secrets` | `DATABASE_PORT` | PostgreSQL database port |
+| `{release}-composio-secrets` | `DATABASE_USERNAME` | PostgreSQL database username |
+| `{release}-composio-secrets` | `DATABASE_PASSWORD` | PostgreSQL database password |
 | `{release}-composio-secrets` | `REDIS_URL` | Redis cache connection |
 | `{release}-composio-secrets` | `OPENAI_API_KEY` | OpenAI API integration |
 
@@ -378,8 +384,12 @@ kubectl logs -n composio deployment/composio-apollo
 kubectl get secret composio-composio-secrets -n composio
 
 # Test database connection manually
+DB_HOST=$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.DATABASE_HOST}' | base64 -d)
+DB_PORT=$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.DATABASE_PORT}' | base64 -d)
+DB_USER=$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.DATABASE_USERNAME}' | base64 -d)
+DB_PASS=$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.DATABASE_PASSWORD}' | base64 -d)
 kubectl run -it --rm debug --image=postgres:15 --restart=Never -- \
-  psql "$(kubectl get secret composio-composio-secrets -n composio -o jsonpath='{.data.POSTGRES_URL}' | base64 -d)"
+  psql "postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/composiodb"
 ```
 
 #### Secret Management Issues

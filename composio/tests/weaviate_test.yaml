@@ -2,16 +2,16 @@ suite: test weaviate deployment
 templates:
   - weaviate/weaviate.yaml
 tests:
-  - it: should not create resources when weaviate is disabled
+  - it: should not create resources when tool_router is disabled
     set:
-      weaviate.enabled: false
+      features.tool_router: false
     asserts:
       - hasDocuments:
           count: 0
 
-  - it: should create weaviate deployment when enabled
+  - it: should create weaviate deployment when tool_router is enabled
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
     documentIndex: 0
@@ -27,7 +27,7 @@ tests:
 
   - it: should have correct replica count
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.replicaCount: 2
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
@@ -39,7 +39,7 @@ tests:
 
   - it: should use correct image
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: my-weaviate
       weaviate.image.tag: "1.24.0"
       weaviate.image.pullPolicy: IfNotPresent
@@ -54,7 +54,7 @@ tests:
 
   - it: should have correct port configuration
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.service.port: 8080
@@ -76,7 +76,7 @@ tests:
 
   - it: should have liveness probe
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
     documentIndex: 0
@@ -90,7 +90,7 @@ tests:
 
   - it: should have readiness probe
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
     documentIndex: 0
@@ -104,7 +104,7 @@ tests:
 
   - it: should have rolling update strategy
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
     documentIndex: 0
@@ -121,7 +121,7 @@ tests:
 
   - it: should include image pull secrets when configured
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       global.imagePullSecrets:
@@ -134,7 +134,7 @@ tests:
 
   - it: should have correct resource limits
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.resources:
@@ -155,7 +155,7 @@ tests:
 
   - it: should configure authentication environment variables
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.auth.anonymousAccess: "false"
@@ -169,7 +169,7 @@ tests:
 
   - it: should configure vectorizer and modules
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.vectorizer: "text2vec-openai"
@@ -189,7 +189,7 @@ tests:
 
   - it: should apply node selector when configured
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.nodeSelector:
@@ -202,7 +202,7 @@ tests:
 
   - it: should apply tolerations when configured
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.tolerations:
@@ -222,7 +222,7 @@ tests:
 
   - it: should apply security context when configured
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.securityContext:
@@ -239,7 +239,7 @@ tests:
 
   - it: should mount persistence volume when enabled
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: true
@@ -264,7 +264,7 @@ templates:
 tests:
   - it: should not create PVC when persistence is disabled
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: false
@@ -274,7 +274,7 @@ tests:
 
   - it: should create PVC when persistence is enabled
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: true
@@ -288,7 +288,7 @@ tests:
 
   - it: should configure PVC storage size
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: true
@@ -301,7 +301,7 @@ tests:
 
   - it: should configure PVC storage class
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: true
@@ -317,9 +317,9 @@ suite: test weaviate service
 templates:
   - weaviate/weaviate.yaml
 tests:
-  - it: should create weaviate service when enabled
+  - it: should create weaviate service when tool_router is enabled
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: true
@@ -336,7 +336,7 @@ tests:
 
   - it: should have correct service type and ports
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: true
@@ -363,7 +363,7 @@ tests:
 
   - it: should have correct selector labels
     set:
-      weaviate.enabled: true
+      features.tool_router: true
       weaviate.image.repository: test-weaviate
       weaviate.image.tag: "v1.0.0"
       weaviate.persistence.enabled: true

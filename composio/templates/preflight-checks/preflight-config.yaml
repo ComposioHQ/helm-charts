@@ -18,12 +18,7 @@ stringData:
         - secret:
             name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "APOLLO_ADMIN_TOKEN"
-            includeValue: false
-        - secret:
-            name: "{{ $coreSecret }}"
-            namespace: "{{ .Release.Namespace }}"
-            key: "COMPOSIO_API_KEY"
+            key: "COMPOSIO_ADMIN_TOKEN"
             includeValue: false
         - secret:
             name: "{{ $coreSecret }}"
@@ -35,20 +30,32 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "JWT_SECRET"
             includeValue: false
+        {{- if eq (include "composio.temporalEnabled" .) "true" }}
         - secret:
             name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
             includeValue: false
+        {{- end }}
         - secret:
-            name: "{{ $coreSecret }}"
+            name: "{{ .Values.database.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "POSTGRES_URL"
+            key: "{{ .Values.database.hostKey }}"
             includeValue: false
         - secret:
-            name: "{{ $coreSecret }}"
+            name: "{{ .Values.database.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "THERMOS_DATABASE_URL"
+            key: "{{ .Values.database.portKey }}"
+            includeValue: false
+        - secret:
+            name: "{{ .Values.database.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.database.usernameKey }}"
+            includeValue: false
+        - secret:
+            name: "{{ .Values.database.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.database.passwordKey }}"
             includeValue: false
         {{ if .Values.externalRedis.enabled }}
         - secret:
@@ -61,26 +68,15 @@ stringData:
       analyzers:
         # --- Chart-managed secrets ---
         - secret:
-            checkName: "Apollo admin token secret present"
+            checkName: "Composio admin token secret present"
             secretName: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "APOLLO_ADMIN_TOKEN"
+            key: "COMPOSIO_ADMIN_TOKEN"
             outcomes:
               - fail:
-                  message: "Missing {{ $coreSecret }} or key APOLLO_ADMIN_TOKEN."
+                  message: "Missing {{ $coreSecret }} or key COMPOSIO_ADMIN_TOKEN."
               - pass:
-                  message: "Found {{ $coreSecret }} (APOLLO_ADMIN_TOKEN)."
-
-        - secret:
-            checkName: "Composio API key secret present"
-            secretName: "{{ $coreSecret }}"
-            namespace: "{{ .Release.Namespace }}"
-            key: "COMPOSIO_API_KEY"
-            outcomes:
-              - fail:
-                  message: "Missing {{ $coreSecret }} or key COMPOSIO_API_KEY."
-              - pass:
-                  message: "Found {{ $coreSecret }} (COMPOSIO_API_KEY)."
+                  message: "Found {{ $coreSecret }} (COMPOSIO_ADMIN_TOKEN)."
 
         - secret:
             checkName: "Encryption key secret present"
@@ -104,6 +100,7 @@ stringData:
               - pass:
                   message: "Found {{ $coreSecret }} (JWT_SECRET)."
 
+        {{- if eq (include "composio.temporalEnabled" .) "true" }}
         - secret:
             checkName: "Temporal encryption key secret present"
             secretName: "{{ $coreSecret }}"
@@ -114,26 +111,47 @@ stringData:
                   message: "Missing {{ $coreSecret }} or key TEMPORAL_TRIGGER_ENCRYPTION_KEY."
               - pass:
                   message: "Found {{ $coreSecret }} (TEMPORAL_TRIGGER_ENCRYPTION_KEY)."
+        {{- end }}
         - secret:
-            checkName: "Apollo Postgres URL present"
-            secretName: "{{ $coreSecret }}"
+            checkName: "Database host secret present"
+            secretName: "{{ .Values.database.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "POSTGRES_URL"
+            key: "{{ .Values.database.hostKey }}"
             outcomes:
               - fail:
-                  message: "Missing {{ $coreSecret }} or key POSTGRES_URL."
+                  message: "Missing {{ .Values.database.secretRef }} or key {{ .Values.database.hostKey }}."
               - pass:
-                  message: "Found {{ $coreSecret }} (POSTGRES_URL)."
+                  message: "Found {{ .Values.database.secretRef }} ({{ .Values.database.hostKey }})."
         - secret:
-            checkName: "Thermos Postgres URL present"
-            secretName: "{{ $coreSecret }}"
+            checkName: "Database port secret present"
+            secretName: "{{ .Values.database.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "THERMOS_DATABASE_URL"
+            key: "{{ .Values.database.portKey }}"
             outcomes:
               - fail:
-                  message: "Missing {{ $coreSecret }} or key THERMOS_DATABASE_URL."
+                  message: "Missing {{ .Values.database.secretRef }} or key {{ .Values.database.portKey }}."
               - pass:
-                  message: "Found {{ $coreSecret }} (THERMOS_DATABASE_URL)."
+                  message: "Found {{ .Values.database.secretRef }} ({{ .Values.database.portKey }})."
+        - secret:
+            checkName: "Database username secret present"
+            secretName: "{{ .Values.database.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.database.usernameKey }}"
+            outcomes:
+              - fail:
+                  message: "Missing {{ .Values.database.secretRef }} or key {{ .Values.database.usernameKey }}."
+              - pass:
+                  message: "Found {{ .Values.database.secretRef }} ({{ .Values.database.usernameKey }})."
+        - secret:
+            checkName: "Database password secret present"
+            secretName: "{{ .Values.database.secretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.database.passwordKey }}"
+            outcomes:
+              - fail:
+                  message: "Missing {{ .Values.database.secretRef }} or key {{ .Values.database.passwordKey }}."
+              - pass:
+                  message: "Found {{ .Values.database.secretRef }} ({{ .Values.database.passwordKey }})."
         {{ if .Values.externalRedis.enabled }}
         - secret:
             checkName: "Redis URL present"
