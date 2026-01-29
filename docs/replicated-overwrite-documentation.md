@@ -10,7 +10,22 @@
    * Update database host, credentials, and any environment-specific settings
    * Configure any required overrides for your setup
 
-3. While reviewing the file, determine **whether your database has TLS enabled**.
+3. Note: Our internal Redis doesn't come with production support. We recommend using an external Redis instance. Add the values below to your overwrite-values file for using external Redis.
+```yaml
+externalRedis:
+  # -- Enable external Redis. Set to true to use an external Redis instance
+  enabled: true
+  # -- Secret name containing Redis connection URL
+  secretRef: "composio-composio-secrets"
+  # -- Key name in the secret containing the Redis URL
+  key: "REDIS_URL"
+
+redis:
+  # -- Enable internal Redis. Set to false when using externalRedis
+  enabled: false
+```
+
+4. While reviewing the file, determine **whether your database has TLS enabled**.
 
    * You will use this information in **Step 1**.
 
