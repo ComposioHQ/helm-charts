@@ -73,9 +73,12 @@ jobs:
       
       - name: Get and bump version
         id: version
+        env:
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
         run: |
           cd ./composio
-          CURRENT_APPVERSION=$(yq eval '.appVersion' ./Chart.yaml)
+          CURRENT_APPVERSION=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
           NEW_APPVERSION=$(echo "$CURRENT_APPVERSION" | awk -F. '{$NF = $NF + 1} 1' OFS=.)
           echo "current=$CURRENT_APPVERSION" >> $GITHUB_OUTPUT
           echo "new=$NEW_APPVERSION" >> $GITHUB_OUTPUT
@@ -170,9 +173,12 @@ jobs:
       
       - name: Get and bump version
         id: version
+        env:
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
         run: |
           cd ./composio
-          CURRENT_APPVERSION=$(yq eval '.appVersion' ./Chart.yaml)
+          CURRENT_APPVERSION=$(replicated channel ls | grep "Stable" | awk '{print $NF}')
           NEW_APPVERSION=$(echo "$CURRENT_APPVERSION" | awk -F. '{$NF = $NF + 1} 1' OFS=.)
           echo "current=$CURRENT_APPVERSION" >> $GITHUB_OUTPUT
           echo "new=$NEW_APPVERSION" >> $GITHUB_OUTPUT
