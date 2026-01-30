@@ -19,6 +19,8 @@ data:
   TEMPORAL_WEBHOOK_NAMESPACE: "webhook"
   TEMPORAL_BATCHED_POLLING_NAMESPACE: "batched-polling"
   DISABLE_TEMPORAL_TLS: "true"
+  {{- else }}
+  DISABLE_TEMPORAL: "true"
   {{- end }}
   LAMBDA_USE_HTTP: "true"
   LAMBDA_USE_HTTP_ENDPOINT: "http://{{ include "composio.fullname" . }}-mercury.{{ .Release.Namespace }}.svc.cluster.local"
