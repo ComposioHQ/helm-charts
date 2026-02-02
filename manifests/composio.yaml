@@ -8,7 +8,7 @@ spec:
     # name must match the chart name from the .tgz chart archive
     name: composio
     # chartVersion must match the chart version from the .tgz chart archive
-    chartVersion: 0.1.38
+    chartVersion: 0.1.39
   namespace: composio
   values:
     replicated:

@@ -129,7 +129,7 @@ apollo:
     # -- Apollo image repository
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260130_01"
+    tag: "r20260202_00"
     # -- Image pull policy
     pullPolicy: Always
 
@@ -165,7 +165,7 @@ apollo:
       # -- Database init image repository
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260130_01"
+      tag: "r20260202_00"
       # -- Image pull policy
       pullPolicy: Always
   
@@ -261,7 +261,7 @@ apollo:
   # Search System Configuration
   search:
     # -- Enable search system
-    enabled: true
+    enabled: false
     # Vector Store Provider (when unified disabled)
     vectorStoreProvider: "weaviate"  # Options: "turbopuffer", "weaviate"
     # Embeddings Configuration
@@ -312,7 +312,7 @@ thermos:
     # -- Thermos image repository
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260130_01"
+    tag: "r20260202_00"
     # -- Image pull policy
     pullPolicy: Always
 
@@ -325,7 +325,7 @@ thermos:
       # -- Database init image repository
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260130_01"
+      tag: "r20260202_00"
       # -- Image pull policy
       pullPolicy: Always
   
@@ -397,7 +397,7 @@ temporal:
   # Temporal server configuration
   server:
     # -- Enable Temporal server
-    enabled: true
+    enabled: false
     # Liveness probe configuration
     livenessProbe:
       # -- Enable liveness probe
@@ -522,7 +522,7 @@ temporal:
     # Database creation configuration
     createDatabase:
       # -- Enable database creation
-      enabled: true
+      enabled: false
     # Schema setup configuration
     setup:
       # -- Enable schema setup
@@ -539,7 +539,7 @@ temporal:
   # Temporal Web UI configuration
   web:
     # -- Enable Temporal Web UI
-    enabled: true
+    enabled: false
     # -- Number of Web UI replicas
     replicaCount: 1
     # Web UI image configuration
@@ -580,7 +580,7 @@ temporal:
       enabled: false
 
     # -- Enable admin tools
-    enabled: true
+    enabled: false
     # Admin tools image configuration
     image:
       # -- Admin tools image repository
@@ -939,7 +939,7 @@ mercury:
     # -- Mercury image repository
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260130_01"
+    tag: "r20260202_00"
     # -- Image pull policy
     pullPolicy: Always
 
@@ -1052,7 +1052,7 @@ frontend:
     # -- Frontend image repository
     repository: composio-self-host/frontend
     # -- Frontend image tag
-    tag: "r20260130_01"
+    tag: "r20260202_00"
     # -- Image pull policy
     pullPolicy: Always
   # Frontend service configuration
@@ -1110,7 +1110,7 @@ weaviate:
     # -- Weaviate image repository
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260130_01"
+    tag: "r20260202_00"
     # -- Image pull policy
     pullPolicy: Always
   # Weaviate service configuration
