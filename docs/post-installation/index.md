@@ -260,7 +260,7 @@ kubectl port-forward -n composio svc/composio-temporal-web 8082:8080
 
 - **Apollo API**: http://localhost:8080
 - **MCP Portal**: http://localhost:8081  
-- **Temporal UI**: http://localhost:8082
+- **Temporal UI**: http://localhost:8082 (only if auth refresh and/or triggers are enabled)
 
 ## 🔐 Secret Management
 

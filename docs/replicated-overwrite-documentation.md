@@ -29,7 +29,7 @@
 
 ## TLS Configuration for Temporal
 
-*(Only required if database TLS is enabled)*
+*(Only required if database TLS is enabled and Temporal is in use. Temporal is only needed if auth refresh and/or triggers are enabled.)*
 
 ### Important notes
 

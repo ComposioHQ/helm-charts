@@ -37,8 +37,8 @@ kubectl create secret generic composio-composio-secrets \
 ## Sensitive Keys and Secrets
 1. **ENCRYPTION_KEY**  
    Used by the Composio application for database encryption.
-2. **TEMPORAL_TRIGGER_ENCRYPTION_KEY**  
-   Used by Temporal for database encryption.
+2. **TEMPORAL_TRIGGER_ENCRYPTION_KEY**
+   Used by Temporal for database encryption. Only required if auth refresh and/or triggers are enabled.
 3. **COMPOSIO_ADMIN_TOKEN**  
    API token for the Composio Apollo application.
 4. **JWT_SECRET**  
@@ -50,5 +50,5 @@ kubectl create secret generic composio-composio-secrets \
 8. **OPENAI_API_KEY**  
    OpenAI API key.
 9. **password**  
-   Database password used by the Composio and Temporal applications.
+   Database password used by the Composio application (and Temporal, if auth refresh and/or triggers are enabled).
 
