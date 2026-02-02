@@ -21,11 +21,12 @@
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-apollo 8080:{{ .Values.apollo.service.port }}
    Then visit: http://127.0.0.1:8080
 
-
+{{- if eq (include "composio.temporalEnabled" .) "true" }}
 
    Temporal Web UI:
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-temporal-web 8082:8080
    Then visit: http://127.0.0.1:8082
+{{- end }}
 
 
 3. Verify installation:
@@ -66,6 +67,7 @@ kubectl get secret \
   -o jsonpath='{.data.ENCRYPTION_KEY}' | base64 -d
 ```
 
+{{- if eq (include "composio.temporalEnabled" .) "true" }}
 ### 🔐 Temporal Database Encryption Key
 
 Run the command below to retrieve the Temporal encryption key:
@@ -76,6 +78,7 @@ kubectl get secret \
   {{ include "composio.coreSecretName" . }} \
   -o jsonpath='{.data.TEMPORAL_TRIGGER_ENCRYPTION_KEY}' | base64 -d
 ```
+{{- end }}
 ### ⚠️ IMPORTANT NOTES
 
 * These keys are **generated once**

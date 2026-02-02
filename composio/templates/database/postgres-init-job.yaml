@@ -39,18 +39,22 @@ spec:
         - -c
         - |
           cat <<'EOF' | psql
-          
+
 
           -- Create databases
           CREATE DATABASE composiodb;
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           CREATE DATABASE temporal;
           CREATE DATABASE temporal_visibility;
+          {{- end }}
           CREATE DATABASE thermosdb;
-          
-          -- Alter Database 
+
+          -- Alter Database
           ALTER DATABASE composiodb OWNER TO {{ .Values.databaseMigration.user }};
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           ALTER DATABASE temporal OWNER TO {{ .Values.databaseMigration.user }};
           ALTER DATABASE temporal_visibility OWNER TO {{ .Values.databaseMigration.user }};
+          {{- end }}
           ALTER DATABASE thermosdb OWNER TO {{ .Values.databaseMigration.user }};
 
           -- Grant privileges on thermosdb
@@ -69,6 +73,7 @@ spec:
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
 
+          {{- if eq (include "composio.temporalEnabled" .) "true" }}
           -- Grant privileges on temporal
           \c temporal
           GRANT ALL PRIVILEGES ON DATABASE temporal TO {{ .Values.databaseMigration.user }};
@@ -84,6 +89,7 @@ spec:
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+          {{- end }}
 
           -- Grant database creation privilege
           \c postgres

@@ -80,6 +80,18 @@ Expand the name of the chart.
 {{- end -}}
 {{- end -}}
 
+{{/*
+Check if Temporal is needed based on feature flags or explicit enablement
+Returns "true" if temporal.enabled is true OR features.auth_refresh is true OR features.triggers is true
+*/}}
+{{- define "composio.temporalEnabled" -}}
+{{- if or .Values.temporal.enabled (and .Values.features .Values.features.auth_refresh) (and .Values.features .Values.features.triggers) -}}
+true
+{{- else -}}
+false
+{{- end -}}
+{{- end -}}
+
 {{- define "temporal-encryption-key" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}
 {{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}

@@ -35,11 +35,13 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "JWT_SECRET"
             includeValue: false
+        {{- if eq (include "composio.temporalEnabled" .) "true" }}
         - secret:
             name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
             key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
             includeValue: false
+        {{- end }}
         - secret:
             name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
@@ -104,6 +106,7 @@ stringData:
               - pass:
                   message: "Found {{ $coreSecret }} (JWT_SECRET)."
 
+        {{- if eq (include "composio.temporalEnabled" .) "true" }}
         - secret:
             checkName: "Temporal encryption key secret present"
             secretName: "{{ $coreSecret }}"
@@ -114,6 +117,7 @@ stringData:
                   message: "Missing {{ $coreSecret }} or key TEMPORAL_TRIGGER_ENCRYPTION_KEY."
               - pass:
                   message: "Found {{ $coreSecret }} (TEMPORAL_TRIGGER_ENCRYPTION_KEY)."
+        {{- end }}
         - secret:
             checkName: "Apollo Postgres URL present"
             secretName: "{{ $coreSecret }}"
