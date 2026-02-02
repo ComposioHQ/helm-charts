@@ -282,6 +282,7 @@ Compile all warnings into a single message, and call fail.
 {{- $messages := list -}}
 {{- $messages := append $messages (include "composio.validateValues.database" .) -}}
 {{- $messages := append $messages (include "composio.validateValues.redis" .) -}}
+{{- $messages := append $messages (include "composio.validateValues.temporal" .) -}}
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 {{- if $message -}}
@@ -297,6 +298,17 @@ Validate database configuration
 composio: database
     You must provide database URL when PostgreSQL is disabled.
     Please set apollo.secrets.databaseUrl
+{{- end -}}
+{{- end -}}
+
+{{/*
+Validate Redis configuration
+*/}}
+{{- define "composio.validateValues.temporal" -}}
+{{- if and (not .Values.temporal.enabled) (eq (include "composio.temporalEnabled" .) "true") -}}
+composio: temporal
+    features.auth_refresh or features.triggers is enabled but temporal.enabled is false.
+    Please set temporal.enabled=true to deploy the Temporal workflow engine.
 {{- end -}}
 {{- end -}}
 
