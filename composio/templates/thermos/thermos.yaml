@@ -84,7 +84,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
-                  key: APOLLO_ADMIN_TOKEN
+                  key: COMPOSIO_ADMIN_TOKEN
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

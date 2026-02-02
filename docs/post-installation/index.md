@@ -271,16 +271,15 @@ Composio uses a comprehensive secret management system that handles both auto-ge
 
 | Secret Name | Purpose | Key |
 |-------------|---------|-----|
-| `{release}-composio-secrets` | Consolidated chart-managed secrets | `APOLLO_ADMIN_TOKEN`, `ENCRYPTION_KEY`, `TEMPORAL_TRIGGER_ENCRYPTION_KEY`, `COMPOSIO_API_KEY`, `JWT_SECRET` |
+| `{release}-composio-secrets` | Consolidated chart-managed secrets | `COMPOSIO_ADMIN_TOKEN`, `ENCRYPTION_KEY`, `TEMPORAL_TRIGGER_ENCRYPTION_KEY`, `JWT_SECRET` |
 
 To create or rotate the consolidated secret manually:
 
 ```bash
 kubectl create secret generic <release>-composio-secrets \
-  --from-literal=APOLLO_ADMIN_TOKEN=<token> \
+  --from-literal=COMPOSIO_ADMIN_TOKEN=<token> \
   --from-literal=ENCRYPTION_KEY=<encryption-key> \
   --from-literal=TEMPORAL_TRIGGER_ENCRYPTION_KEY=<temporal-key> \
-  --from-literal=COMPOSIO_API_KEY=<api-key> \
   --from-literal=JWT_SECRET=<jwt-secret> \
   --from-literal=POSTGRES_URL=<postgres_url> \
   --from-literal=THERMOS_DATABASE_URL=<thermos_database_url> \

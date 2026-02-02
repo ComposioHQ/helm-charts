@@ -73,11 +73,6 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
-            - name: COMPOSIO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: COMPOSIO_API_KEY
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
           resources:

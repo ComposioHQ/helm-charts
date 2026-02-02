@@ -18,12 +18,7 @@ stringData:
         - secret:
             name: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "APOLLO_ADMIN_TOKEN"
-            includeValue: false
-        - secret:
-            name: "{{ $coreSecret }}"
-            namespace: "{{ .Release.Namespace }}"
-            key: "COMPOSIO_API_KEY"
+            key: "COMPOSIO_ADMIN_TOKEN"
             includeValue: false
         - secret:
             name: "{{ $coreSecret }}"
@@ -66,23 +61,12 @@ stringData:
             checkName: "Apollo admin token secret present"
             secretName: "{{ $coreSecret }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "APOLLO_ADMIN_TOKEN"
+            key: "COMPOSIO_ADMIN_TOKEN"
             outcomes:
               - fail:
-                  message: "Missing {{ $coreSecret }} or key APOLLO_ADMIN_TOKEN."
+                  message: "Missing {{ $coreSecret }} or key COMPOSIO_ADMIN_TOKEN."
               - pass:
-                  message: "Found {{ $coreSecret }} (APOLLO_ADMIN_TOKEN)."
-
-        - secret:
-            checkName: "Composio API key secret present"
-            secretName: "{{ $coreSecret }}"
-            namespace: "{{ .Release.Namespace }}"
-            key: "COMPOSIO_API_KEY"
-            outcomes:
-              - fail:
-                  message: "Missing {{ $coreSecret }} or key COMPOSIO_API_KEY."
-              - pass:
-                  message: "Found {{ $coreSecret }} (COMPOSIO_API_KEY)."
+                  message: "Found {{ $coreSecret }} (COMPOSIO_ADMIN_TOKEN)."
 
         - secret:
             checkName: "Encryption key secret present"

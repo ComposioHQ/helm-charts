@@ -73,7 +73,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
-                  key: APOLLO_ADMIN_TOKEN
+                  key: COMPOSIO_ADMIN_TOKEN
             - name: USE_APOLLO_GET_DOWNLOAD_URL_API
               value: "true"
           resources:

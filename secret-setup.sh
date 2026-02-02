@@ -44,7 +44,7 @@ usage() {
     echo "  SMTP_SECRET_NAME     Optional. Overrides default secret name (\${release}-smtp-credentials)"
     echo ""
     echo -e "${YELLOW}Generated Secrets (auto-created if missing):${NC}"
-    echo "  • \${release}-composio-secrets (contains APOLLO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, COMPOSIO_API_KEY, JWT_SECRET, and optional user-provided URLs/keys)"
+    echo "  • \${release}-composio-secrets (contains COMPOSIO_ADMIN_TOKEN, ENCRYPTION_KEY, TEMPORAL_TRIGGER_ENCRYPTION_KEY, JWT_SECRET, and optional user-provided URLs/keys)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo "  # Setup with all external secrets"
@@ -213,25 +213,22 @@ else
     else
         print_info "Creating consolidated core secret: $CORE_SECRET_NAME"
 
-        apollo_admin_token="$(get_secret_value "${RELEASE_NAME}-apollo-admin-token" "APOLLO_ADMIN_TOKEN")"
+        apollo_admin_token="$(get_secret_value "${RELEASE_NAME}-composio-admin-token" "COMPOSIO_ADMIN_TOKEN")"
         encryption_key="$(get_secret_value "${RELEASE_NAME}-encryption-key" "ENCRYPTION_KEY")"
         temporal_encryption_key="$(get_secret_value "${RELEASE_NAME}-temporal-encryption-key" "TEMPORAL_TRIGGER_ENCRYPTION_KEY")"
-        composio_api_key="$(get_secret_value "${RELEASE_NAME}-composio-api-key" "COMPOSIO_API_KEY")"
         jwt_secret="$(get_secret_value "${RELEASE_NAME}-jwt-secret" "JWT_SECRET")"
 
         [[ -z "$apollo_admin_token" ]] && apollo_admin_token="$(generate_random 32)"
         [[ -z "$encryption_key" ]] && encryption_key="$(generate_random 32)"
         [[ -z "$temporal_encryption_key" ]] && temporal_encryption_key="$(generate_random 32)"
-        [[ -z "$composio_api_key" ]] && composio_api_key="$(generate_random 32)"
         [[ -z "$jwt_secret" ]] && jwt_secret="$(generate_random 32)"
 
         if [[ "$DRY_RUN" == true ]]; then
             print_info "[DRY-RUN] Would create secret: $CORE_SECRET_NAME"
             print_info "kubectl create secret generic \"$CORE_SECRET_NAME\" \\"
-            print_info "  --from-literal=\"APOLLO_ADMIN_TOKEN=$apollo_admin_token\" \\"
+            print_info "  --from-literal=\"COMPOSIO_ADMIN_TOKEN=$apollo_admin_token\" \\"
             print_info "  --from-literal=\"ENCRYPTION_KEY=$encryption_key\" \\"
             print_info "  --from-literal=\"TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key\" \\"
-            print_info "  --from-literal=\"COMPOSIO_API_KEY=$composio_api_key\" \\"
             print_info "  --from-literal=\"JWT_SECRET=$jwt_secret\" \\"
             [[ -n "$POSTGRES_URL" ]] && print_info "  --from-literal=\"POSTGRES_URL=$POSTGRES_URL\" \\"
             [[ -n "$THERMOS_POSTGRES_URL" ]] && print_info "  --from-literal=\"THERMOS_DATABASE_URL=$THERMOS_POSTGRES_URL\" \\"
@@ -241,10 +238,9 @@ else
         else
             create_args=(
                 kubectl create secret generic "$CORE_SECRET_NAME"
-                --from-literal="APOLLO_ADMIN_TOKEN=$apollo_admin_token"
+                --from-literal="COMPOSIO_ADMIN_TOKEN=$apollo_admin_token"
                 --from-literal="ENCRYPTION_KEY=$encryption_key"
                 --from-literal="TEMPORAL_TRIGGER_ENCRYPTION_KEY=$temporal_encryption_key"
-                --from-literal="COMPOSIO_API_KEY=$composio_api_key"
                 --from-literal="JWT_SECRET=$jwt_secret"
                 -n "$NAMESPACE"
             )

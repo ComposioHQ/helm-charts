@@ -119,11 +119,6 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
-            - name: COMPOSIO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: COMPOSIO_API_KEY
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
@@ -135,7 +130,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
-                  key: APOLLO_ADMIN_TOKEN
+                  key: COMPOSIO_ADMIN_TOKEN
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

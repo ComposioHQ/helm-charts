@@ -19,30 +19,15 @@ Expand the name of the chart.
 {{- end -}}
 
 
-{{- define "apollo-admin-token" -}}
+{{- define "composio-admin-token" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}
 {{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
-{{- if and $core (hasKey $core.data "APOLLO_ADMIN_TOKEN") -}}
-  {{- index $core.data "APOLLO_ADMIN_TOKEN" | b64dec -}}
+{{- if and $core (hasKey $core.data "COMPOSIO_ADMIN_TOKEN") -}}
+  {{- index $core.data "COMPOSIO_ADMIN_TOKEN" | b64dec -}}
 {{- else -}}
-  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-apollo-admin-token" .Release.Name) -}}
-  {{- if and $legacy (hasKey $legacy.data "APOLLO_ADMIN_TOKEN") -}}
-    {{- index $legacy.data "APOLLO_ADMIN_TOKEN" | b64dec -}}
-  {{- else -}}
-    {{- randAlphaNum 32 -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "composio-api-key" -}}
-{{- $coreName := include "composio.coreSecretName" . -}}
-{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
-{{- if and $core (hasKey $core.data "COMPOSIO_API_KEY") -}}
-  {{- index $core.data "COMPOSIO_API_KEY" | b64dec -}}
-{{- else -}}
-  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-composio-api-key" .Release.Name) -}}
-  {{- if and $legacy (hasKey $legacy.data "COMPOSIO_API_KEY") -}}
-    {{- index $legacy.data "COMPOSIO_API_KEY" | b64dec -}}
+  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-composio-admin-token" .Release.Name) -}}
+  {{- if and $legacy (hasKey $legacy.data "COMPOSIO_ADMIN_TOKEN") -}}
+    {{- index $legacy.data "COMPOSIO_ADMIN_TOKEN" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}

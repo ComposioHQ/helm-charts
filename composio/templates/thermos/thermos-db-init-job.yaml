@@ -66,11 +66,6 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
-            - name: COMPOSIO_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: COMPOSIO_API_KEY
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
             {{- if .Values.thermos.dbInit.extraAtlasFlags }}
