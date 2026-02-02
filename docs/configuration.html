@@ -513,7 +513,7 @@ export OPENAI_API_KEY="sk-1234567890..."
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
-                        <strong>Note:</strong> Temporal uses the external PostgreSQL database configured via secret-setup.sh. It automatically creates <code>temporal</code> and <code>temporal_visibility</code> databases.
+                        <strong>Note:</strong> Temporal is only required if auth refresh and/or triggers are enabled. It uses the external PostgreSQL database configured via secret-setup.sh and automatically creates <code>temporal</code> and <code>temporal_visibility</code> databases. If you do not need auth refresh or triggers, you can safely disable Temporal by setting <code>temporal.server.enabled: false</code>.
                     </div>
                 </div>
 

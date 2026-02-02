@@ -250,7 +250,7 @@ kubectl port-forward -n composio svc/composio-apollo 8080:9900
 # MCP (Management Portal)  
 kubectl port-forward -n composio svc/composio-mcp 8081:3000
 
-# Temporal Web UI
+# Temporal Web UI (only needed if auth refresh and/or triggers are enabled)
 kubectl port-forward -n composio svc/composio-temporal-web 8082:8080
 
 ```

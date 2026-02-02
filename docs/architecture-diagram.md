@@ -60,7 +60,7 @@ graph TB
 ### Data Layer
 - **Redis**: Caching and session storage
 - **Postgres**: Primary database for persistent data
-- **Temporal.io**: Workflow orchestration and management
+- **Temporal.io**: Workflow orchestration and management (only required if auth refresh and/or triggers are enabled)
 
 ### External Integration
 - **Tools/LLM APIs**: External services and APIs for AI functionality
@@ -79,7 +79,7 @@ graph TB
 1. **Incoming Requests**: HTTPS requests from the Internet through Public Ingress
 2. **Authentication**: Apollo handles OAuth callbacks and business logic
 3. **Tool Management**: Thermos manages external tool integrations
-4. **Workflow Processing**: Temporal.io orchestrates complex workflows
+4. **Workflow Processing**: Temporal.io orchestrates complex workflows (only used when auth refresh and/or triggers are enabled)
 5. **External Actions**: Mercury executes outbound calls to external APIs
 6. **Data Persistence**: All services interact with Redis and Postgres for data storage
 7. **Monitoring**: Otel Collector gathers metrics and traces from all services
