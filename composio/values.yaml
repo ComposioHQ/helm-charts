@@ -3,11 +3,12 @@
 # Declare variables to be passed into your templates.
 
 # Feature flags for optional functionality
-# Enabling auth_refresh or triggers automatically activates Temporal integration in thermos
+# These control whether certain features (and their dependencies) are enabled
+# Enabling auth_refresh or triggers requires temporal.enabled=true (validated at install time)
 features:
-  # -- Enable auth token refresh functionality
+  # -- Enable auth token refresh functionality (requires Temporal)
   auth_refresh: false
-  # -- Enable triggers functionality
+  # -- Enable triggers functionality (requires Temporal)
   triggers: false
 
 # Composio Application Secrets
@@ -392,8 +393,10 @@ dbInit:
     restartPolicy: OnFailure
 
 # Temporal workflow engine configuration
-# Temporal is always deployed; thermos connects to it only when features.auth_refresh or features.triggers is enabled
+# Required when features.auth_refresh or features.triggers is enabled
 temporal:
+  # -- Enable Temporal deployment (required when auth_refresh or triggers features are enabled)
+  enabled: false
   # -- Override the full name of Temporal resources
   fullnameOverride: "temporal-stack"
 

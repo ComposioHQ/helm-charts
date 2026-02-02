@@ -66,11 +66,11 @@ Expand the name of the chart.
 {{- end -}}
 
 {{/*
-Check if Temporal integration is needed based on feature flags
-Returns "true" if features.auth_refresh or features.triggers is enabled
+Check if Temporal is needed based on feature flags or explicit enablement
+Returns "true" if temporal.enabled is true OR features.auth_refresh is true OR features.triggers is true
 */}}
 {{- define "composio.temporalEnabled" -}}
-{{- if or (and .Values.features .Values.features.auth_refresh) (and .Values.features .Values.features.triggers) -}}
+{{- if or .Values.temporal.enabled (and .Values.features .Values.features.auth_refresh) (and .Values.features .Values.features.triggers) -}}
 true
 {{- else -}}
 false
@@ -282,7 +282,7 @@ Compile all warnings into a single message, and call fail.
 {{- $messages := list -}}
 {{- $messages := append $messages (include "composio.validateValues.database" .) -}}
 {{- $messages := append $messages (include "composio.validateValues.redis" .) -}}
-
+{{- $messages := append $messages (include "composio.validateValues.temporal" .) -}}
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 {{- if $message -}}
@@ -304,6 +304,14 @@ composio: database
 {{/*
 Validate Redis configuration
 */}}
+{{- define "composio.validateValues.temporal" -}}
+{{- if and (not .Values.temporal.enabled) (eq (include "composio.temporalEnabled" .) "true") -}}
+composio: temporal
+    features.auth_refresh or features.triggers is enabled but temporal.enabled is false.
+    Please set temporal.enabled=true to deploy the Temporal workflow engine.
+{{- end -}}
+{{- end -}}
+
 {{/*
 Validate Redis configuration
 */}}

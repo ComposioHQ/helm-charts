@@ -13,7 +13,7 @@ dependencies:
     alias: temporal
     version: "0.68.1"
     repository: "file://./charts/temporal"
-    # Temporal is auto-deployed; thermos uses it only when features.auth_refresh or features.triggers is enabled
+    condition: temporal.enabled
   - name: replicated
     repository: oci://registry.replicated.com/library
     version: 1.12.1
