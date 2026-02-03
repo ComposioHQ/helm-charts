@@ -43,6 +43,8 @@ databaseMigration:
     secretRef: "composio-composio-secrets"
     key: "password"
 
+stackSecrets: 
+  enabled: true
 # Global secrets configuration for development
 # All secrets will be auto-generated for security
 externalPostgreSQL:
