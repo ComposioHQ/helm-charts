@@ -4,6 +4,12 @@
 
 1. Copy the base [overwrite-values.yaml](https://github.com/ComposioHQ/helm-charts/blob/release-stable/overwrite-values.yaml) file into your working directory
 
+> [!NOTE]
+> Temporal is only needed if auth refresh and/or triggers are enabled. By default temporal is disabled, you can enable it by setting `features.temporal` to `true`. Ensure the required values for temporal are passed in your `overwrite-values.yaml`.
+
+> [!NOTE]
+> If you need tool router, please ensure `weaviate.enabled` is set to `true`.
+
 2. Open the copied `overwrite-values.yaml` file and:
 
    * Review all configuration values
@@ -29,7 +35,7 @@
 
 ## TLS Configuration for Temporal
 
-*(Only required if database TLS is enabled and Temporal is in use. Temporal is only needed if auth refresh and/or triggers are enabled.)*
+*(Only required if database TLS is enabled and Temporal is in use.)*
 
 ### Important notes
 

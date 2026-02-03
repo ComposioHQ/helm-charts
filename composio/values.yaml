@@ -88,7 +88,7 @@ redis:
     # Persistence configuration
     persistence:
       # -- Enable persistent storage
-      enabled: true
+      enabled: false
       # -- Size of persistent volume
       size: 8Gi
     # Resource requests and limits for Redis master
