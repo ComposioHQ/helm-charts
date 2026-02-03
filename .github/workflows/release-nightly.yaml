@@ -1,0 +1,61 @@
+name: Promote from Unstable
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Target channel to promote to from Unstable'
+        required: true
+        default: 'Nightly'
+        type: choice
+        options:
+          - Stable
+          - Beta
+          - Unstable
+          - Nightly
+
+permissions:
+  contents: write
+
+jobs:
+  release-helm-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Replicated CLI
+        run: |
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls \
+            "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
+            -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+          sudo mv replicated /usr/local/bin/replicated
+      
+      - name: Check replicated
+        run: |
+          set -e
+          replicated app ls &> /dev/null || exit 1 
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+      
+      - name: Get and bump version
+        id: version
+        env:
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+        run: |
+          echo "Getting current version from unstable channel"
+          CURRENT_APPVERSION=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
+          LATEST_SEQUENCE=$(replicated release ls | grep "Unstable" | head -n 1 | awk '{print $1}')
+          echo "current=$CURRENT_APPVERSION" >> $GITHUB_OUTPUT
+          echo "latest_sequence=$LATEST_SEQUENCE" >> $GITHUB_OUTPUT
+          echo "Promoting $CURRENT_APPVERSION from Unstable to ${{ inputs.channel }} with Sequence $LATEST_SEQUENCE"
+          
+      - name: Promote from Unstable channel
+        env:
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+        run: |
+          set -e 
+          CHANNEL_ID=$(replicated channel ls | grep -i "${{ inputs.channel }}" | awk '{print $1}')
+          replicated release promote ${{ steps.version.outputs.latest_sequence }} $CHANNEL_ID --version ${{ steps.version.outputs.current }}
+
