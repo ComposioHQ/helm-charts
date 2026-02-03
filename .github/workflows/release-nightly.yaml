@@ -5,21 +5,22 @@ on:
       channel:
         description: 'Target channel to promote to from Unstable'
         required: true
-        default: 'Nightly'
+        default: 'beta'
         type: choice
         options:
-          - Stable
-          - Beta
-          - Unstable
-          - Nightly
-
+          - stable
+          - seta
+          - unstable
+          - nightly
 permissions:
   contents: write
-
 jobs:
-  release-helm-chart:
+  promote-release:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
       - name: Install Replicated CLI
         run: |
           version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
@@ -29,33 +30,28 @@ jobs:
             -o replicated.tar.gz
           tar xf replicated.tar.gz replicated && rm replicated.tar.gz
           sudo mv replicated /usr/local/bin/replicated
+          replicated version
       
-      - name: Check replicated
+      - name: Get latest sequence from Unstable
+        id: get_sequence
         run: |
-          set -e
-          replicated app ls &> /dev/null || exit 1 
-        env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-      
-      - name: Get and bump version
-        id: version
-        env:
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-        run: |
-          echo "Getting current version from unstable channel"
-          CURRENT_APPVERSION=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
+          # Get latest sequence and version from Unstable
           LATEST_SEQUENCE=$(replicated release ls | grep "Unstable" | head -n 1 | awk '{print $1}')
-          echo "current=$CURRENT_APPVERSION" >> $GITHUB_OUTPUT
-          echo "latest_sequence=$LATEST_SEQUENCE" >> $GITHUB_OUTPUT
-          echo "Promoting $CURRENT_APPVERSION from Unstable to ${{ inputs.channel }} with Sequence $LATEST_SEQUENCE"
-          
-      - name: Promote from Unstable channel
-        env:
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-        run: |
-          set -e 
+          CURRENT_VERSION=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
           CHANNEL_ID=$(replicated channel ls | grep -i "${{ inputs.channel }}" | awk '{print $1}')
-          replicated release promote ${{ steps.version.outputs.latest_sequence }} $CHANNEL_ID --version ${{ steps.version.outputs.current }}
-
+          echo "channel_id=$CHANNEL_ID" >> $GITHUB_OUTPUT
+          echo "sequence=$LATEST_SEQUENCE" >> $GITHUB_OUTPUT
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Promoting sequence $LATEST_SEQUENCE (version $CURRENT_VERSION) from Unstable to ${{ inputs.channel }}"
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+      
+      - name: Promote release using GitHub Action
+        uses: replicatedhq/replicated-actions/promote-release@v1
+        with:
+          app-slug: ${{ secrets.REPLICATED_APP }}
+          api-token: ${{ secrets.REPLICATED_API_TOKEN }}
+          channel-to: ${{ inputs.channel }}
+          release-sequence: ${{ steps.get_sequence.outputs.sequence }}
+          release-version: ${{ steps.get_sequence.outputs.version }} 
