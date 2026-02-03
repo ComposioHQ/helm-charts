@@ -46,7 +46,6 @@ data:
   {{- if .Values.apollo.useStaticLogos }}
   USE_STATIC_LOGOS: "true"
   {{ end }}
-  NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
   {{- if .Values.otel.enabled }}
   OTEL_ENABLED: {{ .Values.otel.enabled | quote }}
   OTEL_SERVICE_NAME: {{ .Values.otel.apollo.serviceName | default "apollo" | quote }}
