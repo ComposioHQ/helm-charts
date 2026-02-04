@@ -47,9 +47,3 @@ You should see `WEAVIATE_URL`, `WEAVIATE_HOST`, `WEAVIATE_PORT`, and `WEAVIATE_C
 |----------|---------|-------|
 | CPU | 1 core | 2 cores |
 | Memory | 2 GiB | 4 GiB |
-
-## Production Notes
-
-- Set `weaviate.auth.anonymousAccess` to `"false"` and configure `apollo.search.weaviate.apiKey`
-- Enable persistence (`weaviate.persistence.enabled: true`) to survive pod restarts
-- Ensure your OpenAI API key is present in the `composio-composio-secrets` secret
