@@ -38,10 +38,12 @@ jobs:
           # Get latest sequence and version from Unstable
           LATEST_SEQUENCE=$(replicated release ls | grep "Unstable" | head -n 1 | awk '{print $1}')
           CURRENT_VERSION=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
+          CURRENT_VERSION_CHANNEL=$(replicated channel ls | grep -i "${{ inputs.channel }}" | awk '{print $NF}')
+          NEW_APPVERSION=$(echo "$CURRENT_VERSION_CHANNEL" | awk -F. '{$NF = $NF + 1} 1' OFS=.)
           CHANNEL_ID=$(replicated channel ls | grep -i "${{ inputs.channel }}" | awk '{print $1}')
           echo "channel_id=$CHANNEL_ID" >> $GITHUB_OUTPUT
           echo "sequence=$LATEST_SEQUENCE" >> $GITHUB_OUTPUT
-          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "version=$NEW_APPVERSION" >> $GITHUB_OUTPUT
           echo "Promoting sequence $LATEST_SEQUENCE (version $CURRENT_VERSION) from Unstable to ${{ inputs.channel }}"
         env:
           REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
