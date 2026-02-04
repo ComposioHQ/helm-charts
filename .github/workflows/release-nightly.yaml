@@ -9,7 +9,7 @@ on:
         type: choice
         options:
           - stable
-          - seta
+          - beta
           - unstable
           - nightly
 permissions:
@@ -49,11 +49,10 @@ jobs:
           REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
           REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
       
-      - name: Promote release using GitHub Action
-        uses: replicatedhq/replicated-actions/promote-release@v1
-        with:
-          app-slug: ${{ secrets.REPLICATED_APP }}
-          api-token: ${{ secrets.REPLICATED_API_TOKEN }}
-          channel-to: ${{ inputs.channel }}
-          release-sequence: ${{ steps.get_sequence.outputs.sequence }}
-          release-version: ${{ steps.get_sequence.outputs.version }} 
+      - name: Promote from Unstable channel
+        env:
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+        run: |
+          set -e 
+          replicated release promote ${{ steps.get_sequence.outputs.sequence }} ${{ steps.get_sequence.outputs.channel_id }} --version ${{ steps.get_sequence.outputs.version }}
