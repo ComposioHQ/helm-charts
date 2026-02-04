@@ -8,7 +8,7 @@
 > Temporal is only needed if auth refresh and/or triggers are enabled. By default temporal is disabled, you can enable it by setting `features.temporal` to `true`. Ensure the required values for temporal are passed in your `overwrite-values.yaml`.
 
 > [!NOTE]
-> If you need tool router, please ensure `weaviate.enabled` is set to `true`.
+> If you need tool router, please ensure `weaviate.enabled` is set to `true`. See [Tool Router Setup](#tool-router-setup-optional) below.
 
 2. Open the copied `overwrite-values.yaml` file and:
 
@@ -181,5 +181,11 @@ temporal:
         mountPath: /etc/certs
         readOnly: true
 ```
+
+---
+
+## Tool Router Setup (Optional)
+
+Tool router enables semantic tool discovery and search using Weaviate as the vector database. If you need this feature, follow the [Tool Router Setup guide](tool-router-setup.md).
 
 ---
