@@ -1,0 +1,71 @@
+# Change in override values # Disable Weaviate installation. 
+weaviate:
+  enabled: false
+
+# NOTE: Replace the <DATABASE_HOST>, ensure user is superuser and configured in existing secrets.  
+# Ensure the user is configured in DATABASE_URL. For example: postgresql://composio:pass123@postgres-new.db:5432/composiodb?sslmode=disable
+# -- DatabaseMigration automate DB creation and permissions required for composio helm chart. If you want you can disable it  
+databaseMigration: 
+  enabled: true
+  host: "<DATABASE_HOST>"
+  port: "5432"
+  user: "<DATABASE_USER>"
+
+# Redis Configuration
+# NOTE: Our internal Redis doesn't come with production support. We recommend using external Redis for production environments.
+externalRedis:
+  # -- Enable external Redis. Set to true to use an external Redis instance
+  enabled: true
+  # -- Secret name containing Redis connection URL
+  secretRef: "composio-composio-secrets"
+  # -- Key name in the secret containing the Redis URL
+  key: "REDIS_URL"
+
+redis:
+  enabled: false
+
+# Disable Temporal installation
+features:
+  temporal: true
+
+# Configure below temporal values if features.temporal is enabled.
+# NOTE: Ensure temporal.server.enabled is true
+temporal:
+  server:
+    enabled: true
+    config:
+      persistence:
+        default:
+          driver: "sql"
+          sql:
+            host: "<DATABASE_HOST>"
+            port: 5432
+            database: "temporal"
+            user: "<DATABASE_USER>"
+            existingSecret: "composio-composio-secrets"
+            # tls:
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
+        visibility:
+          sql:
+            host: "<DATABASE_HOST>"
+            port: 5432
+            database: "temporal_visibility"
+            user: "<DATABASE_USER>"
+            existingSecret: "composio-composio-secrets"
+            # tls:
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
+  # admintools:
+  #   additionalVolumes:
+  #     - name: temporal-db-tls
+  #       secret:
+  #         secretName: temporal-db-tls-secret
+  #   additionalVolumeMounts:
+  #     - name: temporal-db-tls
+  #       mountPath: /etc/certs
+  #       readOnly: true
+          
+

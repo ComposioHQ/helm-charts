@@ -1,0 +1,67 @@
+# Disable Weaviate installation. 
+weaviate:
+  enabled: false
+
+# NOTE: Replace the <DATABASE_HOST>, ensure user is superuser. 
+databaseMigration: 
+  enabled: true
+  host: "postgres-new.db"
+  port: "5432"
+  user: "composio"
+
+# Redis Configuration
+# NOTE: Our internal Redis doesn't come with production support. We recommend using external Redis for production environments.
+externalRedis:
+  # -- Enable external Redis. Set to true to use an external Redis instance
+  enabled: true
+  # -- Secret name containing Redis connection URL
+  secretRef: "composio-composio-secrets"
+  # -- Key name in the secret containing the Redis URL
+  key: "REDIS_URL"
+
+redis:
+  enabled: false
+
+# Disable Temporal installation
+features:
+  temporal: true
+
+# Configure below temporal values if features.temporal is enabled
+temporal:
+  server:
+    enabled: true
+    config:
+      persistence:
+        default:
+          driver: "sql"
+          sql:
+            host: "postgres-new.db"
+            port: 5432
+            database: "temporal"
+            user: "composio"
+            existingSecret: "composio-composio-secrets"
+            # tls:
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
+        visibility:
+          sql:
+            host: "postgres-new.db"
+            port: 5432
+            database: "temporal_visibility"
+            user: "composio"
+            existingSecret: "composio-composio-secrets"
+            # tls:
+            #   enabled: true
+            #   disableHostVerification: true
+            #   caFile: /etc/certs/rds-ca.crt
+  # admintools:
+  #   additionalVolumes:
+  #     - name: temporal-db-tls
+  #       secret:
+  #         secretName: temporal-db-tls-secret
+  #   additionalVolumeMounts:
+  #     - name: temporal-db-tls
+  #       mountPath: /etc/certs
+  #       readOnly: true
+          

@@ -22,13 +22,14 @@ databaseMigration:
   # -- Key name in the secret containing the Redis URL
   # key: "REDIS_URL"
 
-# Disable Temporal installation
+  # Disable Temporal installation. NOTE: Ensure temporal.server.enabled is true
 features:
   temporal: false
 
 # Configure below temporal values if features.temporal is enabled
 # temporal:
 #   server:
+#     enabled: true
 #     config:
 #       persistence:
 #         default:
