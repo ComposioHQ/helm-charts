@@ -6,6 +6,7 @@
 Visit the Composio Enterprise portal to get your Helm chart:  
 
 [Enterprise Installation](https://enterprise.composio.io/composio-rodent)
+[Replicated migration guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/migrate-to-replicated/README.md)
 
 
 ## Architecture 
