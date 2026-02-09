@@ -129,7 +129,7 @@ apollo:
     # -- Apollo image repository
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260202_00"
+    tag: "r20260209_03"
     # -- Image pull policy
     pullPolicy: Always
 
@@ -165,7 +165,7 @@ apollo:
       # -- Database init image repository
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260202_00"
+      tag: "r20260209_03"
       # -- Image pull policy
       pullPolicy: Always
   
@@ -312,7 +312,7 @@ thermos:
     # -- Thermos image repository
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260202_00"
+    tag: "r20260209_03"
     # -- Image pull policy
     pullPolicy: Always
 
@@ -325,7 +325,7 @@ thermos:
       # -- Database init image repository
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260202_00"
+      tag: "r20260209_03"
       # -- Image pull policy
       pullPolicy: Always
   
@@ -939,7 +939,7 @@ mercury:
     # -- Mercury image repository
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260202_00"
+    tag: "r20260209_03"
     # -- Image pull policy
     pullPolicy: Always
 
@@ -1052,7 +1052,7 @@ frontend:
     # -- Frontend image repository
     repository: composio-self-host/frontend
     # -- Frontend image tag
-    tag: "r20260202_00"
+    tag: "r20260209_03"
     # -- Image pull policy
     pullPolicy: Always
   # Frontend service configuration
@@ -1110,7 +1110,7 @@ weaviate:
     # -- Weaviate image repository
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260202_00"
+    tag: "cohere"
     # -- Image pull policy
     pullPolicy: Always
   # Weaviate service configuration
