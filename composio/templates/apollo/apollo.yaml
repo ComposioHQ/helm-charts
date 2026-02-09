@@ -153,6 +153,18 @@ spec:
                   name: {{ .Values.apollo.smtp.secretRef | default (printf "%s-smtp-credentials" .Release.Name) }}
                   key: {{ .Values.apollo.smtp.key }}
             {{- end }}
+            {{- if .Values.aws.bedrock.secretName }}
+            - name: AWS_BEDROCK_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aws.bedrock.secretName }}
+                  key: AWS_BEDROCK_ACCESS_KEY_ID
+            - name: AWS_BEDROCK_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aws.bedrock.secretName }}
+                  key: AWS_BEDROCK_SECRET_ACCESS_KEY
+            {{- end }}
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}
             {{- end }}

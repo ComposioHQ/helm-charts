@@ -925,6 +925,11 @@ aws:
   lambda:
     # -- Lambda function name
     functionName: "mercury"
+  bedrock:
+    # -- AWS Bedrock region
+    region: us-east-1
+    # -- AWS Bedrock secret name
+    secretName: ""
     
 # Mercury service configuration (OpenAPI tool execution service)
 mercury:
