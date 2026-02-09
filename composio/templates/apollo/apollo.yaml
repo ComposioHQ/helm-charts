@@ -165,6 +165,10 @@ spec:
                   name: {{ .Values.aws.bedrock.secretName }}
                   key: AWS_BEDROCK_SECRET_ACCESS_KEY
             {{- end }}
+            {{- if .Values.aws.bedrock.region }}
+            - name: AWS_BEDROCK_REGION
+              value: {{ .Values.aws.bedrock.region }}
+            {{- end }}
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}
             {{- end }}
