@@ -86,7 +86,17 @@ data:
   {{- end }}
   {{- end }}
   # Embeddings Provider Configuration
-  {{- if .Values.openAI.enabled }}
+  {{- if eq .Values.apollo.search.embeddings.provider "cohere-bedrock" }}
+  EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.embeddings.provider | default "cohere-bedrock" | quote }}
+  EMBEDDINGS_MODEL: {{ .Values.apollo.search.embeddings.model | default "cohere.embed-v4:0" | quote }}
+  EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.embeddings.dimensions | default 1024 | toString | quote }}
+  {{- if .Values.apollo.search.unified.enabled }}
+  UNIFIED_EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.unified.embeddings.provider | default "cohere-bedrock" | quote }}
+  UNIFIED_EMBEDDINGS_MODEL: {{ .Values.apollo.search.unified.embeddings.model | default "cohere.embed-v4:0" | quote }}
+  UNIFIED_EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.unified.embeddings.dimensions | default 1024 | toString | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if eq .Values.apollo.search.embeddings.provider "openai" }}
   EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.embeddings.provider | default "openai" | quote }}
   EMBEDDINGS_MODEL: {{ .Values.apollo.search.embeddings.model | default "text-embedding-3-large" | quote }}
   EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.embeddings.dimensions | default 1024 | toString | quote }}
