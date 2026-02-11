@@ -279,100 +279,34 @@ jobs:
         env:
           REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
       
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: 'latest'
+      - name: Get latest sequence from Unstable
+        id: get_sequence
+        run: |
+          # Get latest sequence and version from Unstable
+          LATEST_SEQUENCE_UNSTABLE=$(replicated release ls | grep "Unstable" | head -n 1 | awk '{print $1}')
+          CURRENT_VERSION_UNSTABLE=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
+          CURRENT_VERSION_STABLE=$(replicated channel ls | grep "Stable" | awk '{print $NF}')
+          NEW_APPVERSION=$(echo "$CURRENT_VERSION_UNSTABLE")
+          CHANNEL_ID=$(replicated channel ls | grep Stable | awk '{print $1}')
+          echo "channel_id=$CHANNEL_ID" >> $GITHUB_OUTPUT
+          echo "sequence=$LATEST_SEQUENCE_UNSTABLE" >> $GITHUB_OUTPUT
+          echo "version=$CURRENT_VERSION_UNSTABLE" >> $GITHUB_OUTPUT
+          echo "stable_version=$CURRENT_VERSION_STABLE" >> $GITHUB_OUTPUT
+          echo "Promoting sequence $LATEST_SEQUENCE_UNSTABLE (version $CURRENT_VERSION_UNSTABLE) from Unstable to Stable"
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
       
-      - name: Get and bump version
-        id: version
+      - name: Promote from Stable to Unstable
         env:
           REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
           REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
         run: |
-          cd ./composio
-          CURRENT_APPVERSION=$(replicated channel ls | grep "Stable" | awk '{print $NF}')
-          NEW_APPVERSION=$(echo "$CURRENT_APPVERSION" | awk -F. '{$NF = $NF + 1} 1' OFS=.)
-          echo "current=$CURRENT_APPVERSION" >> $GITHUB_OUTPUT
-          echo "new=$NEW_APPVERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $CURRENT_APPVERSION"
-          echo "New version: $NEW_APPVERSION"
+          set -e 
+          replicated release promote ${{ steps.get_sequence.outputs.sequence }} ${{ steps.get_sequence.outputs.channel_id }} --version ${{ steps.get_sequence.outputs.version }} 
 
-      - name: Update Chart.yaml versions
+      - name: Summary
         run: |
-          cd ./composio
-          export NEW_VERSION="${{ steps.version.outputs.new }}"
-          yq eval -i '.appVersion = strenv(NEW_VERSION)' ./Chart.yaml
-          yq eval -i '.version = strenv(NEW_VERSION)' ./Chart.yaml
-          echo "Updated Chart.yaml"
-
-      - name: Update manifest versions
-        run: |
-          cd ./manifests
-          export NEW_VERSION="${{ steps.version.outputs.new }}"
-          yq eval -i '.metadata.labels."app.kubernetes.io/version" = strenv(NEW_VERSION)' ./k8s-app.yaml
-          yq eval -i '.spec.descriptor.version = strenv(NEW_VERSION)' ./k8s-app.yaml
-          yq eval -i '.spec.chart.chartVersion = strenv(NEW_VERSION)' ./composio.yaml
-          echo "Updated manifest files"
-
-      - name: Clean old packages
-        run: |
-          echo "Removing old tgz files"
-          rm -f ./manifests/*.tgz
-
-      - name: Package and promote to Stable
-        run: |
-          echo "Packaging Helm chart..."
-          helm package ./composio --destination manifests
-          echo "Promoting existing version to Stable channel..."
-          replicated release create \
-            --yaml-dir manifests \
-            --promote Stable \
-            --version "${{ steps.version.outputs.new }}"
-        env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-          REPLICATED_APP: composio-rodent
-
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.TOKEN_GITHUB_HELM }}
-          commit-message: "chore: bump helm chart version to ${{ steps.version.outputs.new }}"
-          branch: release-${{ steps.version.outputs.new }}-${{ github.run_number }}
-          base: release-stable
-          title: "Release: Helm Chart v${{ steps.version.outputs.new }}"
-          body: |
-            ## Helm Chart Release
-            
-            This PR contains version updates for the Helm chart release.
-            
-            ### Changes
-            - **Previous Version:** ${{ steps.version.outputs.current }}
-            - **New Version:** ${{ steps.version.outputs.new }}
-            - **Release Tag:** ${{ steps.metadata.outputs.tag }}
-            - **Channel:** Stable
-            
-            ### Updated Files
-            - `composio/Chart.yaml` - Updated appVersion and version
-            - `manifests/k8s-app.yaml` - Updated app version
-            - `manifests/composio.yaml` - Updated chart version
-            - `manifests/*.tgz` - New Helm package
-            
-            ### Replicated Release
-            Created Replicated release with version ${{ steps.version.outputs.current }} and promoted to Stable channel.
-            
-            ---
-            *Automated PR created by Helm Chart Release workflow*
-          labels: |
-            release
-            automated
-          assignees: ${{ github.actor }}
-
-      - name: PR Summary
-        run: |
-          echo "### Helm Chart Release PR Created 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "### Helm Chart Release Created for Stable Channel 🚀" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version:** ${{ steps.version.outputs.new }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** release-${{ steps.version.outputs.new }}-${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Target:** release-stable" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag:** ${{ steps.metadata.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.get_sequence.outputs.version }}" >> $GITHUB_STEP_SUMMARY
