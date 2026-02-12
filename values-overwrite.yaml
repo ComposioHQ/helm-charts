@@ -1,0 +1,92 @@
+databaseMigration: 
+  image: "postgres:15-alpine"
+  enabled: true
+  host: "34.61.37.198"
+  port: "5432"
+  user: "postgres"
+  password:
+    key: "password"
+replicated: 
+  enabled: true
+global:
+  domain: "app.composio.io"
+apollo:
+  search:
+    enabled: true
+    vectorStoreProvider: "weaviate"
+    embeddings:
+      provider: "openai"
+      model: "text-embedding-3-large"
+      dimensions: 1024
+    unified:
+      enabled: true
+      vectorStoreProvider: "weaviate"
+      embeddings:
+        provider: "openai"
+        model: "text-embedding-3-large"
+        dimensions: 1024
+      indexTool: "tool-lookup-jayesh-v6_openai"
+      indexPlan: "usecase_plans_prod_new_v1_openai"
+  objectStorage:
+    backend: "azure_blob_storage"
+    azureConnectionString: 
+      secretName: "azure-cred"
+      key: "AZURE_CONNECTION_STRING"
+    namespaces:
+      temp: "composio-temp"
+      permanent: "composio-permanent"
+  smtp:
+    enabled: true
+    smtpAuthorEmail: "utkarsh@composio.io"
+  googleServiceAccount:
+    enabled: true
+    secretName: gcp-sa-key
+    mountPath: /var/secrets/google
+  overwrite_fe_url: "https://staging-gke-app.composio.io"
+  overwrite_apollo_url: "https://staging-gke.composio.io"
+  oauth2_redirect_uri_override: "https://staging-gke.composio.io/api/v3/toolkits/auth/callback"
+  smtpAuthorEmail: "utkarsh@composio.io"
+  s3ForcePathStyle: "true"
+  s3EndpointUrl: "https://storage.googleapis.com"
+  s3Endpoint: "https://storage.googleapis.com"
+  s3Bucket: "test-s3-protocol-for-gcs"
+  s3Region: "auto"
+  s3SignatureVersion: "s3"
+openAI:
+  enabled: true
+  secretRef: "composio-openai-credentials"
+  key: "OPENAI_API_KEY"
+mercury:
+  enabled: true
+  useKnative: true
+  replicaCount: 1
+frontend:
+  enabled: true
+  env:
+    BACKEND_URL: "http://composio-apollo:9900"
+    OVERRIDE_BACKEND_URL: "https://staging-gke.composio.io"
+  ingress:
+    enabled: true
+    className: nginx
+    host: staging-gke-app.composio.io
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      kubernetes.io/ingress.global-static-ip-name: "tsuro-fe-ingress-ip"
+features:
+  temporal: true
+temporal:
+  server:
+    enabled: true
+    config:
+      persistence:
+        default:
+          sql:
+            host: 34.61.37.198
+        visibility:
+          sql:
+            host: 34.61.37.198
+
+

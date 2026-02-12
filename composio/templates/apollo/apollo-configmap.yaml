@@ -62,6 +62,12 @@ data:
   OTEL_METRICS_ENDPOINT: {{ .Values.otel.apollo.metricsEndpoint | default (printf "http://%s-otel-collector:4318/v1/metrics" .Release.Name) | quote }}
   OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
   {{- end }}
+  {{- if .Values.apollo.signup }}
+  SIGNUP_INVITE_ONLY: {{ .Values.apollo.signup.inviteOnly | default false | toString | quote }}
+  {{- if .Values.apollo.signup.allowedDomains }}
+  SIGNUP_ALLOWED_DOMAINS: {{ .Values.apollo.signup.allowedDomains | quote }}
+  {{- end }}
+  {{- end }}
   SMTP_AUTHOR_EMAIL: {{ .Values.apollo.smtp.smtpAuthorEmail | quote }}
   S3_BUCKET: {{ .Values.apollo.s3Bucket | quote }}
   TEST_DEBUG: "true"

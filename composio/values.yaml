@@ -191,6 +191,13 @@ apollo:
       # -- CPU limit for Apollo
       cpu: "1"
   
+  # Signup configuration
+  signup:
+    # -- Enable invite-only signup mode (requires invitation to register)
+    inviteOnly: false
+    # -- Comma-separated list of allowed email domains for signup (e.g., "composio.dev,usefulagents.com")
+    allowedDomains: ""
+
   # SMTP configuration for email notifications
   smtp:
     # -- Enable SMTP
