@@ -112,7 +112,11 @@ spec:
             {{- end }}
             {{- if .Values.redis.enabled }}
             - name: REDIS_URL
+            {{- if .Values.redis.auth.password }}
               value: "redis://:{{ .Values.redis.auth.password }}@{{ .Release.Name }}-redis-master:6379"
+            {{- else }}
+              value: "redis://{{ .Release.Name }}-redis-master:6379"
+            {{- end }}
             {{- end }}
             - name: ENCRYPTION_KEY
               valueFrom:

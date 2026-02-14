@@ -80,7 +80,7 @@ redis:
     # -- Enable Redis authentication
     enabled: true
     # -- Redis password
-    password: "redis123"
+    password: ""
   # -- Redis architecture (standalone or replication)
   architecture: standalone
   # Redis master node configuration
