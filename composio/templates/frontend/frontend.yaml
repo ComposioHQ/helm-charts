@@ -86,6 +86,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
+                  optional: true
             {{- end }}
             {{- if and .Values.frontend.secrets .Values.frontend.secrets.PLAIN_SECRET }}
             - name: PLAIN_SECRET
@@ -179,4 +180,3 @@ spec:
       selectPolicy: Max
 {{- end }}
 {{- end }}
-

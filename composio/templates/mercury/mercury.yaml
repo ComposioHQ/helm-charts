@@ -78,6 +78,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
+                  optional: true
             {{- end }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:

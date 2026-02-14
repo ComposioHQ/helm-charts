@@ -117,8 +117,10 @@ openAI:
   enabled: false
   # -- Secret name containing OpenAI API key
   secretRef: "composio-composio-secrets" 
-  # -- Key name in the secret
+  # -- Key name in the secret (optional when OPENAI key is not required)
   key: "OPENAI_API_KEY"
+  # -- Base URL for OpenAI-compatible API endpoints
+  baseUrl: "https://api.openai.com/v1"
 
 # Apollo service configuration (main API service)
 apollo:
@@ -935,6 +937,8 @@ aws:
   bedrock:
     # -- AWS Bedrock region
     region: us-east-1
+    # -- AWS Bedrock OpenAI-compatible runtime endpoint
+    endpoint: "https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1"
     # -- AWS Bedrock secret name
     secretName: ""
     

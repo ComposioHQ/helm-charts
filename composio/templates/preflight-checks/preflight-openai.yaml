@@ -14,13 +14,6 @@ stringData:
     spec:
       {{- if .Values.openAI.enabled }}
       collectors:
-        # --- Source OpenAI secret referenced by your values ---
-        - secret:
-            name: "{{ .Values.openAI.secretRef }}"
-            namespace: "{{ .Release.Namespace }}"
-            key: "{{ .Values.openAI.key }}"
-            includeValue: false
-
         # --- Validate OpenAI key by real HTTP request ---
         - runPod:
             collectorName: "validate-openai-api-key"
@@ -60,17 +53,6 @@ stringData:
                       fi
 
       analyzers:
-        - secret:
-            checkName: "OpenAI source secret present"
-            secretName: "{{ .Values.openAI.secretRef }}"
-            namespace: "{{ .Release.Namespace }}"
-            key: "{{ .Values.openAI.key }}"
-            outcomes:
-              - fail:
-                  message: "Missing OpenAI source Secret {{ .Values.openAI.secretRef }} or key {{ .Values.openAI.key }}."
-              - pass:
-                  message: "Found OpenAI source Secret {{ .Values.openAI.secretRef }} (key {{ .Values.openAI.key }})."
-
         - textAnalyze:
             checkName: "OpenAI API key is valid"
             fileName: "/validate-openai-api-key.log"

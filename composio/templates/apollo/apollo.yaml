@@ -129,7 +129,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
+                  optional: true
             {{- end }} 
+            - name: OPENAI_BASE_URL
+              value: {{ .Values.openAI.baseUrl | quote }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -172,6 +175,10 @@ spec:
             {{- if .Values.aws.bedrock.region }}
             - name: AWS_BEDROCK_REGION
               value: {{ .Values.aws.bedrock.region }}
+            {{- end }}
+            {{- if .Values.aws.bedrock.endpoint }}
+            - name: AWS_BEDROCK_ENDPOINT
+              value: {{ .Values.aws.bedrock.endpoint }}
             {{- end }}
             {{- if .Values.apollo.env }}
             {{- toYaml .Values.apollo.env | nindent 12 }}

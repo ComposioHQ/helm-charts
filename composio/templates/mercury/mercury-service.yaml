@@ -64,6 +64,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
+                  optional: true
             {{- end }}
             - name: BACKEND_URL
               value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
