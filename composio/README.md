@@ -346,9 +346,9 @@ A Helm chart for Composio
 
 ## Upgrading
 
-### From version 1.46.1 and below
+### From version 1.47 and below
 
-Starting from this version, the default value of `redis.auth.password` has been changed to `""` (empty). If you are upgrading from version 1.46.1 or earlier and your deployment uses the **internal Redis** (`redis.enabled: true`), this affects you in one of two ways:
+Starting from this version, the default value of `redis.auth.password` has been changed to `""` (empty). If you are upgrading from version 1.47 or earlier and your deployment uses the **internal Redis** (`redis.enabled: true`), this affects you in one of two ways:
 
 - **If you were not explicitly setting `redis.auth.password` in your values file**, the default has changed from `"redis123"` to `""`. After upgrading, Redis will still enforce the old password (persisted in the `<release-name>-redis` Kubernetes Secret), while Apollo will attempt to connect without one. You must delete the Redis secret and restart the Redis pod as described in the section below.
 
