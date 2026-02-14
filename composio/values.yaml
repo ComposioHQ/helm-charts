@@ -294,9 +294,9 @@ apollo:
         # -- Embedding dimensions for unified search
         dimensions: 1024
       # -- Index/collection name for tool search
-      indexTool: "ToolData"
+      indexTool: "ToolDataOpenai"
       # -- Index/collection name for plan search
-      indexPlan: "UsecasePlans"
+      indexPlan: "UsecasePlansOpenai"
     # Weaviate Configuration
     weaviate:
       # -- Default collection name for Weaviate
