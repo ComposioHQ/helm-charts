@@ -177,7 +177,7 @@ spec:
               value: {{ .Values.aws.bedrock.region }}
             {{- end }}
             {{- if .Values.aws.bedrock.endpoint }}
-            - name: AWS_BEDROCK_ENDPOINT
+            - name: AWS_BEDROCK_OPENAI_ENDPOINT
               value: {{ .Values.aws.bedrock.endpoint }}
             {{- end }}
             {{- if .Values.apollo.env }}
