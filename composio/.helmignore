@@ -43,4 +43,4 @@ docker-compose.yml
 docker-compose.yaml
 # Temporary files
 tmp/
-temp/ 
+temp/

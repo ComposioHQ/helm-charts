@@ -32,7 +32,7 @@ spec:
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}-web
-          image: "{{ .Values.web.image.repository }}:{{ .Values.web.image.tag }}"
+          image: "{{ .Values.web.imageName }}"
           imagePullPolicy: {{ .Values.web.image.pullPolicy }}
           env:
             - name: TEMPORAL_ADDRESS
@@ -49,18 +49,6 @@ spec:
             initialDelaySeconds: 10
             tcpSocket:
               port: http
-          {{- if .Values.web.readinessProbe.enabled }}
-          readinessProbe:
-            httpGet:
-              path: {{ .Values.web.readinessProbe.httpGet.path }}
-              port: {{ .Values.web.readinessProbe.httpGet.port }}
-              scheme: {{ .Values.web.readinessProbe.httpGet.scheme }}
-            failureThreshold: {{ .Values.web.readinessProbe.failureThreshold }}
-            initialDelaySeconds: {{ .Values.web.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.web.readinessProbe.periodSeconds }}
-            successThreshold: {{ .Values.web.readinessProbe.successThreshold }}
-            timeoutSeconds: {{ .Values.web.readinessProbe.timeoutSeconds }}
-          {{- end }}
           ports:
             - name: http
               containerPort: 8080

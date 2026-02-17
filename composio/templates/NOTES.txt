@@ -48,4 +48,4 @@ For more information:
 {{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
 
 INFO: Redis password will be auto-managed by the chart for security.
-{{- end }} 
+{{- end }}

@@ -21,9 +21,12 @@ spec:
       labels:
         app: apollo
         release: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/apollo/apollo-configmap.yaml") . | sha256sum }}
+        checksum/env: {{ toYaml .Values.apollo.env | sha256sum }}
     spec:
-      {{- if .Values.apollo.serviceAccount.enabled }}
-      serviceAccountName: {{ .Values.apollo.serviceAccount.name  }}
+      {{- if .Values.apollo.serviceAccountName }}
+      serviceAccountName: {{ .Values.apollo.serviceAccountName }}
       {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -31,10 +34,6 @@ spec:
       {{- end }}
       {{- with .Values.apollo.podSecurityContext }}
       securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.apollo.nodeSelector }}
-      nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.apollo.affinity }}
@@ -45,9 +44,23 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if or .Values.nodeSelector .Values.apollo.nodeSelector }}
+      nodeSelector:
+        {{- with .Values.apollo.nodeSelector }}
+          {{- toYaml . | nindent 8 }}
+        {{- else }}
+          {{- toYaml .Values.nodeSelector | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.apollo.additionalInitContainers}}
+      initContainers:
+        {{- with .Values.apollo.additionalInitContainers }}
+          {{- toYaml . | nindent 8}}
+        {{- end }}
+      {{- end }}
       containers:
         - name: apollo
-          image: "{{ .Values.global.registry.name }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
+          image: "{{ .Values.apollo.image.imageName }}"
           imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
           {{- with .Values.apollo.containerSecurityContext }}
           securityContext:
@@ -75,18 +88,6 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-apollo-config
           env:
-            {{- if and (eq .Values.apollo.objectStorage.backend "s3") (not .Values.apollo.serviceAccount.enabled) }}
-            - name: S3_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-s3-credentials
-                  key: S3_ACCESS_KEY_ID
-            - name: S3_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-s3-credentials
-                  key: S3_SECRET_ACCESS_KEY
-            {{- end }}
             {{- if eq (default "s3" .Values.apollo.objectStorage.backend) "azure_blob_storage" }}
             - name: AZURE_CONNECTION_STRING
               valueFrom:
@@ -99,15 +100,10 @@ spec:
                 secretKeyRef:
                   name: external-redis-secret
                   key: url
-            - name: ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-encryption-key
-                  key: ENCRYPTION_KEY
             - name: COMPOSIO_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-composio-api-key
+                  name: {{ .Release.Name }}-secrets
                   key: COMPOSIO_API_KEY
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
@@ -115,7 +111,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-openai-credentials
                   key: OPENAI_API_KEY
-            {{- end }} 
+            {{- end }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -129,13 +125,18 @@ spec:
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-encryption-key
+                  name: {{ .Release.Name }}-secrets
                   key: ENCRYPTION_KEY
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-jwt-secret
                   key: JWT_SECRET
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-encryption-key
+                  key: ENCRYPTION_KEY
             {{- if .Values.apollo.smtp.enabled }}
             - name: SMTP_CONNECTION_STRING
               valueFrom:

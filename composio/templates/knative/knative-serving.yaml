@@ -1,4 +1,5 @@
 {{- if .Values.mercury.useKnative }}
+{{- if .Values.namespace.create }}
 ---
 apiVersion: v1
 kind: Namespace
@@ -12,6 +13,7 @@ metadata:
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
     "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "-7"
+{{- end }}
 ---
 # Job to configure Knative after installation
 apiVersion: batch/v1
@@ -40,13 +42,13 @@ spec:
         - -c
         - |
           echo "🔧 Configuring Knative for optimal performance..."
-          
+
           # Wait for knative-serving namespace and core components
           echo "⏳ Waiting for Knative serving namespace..."
           kubectl wait --for condition=Ready --timeout=300s namespace/knative-serving || {
             echo "⚠️  Timeout waiting for namespace, but continuing..."
           }
-          
+
           # Wait for config-network ConfigMap to exist with timeout
           echo "⏳ Waiting for config-network ConfigMap..."
           TIMEOUT=300
@@ -65,7 +67,7 @@ spec:
             sleep 10
             ELAPSED=$((ELAPSED + 10))
           done
-          
+
           # Configure domain template for cluster-local services
           echo "🌐 Configuring domain settings..."
           if kubectl get configmap config-domain -n knative-serving >/dev/null 2>&1; then
@@ -79,27 +81,20 @@ spec:
             echo "⚠️  config-domain ConfigMap not found, skipping domain configuration"
           fi
 
-          # Also ensure the domain template is properly set
-          echo "🌐 Setting domain template..."
+          # Configure network settings for cluster-local services
+          echo "🔗 Configuring network settings..."
           if kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; then
             kubectl patch configmap config-network -n knative-serving --type merge --patch '
             {
               "data": {
-                "domainTemplate": "{{`{{.Name}}.{{.Namespace}}`}}.svc.cluster.local"
+                "ingress-class": "kourier.ingress.networking.knative.dev",
+                "domainTemplate": "{{.Name}}.{{.Namespace}}.{{.Domain}}"
               }
-            }' || echo "⚠️  Domain template patch failed, may already be configured"
+            }' || echo "⚠️  Network config patch may have already been applied"
           else
-            echo "⚠️  config-network ConfigMap not found, skipping domain template configuration"
+            echo "⚠️  config-network ConfigMap not found, skipping network configuration"
           fi
-          
-          # Additional network settings (domain template is now handled during installation)
-          echo "🔗 Verifying network settings..."
-          if kubectl get configmap config-network -n knative-serving >/dev/null 2>&1; then
-            echo "✅ Network configuration exists"
-          else
-            echo "⚠️  config-network ConfigMap not found"
-          fi
-          
+
           # Configure defaults for GKE Autopilot optimization
           echo "⚙️  Configuring defaults for GKE Autopilot..."
           if kubectl get configmap config-defaults -n knative-serving >/dev/null 2>&1; then
@@ -107,7 +102,7 @@ spec:
             {
               "data": {
                 "revision-timeout-seconds": "300",
-                "max-revision-timeout-seconds": "600", 
+                "max-revision-timeout-seconds": "600",
                 "revision-cpu-request": "100m",
                 "revision-memory-request": "128Mi",
                 "revision-cpu-limit": "1000m",
@@ -117,14 +112,13 @@ spec:
           else
             echo "⚠️  config-defaults ConfigMap not found, skipping defaults configuration"
           fi
-          
+
           echo "✅ Knative configuration completed!"
           echo "📊 Configuration summary:"
           echo "  • Domain: cluster-local services enabled"
-          echo "  • Network: Configuration verified" 
+          echo "  • Network: Kourier ingress configured"
           echo "  • Defaults: GKE Autopilot optimized"
-          echo "  • Domain Template: Already configured during installation"
-          
+
           # Verify configuration
           echo "🔍 Verifying configuration..."
           kubectl get configmap config-network -n knative-serving -o jsonpath='{.data.ingress-class}' || echo "Could not verify ingress-class"

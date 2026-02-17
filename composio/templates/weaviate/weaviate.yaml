@@ -1,0 +1,140 @@
+{{- if .Values.weaviate.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-weaviate
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: weaviate
+spec:
+  replicas: {{ .Values.weaviate.replicaCount | default 1 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: weaviate
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: weaviate
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with .Values.weaviate.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.weaviate.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.weaviate.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: weaviate
+          image: "{{ .Values.weaviate.image.imageName }}"
+          imagePullPolicy: {{ .Values.weaviate.image.pullPolicy }}
+          {{- with .Values.weaviate.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.weaviate.service.port | default 8080 }}
+              name: http
+            - containerPort: {{ .Values.weaviate.service.grpcPort | default 50051 }}
+              name: grpc
+          env:
+            - name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+              value: {{ .Values.weaviate.auth.anonymousAccess | default "true" | quote }}
+            - name: PERSISTENCE_DATA_PATH
+              value: "/var/lib/weaviate"
+            - name: DEFAULT_VECTORIZER_MODULE
+              value: {{ .Values.weaviate.vectorizer | default "none" | quote }}
+            - name: ENABLE_MODULES
+              value: {{ .Values.weaviate.modules | default "text2vec-openai,text2vec-cohere,text2vec-huggingface,ref2vec-centroid,generative-openai,qna-openai" | quote }}
+            {{- if .Values.weaviate.env }}
+            {{- toYaml .Values.weaviate.env | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /v1/.well-known/ready
+              port: {{ .Values.weaviate.service.port | default 8080 }}
+            initialDelaySeconds: {{ .Values.weaviate.livenessProbe.initialDelaySeconds | default 60 }}
+            periodSeconds: {{ .Values.weaviate.livenessProbe.periodSeconds | default 30 }}
+            timeoutSeconds: {{ .Values.weaviate.livenessProbe.timeoutSeconds | default 10 }}
+            failureThreshold: {{ .Values.weaviate.livenessProbe.failureThreshold | default 3 }}
+          readinessProbe:
+            httpGet:
+              path: /v1/.well-known/ready
+              port: {{ .Values.weaviate.service.port | default 8080 }}
+            initialDelaySeconds: {{ .Values.weaviate.readinessProbe.initialDelaySeconds | default 30 }}
+            periodSeconds: {{ .Values.weaviate.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.weaviate.readinessProbe.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.weaviate.readinessProbe.failureThreshold | default 3 }}
+          {{- if .Values.weaviate.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/weaviate
+          {{- end }}
+          resources:
+            {{- toYaml .Values.weaviate.resources | nindent 12 }}
+      {{- if .Values.weaviate.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-weaviate-pvc
+      {{- end }}
+---
+{{- if .Values.weaviate.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-weaviate-pvc
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: weaviate
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.weaviate.persistence.size | default "10Gi" }}
+  {{- if .Values.weaviate.persistence.storageClass }}
+  storageClassName: {{ .Values.weaviate.persistence.storageClass }}
+  {{- end }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-weaviate
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: weaviate
+spec:
+  type: {{ .Values.weaviate.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.weaviate.service.port | default 8080 }}
+      targetPort: {{ .Values.weaviate.service.port | default 8080 }}
+      protocol: TCP
+      name: http
+    - port: {{ .Values.weaviate.service.grpcPort | default 50051 }}
+      targetPort: {{ .Values.weaviate.service.grpcPort | default 50051 }}
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: weaviate
+{{- end }}

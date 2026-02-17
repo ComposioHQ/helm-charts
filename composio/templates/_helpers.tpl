@@ -302,4 +302,4 @@ composio: redis
     You cannot enable both external Redis and built-in Redis.
     Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
-{{- end -}} 
+{{- end -}}
