@@ -39,7 +39,7 @@ spec:
         {{- end }}
         {{- if or $.Values.elasticsearch.enabled }}
         - name: check-elasticsearch
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.imageName }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
           command: ['sh', '-c', 'until curl --silent --fail --user "$ES_USER:$ES_PWD" $ES_SCHEME://$ES_HOST:$ES_PORT 2>&1 > /dev/null; do echo waiting for elasticsearch to start; sleep 1; done;']
           env:
@@ -53,12 +53,12 @@ spec:
           {{- range $store := (list "default" "visibility") }}
             {{- $storeConfig := index $.Values.server.config.persistence $store }}
             {{- $driver := include "temporal.persistence.driver" (list $ $store) }}
-            {{- if and (ne $driver "elasticsearch") (ne $driver "custom") }}
+            {{- if ne $driver "elasticsearch" }}
         - name: create-{{ $store }}-store
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.imageName }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
               {{- if eq $driver "cassandra" }}
-          command: ['temporal-cassandra-tool', 'create', '-k', '{{ $storeConfig.cassandra.keyspace }}', '--replication-factor', '{{ $storeConfig.cassandra.replicationFactor }}'{{- if $storeConfig.cassandra.datacenter }}, '--datacenter', '{{ $storeConfig.cassandra.datacenter }}'{{- end }}]
+          command: ['temporal-cassandra-tool', 'create', '-k', '{{ $storeConfig.cassandra.keyspace }}', '--replication-factor', '{{ $storeConfig.cassandra.replicationFactor }}']
               {{- else if eq $driver "sql" }}
           command: ['temporal-sql-tool', 'create-database']
               {{- end }}
@@ -83,35 +83,33 @@ spec:
           {{- range $store := (list "default" "visibility") }}
             {{- $storeConfig := index $.Values.server.config.persistence $store }}
             {{- $driver := include "temporal.persistence.driver" (list $ $store) }}
-            {{- if ne $driver "custom" }}
         - name: setup-{{ $store }}-store
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.imageName }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
-              {{- if eq $driver "cassandra" }}
+            {{- if eq $driver "cassandra" }}
           command: ['temporal-cassandra-tool', 'setup-schema', '-v', '0.0']
-              {{- else if eq $driver "sql" }}
+            {{- else if eq $driver "sql" }}
           command: ['temporal-sql-tool', 'setup-schema', '-v', '0.0']
-              {{- else if eq $driver "elasticsearch" }}
+            {{- else if eq $driver "elasticsearch" }}
           command: ['sh', '-c']
           args:
             - 'curl -X PUT --fail --user "$ES_USER:$ES_PWD" $ES_SCHEME://$ES_HOST:$ES_PORT/_template/temporal_visibility_v1_template -H "Content-Type: application/json" --data-binary "@schema/elasticsearch/visibility/index_template_$ES_VERSION.json" 2>&1 &&
               curl --head --fail --user "$ES_USER:$ES_PWD" $ES_SCHEME://$ES_HOST:$ES_PORT/$ES_VISIBILITY_INDEX 2>&1 ||
               curl -X PUT --fail --user "$ES_USER:$ES_PWD" $ES_SCHEME://$ES_HOST:$ES_PORT/$ES_VISIBILITY_INDEX 2>&1'
-              {{- end }}
+            {{- end }}
           env:
-              {{- include "temporal.admintools-env" (list $ $store) | nindent 12 }}
-              {{- with $.Values.admintools.additionalVolumeMounts }}
+            {{- include "temporal.admintools-env" (list $ $store) | nindent 12 }}
+            {{- with $.Values.admintools.additionalVolumeMounts }}
           volumeMounts:
-                {{- toYaml . | nindent 12 }}
-              {{- end }}
-              {{- with $.Values.schema.resources }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with $.Values.schema.resources }}
           resources:
-                {{- toYaml . | nindent 12 }}
-              {{- end }}
-              {{- with $.Values.schema.containerSecurityContext }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with $.Values.schema.containerSecurityContext }}
           securityContext:
-                {{- toYaml . | nindent 12 }}
-              {{- end }}
+              {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- end }}
         {{- end }}
@@ -120,9 +118,9 @@ spec:
             {{- $storeConfig := index $.Values.server.config.persistence $store }}
             {{- $driver := include "temporal.persistence.driver" (list $ $store) }}
             {{- $schema := include "temporal.persistence.schema" $store }}
-            {{- if and (ne $driver "elasticsearch") (ne $driver "custom") }}
+            {{- if ne $driver "elasticsearch" }}
         - name: update-{{ $store }}-store
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.imageName }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
               {{- if eq $driver "cassandra" }}
           command: ['temporal-cassandra-tool', 'update-schema', '--schema-dir', '/etc/temporal/schema/cassandra/{{ $schema }}/versioned']
@@ -154,7 +152,7 @@ spec:
         {{- if $.Values.server.config.namespaces.create }}
           {{- range $namespace := $.Values.server.config.namespaces.namespace }}
         - name: create-{{ $namespace.name }}-namespace
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.imageName }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
           command: ['/bin/sh','-c']
           args: ['temporal operator namespace describe -n {{ $namespace.name }} || temporal operator namespace create -n {{ $namespace.name }}{{- if hasKey $namespace "retention" }} --retention {{ $namespace.retention }}{{- end }}']
@@ -186,7 +184,7 @@ spec:
         {{- end }}
       containers:
         - name: done
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.imageName }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
           command: ['sh', '-c', 'echo "Store setup completed"']
             {{- with $.Values.schema.resources }}

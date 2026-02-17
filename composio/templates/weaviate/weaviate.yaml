@@ -24,14 +24,9 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: weaviate
     spec:
-      {{- if .Values.replicated.enabled }}
-      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
-      {{- end }}
-      {{- if not .Values.replicated.enabled }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
-      {{- end }}
       {{- end }}
       {{- with .Values.weaviate.nodeSelector }}
       nodeSelector:
@@ -47,7 +42,7 @@ spec:
       {{- end }}
       containers:
         - name: weaviate
-          image: "{{ include "chart.registry" . }}/{{ .Values.weaviate.image.repository }}:{{ .Values.weaviate.image.tag }}"
+          image: "{{ .Values.weaviate.image.imageName }}"
           imagePullPolicy: {{ .Values.weaviate.image.pullPolicy }}
           {{- with .Values.weaviate.securityContext }}
           securityContext:
@@ -143,4 +138,3 @@ spec:
     {{- include "composio.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: weaviate
 {{- end }}
-

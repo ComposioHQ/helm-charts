@@ -12,13 +12,13 @@ data:
   {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
   GOOGLE_APPLICATION_CREDENTIALS: "{{ .Values.apollo.googleServiceAccount.mountPath }}/key.json"
   {{- end }}
-  AWS_REGION: {{ .Values.aws.region | quote }}
+  AWS_REGION: {{ .Values.aws.region | default "us-east-1" | quote }}
   COMPOSIO_ENV: "production"
   USE_CLICKHOUSE_FOR_LOGS: "false"
   SELF_HOSTED: "true"
   NODE_OPTIONS: "--max-old-space-size=4096"
   THERMOS_URL: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
-  BACKEND_URL: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+  BACKEND_URL: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo.composio.svc.cluster.local:9900" .Release.Name) | quote }}
   {{- if .Values.apollo.overwrite_fe_url }}
   OVERWRITE_FE_URL: {{ .Values.apollo.overwrite_fe_url | quote }}
   {{- end }}
@@ -38,7 +38,7 @@ data:
   PERMANENT_STORAGE_NAMESPACE: {{ .Values.apollo.objectStorage.namespaces.permanent | quote }}
   {{- end }}
   SERVICE_NAME: "apollo"
-  APOLLO_URL: {{ .Values.apollo.apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+  APOLLO_URL: {{ .Values.apollo.apollo_url | default (printf "http://%s-apollo.composio.svc.cluster.local:9900" .Release.Name) | quote }}
   MAX_AUTH_FAILURES_FOR_EXPIRY: "1"
   {{- if or (.Values.apollo.frontendUrl) (.Values.apollo.overwrite_fe_url) }}
   FRONTEND_URL: {{ (.Values.apollo.overwrite_fe_url | default .Values.apollo.frontendUrl | default (printf "https://app.%s" .Values.global.domain)) | quote }}
@@ -61,12 +61,6 @@ data:
   ENABLE_OTEL_METRICS: {{ .Values.otel.metrics.enabled | default "true" | quote }}
   OTEL_METRICS_ENDPOINT: {{ .Values.otel.apollo.metricsEndpoint | default (printf "http://%s-otel-collector:4318/v1/metrics" .Release.Name) | quote }}
   OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
-  {{- end }}
-  {{- if .Values.apollo.signup }}
-  SIGNUP_INVITE_ONLY: {{ .Values.apollo.signup.inviteOnly | default false | toString | quote }}
-  {{- if .Values.apollo.signup.allowedDomains }}
-  SIGNUP_ALLOWED_DOMAINS: {{ .Values.apollo.signup.allowedDomains | quote }}
-  {{- end }}
   {{- end }}
   SMTP_AUTHOR_EMAIL: {{ .Values.apollo.smtp.smtpAuthorEmail | quote }}
   S3_BUCKET: {{ .Values.apollo.s3Bucket | quote }}
@@ -92,17 +86,7 @@ data:
   {{- end }}
   {{- end }}
   # Embeddings Provider Configuration
-  {{- if eq .Values.apollo.search.embeddings.provider "cohere-bedrock" }}
-  EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.embeddings.provider | default "cohere-bedrock" | quote }}
-  EMBEDDINGS_MODEL: {{ .Values.apollo.search.embeddings.model | default "cohere.embed-v4:0" | quote }}
-  EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.embeddings.dimensions | default 1024 | toString | quote }}
-  {{- if .Values.apollo.search.unified.enabled }}
-  UNIFIED_EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.unified.embeddings.provider | default "cohere-bedrock" | quote }}
-  UNIFIED_EMBEDDINGS_MODEL: {{ .Values.apollo.search.unified.embeddings.model | default "cohere.embed-v4:0" | quote }}
-  UNIFIED_EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.unified.embeddings.dimensions | default 1024 | toString | quote }}
-  {{- end }}
-  {{- end }}
-  {{- if eq .Values.apollo.search.embeddings.provider "openai" }}
+  {{- if .Values.openAI.enabled }}
   EMBEDDINGS_PROVIDER: {{ .Values.apollo.search.embeddings.provider | default "openai" | quote }}
   EMBEDDINGS_MODEL: {{ .Values.apollo.search.embeddings.model | default "text-embedding-3-large" | quote }}
   EMBEDDINGS_DIMENSIONS: {{ .Values.apollo.search.embeddings.dimensions | default 1024 | toString | quote }}

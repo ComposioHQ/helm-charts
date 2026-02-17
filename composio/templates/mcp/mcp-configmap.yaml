@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-mcp-config
+  labels:
+    app: mcp
+    release: {{ .Release.Name }}
+data:
+  PORT: "3000"
+  HOSTNAME: "0.0.0.0"
+  APOLLO_COMPOSIO_BASE_URL: {{ printf "http://%s-apollo.composio.svc.cluster.local:9900" .Release.Name | quote }}
+  APOLLO_SPEC_PATH: {{ printf "http://%s-apollo:9900/api/v3/mcp-experimental-openapi.json" .Release.Name | quote }}
+  COMPOSIO_BASE_URL: {{ printf "http://%s-apollo.composio.svc.cluster.local:9900" .Release.Name | quote }}
+  SELF_HOSTED: "true"
+  MCP_BASE_URL: {{ printf "http://%s-mcp.composio.svc.cluster.local:3000" .Release.Name | quote }}
+  SERVICE_NAME: "mcp-server-next"
+  NEXT_PUBLIC_COMPOSIO_BASE_URL: {{ printf "http://%s-apollo.composio.svc.cluster.local:9900" .Release.Name | quote }}
+  APOLLO_URL: {{ printf "http://%s-apollo.composio.svc.cluster.local:9900" .Release.Name | quote }}
+  OVERRIDE_ORIGIN: {{ printf "http://%s-mcp.composio.svc.cluster.local:3000" .Release.Name | quote }}
+  {{- if .Values.otel.enabled }}
+  OTEL_ENABLED: {{ .Values.otel.enabled | quote }}
+  OTEL_SERVICE_NAME: {{ .Values.otel.mcp.serviceName | default "mcp" | quote }}
+  OTEL_SERVICE_VERSION: {{ .Values.otel.mcp.serviceVersion | default "1.0.0" | quote }}
+  OTEL_ENVIRONMENT: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ .Values.otel.exporter.otlp.tracesEndpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+  OTEL_EXPORTER_OTLP_INSECURE: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_METRICS_EXPORTER: "otlp"
+  OTEL_LOGS_EXPORTER: "otlp"
+  OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.mcp.serviceName | default "mcp" }},service.version={{ .Values.otel.mcp.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+  {{- end }}

@@ -32,4 +32,4 @@ spec:
   tls:
     {{- toYaml .Values.mercury.ingress.tls | nindent 4 }}
   {{- end }}
-{{- end }} 
+{{- end }}

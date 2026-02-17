@@ -7,8 +7,8 @@ metadata:
   labels:
     {{- include "composio.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook-weight": "-10"
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-8"
 rules:
 - apiGroups: ["*"]
   resources: ["*"]
@@ -21,8 +21,8 @@ metadata:
   labels:
     {{- include "composio.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook-weight": "-10"
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-7"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -30,7 +30,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "composio.namespace" . }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -41,7 +41,7 @@ metadata:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: knative-setup
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "-6"
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
@@ -58,17 +58,17 @@ spec:
         - -c
         - |
           echo "🚀 Setting up Knative using direct manifests (bypassing operator rate limiting)..."
-          
+
           # Function to apply resource with retry and idempotency
           apply_with_retry() {
             local url=$1
             local resource_type=$2
             echo "📦 Applying $resource_type from $url..."
-            
+
             # Apply the resource (idempotent operation)
             local attempt=1
             local max_attempts=3
-            
+
             while [ $attempt -le $max_attempts ]; do
               if timeout 120 kubectl apply -f "$url"; then
                 echo "✅ Successfully applied $resource_type"
@@ -79,16 +79,16 @@ spec:
                 sleep 10
               fi
             done
-            
+
             echo "❌ Failed to apply $resource_type after $max_attempts attempts"
             echo "🔍 Checking cluster connectivity..."
             kubectl cluster-info || echo "Cluster connectivity issues detected"
             return 1
           }
-          
+
           # Install Knative Serving CRDs (no operator needed)
           apply_with_retry "https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-crds.yaml" "Knative Serving CRDs"
-          
+
           # Wait for CRDs to be established
           echo "⏳ Waiting for Knative Serving CRDs to be ready..."
           if ! kubectl wait --for condition=established --timeout=300s crd/services.serving.knative.dev 2>/dev/null; then
@@ -103,14 +103,14 @@ spec:
           else
             echo "✅ Knative CRDs are ready"
           fi
-          
+
           # Install Knative Serving Core Components (direct, no operator)
           apply_with_retry "https://github.com/knative/serving/releases/download/knative-v1.15.0/serving-core.yaml" "Knative Serving Core"
-          
+
           # Install Kourier networking
           apply_with_retry "https://github.com/knative/net-kourier/releases/download/knative-v1.15.0/kourier.yaml" "Kourier Networking"
-          
-          # Configure Knative to use Kourier and fix domain template
+
+          # Configure Knative to use Kourier
           echo "🔧 Configuring Knative to use Kourier networking..."
           kubectl patch configmap/config-network \
             --namespace knative-serving \
@@ -118,23 +118,14 @@ spec:
             --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}' || {
             echo "⚠️  ConfigMap patch failed, will retry in background"
           }
-          
-          # Fix domain template to prevent DNS lookup issues
-          echo "🌐 Fixing domain template configuration..."
-          kubectl patch configmap/config-network \
-            --namespace knative-serving \
-            --type merge \
-            --patch '{"data":{"domainTemplate":"{{`{{.Name}}.{{.Namespace}}`}}.svc.cluster.local"}}' || {            echo "⚠️  Domain template patch failed, will retry in background"
-          }
-          
+
           echo "✅ Knative setup completed successfully!"
           echo "📊 Installation summary:"
           echo "  • Knative Serving CRDs: Installed"
-          echo "  • Knative Serving Core: Installed" 
+          echo "  • Knative Serving Core: Installed"
           echo "  • Kourier Networking: Installed"
           echo "  • Network Configuration: Kourier enabled"
-          echo "  • Domain Template: Fixed for cluster-local services"
-          
+
           # Verify installation
           echo "🔍 Verifying installation..."
           kubectl get crd | grep knative | head -5

@@ -2,19 +2,13 @@ apiVersion: v2
 name: composio
 description: A Helm chart for Composio
 type: application
-version: "0.1.40"
-appVersion: "0.1.40"
+version: 0.1.0
+appVersion: "1.0.0"
+
 dependencies:
   - name: redis
     version: "17.11.3"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: redis.enabled
+    repository: "file://./charts/redis"
   - name: temporal
-    alias: temporal
-    version: "0.68.1"
+    version: "0.64.0"
     repository: "file://./charts/temporal"
-    condition: features.temporal
-  - name: replicated
-    repository: oci://registry.replicated.com/library
-    version: 1.12.1
-    condition: replicated.enabled 
