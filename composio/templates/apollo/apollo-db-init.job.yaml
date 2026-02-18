@@ -1,5 +1,5 @@
 {{- if .Values.apollo.dbInit.enabled }}
-{{- $randomHash := include "hash" (dict "data" .Values.apollo.image.tag) }}
+{{- $randomHash := include "hash" (dict "data" .Values.apolloDbInit.image.imageName) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -18,70 +18,80 @@ spec:
         app: apollo-db-init
         release: {{ .Release.Name }}
     spec:
-      {{- if .Values.apollo.serviceAccount.enabled }}
-      serviceAccountName: {{ .Values.apollo.serviceAccount.name  }}
+      {{- if .Values.apolloDbInit.serviceAccountName }}
+      serviceAccountName: {{ .Values.apolloDbInit.serviceAccountName }}
       {{- end }}
-      {{- if .Values.replicated.enabled }}
-      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
-      {{- end }}
-      {{- if not .Values.replicated.enabled }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
-      {{- end }}
-      {{- with .Values.apollo.dbInit.podSecurityContext }}
+      {{- with .Values.apolloDbInit.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
-      {{- with .Values.apollo.nodeSelector }}
+      restartPolicy: {{ .Values.apolloDbInit.job.restartPolicy | default "OnFailure" }}
+      {{- with .Values.apolloDbInit.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.apollo.affinity }}
+      {{- with .Values.apolloDbInit.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.apollo.tolerations }}
+      {{- with .Values.apolloDbInit.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.apolloDbInit.additionalInitContainers}}
+      initContainers:
+        {{- with .Values.apolloDbInit.additionalInitContainers }}
+          {{- toYaml . | nindent 8}}
+        {{- end }}
+      {{- end }}
       containers:
         - name: apollo-db-init
-          image: "{{ include "chart.registry" . }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
-          imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
-          {{- with .Values.apollo.dbInit.containerSecurityContext }}
+          image: "{{ .Values.apolloDbInit.image.imageName }}"
+          imagePullPolicy: {{ .Values.apolloDbInit.image.pullPolicy }}
+          {{- with .Values.apolloDbInit.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
-            {{- $coreSecret := include "composio.coreSecretName" . }}
             # Apollo database URL
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: POSTGRES_URL
+                  name: external-postgres-secret
+                  key: url
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
+                  name: {{ .Release.Name }}-secrets
                   key: ENCRYPTION_KEY
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
+                  name: {{ .Release.Name }}-secrets
                   key: ENCRYPTION_KEY
+            - name: COMPOSIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: COMPOSIO_API_KEY
             - name: ADMIN_EMAIL
-              value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+              value: {{ .Values.apolloDbInit.adminEmail | default "hello@composio.dev" | quote }}
+          {{- with .Values.apolloDbInit.additionalVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.apolloDbInit.resources }}
           resources:
-            requests:
-              cpu: 500m
-              memory: 512Mi
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-  backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
-  activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.apolloDbInit.additionalVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  backoffLimit: {{ .Values.apolloDbInit.job.backoffLimit | default 3 }}
+  activeDeadlineSeconds: {{ .Values.apolloDbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}

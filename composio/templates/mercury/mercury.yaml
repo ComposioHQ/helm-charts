@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "composio.fullname" . }}-mercury
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "composio.namespace" . }}
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: mercury
@@ -20,14 +20,9 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: mercury
     spec:
-      {{- if .Values.replicated.enabled }}
-      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
-      {{- end }}
-      {{- if not .Values.replicated.enabled }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
-      {{- end }}
       {{- end }}
       {{- with .Values.mercury.nodeSelector }}
       nodeSelector:
@@ -43,7 +38,7 @@ spec:
       {{- end }}
       containers:
         - name: mercury
-          image: "{{ include "chart.registry" . }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag }}"
+          image: "{{ .Values.mercury.image.imageName }}"
           imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.mercury.service.port | default 8080 }}
@@ -57,7 +52,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             tcpSocket:
-              port: {{ .Values.mercury.service.port | default 8080 }} 
+              port: {{ .Values.mercury.service.port | default 8080 }}
             timeoutSeconds: 1
           readinessProbe:
             failureThreshold: 3
@@ -71,20 +66,18 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-mercury-config
           env:
-            {{- $coreSecret := include "composio.coreSecretName" . }}
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.openAI.secretRef }}
-                  key: {{ .Values.openAI.key }}
-                  optional: true
+                  name: {{ .Release.Name }}-openai-credentials
+                  key: OPENAI_API_KEY
             {{- end }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: COMPOSIO_ADMIN_TOKEN
+                  name: {{ .Release.Name }}-apollo-admin-token
+                  key: APOLLO_ADMIN_TOKEN
             {{- if .Values.otel.enabled }}
             # OTEL Resource attributes
             - name: OTEL_RESOURCE_ATTRIBUTES
@@ -105,7 +98,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "composio.fullname" . }}-mercury
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "composio.namespace" . }}
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: mercury
@@ -118,4 +111,4 @@ spec:
   selector:
     {{- include "composio.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: mercury
-{{- end }} 
+{{- end }}

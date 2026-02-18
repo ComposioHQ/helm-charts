@@ -13,82 +13,70 @@ Expand the name of the chart.
 {{- printf "%s-%s" $base $rand }}
 {{- end -}}
 
-{{/* Core secret name shared by chart-managed secrets */}}
-{{- define "composio.coreSecretName" -}}
-{{- printf "%s" .Values.secret.name -}}
-{{- end -}}
 
-
-{{- define "composio-admin-token" -}}
-{{- $coreName := include "composio.coreSecretName" . -}}
-{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
-{{- if and $core (hasKey $core.data "COMPOSIO_ADMIN_TOKEN") -}}
-  {{- index $core.data "COMPOSIO_ADMIN_TOKEN" | b64dec -}}
-{{- else -}}
-  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-composio-admin-token" .Release.Name) -}}
-  {{- if and $legacy (hasKey $legacy.data "COMPOSIO_ADMIN_TOKEN") -}}
-    {{- index $legacy.data "COMPOSIO_ADMIN_TOKEN" | b64dec -}}
+{{- define "apollo-admin-token" -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-apollo-admin-token" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "APOLLO_ADMIN_TOKEN" -}}
+    {{- index $secret.data "APOLLO_ADMIN_TOKEN" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "composio-api-key" -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-composio-api-key" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "COMPOSIO_API_KEY" -}}
+    {{- index $secret.data "COMPOSIO_API_KEY" | b64dec -}}
+  {{- else -}}
+    {{- randAlphaNum 32 -}}
+  {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
 
 {{- define "encryption-key" -}}
-{{- $coreName := include "composio.coreSecretName" . -}}
-{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
-{{- if and $core (hasKey $core.data "ENCRYPTION_KEY") -}}
-  {{- index $core.data "ENCRYPTION_KEY" | b64dec -}}
-{{- else -}}
-  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-encryption-key" .Release.Name) -}}
-  {{- if and $legacy (hasKey $legacy.data "ENCRYPTION_KEY") -}}
-    {{- index $legacy.data "ENCRYPTION_KEY" | b64dec -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-encryption-key" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "ENCRYPTION_KEY" -}}
+    {{- index $secret.data "ENCRYPTION_KEY" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "jwt-secret" -}}
-{{- $coreName := include "composio.coreSecretName" . -}}
-{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
-{{- if and $core (hasKey $core.data "JWT_SECRET") -}}
-  {{- index $core.data "JWT_SECRET" | b64dec -}}
-{{- else -}}
-  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-jwt-secret" .Release.Name) -}}
-  {{- if and $legacy (hasKey $legacy.data "JWT_SECRET") -}}
-    {{- index $legacy.data "JWT_SECRET" | b64dec -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-jwt-secret" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "JWT_SECRET" -}}
+    {{- index $secret.data "JWT_SECRET" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Check if Temporal is enabled via features.temporal flag
-This flag both deploys the temporal subchart (via Chart.yaml condition) and configures thermos to use it
-*/}}
-{{- define "composio.temporalEnabled" -}}
-{{- if and .Values.features .Values.features.temporal -}}
-true
 {{- else -}}
-false
+  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "temporal-encryption-key" -}}
-{{- $coreName := include "composio.coreSecretName" . -}}
-{{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
-{{- if and $core (hasKey $core.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY") -}}
-  {{- index $core.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" | b64dec -}}
-{{- else -}}
-  {{- $legacy := lookup "v1" "Secret" .Release.Namespace (printf "%s-temporal-encryption-key" .Release.Name) -}}
-  {{- if and $legacy (hasKey $legacy.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY") -}}
-    {{- index $legacy.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" | b64dec -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-temporal-encryption-key" .Release.Name) -}}
+{{- if $secret -}}
+  {{- if hasKey $secret.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" -}}
+    {{- index $secret.data "TEMPORAL_TRIGGER_ENCRYPTION_KEY" | b64dec -}}
   {{- else -}}
     {{- randAlphaNum 32 -}}
   {{- end -}}
+{{- else -}}
+  {{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
@@ -214,7 +202,7 @@ Create the name of the service account to use
 Return the namespace to use for Composio services
 */}}
 {{- define "composio.namespace" -}}
-{{- printf "%s" .Release.Namespace }}
+{{- default "composio" .Values.namespace.name }}
 {{- end }}
 
 {{/*
@@ -282,7 +270,6 @@ Compile all warnings into a single message, and call fail.
 {{- $messages := list -}}
 {{- $messages := append $messages (include "composio.validateValues.database" .) -}}
 {{- $messages := append $messages (include "composio.validateValues.redis" .) -}}
-
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 {{- if $message -}}
@@ -304,140 +291,15 @@ composio: database
 {{/*
 Validate Redis configuration
 */}}
-{{/*
-Validate Redis configuration
-*/}}
 {{- define "composio.validateValues.redis" -}}
+{{- if and .Values.externalRedis.enabled (not .Values.externalSecrets.redis.url) -}}
+composio: redis
+    You must provide a Redis URL when external Redis is enabled.
+    Please set externalSecrets.redis.url
+{{- end -}}
 {{- if and .Values.externalRedis.enabled .Values.redis.enabled -}}
 composio: redis
     You cannot enable both external Redis and built-in Redis.
     Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
-{{- end -}} 
-
-
-{{/*
-Replicated configuration
-*/}}
-{{- define "chart.registry" -}}
-{{- if .Values.replicated.enabled -}}
-{{- printf "%s/proxy/%s/%s" .Values.replicated.registry .Values.replicated.app  .Values.global.registry.name -}}
-{{- else -}}
-{{- .Values.global.registry.name -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Image pull secrets
-*/}}
-{{- define "replicated.imagePullSecrets" -}}
-  {{- $pullSecrets := list }}
-
-  {{- with ((.Values.global).imagePullSecrets) -}}
-    {{- range . -}}
-      {{- if kindIs "map" . -}}
-        {{- $pullSecrets = append $pullSecrets .name -}}
-      {{- else -}}
-        {{- $pullSecrets = append $pullSecrets . -}}
-      {{- end }}
-    {{- end -}}
-  {{- end -}}
-
-  {{/* use image pull secrets provided as values */}}
-  {{- with .Values.images -}}
-    {{- range .pullSecrets -}}
-      {{- if kindIs "map" . -}}
-        {{- $pullSecrets = append $pullSecrets .name -}}
-      {{- else -}}
-        {{- $pullSecrets = append $pullSecrets . -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{/* use secret created with injected docker config */}}
-  {{- if hasKey ((.Values.global).replicated) "dockerconfigjson" }}
-    {{- $pullSecrets = append $pullSecrets "replicated-pull-secret" -}}
-  {{- end -}}
-
-
-  {{- if (not (empty $pullSecrets)) -}}
-imagePullSecrets:
-    {{- range $pullSecrets | uniq }}
-  - name: {{ . }}
-    {{- end }}
-  {{- end }}
-{{- end -}}
-
-
-{{/*
-Parse SMTP connection string from secret
-Expects format: smtp://<username>:<password>@<host>:<port>
-Returns a map with keys: username, password, host, port
-Usage: 
-  {{- $smtp := include "apollo.parseSmtpUrl" (dict "secretRef" .Values.apollo.smtp.secretRef "key" .Values.apollo.smtp.key "namespace" .Release.Namespace) | fromJson }}
-  {{- $smtp.host }}
-  {{- $smtp.port }}
-*/}}
-{{- define "apollo.parseSmtpUrl" -}}
-{{- $secretRef := .secretRef -}}
-{{- $key := .key -}}
-{{- $namespace := .namespace -}}
-{{- $secret := lookup "v1" "Secret" $namespace $secretRef -}}
-{{- if $secret -}}
-  {{- $smtpUrl := index $secret.data $key | b64dec -}}
-  {{- /* Remove smtp:// prefix */ -}}
-  {{- $withoutScheme := regexReplaceAll "^smtp://" $smtpUrl "" -}}
-  {{- /* Split on @ to separate credentials from host:port */ -}}
-  {{- $parts := regexSplit "@" $withoutScheme -1 -}}
-  {{- if eq (len $parts) 2 -}}
-    {{- $credentials := index $parts 0 -}}
-    {{- $hostPort := index $parts 1 -}}
-    {{- /* Split credentials on : */ -}}
-    {{- $credParts := regexSplit ":" $credentials 2 -}}
-    {{- /* Split host:port on : */ -}}
-    {{- $hostPortParts := regexSplit ":" $hostPort 2 -}}
-    {{- if and (eq (len $credParts) 2) (eq (len $hostPortParts) 2) -}}
-      {{- $result := dict "username" (index $credParts 0) "password" (index $credParts 1) "host" (index $hostPortParts 0) "port" (index $hostPortParts 1) -}}
-      {{- $result | toJson -}}
-    {{- else -}}
-      {{- dict "error" "Invalid SMTP URL format" | toJson -}}
-    {{- end -}}
-  {{- else -}}
-    {{- dict "error" "Invalid SMTP URL format - missing @" | toJson -}}
-  {{- end -}}
-{{- else -}}
-  {{- dict "error" "Secret not found" | toJson -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Get SMTP host from connection string
-*/}}
-{{- define "apollo.smtpHost" -}}
-{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
-{{- $smtp.host -}}
-{{- end -}}
-
-{{/*
-Get SMTP port from connection string
-*/}}
-{{- define "apollo.smtpPort" -}}
-{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
-{{- $smtp.port -}}
-{{- end -}}
-
-{{/*
-Get SMTP username from connection string
-*/}}
-{{- define "apollo.smtpUsername" -}}
-{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
-{{- $smtp.username -}}
-{{- end -}}
-
-{{/*
-Get SMTP password from connection string
-*/}}
-{{- define "apollo.smtpPassword" -}}
-{{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
-{{- $smtp.password -}}
 {{- end -}}

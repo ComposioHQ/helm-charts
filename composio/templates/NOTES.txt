@@ -21,12 +21,11 @@
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "composio.fullname" . }}-apollo 8080:{{ .Values.apollo.service.port }}
    Then visit: http://127.0.0.1:8080
 
-{{- if eq (include "composio.temporalEnabled" .) "true" }}
+
 
    Temporal Web UI:
    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ .Release.Name }}-temporal-web 8082:8080
    Then visit: http://127.0.0.1:8082
-{{- end }}
 
 
 3. Verify installation:
@@ -46,46 +45,7 @@ For more information:
 - Support: https://discord.gg/composio
 
 
-## 🚨 CRITICAL: Database Encryption Keys (DO NOT SKIP)
-
-**These encryption keys are REQUIRED to decrypt your database.**
-If you lose them, **your data is permanently inaccessible.**
-No backups. No override.
-
-👉 **Store these keys securely (password manager / vault / offline backup).**
-
----
-
-### 🔐 Composio Database Encryption Key
-
-Run the command below to retrieve the encryption key:
-
-```bash
-kubectl get secret \
-  --namespace {{ .Release.Namespace }} \
-  {{ include "composio.coreSecretName" . }} \
-  -o jsonpath='{.data.ENCRYPTION_KEY}' | base64 -d
-```
-
-{{- if eq (include "composio.temporalEnabled" .) "true" }}
-### 🔐 Temporal Database Encryption Key
-
-Run the command below to retrieve the Temporal encryption key:
-
-```bash
-kubectl get secret \
-  --namespace {{ .Release.Namespace }} \
-  {{ include "composio.coreSecretName" . }} \
-  -o jsonpath='{.data.TEMPORAL_TRIGGER_ENCRYPTION_KEY}' | base64 -d
-```
-{{- end }}
-### ⚠️ IMPORTANT NOTES
-
-* These keys are **generated once**
-* They are **not recoverable**
-* Losing them = **irreversible data loss**
-
----
 {{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
+
 INFO: Redis password will be auto-managed by the chart for security.
 {{- end }}

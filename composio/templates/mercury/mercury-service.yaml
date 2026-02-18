@@ -3,7 +3,7 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: {{ include "composio.fullname" . }}-mercury
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "composio.namespace" . }}
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: mercury
@@ -11,7 +11,7 @@ metadata:
     # Configure the custom domain for this service
     serving.knative.dev/visibility: cluster-local
     "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-weight": "-4"
 spec:
   template:
     metadata:
@@ -23,22 +23,29 @@ spec:
         autoscaling.knative.dev/maxScale: "{{ .Values.mercury.autoscaling.maxScale | default "10" }}"
         autoscaling.knative.dev/target: "{{ .Values.mercury.autoscaling.target | default "80" }}"
         # Force new revision only when image changes
-        composio.dev/image-tag: "{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
+        composio.dev/image-tag: "{{ .Values.mercury.image.imageName | default .Chart.AppVersion }}"
     spec:
-      {{- if .Values.replicated.enabled }}
-      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
-      {{- end }}
-      {{- if not .Values.replicated.enabled }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- if or .Values.nodeSelector .Values.mercury.nodeSelector }}
+      nodeSelector:
+        {{- with .Values.mercury.nodeSelector }}
+          {{- toYaml . | nindent 8 }}
+        {{- else }}
+          {{- toYaml .Values.nodeSelector | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
       {{- end }}
       containerConcurrency: {{ .Values.mercury.containerConcurrency | default 0 }}
       timeoutSeconds: {{ .Values.mercury.timeoutSeconds | default 300 }}
       containers:
         - name: mercury
-          image: "{{ include "chart.registry" . }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.mercury.image.imageName }}"
           imagePullPolicy: {{ .Values.mercury.image.pullPolicy }}
           {{- if and .Values.mercury.command (gt (len .Values.mercury.command) 0) }}
           command:
@@ -50,33 +57,32 @@ spec:
           {{- end }}
           ports:
             - containerPort: {{ .Values.mercury.service.port | default 8080 }}
-          {{- with .Values.mercury.securityContext }}
           securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- toYaml .Values.mercury.securityContext | nindent 12 }}
           env:
-            {{- $coreSecret := include "composio.coreSecretName" . }}
+            # AWS S3 Configuration (using Minio) - matching your reference configuration
+            - name: AWS_S3_REGION_NAME
+              value: "us-east-1"
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: AWS_S3_LAMBDA_BUCKET
+              value: "tools"
+            - name: AWS_S3_CUSTOM_TOOLS_BUCKET
+              value: "tools"
             - name: SELF_HOSTED
               value: "true"
-            {{- if .Values.openAI.enabled }}
+            - name: BACKEND_URL
+              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.openAI.secretRef }}
-                  key: {{ .Values.openAI.key }}
-                  optional: true
-            {{- end }}
-            - name: BACKEND_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            - name: APOLLO_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            - name: APOLLO_ADMIN_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: COMPOSIO_ADMIN_TOKEN
-            - name: USE_APOLLO_GET_DOWNLOAD_URL_API
+                  name: {{ .Release.Name }}-secrets
+                  key: OPENAI_API_KEY
+            - name: AWS_S3_FORCE_PATH_STYLE
               value: "true"
+
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
           {{- with .Values.mercury.volumeMounts }}
@@ -88,4 +94,4 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 {{- end }}
- 
+
