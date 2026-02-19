@@ -24,7 +24,6 @@ data:
   {{- end }}
   OVERWRITE_APOLLO_URL: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
   OAUTH2_REDIRECT_URI_OVERRIDE: {{ .Values.apollo.oauth2_redirect_uri_override | default (printf "http://%s-apollo:9900/api/v3/toolkits/auth/callback" .Release.Name) | quote }}
-  MERCURY_URL: "https://mercury.composio.dev"
   S3_FORCE_PATH_STYLE: {{ .Values.apollo.s3ForcePathStyle | default "true" | quote }}
   S3_ENDPOINT: {{ .Values.apollo.s3Endpoint | quote }}
   S3_ENDPOINT_URL: {{ .Values.apollo.s3EndpointUrl | quote }}
