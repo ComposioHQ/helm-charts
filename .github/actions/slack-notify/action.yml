@@ -1,0 +1,109 @@
+name: 'Slack Release Notification'
+description: 'Post or update a Slack message to track release status (yellow → green/red)'
+
+inputs:
+  status:
+    description: 'STARTED, SUCCESS, or FAILURE'
+    required: true
+  slack_bot_token:
+    description: 'Slack Bot Token (requires chat:write scope)'
+    required: true
+  channel:
+    description: 'Slack channel ID'
+    required: true
+    default: 'C093CVARNKC'
+  message_id:
+    description: 'Message timestamp to update (omit to post a new message)'
+    required: false
+    default: ''
+  title:
+    description: 'Header text for the notification'
+    required: true
+  summary:
+    description: 'Body text with release details (supports Slack mrkdwn)'
+    required: true
+
+outputs:
+  message_id:
+    description: 'Slack message timestamp – pass this back to update the message later'
+    value: ${{ steps.slack.outputs.message_id }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: slack
+      shell: bash
+      env:
+        INPUT_STATUS: ${{ inputs.status }}
+        INPUT_CHANNEL: ${{ inputs.channel }}
+        INPUT_MESSAGE_ID: ${{ inputs.message_id }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack_bot_token }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        ACTOR: ${{ github.actor }}
+      run: |
+        set -euo pipefail
+
+        # --- Status → colour + emoji ----------------------------------------
+        case "$INPUT_STATUS" in
+          STARTED) COLOR="#dbab09"; EMOJI="⏳"; STATUS_TEXT="In Progress" ;;
+          SUCCESS) COLOR="#28a745"; EMOJI="✅"; STATUS_TEXT="Succeeded"   ;;
+          FAILURE) COLOR="#cb2431"; EMOJI="❌"; STATUS_TEXT="Failed"      ;;
+          *)       COLOR="#808080"; EMOJI="❓"; STATUS_TEXT="$INPUT_STATUS" ;;
+        esac
+
+        # --- Build the JSON payload with jq ----------------------------------
+        PAYLOAD=$(jq -n \
+          --arg channel  "$INPUT_CHANNEL" \
+          --arg color    "$COLOR" \
+          --arg title    "$EMOJI $INPUT_TITLE" \
+          --arg summary  "$INPUT_SUMMARY" \
+          --arg status   "$STATUS_TEXT" \
+          --arg run_url  "$RUN_URL" \
+          --arg actor    "$ACTOR" \
+          '{
+            channel: $channel,
+            attachments: [{
+              color: $color,
+              blocks: [
+                {
+                  type: "section",
+                  text: { type: "mrkdwn", text: ("*" + $title + "*") }
+                },
+                {
+                  type: "section",
+                  text: { type: "mrkdwn", text: $summary }
+                },
+                {
+                  type: "context",
+                  elements: [{
+                    type: "mrkdwn",
+                    text: ("*Status:* " + $status + "  |  *Actor:* " + $actor + "  |  <" + $run_url + "|View Run>")
+                  }]
+                }
+              ]
+            }]
+          }')
+
+        # --- Post new message or update an existing one -----------------------
+        if [ -z "$INPUT_MESSAGE_ID" ]; then
+          API_URL="https://slack.com/api/chat.postMessage"
+        else
+          API_URL="https://slack.com/api/chat.update"
+          PAYLOAD=$(echo "$PAYLOAD" | jq --arg ts "$INPUT_MESSAGE_ID" '. + {ts: $ts}')
+        fi
+
+        RESPONSE=$(curl -sfS -X POST "$API_URL" \
+          -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "$PAYLOAD")
+
+        OK=$(echo "$RESPONSE" | jq -r '.ok')
+        if [ "$OK" != "true" ]; then
+          ERR=$(echo "$RESPONSE" | jq -r '.error // "unknown"')
+          echo "::warning::Slack API error: $ERR"
+        fi
+
+        TS=$(echo "$RESPONSE" | jq -r '.ts // empty')
+        echo "message_id=$TS" >> "$GITHUB_OUTPUT"
