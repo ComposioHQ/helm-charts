@@ -371,7 +371,7 @@ imagePullSecrets:
 
 {{/*
 Parse SMTP connection string from secret
-Expects format: smtp://<username>:<password>@<host>:<port>
+Expects format: smtp://{username}:{password}@{host}:{port}
 Returns a map with keys: username, password, host, port
 Usage: 
   {{- $smtp := include "apollo.parseSmtpUrl" (dict "secretRef" .Values.apollo.smtp.secretRef "key" .Values.apollo.smtp.key "namespace" .Release.Namespace) | fromJson }}
