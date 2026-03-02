@@ -1,48 +1,86 @@
-suite: test db init job
+suite: test db init jobs
 templates:
   - apollo/apollo-db-init.job.yaml
 tests:
-  - it: should create db init job
+  - it: should create apollo db init job when enabled
+    set:
+      apollo.dbInit.enabled: true
     asserts:
       - isKind:
           of: Job
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-db-init
+          value: RELEASE-NAME-apollo-db-init
+
+  - it: should not create apollo db init job when disabled
+    set:
+      apollo.dbInit.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should have helm hook annotations
+    set:
+      apollo.dbInit.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-1"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+
+  - it: should have ttlSecondsAfterFinished as safety net
+    set:
+      apollo.dbInit.enabled: true
+    asserts:
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 86400
+
+  - it: should have correct labels
+    set:
+      apollo.dbInit.enabled: true
+    asserts:
       - equal:
           path: metadata.labels.app
-          value: db-init
+          value: apollo-db-init
       - equal:
           path: metadata.labels.release
           value: RELEASE-NAME
 
   - it: should have correct image configuration
     set:
-      dbInit.image.repository: test-init
-      dbInit.image.tag: v1.0.0
-      dbInit.image.pullPolicy: Always
+      apollo.dbInit.enabled: true
+      apollo.dbInit.image.repository: composio-self-host/apollo-db-init
+      apollo.dbInit.image.tag: v1.0.0
+      apollo.dbInit.image.pullPolicy: Always
     asserts:
-      - equal:
+      - matchRegex:
           path: spec.template.spec.containers[0].image
-          value: test-init:v1.0.0
+          pattern: ".*/composio-self-host/apollo-db-init:v1.0.0"
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: Always
 
   - it: should have correct admin email environment variable
     set:
+      apollo.dbInit.enabled: true
       dbInit.adminEmail: test@example.com
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: ADMIN_EMAIL
-            value: test@example.com
+            value: "test@example.com"
 
-  - it: should have database URL from secret
+  - it: should have database URL from core secret
     set:
-      dbInit.database.urlSecret.name: test-db-secret
-      dbInit.database.urlSecret.key: database-url
+      apollo.dbInit.enabled: true
+      secret.name: my-secret
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -50,11 +88,26 @@ tests:
             name: DATABASE_URL
             valueFrom:
               secretKeyRef:
-                name: test-db-secret
-                key: database-url
+                name: my-secret
+                key: POSTGRES_URL
+
+  - it: should have encryption key from core secret
+    set:
+      apollo.dbInit.enabled: true
+      secret.name: my-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: ENCRYPTION_KEY
 
   - it: should include image pull secrets when configured
     set:
+      apollo.dbInit.enabled: true
       global.imagePullSecrets:
         - name: init-secret
     asserts:
@@ -62,23 +115,194 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
           value: init-secret
 
-  - it: should have restart policy Never
+  - it: should have correct restart policy
+    set:
+      apollo.dbInit.enabled: true
     asserts:
       - equal:
           path: spec.template.spec.restartPolicy
-          value: Never
+          value: OnFailure
 
-  - it: should have backoff limit
+  - it: should have backoff limit and active deadline
+    set:
+      apollo.dbInit.enabled: true
     asserts:
       - equal:
           path: spec.backoffLimit
           value: 3
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 2400
 
-  - it: should complete after successful run
+---
+suite: test thermos db init job
+templates:
+  - thermos/thermos-db-init-job.yaml
+tests:
+  - it: should create thermos db init job when enabled
+    set:
+      thermos.dbInit.enabled: true
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-thermos-db-init
+
+  - it: should not create thermos db init job when disabled
+    set:
+      thermos.dbInit.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should have helm hook annotations
+    set:
+      thermos.dbInit.enabled: true
     asserts:
       - equal:
-          path: spec.completions
-          value: 1
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
       - equal:
-          path: spec.parallelism
-          value: 1 
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-1"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+
+  - it: should have ttlSecondsAfterFinished as safety net
+    set:
+      thermos.dbInit.enabled: true
+    asserts:
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 86400
+
+  - it: should have correct labels
+    set:
+      thermos.dbInit.enabled: true
+    asserts:
+      - equal:
+          path: metadata.labels.app
+          value: thermos-db-init
+      - equal:
+          path: metadata.labels.release
+          value: RELEASE-NAME
+
+  - it: should have correct image configuration
+    set:
+      thermos.dbInit.enabled: true
+      thermos.dbInit.image.repository: composio-self-host/thermos-db-init
+      thermos.dbInit.image.tag: v2.0.0
+      thermos.dbInit.image.pullPolicy: Always
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ".*/composio-self-host/thermos-db-init:v2.0.0"
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  - it: should have POSTGRES_URL and DATABASE_URL from core secret
+    set:
+      thermos.dbInit.enabled: true
+      secret.name: my-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_URL
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: THERMOS_DATABASE_URL
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: THERMOS_DATABASE_URL
+
+  - it: should have correct restart policy
+    set:
+      thermos.dbInit.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: OnFailure
+
+  - it: should have backoff limit and active deadline
+    set:
+      thermos.dbInit.enabled: true
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 3
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 2400
+
+---
+suite: test postgres init job
+templates:
+  - database/postgres-init-job.yaml
+tests:
+  - it: should create postgres init job when enabled
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - isKind:
+          of: Job
+
+  - it: should not create postgres init job when disabled
+    set:
+      databaseMigration.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should have helm hook annotations with correct weight
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-5"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+
+  - it: should have PGPORT with no duplicate value entry
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.port: "5433"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGPORT
+            value: "5433"
+
+  - it: should default PGPORT to 5432 when port not set
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.port: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGPORT
+            value: "5432"
+
+  - it: should run before db-init jobs (lower hook weight)
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-5"
