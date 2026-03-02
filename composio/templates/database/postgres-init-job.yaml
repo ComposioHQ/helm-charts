@@ -24,7 +24,6 @@ spec:
           value: {{ .Values.databaseMigration.host | quote }}
         - name: PGPORT
           value: {{ default "5432" .Values.databaseMigration.port | quote }}
-          value: {{ .Values.databaseMigration.port | quote }}
         - name: PGUSER
           value: {{ .Values.databaseMigration.user | quote }}
         - name: PGPASSWORD
