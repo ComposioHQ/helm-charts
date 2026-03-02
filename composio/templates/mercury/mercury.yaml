@@ -41,6 +41,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.mercury.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: mercury
           image: "{{ include "chart.registry" . }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag }}"

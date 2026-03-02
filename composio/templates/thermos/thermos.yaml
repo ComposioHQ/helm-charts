@@ -47,6 +47,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.thermos.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: thermos
           image: "{{ include "chart.registry" . }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
@@ -101,11 +105,17 @@ spec:
           volumeMounts:
             - name: cache-volume
               mountPath: /tmp
+            {{- with .Values.thermos.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
       volumes:
         - name: cache-volume
           emptyDir: {}
+        {{- with .Values.thermos.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

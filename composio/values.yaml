@@ -38,7 +38,7 @@ global:
   imagePullSecrets:
     - name: ecr-secret
 
-databaseMigration: 
+databaseMigration:
   image: "postgres:15-alpine"
   enabled: true
   host: "<DATABASE_HOST>"
@@ -46,6 +46,9 @@ databaseMigration:
   user: "postgres"
   password:
     key: "password"
+  extraInitContainers: []
+  extraVolumeMounts: []
+  extraVolumes: []
 
 # External secrets configuration. Pass these during helm install using --set flags
 externalSecrets:
@@ -170,7 +173,13 @@ apollo:
       tag: "r20260221_00_preview"
       # -- Image pull policy
       pullPolicy: Always
-  
+    # -- Additional init containers for the db-init job
+    extraInitContainers: []
+    # -- Additional volume mounts for the db-init container
+    extraVolumeMounts: []
+    # -- Additional volumes for the db-init job
+    extraVolumes: []
+
   # Apollo service configuration
   service:
     # -- Service type (ClusterIP, NodePort, LoadBalancer)
@@ -312,6 +321,13 @@ apollo:
       # -- Custom base URL for OpenAI-compatible reranker APIs (optional)
       openaiCompatBaseUrl: "https://api.openai.com/v1"
 
+  # -- Additional init containers to run before the main apollo container
+  extraInitContainers: []
+  # -- Additional volume mounts for the main apollo container
+  extraVolumeMounts: []
+  # -- Additional volumes for the apollo pod
+  extraVolumes: []
+
 # Thermos service configuration (workflow execution service)
 thermos:
   # -- Number of Thermos pod replicas
@@ -337,7 +353,13 @@ thermos:
       tag: "r20260221_00_preview"
       # -- Image pull policy
       pullPolicy: Always
-  
+    # -- Additional init containers for the db-init job
+    extraInitContainers: []
+    # -- Additional volume mounts for the db-init container
+    extraVolumeMounts: []
+    # -- Additional volumes for the db-init job
+    extraVolumes: []
+
   # Thermos service configuration
   service:
     # -- Service type
@@ -384,6 +406,13 @@ thermos:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
+
+  # -- Additional init containers to run before the main thermos container
+  extraInitContainers: []
+  # -- Additional volume mounts for the main thermos container
+  extraVolumeMounts: []
+  # -- Additional volumes for the thermos pod
+  extraVolumes: []
 
 # Database initialization job configuration
 dbInit:
@@ -922,6 +951,13 @@ otel:
             # -- Metrics exporters
             exporters: [debug, prometheus]
 
+    # -- Additional init containers to run before the otel-collector container
+    extraInitContainers: []
+    # -- Additional volume mounts for the otel-collector container
+    extraVolumeMounts: []
+    # -- Additional volumes for the otel-collector pod
+    extraVolumes: []
+
 # AWS configuration
 aws:
   # -- AWS region
@@ -1043,6 +1079,8 @@ mercury:
     # -- TLS configuration
     tls: []
   
+  # -- Additional init containers to run before the main mercury container
+  extraInitContainers: []
   # -- Additional volume mounts
   volumeMounts: []
   # -- Additional volumes
@@ -1114,6 +1152,13 @@ frontend:
     host: ""
     # -- TLS configuration
     tls: []
+
+  # -- Additional init containers to run before the main frontend container
+  extraInitContainers: []
+  # -- Additional volume mounts for the main frontend container
+  extraVolumeMounts: []
+  # -- Additional volumes for the frontend pod
+  extraVolumes: []
 
 # Weaviate service configuration (vector database for search)
 weaviate:
@@ -1195,3 +1240,9 @@ weaviate:
   # securityContext: {}
   # -- Additional environment variables
   # env: []
+  # -- Additional init containers to run before the main weaviate container
+  extraInitContainers: []
+  # -- Additional volume mounts for the main weaviate container
+  extraVolumeMounts: []
+  # -- Additional volumes for the weaviate pod
+  extraVolumes: []

@@ -45,6 +45,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.weaviate.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: weaviate
           image: "{{ include "chart.registry" . }}/{{ .Values.weaviate.image.repository }}:{{ .Values.weaviate.image.tag }}"
@@ -86,18 +90,28 @@ spec:
             periodSeconds: {{ .Values.weaviate.readinessProbe.periodSeconds | default 10 }}
             timeoutSeconds: {{ .Values.weaviate.readinessProbe.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.weaviate.readinessProbe.failureThreshold | default 3 }}
-          {{- if .Values.weaviate.persistence.enabled }}
+          {{- if or .Values.weaviate.persistence.enabled .Values.weaviate.extraVolumeMounts }}
           volumeMounts:
+            {{- if .Values.weaviate.persistence.enabled }}
             - name: data
               mountPath: /var/lib/weaviate
+            {{- end }}
+            {{- with .Values.weaviate.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.weaviate.resources | nindent 12 }}
-      {{- if .Values.weaviate.persistence.enabled }}
+      {{- if or .Values.weaviate.persistence.enabled .Values.weaviate.extraVolumes }}
       volumes:
+        {{- if .Values.weaviate.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-weaviate-pvc
+        {{- end }}
+        {{- with .Values.weaviate.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- end }}
 ---
 {{- if .Values.weaviate.persistence.enabled }}
