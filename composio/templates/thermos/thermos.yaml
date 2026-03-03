@@ -47,12 +47,21 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      # Allow 60s for Temporal workers to drain in-flight tasks during shutdown.
+      # Must be greater than thermos WorkerStopTimeout (30s) to avoid SIGKILL mid-drain.
+      terminationGracePeriodSeconds: 60
       containers:
         - name: thermos
           image: "{{ include "chart.registry" . }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
           imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
           command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
+          lifecycle:
+            preStop:
+              exec:
+                # Brief delay before SIGTERM so the load balancer deregisters
+                # this pod and stops routing new requests to it.
+                command: ["sleep", "5"]
           {{- with .Values.thermos.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}

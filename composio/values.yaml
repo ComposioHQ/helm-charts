@@ -459,16 +459,18 @@ temporal:
             # -- Secret name containing database password
             existingSecret: "composio-composio-secrets"
             # -- Maximum number of database connections
-            maxConns: 20
+            # Increased from 20 to prevent connection pool exhaustion under load,
+            # which causes cascading "context deadline exceeded" failures across all workflows.
+            maxConns: 100
             # -- Maximum number of idle connections
-            maxIdleConns: 20
-            # -- Maximum connection lifetime
-            maxConnLifetime: "1h"
-        
+            maxIdleConns: 100
+            # -- Maximum connection lifetime (0 = indefinite, reduces connection churn)
+            maxConnLifetime: "0"
+
         # Visibility database configuration (for advanced queries)
         visibility:
           # -- Database driver
-          driver: "sql" 
+          driver: "sql"
           # SQL database configuration
           sql:
             # -- SQL driver name
@@ -484,11 +486,11 @@ temporal:
             # -- Secret name containing database password
             existingSecret: "composio-composio-secrets"
             # -- Maximum number of database connections
-            maxConns: 20
+            maxConns: 100
             # -- Maximum number of idle connections
-            maxIdleConns: 20
-            # -- Maximum connection lifetime
-            maxConnLifetime: "1h"
+            maxIdleConns: 100
+            # -- Maximum connection lifetime (0 = indefinite, reduces connection churn)
+            maxConnLifetime: "0"
       
       # Temporal namespace configuration
       namespaces:
