@@ -313,7 +313,7 @@ composio: redis
     You cannot enable both external Redis and built-in Redis.
     Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
-{{- end -}} 
+{{- end -}}
 
 
 {{/*
@@ -324,6 +324,21 @@ Replicated configuration
 {{- printf "%s/proxy/%s/%s" .Values.replicated.registry .Values.replicated.app  .Values.global.registry.name -}}
 {{- else -}}
 {{- .Values.global.registry.name -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Flexible image reference supporting both imageName and repository:tag patterns
+Supports both fork pattern (pre-built imageName) and upstream pattern (composable registry/repository:tag)
+Usage: {{ include "composio.imageReference" (dict "image" .Values.apollo.image "context" .) }}
+Example 1 (imageName): .image.imageName = "us-central1-docker.pkg.dev/project/apollo:v1.0.0"
+Example 2 (composable): .image.repository = "composio-self-host/apollo", .image.tag = "r20260302_00"
+*/}}
+{{- define "composio.imageReference" -}}
+{{- if .image.imageName -}}
+  {{- .image.imageName -}}
+{{- else -}}
+  {{- printf "%s/%s:%s" (include "chart.registry" .context) .image.repository .image.tag -}}
 {{- end -}}
 {{- end -}}
 
@@ -373,7 +388,7 @@ imagePullSecrets:
 Parse SMTP connection string from secret
 Expects format: smtp://{username}:{password}@{host}:{port}
 Returns a map with keys: username, password, host, port
-Usage: 
+Usage:
   {{- $smtp := include "apollo.parseSmtpUrl" (dict "secretRef" .Values.apollo.smtp.secretRef "key" .Values.apollo.smtp.key "namespace" .Release.Namespace) | fromJson }}
   {{- $smtp.host }}
   {{- $smtp.port }}

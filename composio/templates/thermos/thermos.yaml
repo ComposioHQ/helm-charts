@@ -22,6 +22,9 @@ spec:
         app: thermos
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.thermos.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.thermos.serviceAccount.name }}
+      {{- end }}
       {{- if .Values.replicated.enabled }}
       {{- include "replicated.imagePullSecrets" . | nindent 6 }}
       {{- end }}
@@ -47,9 +50,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.thermos.additionalInitContainers }}
+      initContainers:
+        {{- toYaml .Values.thermos.additionalInitContainers | nindent 8 }}
+      {{- end }}
       containers:
         - name: thermos
-          image: "{{ include "chart.registry" . }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.thermos.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
           command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
@@ -101,11 +108,17 @@ spec:
           volumeMounts:
             - name: cache-volume
               mountPath: /tmp
+            {{- with .Values.thermos.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
       volumes:
         - name: cache-volume
           emptyDir: {}
+        {{- with .Values.thermos.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -173,4 +186,4 @@ spec:
         value: {{ .Values.thermos.autoscaling.scaleUpPods | default 4 }}
         periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
       selectPolicy: Max
-{{- end }} 
+{{- end }}
