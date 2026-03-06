@@ -128,16 +128,21 @@ apollo:
   replicaCount: 2
   # Apollo container image configuration
   image:
-    # -- Apollo image repository
+    # -- Apollo image repository (used when imageName is not set)
     repository: composio-self-host/apollo
-    # -- Apollo image tag
+    # -- Apollo image tag (used when imageName is not set)
     tag: "r20260302_00"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    # Example: "myregistry.io/composio/apollo@sha256:abc123..."
+    imageName: ""
 
   serviceAccount:
     # -- Enable service account creation
     enabled: true
+    # -- Create the service account resource (set false to use pre-existing)
+    create: true
     # -- Name of the service account to create or use
     name: "composio-apollo"
     # -- Annotations to add to the service account
@@ -164,12 +169,14 @@ apollo:
     enabled: true
     # Database init container image configuration
     image:
-      # -- Database init image repository
+      # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
-      # -- Database init image tag
+      # -- Database init image tag (used when imageName is not set)
       tag: "r20260302_00"
       # -- Image pull policy
       pullPolicy: Always
+      # -- Full image name (optional, overrides repository:tag if set)
+      imageName: ""
   
   # Apollo service configuration
   service:
@@ -312,18 +319,36 @@ apollo:
       # -- Custom base URL for OpenAI-compatible reranker APIs (optional)
       openaiCompatBaseUrl: "https://api.openai.com/v1"
 
+  # -- Additional init containers (e.g., Cloud SQL Proxy, wait-for-db)
+  additionalInitContainers: []
+
+  # -- Additional volume mounts for the main container
+  volumeMounts: []
+
+  # -- Additional volumes for the pod
+  volumes: []
+
 # Thermos service configuration (workflow execution service)
 thermos:
   # -- Number of Thermos pod replicas
   replicaCount: 2
   # Thermos container image configuration
   image:
-    # -- Thermos image repository
+    # -- Thermos image repository (used when imageName is not set)
     repository: composio-self-host/thermos
-    # -- Thermos image tag
+    # -- Thermos image tag (used when imageName is not set)
     tag: "r20260302_00"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+
+  # Service account configuration
+  serviceAccount:
+    # -- Enable service account for Thermos
+    enabled: false
+    # -- Service account name
+    name: ""
 
   # Thermos database initialization container
   dbInit:
@@ -331,13 +356,17 @@ thermos:
     enabled: true
     # Database init container image configuration
     image:
-      # -- Database init image repository
+      # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/thermos-db-init
-      # -- Database init image tag
+      # -- Database init image tag (used when imageName is not set)
       tag: "r20260302_00"
       # -- Image pull policy
       pullPolicy: Always
-  
+      # -- Full image name (optional, overrides repository:tag if set)
+      imageName: ""
+    # -- Additional environment variables for db init
+    env: []
+
   # Thermos service configuration
   service:
     # -- Service type
@@ -384,6 +413,15 @@ thermos:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
+
+  # -- Additional init containers (e.g., Cloud SQL Proxy, wait-for-db)
+  additionalInitContainers: []
+
+  # -- Additional volume mounts for the main container
+  volumeMounts: []
+
+  # -- Additional volumes for the pod
+  volumes: []
 
 # Database initialization job configuration
 dbInit:
@@ -755,7 +793,14 @@ otel:
     serviceVersion: "1.0.0"
     # -- HTTP endpoint for metrics
     metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
-  
+  mcp:
+    # -- MCP service name
+    serviceName: "mcp"
+    # -- MCP service version
+    serviceVersion: "1.0.0"
+    # -- HTTP endpoint for metrics
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
+
   # OpenTelemetry Collector configuration
   collector:
     # -- Enable OTEL collector
@@ -952,12 +997,14 @@ mercury:
   replicaCount: 1
   # Mercury container image configuration
   image:
-    # -- Mercury image repository
+    # -- Mercury image repository (used when imageName is not set)
     repository: composio-self-host/mercury
-    # -- Mercury image tag
+    # -- Mercury image tag (used when imageName is not set)
     tag: "r20260302_00"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
 
   # Liveness probe configuration
   livenessProbe:
@@ -1043,11 +1090,27 @@ mercury:
     # -- TLS configuration
     tls: []
   
+  # -- Node selector for Mercury pods
+  nodeSelector: {}
+  # -- Tolerations for Mercury pods
+  tolerations: []
+
+  # -- Additional environment variables for Mercury (Knative service)
+  env: []
+
+  # -- Custom command override
+  command: []
+  # -- Custom args override
+  args: []
+
+  # -- Additional init containers (e.g., Cloud SQL Proxy)
+  additionalInitContainers: []
+
   # -- Additional volume mounts
   volumeMounts: []
   # -- Additional volumes
   volumes: []
-  
+
   # AWS Lambda configuration (alternative to Kubernetes deployment)
   awsLambda:
     # -- Enable AWS Lambda deployment
@@ -1057,6 +1120,106 @@ mercury:
       # -- Secret name for Lambda credentials
       name: "lambda-cred"
 
+# MCP (Model Context Protocol) Service Configuration
+mcp:
+  # -- Enable MCP service deployment
+  enabled: false
+  # -- Number of MCP replicas
+  replicaCount: 1
+
+  # MCP container image configuration
+  image:
+    # -- MCP image repository (used when imageName is not set)
+    repository: composio-self-host/mcp
+    # -- MCP image tag (used when imageName is not set)
+    tag: "latest"
+    # -- Image pull policy
+    pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+
+  # Service account configuration
+  serviceAccount:
+    # -- Enable service account for MCP
+    enabled: false
+    # -- Service account name
+    name: ""
+
+  # Service account name (flat field, used by fork template)
+  serviceAccountName: ""
+  # MCP service configuration
+  service:
+    # -- Service type (ClusterIP, NodePort, LoadBalancer)
+    type: ClusterIP
+    # -- Service port
+    port: 3000
+
+  # Database configuration
+  database:
+    urlSecret:
+      # -- Secret name containing database URL
+      name: "composio-composio-secrets"
+      # -- Key name in secret containing database URL
+      key: "DATABASE_URL"
+
+  # Resource requests and limits
+  resources:
+    requests:
+      # -- Memory request
+      memory: "512Mi"
+      # -- CPU request
+      cpu: "250m"
+    limits:
+      # -- Memory limit
+      memory: "1Gi"
+      # -- CPU limit
+      cpu: "500m"
+
+  # Pod security context
+  podSecurityContext: {}
+
+  # Container security context
+  containerSecurityContext: {}
+
+  # Node selector for pod assignment
+  nodeSelector: {}
+
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # Affinity rules
+  affinity: {}
+
+  # Additional init containers
+  additionalInitContainers: []
+  # Example:
+  # - name: wait-for-apollo
+  #   image: busybox:1.28
+  #   command: ['sh', '-c', 'until nc -z apollo 9900; do echo waiting for apollo; sleep 2; done;']
+
+  # Additional volume mounts
+  volumeMounts: []
+  # Additional volumes
+  volumes: []
+  # Additional environment variables
+  env: []
+
+  # Extra configuration for ConfigMap
+  extraConfig: {}
+
+  # Ingress configuration
+  ingress:
+    # -- Enable ingress
+    enabled: false
+    # -- Ingress class name
+    className: ""
+    # -- Ingress annotations
+    annotations: {}
+    # -- Ingress host
+    host: ""
+    # -- TLS configuration
+    tls: []
+
 # Frontend service configuration (web UI)
 frontend:
   # -- Enable frontend service
@@ -1065,12 +1228,14 @@ frontend:
   replicaCount: 1
   # Frontend container image configuration
   image:
-    # -- Frontend image repository
+    # -- Frontend image repository (used when imageName is not set)
     repository: composio-self-host/frontend
-    # -- Frontend image tag
+    # -- Frontend image tag (used when imageName is not set)
     tag: "r20260302_00"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
   # Frontend service configuration
   service:
     # -- Service type
@@ -1115,6 +1280,15 @@ frontend:
     # -- TLS configuration
     tls: []
 
+  # -- Additional init containers
+  additionalInitContainers: []
+
+  # -- Additional volume mounts
+  volumeMounts: []
+
+  # -- Additional volumes
+  volumes: []
+
 # Weaviate service configuration (vector database for search)
 weaviate:
   # -- Enable Weaviate service
@@ -1123,12 +1297,14 @@ weaviate:
   replicaCount: 1
   # Weaviate container image configuration
   image:
-    # -- Weaviate image repository
+    # -- Weaviate image repository (used when imageName is not set)
     repository: composio-self-host/weaviate
-    # -- Weaviate image tag
+    # -- Weaviate image tag (used when imageName is not set)
     tag: "r20260226_01"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
   # Weaviate service configuration
   service:
     # -- Service type
@@ -1195,3 +1371,12 @@ weaviate:
   # securityContext: {}
   # -- Additional environment variables
   # env: []
+
+  # -- Additional init containers
+  additionalInitContainers: []
+
+  # -- Additional volume mounts
+  volumeMounts: []
+
+  # -- Additional volumes
+  volumes: []

@@ -50,9 +50,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.frontend.additionalInitContainers }}
+      initContainers:
+        {{- toYaml .Values.frontend.additionalInitContainers | nindent 8 }}
+      {{- end }}
       containers:
         - name: frontend
-          image: "{{ include "chart.registry" . }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.frontend.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:
@@ -106,6 +110,14 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+          {{- with .Values.frontend.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.frontend.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

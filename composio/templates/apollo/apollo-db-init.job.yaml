@@ -48,9 +48,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.apollo.dbInit.additionalInitContainers }}
+      initContainers:
+        {{- toYaml .Values.apollo.dbInit.additionalInitContainers | nindent 8 }}
+      {{- end }}
       containers:
         - name: apollo-db-init
-          image: "{{ include "chart.registry" . }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.apollo.dbInit.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
           {{- with .Values.apollo.dbInit.containerSecurityContext }}
           securityContext:
@@ -83,6 +87,14 @@ spec:
             limits:
               cpu: 1000m
               memory: 1Gi
+          {{- with .Values.apollo.dbInit.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.apollo.dbInit.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
   backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}

@@ -14,7 +14,7 @@ data:
   REGISTRY_LOOKUP_CACHE_DIR: "/tmp/.lookup"
   SELF_HOSTED: "true"
   {{- if eq (include "composio.temporalEnabled" .) "true" }}
-  TEMPORAL_CLOUD_HOST_PORT: "temporal-stack-frontend:7233"
+  TEMPORAL_CLOUD_HOST_PORT: {{ printf "%s-frontend:7233" (.Values.temporal.fullnameOverride | default "temporal-stack") | quote }}
   TEMPORAL_CLOUD_NAMESPACE: "default"
   TEMPORAL_WEBHOOK_NAMESPACE: "webhook"
   TEMPORAL_BATCHED_POLLING_NAMESPACE: "batched-polling"
