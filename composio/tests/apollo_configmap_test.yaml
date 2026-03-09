@@ -205,6 +205,55 @@ tests:
           path: data.OVERWRITE_FE_URL
           value: "https://app.example.com"
 
+  - it: should omit JWT auth config by default
+    asserts:
+      - isNull:
+          path: data.AUTH_JWT_JWKS_URL
+      - isNull:
+          path: data.AUTH_JWT_ISSUER
+      - isNull:
+          path: data.AUTH_JWT_ALLOWED_ALGS
+      - isNull:
+          path: data.AUTH_JWT_CLOCK_SKEW_SECONDS
+
+  - it: should omit disabled auth modes by default
+    asserts:
+      - isNull:
+          path: data.DISABLE_AUTH_MODES
+
+  - it: should configure disabled auth modes when set
+    set:
+      apollo.auth.disabledModes:
+        - jwt
+        - api_key
+    asserts:
+      - equal:
+          path: data.DISABLE_AUTH_MODES
+          value: "jwt,api_key"
+
+  - it: should configure JWT auth when enabled
+    set:
+      apollo.auth.jwt.enabled: true
+      apollo.auth.jwt.jwksUrl: "https://customer.example.com/.well-known/jwks.json"
+      apollo.auth.jwt.issuer: "https://customer.example.com/"
+      apollo.auth.jwt.allowedAlgs:
+        - RS256
+        - ES256
+      apollo.auth.jwt.clockSkewSeconds: 60
+    asserts:
+      - equal:
+          path: data.AUTH_JWT_JWKS_URL
+          value: "https://customer.example.com/.well-known/jwks.json"
+      - equal:
+          path: data.AUTH_JWT_ISSUER
+          value: "https://customer.example.com/"
+      - equal:
+          path: data.AUTH_JWT_ALLOWED_ALGS
+          value: "RS256,ES256"
+      - equal:
+          path: data.AUTH_JWT_CLOCK_SKEW_SECONDS
+          value: "60"
+
   - it: should configure search settings when enabled
     set:
       weaviate.enabled: true

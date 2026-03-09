@@ -68,6 +68,15 @@ data:
   SIGNUP_ALLOWED_DOMAINS: {{ .Values.apollo.signup.allowedDomains | quote }}
   {{- end }}
   {{- end }}
+  {{- if and .Values.apollo.auth .Values.apollo.auth.disabledModes (gt (len .Values.apollo.auth.disabledModes) 0) }}
+  DISABLE_AUTH_MODES: {{ join "," .Values.apollo.auth.disabledModes | quote }}
+  {{- end }}
+  {{- if and .Values.apollo.auth .Values.apollo.auth.jwt .Values.apollo.auth.jwt.enabled }}
+  AUTH_JWT_JWKS_URL: {{ .Values.apollo.auth.jwt.jwksUrl | quote }}
+  AUTH_JWT_ISSUER: {{ .Values.apollo.auth.jwt.issuer | quote }}
+  AUTH_JWT_ALLOWED_ALGS: {{ join "," (.Values.apollo.auth.jwt.allowedAlgs | default (list "RS256")) | quote }}
+  AUTH_JWT_CLOCK_SKEW_SECONDS: {{ .Values.apollo.auth.jwt.clockSkewSeconds | default 60 | toString | quote }}
+  {{- end }}
   SMTP_AUTHOR_EMAIL: {{ .Values.apollo.smtp.smtpAuthorEmail | quote }}
   S3_BUCKET: {{ .Values.apollo.s3Bucket | quote }}
   TEST_DEBUG: "true"

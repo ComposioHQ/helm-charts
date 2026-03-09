@@ -200,6 +200,23 @@ apollo:
     # -- Comma-separated list of allowed email domains for signup (e.g., "composio.dev,usefulagents.com")
     allowedDomains: ""
 
+  # Authentication configuration
+  auth:
+    # -- Disable specific Apollo auth modes. Supported values: jwt, api_key, admin_token, cookie, org_api_key
+    disabledModes: []
+    jwt:
+      # -- Enable JWKS-based JWT bearer authentication
+      enabled: false
+      # -- JWKS URL used to verify customer JWTs
+      jwksUrl: ""
+      # -- Expected JWT issuer
+      issuer: ""
+      # -- Allowed JWT signing algorithms
+      allowedAlgs:
+        - RS256
+      # -- Allowed clock skew in seconds for JWT validation
+      clockSkewSeconds: 60
+
   # SMTP configuration for email notifications
   smtp:
     # -- Enable SMTP
