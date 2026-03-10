@@ -1,85 +1,109 @@
 # Composio Kubernetes Architecture
 
-This diagram illustrates the architecture of Composio deployed on Kubernetes, showing the flow of requests, interactions between services, and auxiliary components.
+This document reflects the current Helm chart defaults in [`composio/values.yaml`](../composio/values.yaml). A default release deploys Apollo, Thermos, Mercury, bundled Redis, and Weaviate. Frontend, ingress, Temporal, OTEL Collector, and Knative-backed Mercury are optional.
 
 ## Architecture Overview
 
 ```mermaid
 graph TB
-    Internet[🌐 Internet] --> HTTPS[HTTPS]
-    HTTPS --> PublicIngress[Public Ingress<br/>Optional]
-    
-    subgraph "KUBERNETES CLUSTER"
-        PublicIngress --> Apollo[Apollo<br/>OAuth callbacks/business logic]
-        
-        Apollo <--> Redis[Redis<br/>Cache/Data Store]
-        Apollo --> Thermos[Thermos<br/>Tools Management]
-        
-        Redis --> Temporal[Temporal.io<br/>Workflows Management]
-        Thermos --> Temporal
-        Thermos --> Mercury[Mercury<br/>Knative Service]
-        
-        Temporal <--> Postgres[Postgres<br/>Primary Database]
-        Apollo <--> Postgres
-        
-        Mercury --> ToolsAPIs[Tools/LLM APIs<br/>External Services]
-        
-        subgraph "AUXILIARY SERVICES"
-            KubeSecrets[kube-secrets<br/>Secret Management]
-            OtherK8s[Other Necessary K8s<br/>Components]
-            ECR[ECR<br/>Docker Images]
+    Internet["Internet"]
+
+    subgraph "Kubernetes Cluster"
+        subgraph "Composio Namespace"
+            FrontendIngress["Frontend Ingress<br/>Optional"]
+            ApolloIngress["Apollo Ingress<br/>Optional"]
+            Frontend["Frontend<br/>Optional web UI"]
+
+            Apollo["Apollo<br/>Deployment / Service 9900"]
+            Thermos["Thermos<br/>Deployment / Service 8180"]
+            Mercury["Mercury<br/>Deployment by default<br/>Knative optional"]
+            Redis["Redis<br/>Bundled by default<br/>External optional"]
+            Weaviate["Weaviate<br/>Deployment / Search"]
+            Temporal["Temporal<br/>Optional via features.temporal"]
+            OtelCollector["OTEL Collector<br/>Optional via otel.enabled"]
         end
-        
-        Apollo --> OtelCollector[Otel Collector<br/>Metrics/Traces]
-        Thermos --> OtelCollector
-        Mercury --> OtelCollector
     end
-    
-    ToolsAPIs -.->|Outbound Actions<br/>egress internet| Internet
-    
-    classDef coreService fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef database fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef auxiliary fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    classDef monitoring fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    
-    class Apollo,Thermos,Mercury coreService
-    class Redis,Postgres,Temporal database
-    class Internet,ToolsAPIs external
-    class KubeSecrets,OtherK8s,ECR auxiliary
-    class OtelCollector monitoring
+
+    Postgres["PostgreSQL<br/>External"]
+    ObjectStorage["S3 / Azure Blob<br/>Optional object storage"]
+    ToolsAPIs["Tools / LLM APIs<br/>External services"]
+    Registry["Registry / Pull Secrets<br/>Replicated proxy or custom registry"]
+    Secrets["Kubernetes Secrets<br/>Core + provider credentials"]
+
+    Internet --> FrontendIngress
+    Internet --> ApolloIngress
+    FrontendIngress --> Frontend
+    Frontend --> Apollo
+    ApolloIngress --> Apollo
+
+    Apollo --> Postgres
+    Apollo --> Redis
+    Apollo --> Weaviate
+    Apollo --> Thermos
+    Apollo -. optional .-> ObjectStorage
+
+    Thermos --> Mercury
+    Thermos -. "features.temporal=true" .-> Temporal
+
+    Mercury --> Apollo
+    Mercury --> ToolsAPIs
+
+    Apollo -. "otel.enabled=true" .-> OtelCollector
+    Thermos -. "otel.enabled=true" .-> OtelCollector
+    Mercury -. "otel.enabled=true" .-> OtelCollector
+    Frontend -. "otel.enabled=true" .-> OtelCollector
+
+    Secrets -.-> Apollo
+    Secrets -.-> Thermos
+    Secrets -.-> Mercury
+    Secrets -.-> Frontend
+    Registry -.-> Apollo
+    Registry -.-> Thermos
+    Registry -.-> Mercury
+    Registry -.-> Weaviate
+    Registry -.-> Frontend
+
+    classDef app fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef data fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef optional fill:#fff8e1,stroke:#ef6c00,stroke-width:2px
+    classDef external fill:#f5f5f5,stroke:#424242,stroke-width:2px
+    classDef observability fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+
+    class Apollo,Thermos,Mercury,Frontend app
+    class Redis,Weaviate,Postgres data
+    class Temporal,ObjectStorage,FrontendIngress,ApolloIngress optional
+    class Internet,ToolsAPIs,Registry,Secrets external
+    class OtelCollector observability
 ```
 
 ## Component Descriptions
 
-### Core Services
-- **Apollo**: Main API service handling OAuth callbacks and business logic
-- **Thermos**: Tools management service for external integrations
-- **Mercury**: Knative-based service for outbound actions to external APIs
+### Default Workloads
+- **Apollo**: Primary API service. It talks to PostgreSQL, Redis, Thermos, and Weaviate.
+- **Thermos**: Background orchestration service. It uses Apollo and Mercury, and integrates with Temporal only when enabled.
+- **Mercury**: Outbound tool execution service. The chart deploys it as a standard Kubernetes `Deployment` by default.
+- **Redis**: Bundled Bitnami Redis is enabled by default. It can be replaced with `externalRedis`.
+- **Weaviate**: Search/vector store deployed by default and wired into Apollo through `WEAVIATE_*` settings.
 
-### Data Layer
-- **Redis**: Caching and session storage
-- **Postgres**: Primary database for persistent data
-- **Temporal.io**: Workflow orchestration and management (only required if auth refresh and/or triggers are enabled)
+### Optional Workloads
+- **Frontend**: Web UI deployment, disabled by default.
+- **Apollo/Frontend Ingress**: Separate optional ingress resources for external access.
+- **Temporal**: Enabled by `features.temporal`; used for auth refresh, triggers, and related workflow execution.
+- **OTEL Collector**: Enabled only when `otel.enabled=true`.
+- **Knative Mercury**: Enabled only when `mercury.useKnative=true`; otherwise Mercury runs as a normal deployment.
 
-### External Integration
-- **Tools/LLM APIs**: External services and APIs for AI functionality
-- **Public Ingress**: Optional entry point for external access
+### External Dependencies
+- **PostgreSQL**: External database used by Apollo and Thermos. When Temporal is enabled, the DB init job also creates Temporal databases.
+- **Tools / LLM APIs**: Mercury makes outbound calls to external tool providers and model endpoints.
+- **Registry / Pull Secrets**: Images are pulled either through the Replicated proxy flow or user-provided pull secrets.
+- **Object Storage**: Apollo supports optional S3 or Azure Blob Storage configuration.
 
-### Auxiliary Services
-- **kube-secrets**: Kubernetes secret management
-- **ECR**: Container registry for Docker images
-- **Other K8s**: Additional Kubernetes components
+## Runtime Flow
 
-### Monitoring
-- **Otel Collector**: Observability and telemetry data collection
-
-## Request Flow
-
-1. **Incoming Requests**: HTTPS requests from the Internet through Public Ingress
-2. **Authentication**: Apollo handles OAuth callbacks and business logic
-3. **Tool Management**: Thermos manages external tool integrations
-4. **Workflow Processing**: Temporal.io orchestrates complex workflows (only used when auth refresh and/or triggers are enabled)
-5. **External Actions**: Mercury executes outbound calls to external APIs
-6. **Data Persistence**: All services interact with Redis and Postgres for data storage
-7. **Monitoring**: Otel Collector gathers metrics and traces from all services
+1. Traffic reaches Apollo directly or through the optional Apollo ingress or Frontend path.
+2. Apollo handles API and auth flows, persists data in PostgreSQL, uses Redis, and queries Weaviate for search.
+3. Apollo delegates background orchestration to Thermos.
+4. Thermos calls Mercury over the in-cluster service endpoint for outbound execution.
+5. Mercury performs external API and tool calls and calls Apollo when needed.
+6. Temporal joins the flow only when `features.temporal=true`.
+7. OTEL export paths are active only when `otel.enabled=true`.
