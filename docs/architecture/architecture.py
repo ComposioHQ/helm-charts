@@ -51,7 +51,7 @@ with Diagram(
             apollo = Pod("Apollo\n(API)")
             thermos = Pod("Thermos\n(Orchestration)")
             mercury = Pod("Mercury\n(Deployment default)")
-            weaviate = Pod("Weaviate\n(Search)")
+            weaviate = Pod("Weaviate\n(Optional, default on)")
             redis = Redis("Redis\n(Bundled default)")
             temporal = Pod("Temporal\n(Optional)")
             monitoring = Prometheus("OTEL Collector\n(Optional)")

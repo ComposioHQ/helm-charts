@@ -60,13 +60,13 @@
 │  │  Apollo (Deployment, svc 9900, replicas 2)                     │  │
 │  │    |--> PostgreSQL (external, secret-managed)                  │  │
 │  │    |--> Redis (bundled by default, external optional)          │  │
-│  │    |--> Weaviate (default search/vector store)                 │  │
+│  │    |--> Weaviate (optional, enabled by default)                │  │
 │  │    '--> Thermos (Deployment, svc 8180, replicas 2)             │  │
 │  │             '--> Mercury (Deployment default, svc 80 -> 8080)  │  │
 │  │                       '--> External tools / LLM APIs           │  │
 │  │                                                                │  │
 │  │ Optional add-ons                                               │  │
-│  │  Frontend, Temporal, OTEL Collector, Knative Mercury           │  │
+│  │  Frontend, Weaviate, Temporal, OTEL Collector, Knative Mercury │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
 External dependencies: PostgreSQL, registry auth / pull secrets, provider secrets
@@ -104,14 +104,14 @@ External dependencies: PostgreSQL, registry auth / pull secrets, provider secret
                                         <li>Uses PostgreSQL via <code>POSTGRES_URL</code></li>
                                         <li>Uses bundled or external Redis</li>
                                         <li>Calls Thermos for orchestration</li>
-                                        <li>Uses Weaviate for search by default</li>
+                                        <li>Uses Weaviate for search when enabled; current defaults turn it on</li>
                                         <li>Supports optional ingress, frontend URL, and object storage</li>
                                     </ul>
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Thermos</strong></td>
-                                <td>Deployment + Service</td>
+                                <td>Optional Deployment + Service</td>
                                 <td>Background orchestration and task execution</td>
                                 <td>8180</td>
                                 <td>2</td>
@@ -155,7 +155,7 @@ External dependencies: PostgreSQL, registry auth / pull secrets, provider secret
                                 <td><code>composio/templates/weaviate/weaviate.yaml:1</code></td>
                                 <td>
                                     <ul>
-                                        <li>Enabled by default in <code>values.yaml</code></li>
+                                        <li>Enabled by default in <code>values.yaml</code> but can be disabled</li>
                                         <li>Apollo is wired through <code>WEAVIATE_*</code> env vars</li>
                                         <li>Supports optional persistence</li>
                                         <li>Exposes both HTTP and gRPC ports</li>
@@ -248,7 +248,7 @@ External dependencies: PostgreSQL, registry auth / pull secrets, provider secret
                             <li><strong>Apollo → PostgreSQL:</strong> Direct database connection via secret-managed credentials</li>
                             <li><strong>Apollo → Redis:</strong> Uses bundled Redis by default or <code>externalRedis</code> when configured</li>
                             <li><strong>Apollo → Thermos:</strong> Internal orchestration path for background work</li>
-                            <li><strong>Apollo → Weaviate:</strong> Search / vector lookups when Weaviate is enabled; this is the default chart state</li>
+                            <li><strong>Apollo → Weaviate:</strong> Search / vector lookups when Weaviate is enabled; current defaults enable it</li>
                             <li><strong>Thermos → Mercury:</strong> HTTP execution path via the in-cluster Mercury service</li>
                             <li><strong>Thermos → Temporal:</strong> Optional workflow path enabled only by <code>features.temporal=true</code></li>
                             <li><strong>Mercury → Apollo / External APIs:</strong> Uses Apollo for control flow and external providers for tool execution</li>
@@ -271,7 +271,7 @@ External dependencies: PostgreSQL, registry auth / pull secrets, provider secret
                         <h3><i class="fas fa-sync-alt"></i> Data Flow</h3>
                         <ul>
                             <li><strong>API Flow:</strong> Client → Apollo → PostgreSQL / Redis → Response</li>
-                            <li><strong>Search Flow:</strong> Apollo → Weaviate → optional reranker / model provider → Response</li>
+                            <li><strong>Search Flow:</strong> Apollo → Weaviate → optional reranker / model provider → Response when Weaviate-backed search is enabled</li>
                             <li><strong>Tool Execution Flow:</strong> Apollo → Thermos → Mercury → external API → Apollo / Response</li>
                             <li><strong>Frontend Flow:</strong> Browser → optional Frontend / ingress → Apollo</li>
                             <li><strong>Workflow Flow:</strong> Thermos → Temporal only when Temporal is enabled</li>

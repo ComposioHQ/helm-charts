@@ -1,6 +1,6 @@
 # Composio Kubernetes Architecture
 
-This document reflects the current Helm chart defaults in [`composio/values.yaml`](../composio/values.yaml). A default release deploys Apollo, Thermos, Mercury, bundled Redis, and Weaviate. Frontend, ingress, Temporal, OTEL Collector, and Knative-backed Mercury are optional.
+This document reflects the current Helm chart defaults in [`composio/values.yaml`](../composio/values.yaml). A default release deploys Apollo, Thermos, Mercury, and bundled Redis. The chart can also deploy optional Frontend, Weaviate, ingress, Temporal, OTEL Collector, and Knative-backed Mercury; current defaults enable Weaviate.
 
 ## Architecture Overview
 
@@ -18,7 +18,7 @@ graph TB
             Thermos["Thermos<br/>Deployment / Service 8180"]
             Mercury["Mercury<br/>Deployment by default<br/>Knative optional"]
             Redis["Redis<br/>Bundled by default<br/>External optional"]
-            Weaviate["Weaviate<br/>Deployment / Search"]
+            Weaviate["Weaviate<br/>Optional search<br/>Enabled by default"]
             Temporal["Temporal<br/>Optional via features.temporal"]
             OtelCollector["OTEL Collector<br/>Optional via otel.enabled"]
         end
@@ -79,14 +79,14 @@ graph TB
 ## Component Descriptions
 
 ### Default Workloads
-- **Apollo**: Primary API service. It talks to PostgreSQL, Redis, Thermos, and Weaviate.
+- **Apollo**: Primary API service. It talks to PostgreSQL, Redis, Thermos, and Weaviate when search is enabled.
 - **Thermos**: Background orchestration service. It uses Apollo and Mercury, and integrates with Temporal only when enabled.
 - **Mercury**: Outbound tool execution service. The chart deploys it as a standard Kubernetes `Deployment` by default.
 - **Redis**: Bundled Bitnami Redis is enabled by default. It can be replaced with `externalRedis`.
-- **Weaviate**: Search/vector store deployed by default and wired into Apollo through `WEAVIATE_*` settings.
 
 ### Optional Workloads
 - **Frontend**: Web UI deployment, disabled by default.
+- **Weaviate**: Search/vector store wired into Apollo through `WEAVIATE_*` settings. It is enabled by default but can be disabled.
 - **Apollo/Frontend Ingress**: Separate optional ingress resources for external access.
 - **Temporal**: Enabled by `features.temporal`; used for auth refresh, triggers, and related workflow execution.
 - **OTEL Collector**: Enabled only when `otel.enabled=true`.
@@ -101,7 +101,7 @@ graph TB
 ## Runtime Flow
 
 1. Traffic reaches Apollo directly or through the optional Apollo ingress or Frontend path.
-2. Apollo handles API and auth flows, persists data in PostgreSQL, uses Redis, and queries Weaviate for search.
+2. Apollo handles API and auth flows, persists data in PostgreSQL, uses Redis, and queries Weaviate for search when enabled.
 3. Apollo delegates background orchestration to Thermos.
 4. Thermos calls Mercury over the in-cluster service endpoint for outbound execution.
 5. Mercury performs external API and tool calls and calls Apollo when needed.
