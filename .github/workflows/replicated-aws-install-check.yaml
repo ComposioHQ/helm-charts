@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: Replicated release version to install
-        required: true
-        default: 0.1.58
+        description: Replicated release version to install. Leave empty to use the current channel release.
+        required: false
+        default: ""
         type: string
       channel:
         description: Replicated channel for the requested release
@@ -55,14 +55,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: replicated-aws-install-check-${{ github.ref }}-${{ github.event.inputs.release_version || '0.1.58' }}
+  group: replicated-aws-install-check-${{ github.ref }}-${{ github.event.inputs.release_version || 'channel-current' }}
   cancel-in-progress: false
 
 env:
   RELEASE_NAME: composio
   NAMESPACE: composio
   POSTGRES_RELEASE_NAME: composio-postgresql
-  WORKFLOW_RELEASE_VERSION: ${{ github.event.inputs.release_version || '0.1.58' }}
+  WORKFLOW_RELEASE_VERSION: ${{ github.event.inputs.release_version || '' }}
   WORKFLOW_CHANNEL: ${{ github.event.inputs.channel || 'unstable' }}
   WORKFLOW_EKS_VERSION: ${{ github.event.inputs.eks_version || '' }}
   WORKFLOW_CLUSTER_TTL: ${{ github.event.inputs.cluster_ttl || '6h' }}
@@ -116,28 +116,82 @@ jobs:
         run: |
           set -euo pipefail
 
-          release_version="${WORKFLOW_RELEASE_VERSION}"
+          requested_release_version="${WORKFLOW_RELEASE_VERSION}"
           registry_host="${REPLICATED_REGISTRY:-registry.composio.io}"
           registry_host="${registry_host#oci://}"
           cluster_name="cmx-composio-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          release_sequence=""
 
-          replicated release ls --output json >"${RUNNER_TEMP}/releases.json"
-          release_sequence="$(
-            jq -r --arg version "$release_version" '
-              [
-                .. | objects
-                | select(
-                    ((.Version // .version // .AppVersion // .appVersion // .VersionLabel // .versionLabel // "") | tostring) == $version
-                  )
-                | (.Sequence // .sequence // .ReleaseSequence // .releaseSequence // empty | tostring)
-              ]
-              | map(select(length > 0))
-              | first // ""
-            ' "${RUNNER_TEMP}/releases.json"
+          channel_name="$(
+            replicated channel ls \
+              | awk 'NR > 1 && tolower($2) == tolower("'"${WORKFLOW_CHANNEL}"'") { print $2; exit }'
           )"
 
+          if [[ -z "${channel_name}" ]]; then
+            echo "Unable to resolve channel name for ${WORKFLOW_CHANNEL} from replicated channel ls." >&2
+            exit 1
+          fi
+
+          channel_inspect="$(
+            replicated channel inspect "${channel_name}"
+          )"
+
+          current_channel_release_sequence="$(
+            printf '%s\n' "${channel_inspect}" \
+              | awk -F':' '/^RELEASE:/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
+          )"
+          current_channel_release_version="$(
+            printf '%s\n' "${channel_inspect}" \
+              | awk -F':' '/^VERSION:/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
+          )"
+
+          if [[ -z "${current_channel_release_sequence}" || -z "${current_channel_release_version}" ]]; then
+            echo "Unable to resolve current release/version from replicated channel inspect ${channel_name}." >&2
+            printf '%s\n' "${channel_inspect}" >&2
+            exit 1
+          fi
+
+          if [[ -z "${requested_release_version}" ]]; then
+            requested_release_version="${current_channel_release_version}"
+            release_sequence="${current_channel_release_sequence}"
+          elif [[ "${requested_release_version}" == "${current_channel_release_version}" ]]; then
+            release_sequence="${current_channel_release_sequence}"
+          fi
+
+          replicated release ls --output json >"${RUNNER_TEMP}/releases.json"
           if [[ -z "${release_sequence}" ]]; then
-            echo "Release version ${release_version} was not found in replicated release ls output." >&2
+            mapfile -t release_sequences < <(
+              jq -r '
+                [
+                  .. | objects
+                  | (.Sequence // .sequence // .ReleaseSequence // .releaseSequence // empty | tostring)
+                ]
+                | map(select(length > 0))
+                | unique
+                | .[]
+              ' "${RUNNER_TEMP}/releases.json"
+            )
+
+            for sequence in "${release_sequences[@]}"; do
+              release_inspect_path="${RUNNER_TEMP}/release-${sequence}.json"
+              replicated release inspect "${sequence}" --output json >"${release_inspect_path}"
+
+              if jq -e --arg version "${requested_release_version}" '
+                [
+                  .. | objects
+                  | (.Version // .version // .AppVersion // .appVersion // .VersionLabel // .versionLabel // empty | tostring)
+                ]
+                | map(select(length > 0))
+                | any(. == $version)
+              ' "${release_inspect_path}" >/dev/null; then
+                release_sequence="${sequence}"
+                break
+              fi
+            done
+          fi
+
+          if [[ -z "${release_sequence}" ]]; then
+            echo "Release version ${requested_release_version} was not found. Current ${channel_name} version is ${current_channel_release_version} (sequence ${current_channel_release_sequence})." >&2
             exit 1
           fi
 
@@ -172,7 +226,11 @@ jobs:
           chart_url="oci://${registry_host}/${REPLICATED_APP}/${WORKFLOW_CHANNEL}/composio"
 
           {
+            echo "channel_name=${channel_name}"
             echo "release_sequence=${release_sequence}"
+            echo "release_version=${requested_release_version}"
+            echo "current_channel_release_sequence=${current_channel_release_sequence}"
+            echo "current_channel_release_version=${current_channel_release_version}"
             echo "eks_version=${target_eks_version}"
             echo "chart_url=${chart_url}"
             echo "cluster_name=${cluster_name}"
@@ -429,7 +487,7 @@ jobs:
           export PATH="${KREW_ROOT:-$HOME/.krew}/bin:${PATH}"
 
           helm template -n "${NAMESPACE}" "${RELEASE_NAME}" "${{ steps.resolve.outputs.chart_url }}" \
-            --version "${WORKFLOW_RELEASE_VERSION}" \
+            --version "${{ steps.resolve.outputs.release_version }}" \
             --values "${{ steps.bootstrap.outputs.values_file }}" \
             | kubectl preflight -
 
@@ -442,7 +500,7 @@ jobs:
             --namespace "${NAMESPACE}" \
             --create-namespace \
             --values "${{ steps.bootstrap.outputs.values_file }}" \
-            --version "${WORKFLOW_RELEASE_VERSION}" \
+            --version "${{ steps.resolve.outputs.release_version }}" \
             --wait \
             --wait-for-jobs \
             --timeout 40m
@@ -577,9 +635,10 @@ jobs:
           {
             echo "## Replicated AWS install check"
             echo
-            echo "- Requested release version: \`${{ env.WORKFLOW_RELEASE_VERSION }}\`"
-            echo "- Channel: \`${{ env.WORKFLOW_CHANNEL }}\`"
+            echo "- Resolved release version: \`${{ steps.resolve.outputs.release_version }}\`"
+            echo "- Channel: \`${{ steps.resolve.outputs.channel_name }}\`"
             echo "- Release sequence: \`${{ steps.resolve.outputs.release_sequence }}\`"
+            echo "- Current channel version: \`${{ steps.resolve.outputs.current_channel_release_version }}\`"
             echo "- Selected EKS version: \`${{ steps.resolve.outputs.eks_version }}\`"
             echo "- Actual cluster version: \`${{ steps.kubeconfig.outputs.actual_cluster_version }}\`"
             echo "- CMX cluster id: \`${{ steps.create_cluster.outputs.cluster_id }}\`"
