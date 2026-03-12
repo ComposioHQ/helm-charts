@@ -71,7 +71,7 @@ jobs:
       REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
       REPLICATED_HELM_AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
       REPLICATED_REGISTRY: ${{ secrets.REPLICATED_REGISTRY }}
-      QA_STATE_PATH: ${{ runner.temp }}/qa-result.json
+      QA_STATE_PATH: ${{ github.workspace }}/qa-result.json
     steps:
       - name: Set up Helm
         uses: azure/setup-helm@v4
