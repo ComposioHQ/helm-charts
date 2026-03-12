@@ -11,7 +11,8 @@ jobs:
   release-helm-chart:
     runs-on: ubuntu-latest
     if: |
-      github.event.action == 'prereleased'
+      github.event.action == 'prereleased' &&
+      !startsWith(github.event.release.tag_name, 'nightly-')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -164,7 +165,8 @@ jobs:
   deploy-to-gke:
     needs: [release-helm-chart]
     if: |
-      github.event.action == 'prereleased'
+      github.event.action == 'prereleased' &&
+      !startsWith(github.event.release.tag_name, 'nightly-')
     env:
       REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
     runs-on: depot-ubuntu-24.04-4

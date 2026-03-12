@@ -1,0 +1,655 @@
+name: Replicated CMX Install Check
+
+on:
+  workflow_call:
+    inputs:
+      distribution:
+        required: true
+        type: string
+      channel:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
+      mode:
+        required: true
+        type: string
+      artifact_name:
+        required: true
+        type: string
+      from_version:
+        required: false
+        default: ""
+        type: string
+      kubernetes_version:
+        required: false
+        default: ""
+        type: string
+      release_name:
+        required: false
+        default: composio
+        type: string
+      namespace:
+        required: false
+        default: composio
+        type: string
+      cluster_ttl:
+        required: false
+        default: 18h
+        type: string
+      success_ttl:
+        required: false
+        default: 2h
+        type: string
+      instance_type:
+        required: false
+        default: ""
+        type: string
+      nodes:
+        required: false
+        default: "3"
+        type: string
+      disk_gib:
+        required: false
+        default: "100"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  install-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    env:
+      RELEASE_NAME: ${{ inputs.release_name }}
+      NAMESPACE: ${{ inputs.namespace }}
+      POSTGRES_RELEASE_NAME: composio-postgresql
+      REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+      REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+      REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
+      REPLICATED_HELM_AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
+      REPLICATED_REGISTRY: ${{ secrets.REPLICATED_REGISTRY }}
+      QA_STATE_PATH: ${{ runner.temp }}/qa-result.json
+    steps:
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.32.2
+
+      - name: Install Replicated CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls \
+            "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
+            -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+          sudo mv replicated /usr/local/bin/replicated
+          replicated version
+
+      - name: Verify Replicated access
+        shell: bash
+        run: |
+          set -euo pipefail
+          replicated app ls >/dev/null
+
+      - name: Resolve cluster target
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          distribution="$(echo "${{ inputs.distribution }}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${distribution}" != "eks" && "${distribution}" != "gke" ]]; then
+            echo "Unsupported distribution: ${distribution}" >&2
+            exit 1
+          fi
+
+          registry_host="${REPLICATED_REGISTRY:-registry.composio.io}"
+          registry_host="${registry_host#oci://}"
+
+          replicated cluster versions --distribution "${distribution}" --output json >"${RUNNER_TEMP}/cluster-versions.json"
+          mapfile -t supported_versions < <(
+            jq -r '
+              [
+                .. | strings
+                | select(test("^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"))
+              ]
+              | unique
+              | sort_by(split(".") | map(tonumber))
+              | .[]
+            ' "${RUNNER_TEMP}/cluster-versions.json"
+          )
+
+          if [[ "${#supported_versions[@]}" -eq 0 ]]; then
+            echo "Replicated cluster versions did not return any supported Kubernetes versions for ${distribution}." >&2
+            exit 1
+          fi
+
+          target_cluster_version="${{ inputs.kubernetes_version }}"
+          if [[ -z "${target_cluster_version}" ]]; then
+            target_cluster_version="${supported_versions[-1]}"
+          fi
+
+          if ! printf '%s\n' "${supported_versions[@]}" | grep -Fx "${target_cluster_version}" >/dev/null; then
+            echo "Requested Kubernetes version ${target_cluster_version} is not supported for ${distribution}." >&2
+            exit 1
+          fi
+
+          instance_type="${{ inputs.instance_type }}"
+          if [[ -z "${instance_type}" ]]; then
+            case "${distribution}" in
+              eks) instance_type="m6i.2xlarge" ;;
+              gke) instance_type="e2-standard-8" ;;
+            esac
+          fi
+
+          artifact_slug="$(echo "${{ inputs.artifact_name }}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-')"
+          artifact_slug="${artifact_slug#-}"
+          artifact_slug="${artifact_slug%-}"
+          artifact_slug="${artifact_slug:0:24}"
+          cluster_name="cmx-${distribution}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${artifact_slug}"
+          cluster_name="${cluster_name:0:63}"
+
+          {
+            echo "distribution=${distribution}"
+            echo "registry_host=${registry_host}"
+            echo "cluster_version=${target_cluster_version}"
+            echo "instance_type=${instance_type}"
+            echo "cluster_name=${cluster_name}"
+            echo "target_chart_url=oci://${registry_host}/${REPLICATED_APP}/${{ inputs.channel }}/composio"
+            echo "source_chart_url=oci://${registry_host}/${REPLICATED_APP}/stable/composio"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Create CMX cluster
+        id: create_cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          replicated cluster create \
+            --name "${{ steps.resolve.outputs.cluster_name }}" \
+            --distribution "${{ steps.resolve.outputs.distribution }}" \
+            --version "${{ steps.resolve.outputs.cluster_version }}" \
+            --nodes "${{ inputs.nodes }}" \
+            --instance-type "${{ steps.resolve.outputs.instance_type }}" \
+            --disk "${{ inputs.disk_gib }}" \
+            --ttl "${{ inputs.cluster_ttl }}" \
+            --wait 90m \
+            --output json >"${RUNNER_TEMP}/cluster-create.json"
+
+          cluster_id="$(
+            jq -r '
+              [
+                .. | objects
+                | (.id // .ID // .cluster_id // .clusterID // empty | tostring)
+              ]
+              | map(select(length > 0))
+              | first // ""
+            ' "${RUNNER_TEMP}/cluster-create.json"
+          )"
+
+          if [[ -z "${cluster_id}" ]]; then
+            echo "Unable to determine cluster id from replicated cluster create output." >&2
+            cat "${RUNNER_TEMP}/cluster-create.json" >&2
+            exit 1
+          fi
+
+          echo "cluster_id=${cluster_id}" >>"$GITHUB_OUTPUT"
+
+      - name: Download kubeconfig
+        id: kubeconfig
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubeconfig_path="${RUNNER_TEMP}/cmx-kubeconfig"
+          replicated cluster kubeconfig "${{ steps.create_cluster.outputs.cluster_id }}" --output-path "${kubeconfig_path}"
+          echo "KUBECONFIG=${kubeconfig_path}" >>"$GITHUB_ENV"
+
+          kubectl get ns >/dev/null
+
+          actual_cluster_version="$(
+            kubectl version -o json \
+              | jq -r '.serverVersion.major + "." + (.serverVersion.minor | sub("\\+"; ""))'
+          )"
+          echo "actual_cluster_version=${actual_cluster_version}" >>"$GITHUB_OUTPUT"
+
+      - name: Install preflight plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$(mktemp -d)"
+          os="$(uname | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m)"
+          if [[ "${arch}" == "x86_64" ]]; then
+            arch="amd64"
+          elif [[ "${arch}" == "aarch64" ]]; then
+            arch="arm64"
+          fi
+
+          krew_archive="krew-${os}_${arch}"
+          curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${krew_archive}.tar.gz"
+          tar zxvf "${krew_archive}.tar.gz"
+          ./"${krew_archive}" install krew
+          export PATH="${KREW_ROOT:-$HOME/.krew}/bin:${PATH}"
+          echo "${KREW_ROOT:-$HOME/.krew}/bin" >>"$GITHUB_PATH"
+          kubectl krew install preflight
+
+      - name: Install PostgreSQL 17
+        id: postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+          postgres_chart_version="$(
+            helm search repo bitnami/postgresql --versions --output json \
+              | jq -r '[.[] | select(.app_version | startswith("17"))][0].version // ""'
+          )"
+
+          if [[ -z "${postgres_chart_version}" ]]; then
+            echo "Unable to find a Bitnami PostgreSQL chart version backed by PostgreSQL 17." >&2
+            exit 1
+          fi
+
+          postgres_password="$(openssl rand -hex 24)"
+          echo "::add-mask::${postgres_password}"
+          echo "POSTGRES_PASSWORD=${postgres_password}" >>"$GITHUB_ENV"
+
+          kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+
+          helm upgrade --install "${POSTGRES_RELEASE_NAME}" bitnami/postgresql \
+            --namespace "${NAMESPACE}" \
+            --version "${postgres_chart_version}" \
+            --set architecture=standalone \
+            --set auth.enablePostgresUser=true \
+            --set auth.postgresPassword="${postgres_password}" \
+            --set primary.persistence.enabled=false \
+            --wait \
+            --timeout 20m
+
+          postgres_service="$(
+            kubectl get svc -n "${NAMESPACE}" \
+              -l "app.kubernetes.io/instance=${POSTGRES_RELEASE_NAME},app.kubernetes.io/name=postgresql" \
+              -o json \
+              | jq -r '.items[] | select(.spec.clusterIP != "None") | .metadata.name' \
+              | head -n 1
+          )"
+
+          if [[ -z "${postgres_service}" ]]; then
+            echo "Unable to determine PostgreSQL service name." >&2
+            exit 1
+          fi
+
+          {
+            echo "chart_version=${postgres_chart_version}"
+            echo "service_name=${postgres_service}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Create Composio bootstrap secret and values
+        id: bootstrap
+        shell: bash
+        env:
+          OPTIONAL_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          composio_admin_token="$(openssl rand -hex 24)"
+          encryption_key="$(openssl rand -hex 32)"
+          jwt_secret="$(openssl rand -hex 32)"
+          docker_auth="$(printf '%s:%s' "${REPLICATED_USERNAME}" "${REPLICATED_HELM_AUTH_TOKEN}" | base64 | tr -d '\n')"
+          dockerconfigjson="$(
+            jq -nc \
+              --arg replicated_registry "${{ steps.resolve.outputs.registry_host }}" \
+              --arg portal_registry "registry.composio.io" \
+              --arg proxy_registry "artifacts.composio.io" \
+              --arg username "${REPLICATED_USERNAME}" \
+              --arg password "${REPLICATED_HELM_AUTH_TOKEN}" \
+              --arg auth "${docker_auth}" '
+              {
+                auths: {
+                  ($replicated_registry): {
+                    username: $username,
+                    password: $password,
+                    auth: $auth
+                  },
+                  ($portal_registry): {
+                    username: $username,
+                    password: $password,
+                    auth: $auth
+                  },
+                  ($proxy_registry): {
+                    username: $username,
+                    password: $password,
+                    auth: $auth
+                  }
+                }
+              }
+            ' | base64 | tr -d '\n'
+          )"
+
+          echo "::add-mask::${composio_admin_token}"
+          echo "::add-mask::${encryption_key}"
+          echo "::add-mask::${jwt_secret}"
+
+          postgres_url="postgresql://postgres:${POSTGRES_PASSWORD}@${{ steps.postgres.outputs.service_name }}:5432/composiodb?sslmode=disable"
+          thermos_database_url="postgresql://postgres:${POSTGRES_PASSWORD}@${{ steps.postgres.outputs.service_name }}:5432/thermosdb?sslmode=disable"
+
+          {
+            echo "COMPOSIO_ADMIN_TOKEN=${composio_admin_token}"
+            echo "ENCRYPTION_KEY=${encryption_key}"
+            echo "JWT_SECRET=${jwt_secret}"
+            echo "POSTGRES_URL=${postgres_url}"
+            echo "THERMOS_DATABASE_URL=${thermos_database_url}"
+          } >>"$GITHUB_ENV"
+
+          kubectl create secret generic composio-composio-secrets \
+            --namespace "${NAMESPACE}" \
+            --from-literal="COMPOSIO_ADMIN_TOKEN=${composio_admin_token}" \
+            --from-literal="ENCRYPTION_KEY=${encryption_key}" \
+            --from-literal="JWT_SECRET=${jwt_secret}" \
+            --from-literal="POSTGRES_URL=${postgres_url}" \
+            --from-literal="THERMOS_DATABASE_URL=${thermos_database_url}" \
+            --from-literal="OPENAI_API_KEY=${OPTIONAL_OPENAI_API_KEY}" \
+            --from-literal="password=${POSTGRES_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          values_file="${RUNNER_TEMP}/replicated-install-values.yaml"
+          cat >"${values_file}" <<EOF
+          secret:
+            name: "composio-composio-secrets"
+
+          namespace:
+            create: false
+            name: "${NAMESPACE}"
+
+          global:
+            imagePullSecrets: []
+            replicated:
+              dockerconfigjson: "${dockerconfigjson}"
+
+          weaviate:
+            enabled: false
+
+          databaseMigration:
+            enabled: true
+            host: "${{ steps.postgres.outputs.service_name }}"
+            port: "5432"
+            user: "postgres"
+
+          features:
+            temporal: false
+
+          openAI:
+            enabled: false
+
+          apollo:
+            service:
+              type: ClusterIP
+          EOF
+
+          echo "values_file=${values_file}" >>"$GITHUB_OUTPUT"
+
+      - name: Log in to Replicated OCI registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm registry login "${{ steps.resolve.outputs.registry_host }}" \
+            --username "${REPLICATED_USERNAME}" \
+            --password "${REPLICATED_HELM_AUTH_TOKEN}"
+
+      - name: Execute validation flow
+        id: validate
+        shell: bash
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          export PATH="${KREW_ROOT:-$HOME/.krew}/bin:${PATH}"
+
+          write_state() {
+            local filter="$1"
+            local tmp
+            tmp="$(mktemp)"
+            jq "${filter}" "${QA_STATE_PATH}" >"${tmp}"
+            mv "${tmp}" "${QA_STATE_PATH}"
+          }
+
+          run_preflight() {
+            local chart_url="$1"
+            local version="$2"
+            helm template -n "${NAMESPACE}" "${RELEASE_NAME}" "${chart_url}" \
+              --version "${version}" \
+              --values "${{ steps.bootstrap.outputs.values_file }}" \
+              | kubectl preflight -
+          }
+
+          install_release() {
+            local chart_url="$1"
+            local version="$2"
+            helm upgrade --install "${RELEASE_NAME}" "${chart_url}" \
+              --namespace "${NAMESPACE}" \
+              --create-namespace \
+              --values "${{ steps.bootstrap.outputs.values_file }}" \
+              --version "${version}" \
+              --wait \
+              --wait-for-jobs \
+              --timeout 40m
+          }
+
+          verify_workloads() {
+            for workload in $(kubectl get deployment,statefulset -n "${NAMESPACE}" -o name); do
+              kubectl rollout status -n "${NAMESPACE}" "${workload}" --timeout=20m
+            done
+
+            for job in $(kubectl get jobs -n "${NAMESPACE}" -o name); do
+              kubectl wait -n "${NAMESPACE}" --for=condition=complete "${job}" --timeout=20m
+            done
+          }
+
+          run_smoke() {
+            local phase="$1"
+            local port_forward_log identify_response_file weather_response_file identity_hash composio_api_key
+
+            port_forward_log="${RUNNER_TEMP}/port-forward-${phase}.log"
+            identify_response_file="${RUNNER_TEMP}/identify-response-${phase}.json"
+            weather_response_file="${RUNNER_TEMP}/weather-response-${phase}.json"
+            identity_hash="gha-${phase}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com"
+
+            kubectl port-forward "svc/${RELEASE_NAME}-apollo" -n "${NAMESPACE}" 9900:9900 >"${port_forward_log}" 2>&1 &
+            port_forward_pid=$!
+
+            cleanup() {
+              kill "${port_forward_pid}" >/dev/null 2>&1 || true
+              wait "${port_forward_pid}" 2>/dev/null || true
+            }
+
+            trap cleanup RETURN
+
+            for _ in {1..36}; do
+              if curl -fsS http://127.0.0.1:9900/api/v1/health >/dev/null 2>&1; then
+                break
+              fi
+              sleep 5
+            done
+
+            curl --fail-with-body --silent --show-error \
+              --request POST \
+              --url http://127.0.0.1:9900/api/v3/admin/identify \
+              --header 'Content-Type: application/json' \
+              --header "x-composio-admin-token: ${COMPOSIO_ADMIN_TOKEN}" \
+              --data "$(jq -nc --arg hash "${identity_hash}" '{hash: $hash}')" \
+              >"${identify_response_file}"
+
+            composio_api_key="$(grep -Eo 'ak_[A-Za-z0-9]+' "${identify_response_file}" | head -n 1 || true)"
+            if [[ -z "${composio_api_key}" ]]; then
+              composio_api_key="$(
+                jq -r '
+                  .api_key // .apiKey // .key // .data.api_key // .data.apiKey // .data.key // empty
+                ' "${identify_response_file}"
+              )"
+            fi
+
+            if [[ -z "${composio_api_key}" ]]; then
+              cat "${identify_response_file}" >&2
+              return 1
+            fi
+
+            echo "::add-mask::${composio_api_key}"
+
+            curl --fail-with-body --silent --show-error --location \
+              --url http://127.0.0.1:9900/api/v3/tools/execute/WEATHERMAP_WEATHER \
+              --header 'Content-Type: application/json' \
+              --header "x-api-key: ${composio_api_key}" \
+              --data '{"arguments":{"location":"brussels"},"version":"latest"}' \
+              >"${weather_response_file}"
+
+            jq -e '
+              if type != "object" then
+                true
+              else
+                ((.successful? // .success? // true) == true)
+                and ((.error? // null) == null)
+              end
+            ' "${weather_response_file}" >/dev/null
+          }
+
+          jq -n \
+            --arg distribution "${{ steps.resolve.outputs.distribution }}" \
+            --arg mode "${{ inputs.mode }}" \
+            --arg source_version "${{ inputs.from_version }}" \
+            --arg target_version "${{ inputs.release_version }}" \
+            --arg source_smoke_status "not-run" \
+            --arg target_smoke_status "not-run" \
+            --arg job_status "running" \
+            '{
+              distribution: $distribution,
+              mode: $mode,
+              source_version: $source_version,
+              target_version: $target_version,
+              source_smoke_status: $source_smoke_status,
+              target_smoke_status: $target_smoke_status,
+              job_status: $job_status
+            }' >"${QA_STATE_PATH}"
+
+          trap 'status=$?; if [[ $status -ne 0 && -f "${QA_STATE_PATH}" ]]; then write_state ".job_status = \"failure\""; fi; exit $status' EXIT
+
+          if [[ "${{ inputs.mode }}" == "upgrade" ]]; then
+            if [[ -z "${{ inputs.from_version }}" ]]; then
+              echo "from_version is required when mode=upgrade" >&2
+              exit 1
+            fi
+
+            run_preflight "${{ steps.resolve.outputs.source_chart_url }}" "${{ inputs.from_version }}"
+            install_release "${{ steps.resolve.outputs.source_chart_url }}" "${{ inputs.from_version }}"
+            verify_workloads
+            run_smoke source
+            write_state '.source_smoke_status = "passed"'
+
+            run_preflight "${{ steps.resolve.outputs.target_chart_url }}" "${{ inputs.release_version }}"
+            install_release "${{ steps.resolve.outputs.target_chart_url }}" "${{ inputs.release_version }}"
+            verify_workloads
+            run_smoke target
+            write_state '.target_smoke_status = "passed"'
+          else
+            run_preflight "${{ steps.resolve.outputs.target_chart_url }}" "${{ inputs.release_version }}"
+            install_release "${{ steps.resolve.outputs.target_chart_url }}" "${{ inputs.release_version }}"
+            verify_workloads
+            run_smoke target
+            write_state '.target_smoke_status = "passed"'
+          fi
+
+          write_state '.job_status = "success"'
+          trap - EXIT
+
+      - name: Reduce CMX cluster TTL on success
+        if: steps.validate.outcome == 'success' && steps.create_cluster.outputs.cluster_id != ''
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          replicated cluster update ttl "${{ steps.create_cluster.outputs.cluster_id }}" --ttl "${{ inputs.success_ttl }}"
+
+      - name: Finalize QA result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f "${QA_STATE_PATH}" ]]; then
+            jq -n '{}' >"${QA_STATE_PATH}"
+          fi
+
+          final_status="failure"
+          if [[ "${{ steps.validate.outcome }}" == "success" ]]; then
+            final_status="success"
+          fi
+
+          tmp="$(mktemp)"
+          jq \
+            --arg cluster_id "${{ steps.create_cluster.outputs.cluster_id }}" \
+            --arg cluster_name "${{ steps.resolve.outputs.cluster_name }}" \
+            --arg cluster_version "${{ steps.kubeconfig.outputs.actual_cluster_version }}" \
+            --arg artifact_name "${{ inputs.artifact_name }}" \
+            --arg postgres_chart_version "${{ steps.postgres.outputs.chart_version }}" \
+            --arg ttl_on_success "${{ inputs.success_ttl }}" \
+            --arg ttl_on_failure "${{ inputs.cluster_ttl }}" \
+            --arg job_status "${final_status}" \
+            '.cluster_id = $cluster_id
+             | .cluster_name = $cluster_name
+             | .cluster_version = $cluster_version
+             | .artifact_name = $artifact_name
+             | .postgres_chart_version = $postgres_chart_version
+             | .ttl_on_success = $ttl_on_success
+             | .ttl_on_failure = $ttl_on_failure
+             | .job_status = $job_status' \
+            "${QA_STATE_PATH}" >"${tmp}"
+          mv "${tmp}" "${QA_STATE_PATH}"
+
+      - name: Upload QA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ env.QA_STATE_PATH }}
+          if-no-files-found: error
+
+      - name: Write workflow summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Replicated CMX install check"
+            echo
+            echo "- Distribution: \`${{ steps.resolve.outputs.distribution }}\`"
+            echo "- Mode: \`${{ inputs.mode }}\`"
+            if [[ -n "${{ inputs.from_version }}" ]]; then
+              echo "- Source version: \`${{ inputs.from_version }}\`"
+            fi
+            echo "- Target version: \`${{ inputs.release_version }}\`"
+            echo "- Selected Kubernetes version: \`${{ steps.resolve.outputs.cluster_version }}\`"
+            echo "- Actual cluster version: \`${{ steps.kubeconfig.outputs.actual_cluster_version }}\`"
+            echo "- CMX cluster id: \`${{ steps.create_cluster.outputs.cluster_id }}\`"
+            echo "- Artifact: \`${{ inputs.artifact_name }}\`"
+            echo "- Validation outcome: \`${{ steps.validate.outcome }}\`"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Fail job when validation failed
+        if: steps.validate.outcome != 'success'
+        shell: bash
+        run: |
+          echo "Validation flow failed." >&2
+          exit 1
