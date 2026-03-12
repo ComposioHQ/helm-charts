@@ -1,6 +1,9 @@
 name: Nightly Snapshot Release
 
 on:
+  push:
+    branches:
+      - ft-add-replicated-aws-install-check
   workflow_dispatch:
     inputs:
       source_tag:
@@ -118,7 +121,7 @@ jobs:
           release_tag="$(printf 'r%s_%02d' "${ist_date}" "${next_index}")"
           github_release_tag="nightly-${release_tag}"
 
-          image_registry="${{ inputs.image_registry }}"
+          image_registry="${{ github.event_name == 'push' && '' || inputs.image_registry }}"
           if [[ -z "${image_registry}" ]]; then
             image_registry="$(yq eval '.global.registry.name' composio/values.yaml)"
           fi
@@ -178,7 +181,7 @@ jobs:
           bash .github/scripts/nightly-build-manifest.sh \
             --inventory "${INVENTORY_FILE}" \
             --registry-host "${{ steps.metadata.outputs.image_registry }}" \
-            --source-tag "${{ inputs.source_tag }}" \
+            --source-tag "${{ github.event_name == 'push' && 'latest' || inputs.source_tag }}" \
             --release-tag "${{ steps.metadata.outputs.release_tag }}" \
             --github-release-tag "${{ steps.metadata.outputs.github_release_tag }}" \
             --replicated-version "${{ steps.metadata.outputs.replicated_version }}" \
@@ -363,8 +366,8 @@ jobs:
           upgrade_matrix="$(
             jq -nc \
               --argjson versions "${versions_json}" \
-              --arg eks_version "${{ inputs.eks_version }}" \
-              --arg gke_version "${{ inputs.gke_version }}" '
+              --arg eks_version "${{ github.event_name == 'push' && '' || inputs.eks_version }}" \
+              --arg gke_version "${{ github.event_name == 'push' && '' || inputs.gke_version }}" '
               [
                 $versions[] as $version
                 | {
@@ -409,10 +412,10 @@ jobs:
         include:
           - distribution: eks
             artifact_name: qa-fresh-eks
-            kubernetes_version: ${{ inputs.eks_version }}
+            kubernetes_version: ${{ github.event_name == 'push' && '' || inputs.eks_version }}
           - distribution: gke
             artifact_name: qa-fresh-gke
-            kubernetes_version: ${{ inputs.gke_version }}
+            kubernetes_version: ${{ github.event_name == 'push' && '' || inputs.gke_version }}
     name: Fresh install (${{ matrix.distribution }})
     uses: ./.github/workflows/replicated-cmx-install-check.yaml
     secrets: inherit
