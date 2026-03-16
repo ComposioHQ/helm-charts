@@ -8,6 +8,7 @@ This directory contains the GitHub Pages documentation for the Composio Helm Cha
 - `changelog.html` - Changelog for Docker images and Helm releases
 - `load-tests.html` - Load test results with date range filtering
 - `access-request.html` - On-premises access request form
+- `redis-sentinel.md` - Redis Sentinel setup guide for Apollo
 - `assets/` - CSS and JavaScript files
 - `data/` - JSON data files for dynamic content
 

@@ -14,6 +14,8 @@ stringData:
       name: "{{ .Release.Name }}-preflight-config"
     spec:
       {{- $coreSecret := include "composio.coreSecretName" . }}
+      {{- $externalRedisSentinelEnabled := and .Values.externalRedis.enabled .Values.externalRedis.sentinel.enabled }}
+      {{- $externalRedisSentinelSecretRef := .Values.externalRedis.sentinel.secretRef | default .Values.externalRedis.secretRef }}
       collectors:
         - secret:
             name: "{{ $coreSecret }}"
@@ -47,13 +49,34 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "THERMOS_DATABASE_URL"
             includeValue: false
-        {{ if .Values.externalRedis.enabled }}
+        {{- if and .Values.externalRedis.enabled (not $externalRedisSentinelEnabled) }}
         - secret:
-            name: "{{ $coreSecret }}"
+            name: "{{ .Values.externalRedis.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "REDIS_URL"
+            key: "{{ .Values.externalRedis.key }}"
             includeValue: false
-        {{ end }}
+        {{- end }}
+        {{- if and $externalRedisSentinelEnabled .Values.externalRedis.sentinel.usernameKey }}
+        - secret:
+            name: "{{ $externalRedisSentinelSecretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.externalRedis.sentinel.usernameKey }}"
+            includeValue: false
+        {{- end }}
+        {{- if and $externalRedisSentinelEnabled .Values.externalRedis.sentinel.passwordKey }}
+        - secret:
+            name: "{{ $externalRedisSentinelSecretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.externalRedis.sentinel.passwordKey }}"
+            includeValue: false
+        {{- end }}
+        {{- if and $externalRedisSentinelEnabled .Values.externalRedis.sentinel.sentinelPasswordKey }}
+        - secret:
+            name: "{{ $externalRedisSentinelSecretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.externalRedis.sentinel.sentinelPasswordKey }}"
+            includeValue: false
+        {{- end }}
 
       analyzers:
         # --- Chart-managed secrets ---
@@ -122,15 +145,51 @@ stringData:
                   message: "Missing {{ $coreSecret }} or key THERMOS_DATABASE_URL."
               - pass:
                   message: "Found {{ $coreSecret }} (THERMOS_DATABASE_URL)."
-        {{ if .Values.externalRedis.enabled }}
+        {{- if and .Values.externalRedis.enabled (not $externalRedisSentinelEnabled) }}
         - secret:
             checkName: "Redis URL present"
-            secretName: "{{ $coreSecret }}"
+            secretName: "{{ .Values.externalRedis.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
-            key: "REDIS_URL"
+            key: "{{ .Values.externalRedis.key }}"
             outcomes:
               - fail:
-                  message: "Missing {{ $coreSecret }} or key REDIS_URL."
+                  message: "Missing {{ .Values.externalRedis.secretRef }} or key {{ .Values.externalRedis.key }}."
               - pass:
-                  message: "Found {{ $coreSecret }} (REDIS_URL)."
-        {{ end }}
+                  message: "Found {{ .Values.externalRedis.secretRef }} ({{ .Values.externalRedis.key }})."
+        {{- end }}
+        {{- if and $externalRedisSentinelEnabled .Values.externalRedis.sentinel.usernameKey }}
+        - secret:
+            checkName: "Redis Sentinel username present"
+            secretName: "{{ $externalRedisSentinelSecretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.externalRedis.sentinel.usernameKey }}"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ .Values.externalRedis.sentinel.usernameKey }}."
+              - pass:
+                  message: "Found {{ $externalRedisSentinelSecretRef }} ({{ .Values.externalRedis.sentinel.usernameKey }})."
+        {{- end }}
+        {{- if and $externalRedisSentinelEnabled .Values.externalRedis.sentinel.passwordKey }}
+        - secret:
+            checkName: "Redis Sentinel password present"
+            secretName: "{{ $externalRedisSentinelSecretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.externalRedis.sentinel.passwordKey }}"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ .Values.externalRedis.sentinel.passwordKey }}."
+              - pass:
+                  message: "Found {{ $externalRedisSentinelSecretRef }} ({{ .Values.externalRedis.sentinel.passwordKey }})."
+        {{- end }}
+        {{- if and $externalRedisSentinelEnabled .Values.externalRedis.sentinel.sentinelPasswordKey }}
+        - secret:
+            checkName: "Redis Sentinel auth password present"
+            secretName: "{{ $externalRedisSentinelSecretRef }}"
+            namespace: "{{ .Release.Namespace }}"
+            key: "{{ .Values.externalRedis.sentinel.sentinelPasswordKey }}"
+            outcomes:
+              - fail:
+                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ .Values.externalRedis.sentinel.sentinelPasswordKey }}."
+              - pass:
+                  message: "Found {{ $externalRedisSentinelSecretRef }} ({{ .Values.externalRedis.sentinel.sentinelPasswordKey }})."
+        {{- end }}
