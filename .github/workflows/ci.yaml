@@ -48,7 +48,7 @@ jobs:
           helm template . --debug --dry-run
 
       - name: Install helm-unittest plugin
-        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 0.7.2
 
       - name: Run unit tests
         run: |
