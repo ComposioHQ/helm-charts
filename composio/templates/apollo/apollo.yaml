@@ -1,5 +1,25 @@
-{{- if eq .Values.redis.enabled .Values.externalRedis.enabled }}
-{{- fail "Error: Either redis.enabled or externalRedis.enabled must be true, but not both" }}
+{{- $externalRedis := .Values.externalRedis | default (dict) }}
+{{- $externalRedisSentinel := $externalRedis.sentinel | default (dict) }}
+{{- $redisValues := .Values.redis | default (dict) }}
+{{- $redisSentinel := $redisValues.sentinel | default (dict) }}
+{{- $redisSentinelService := $redisSentinel.service | default (dict) }}
+{{- $redisSentinelServicePorts := $redisSentinelService.ports | default (dict) }}
+{{- $redisTls := $redisValues.tls | default (dict) }}
+{{- $redisAuth := $redisValues.auth | default (dict) }}
+{{- $externalRedisSentinelEnabled := and $externalRedis.enabled $externalRedisSentinel.enabled }}
+{{- $internalRedisSentinelEnabled := and $redisValues.enabled $redisSentinel.enabled }}
+{{- $externalRedisSentinelSecretRef := $externalRedisSentinel.secretRef | default $externalRedis.secretRef }}
+{{- if and $redisValues.enabled $externalRedis.enabled }}
+{{- fail "Error: redis.enabled and externalRedis.enabled cannot both be true" }}
+{{- end }}
+{{- if and (not $redisValues.enabled) (not $externalRedis.enabled) }}
+{{- fail "Error: one of redis.enabled or externalRedis.enabled must be true" }}
+{{- end }}
+{{- if and $externalRedisSentinelEnabled (or (empty $externalRedisSentinel.hosts) (empty $externalRedisSentinel.masterName)) }}
+{{- fail "Error: externalRedis.sentinel.hosts and externalRedis.sentinel.masterName are required when externalRedis.sentinel.enabled is true" }}
+{{- end }}
+{{- if and $internalRedisSentinelEnabled (ne ($redisValues.architecture | default "standalone") "replication") }}
+{{- fail "Error: redis.architecture must be \"replication\" when redis.sentinel.enabled is true" }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
@@ -112,18 +132,68 @@ spec:
                   key: {{ .Values.apollo.objectStorage.azureConnectionString.key }}
                   optional: true
             {{- end }} 
-            {{- if .Values.externalRedis.enabled }}
+            {{- if $externalRedisSentinelEnabled }}
+            - name: REDIS_SENTINEL_HOSTS
+              value: {{ $externalRedisSentinel.hosts | quote }}
+            - name: REDIS_SENTINEL_MASTER_NAME
+              value: {{ $externalRedisSentinel.masterName | quote }}
+            - name: REDIS_TLS_ENABLED
+              value: {{ $externalRedisSentinel.tlsEnabled | default false | toString | quote }}
+            {{- if ne (toString $externalRedisSentinel.db) "" }}
+            - name: REDIS_DB
+              value: {{ $externalRedisSentinel.db | toString | quote }}
+            {{- end }}
+            {{- if $externalRedisSentinel.usernameKey }}
+            - name: REDIS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $externalRedisSentinelSecretRef }}
+                  key: {{ $externalRedisSentinel.usernameKey }}
+                  optional: true
+            {{- end }}
+            {{- if $externalRedisSentinel.passwordKey }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $externalRedisSentinelSecretRef }}
+                  key: {{ $externalRedisSentinel.passwordKey }}
+                  optional: true
+            {{- end }}
+            {{- if $externalRedisSentinel.sentinelPasswordKey }}
+            - name: REDIS_SENTINEL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $externalRedisSentinelSecretRef }}
+                  key: {{ $externalRedisSentinel.sentinelPasswordKey }}
+                  optional: true
+            {{- end }}
+            {{- else if $externalRedis.enabled }}
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.externalRedis.secretRef }}
-                  key: {{ .Values.externalRedis.key }}
+                  name: {{ $externalRedis.secretRef }}
+                  key: {{ $externalRedis.key }}
                   optional: true
             {{- end }}
-            {{- if .Values.redis.enabled }}
+            {{- if $internalRedisSentinelEnabled }}
+            - name: REDIS_SENTINEL_HOSTS
+              value: {{ printf "%s-redis:%v" .Release.Name ($redisSentinelServicePorts.sentinel | default 26379) | quote }}
+            - name: REDIS_SENTINEL_MASTER_NAME
+              value: {{ $redisSentinel.masterSet | default "mymaster" | quote }}
+            - name: REDIS_TLS_ENABLED
+              value: {{ $redisTls.enabled | default false | toString | quote }}
+            {{- if $redisAuth.password }}
+            - name: REDIS_PASSWORD
+              value: {{ $redisAuth.password | quote }}
+            {{- end }}
+            {{- if and $redisAuth.password ($redisAuth.sentinel | default true) }}
+            - name: REDIS_SENTINEL_PASSWORD
+              value: {{ $redisAuth.password | quote }}
+            {{- end }}
+            {{- else if $redisValues.enabled }}
             - name: REDIS_URL
-            {{- if .Values.redis.auth.password }}
-              value: "redis://:{{ .Values.redis.auth.password }}@{{ .Release.Name }}-redis-master:6379"
+            {{- if $redisAuth.password }}
+              value: "redis://:{{ $redisAuth.password }}@{{ .Release.Name }}-redis-master:6379"
             {{- else }}
               value: "redis://{{ .Release.Name }}-redis-master:6379"
             {{- end }}

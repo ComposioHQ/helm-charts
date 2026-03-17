@@ -52,6 +52,7 @@ tests:
     set:
       mercury.enabled: true
       mercury.useKnative: false
+      replicated.enabled: false
       mercury.image.repository: test-mercury
       mercury.image.tag: v1.0.0
       mercury.image.pullPolicy: Always
@@ -196,6 +197,7 @@ tests:
     set:
       mercury.enabled: true
       mercury.useKnative: false
+      replicated.enabled: false
       global.imagePullSecrets:
         - name: mercury-secret
     documentSelector:

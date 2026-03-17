@@ -35,6 +35,7 @@ tests:
       path: kind
       value: Deployment
     set:
+      replicated.enabled: false
       thermos.image.repository: test-thermos
       thermos.image.tag: latest
       thermos.image.pullPolicy: Always
@@ -80,6 +81,7 @@ tests:
       path: kind
       value: Deployment
     set:
+      replicated.enabled: false
       global.imagePullSecrets:
         - name: thermos-secret
     asserts:
@@ -207,4 +209,4 @@ tests:
           value: 8180
       - equal:
           path: spec.ports[0].targetPort
-          value: 8180 
+          value: 8180

@@ -232,6 +232,142 @@ tests:
           path: spec.template.spec.containers[0].resources.limits.cpu
           value: "1"
 
+  - it: should configure external Redis URL in direct mode
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      redis.enabled: false
+      externalRedis.enabled: true
+      externalRedis.secretRef: redis-credentials
+      externalRedis.key: REDIS_URL
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_URL
+            valueFrom:
+              secretKeyRef:
+                name: redis-credentials
+                key: REDIS_URL
+                optional: true
+
+  - it: should configure external Redis Sentinel envs without REDIS_URL
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      redis.enabled: false
+      externalRedis.enabled: true
+      externalRedis.sentinel.enabled: true
+      externalRedis.sentinel.hosts: "sentinel-a:26379,sentinel-b:26379"
+      externalRedis.sentinel.masterName: ha-master
+      externalRedis.sentinel.tlsEnabled: true
+      externalRedis.sentinel.db: 5
+      externalRedis.sentinel.secretRef: redis-sentinel-credentials
+      externalRedis.sentinel.usernameKey: REDIS_USERNAME
+      externalRedis.sentinel.passwordKey: REDIS_PASSWORD
+      externalRedis.sentinel.sentinelPasswordKey: REDIS_SENTINEL_PASSWORD
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_SENTINEL_HOSTS
+            value: sentinel-a:26379,sentinel-b:26379
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_SENTINEL_MASTER_NAME
+            value: ha-master
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_DB
+            value: "5"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: redis-sentinel-credentials
+                key: REDIS_USERNAME
+                optional: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: redis-sentinel-credentials
+                key: REDIS_PASSWORD
+                optional: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_SENTINEL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: redis-sentinel-credentials
+                key: REDIS_SENTINEL_PASSWORD
+                optional: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_URL
+          any: true
+
+  - it: should configure bundled Redis Sentinel envs without REDIS_URL
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      redis.enabled: true
+      externalRedis.enabled: false
+      redis.architecture: replication
+      redis.sentinel.enabled: true
+      redis.sentinel.masterSet: ha-master
+      redis.sentinel.service.ports.sentinel: 26379
+      redis.auth.password: supersecret
+      redis.auth.sentinel: true
+      redis.tls.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_SENTINEL_HOSTS
+            value: RELEASE-NAME-redis:26379
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_SENTINEL_MASTER_NAME
+            value: ha-master
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+            value: supersecret
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_SENTINEL_PASSWORD
+            value: supersecret
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_URL
+          any: true
+
 ---
 suite: test apollo service
 templates:
