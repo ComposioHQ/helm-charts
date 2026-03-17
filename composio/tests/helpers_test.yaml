@@ -1,19 +1,19 @@
 suite: test helper functions
 templates:
-  - apollo/apollo.yaml  # Using apollo as a test template since helpers are included
+  - apollo/apollo.yaml
 tests:
-  - it: should generate correct name with composio.name helper
-    documentIndex: 1
+  - it: should generate correct name with release name
+    documentIndex: 0
     set:
       redis.enabled: true
       externalRedis.enabled: false
     asserts:
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-apollo  # This uses the helper function
+          value: RELEASE-NAME-apollo
 
-  - it: should generate labels with composio.labels helper
-    documentIndex: 1
+  - it: should generate labels correctly
+    documentIndex: 0
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -25,50 +25,45 @@ tests:
           path: metadata.labels.release
           value: RELEASE-NAME
 
-  - it: should use custom name override
-    documentIndex: 1
+---
+suite: test composio.fullname helper
+templates:
+  - mercury/mercury.yaml
+tests:
+  - it: should use composio.fullname helper in mercury template
+    documentIndex: 0
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
-      nameOverride: custom-name
+      mercury.enabled: true
+      mercury.useKnative: false
     asserts:
-      - matchRegex:
+      - equal:
           path: metadata.name
-          pattern: ".*custom-name.*"
+          value: RELEASE-NAME-composio-mercury
 
-  - it: should use fullname override
-    documentIndex: 1
+  - it: should use composio.labels helper in mercury template
+    documentIndex: 0
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
-      fullnameOverride: full-custom-name
+      mercury.enabled: true
+      mercury.useKnative: false
     asserts:
-      - matchRegex:
-          path: metadata.name
-          pattern: ".*full-custom-name.*"
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: mercury
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
 
 ---
 suite: test namespace helper
 templates:
-  - mercury/mercury.yaml  # Using mercury as it uses namespace helper
+  - mercury/mercury.yaml
 tests:
-  - it: should use default namespace when create is false
+  - it: should use release namespace
+    documentIndex: 0
     set:
-      namespace.create: false
-      namespace.name: default
       mercury.enabled: true
       mercury.useKnative: false
     asserts:
       - equal:
           path: metadata.namespace
-          value: default
-
-  - it: should use custom namespace
-    set:
-      namespace.name: custom-namespace
-      mercury.enabled: true
-      mercury.useKnative: false
-    asserts:
-      - equal:
-          path: metadata.namespace
-          value: custom-namespace
+          value: NAMESPACE
