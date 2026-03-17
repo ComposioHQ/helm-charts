@@ -1,3 +1,4 @@
+{{- $disableK8SecretCheck := .Values.global.disableK8SecretCheck | default false }}
 {{- if .Values.databaseMigration.enabled }}
 apiVersion: v1
 kind: Secret
@@ -12,7 +13,7 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-postgres-preflight"
     spec:
-      {{- if .Values.databaseMigration.enabled }}
+      {{- if and .Values.databaseMigration.enabled (not $disableK8SecretCheck) }}
       collectors:
         # --- Source PostgreSQL secret referenced by your values ---
         - secret:
@@ -84,7 +85,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "{{ .Values.databaseMigration.password.key }}"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing PostgreSQL password Secret {{ .Values.secret.name }} or key {{ .Values.databaseMigration.password.key }}."
               - pass:
                   message: "Found PostgreSQL password Secret {{ .Values.secret.name }} (key {{ .Values.databaseMigration.password.key }})."
@@ -108,7 +109,7 @@ stringData:
               - fail:
                   when: "Result == DB_NOT_FOUND"
                   message: "PostgreSQL database 'postgres' does not exist. This is unusual and may indicate server misconfiguration."
-              - fail:
+              - warn:
                   when: "Result == MISSING_PASSWORD"
                   message: "PostgreSQL password not found in secret {{ .Values.secret.name }}."
               - fail:

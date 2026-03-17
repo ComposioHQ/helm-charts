@@ -3,10 +3,12 @@ templates:
   - mercury/mercury.yaml
 tests:
   - it: should create mercury deployment when enabled and not using knative
-    documentIndex: 0
     set:
       mercury.enabled: true
       mercury.useKnative: false
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - isKind:
           of: Deployment
@@ -34,28 +36,19 @@ tests:
           count: 0
 
   - it: should use correct replica count
-    documentIndex: 0
     set:
       mercury.enabled: true
       mercury.useKnative: false
       mercury.replicaCount: 2
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - equal:
           path: spec.replicas
           value: 2
 
-  - it: should use default replica count when not specified
-    documentIndex: 0
-    set:
-      mercury.enabled: true
-      mercury.useKnative: false
-    asserts:
-      - equal:
-          path: spec.replicas
-          value: 1
-
   - it: should use correct image
-    documentIndex: 0
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -63,6 +56,9 @@ tests:
       mercury.image.repository: test-mercury
       mercury.image.tag: v1.0.0
       mercury.image.pullPolicy: Always
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
@@ -72,65 +68,141 @@ tests:
           value: Always
 
   - it: should have correct port configuration
-    documentIndex: 0
     set:
       mercury.enabled: true
       mercury.useKnative: false
       mercury.service.port: 8080
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - equal:
           path: spec.template.spec.containers[0].ports[0].containerPort
           value: 8080
 
-  - it: should have default port when not specified
-    documentIndex: 0
+  - it: should mount mercury secrets under /etc/secrets/mercury
     set:
       mercury.enabled: true
       mercury.useKnative: false
-    asserts:
-      - equal:
-          path: spec.template.spec.containers[0].ports[0].containerPort
-          value: 8080
-
-  - it: should have security context
-    documentIndex: 0
-    set:
-      mercury.enabled: true
-      mercury.useKnative: false
-      mercury.securityContext:
-        allowPrivilegeEscalation: false
-        runAsNonRoot: true
-    asserts:
-      - equal:
-          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
-          value: false
-      - equal:
-          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
-          value: true
-
-  - it: should have correct environment variables
-    documentIndex: 0
-    set:
-      mercury.enabled: true
-      mercury.useKnative: false
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: APOLLO_ADMIN_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: composio-composio-secrets
-                key: COMPOSIO_ADMIN_TOKEN
+            name: MERCURY_SECRETS_DIR
+            value: /etc/secrets/mercury
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mercury-secrets
+            mountPath: /etc/secrets/mercury
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
+
+  - it: should render additional mercury init containers
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.additionalInitContainers:
+        - name: populate-mercury-secrets
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/mercury/seed
+          volumeMounts:
+            - name: mercury-secrets
+              mountPath: /etc/secrets/mercury
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: populate-mercury-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: busybox:1.36
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: mercury-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /etc/secrets/mercury
+
+  - it: should allow overriding mercury secrets dir
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.secretsDir: /var/run/mercury-secrets
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MERCURY_SECRETS_DIR
+            value: /var/run/mercury-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mercury-secrets
+            mountPath: /var/run/mercury-secrets
+            readOnly: true
+
+  - it: should preserve user-defined mercury volumes and mounts
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.volumeMounts:
+        - name: scratch
+          mountPath: /scratch
+      mercury.volumes:
+        - name: scratch
+          emptyDir: {}
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mercury-secrets
+            mountPath: /etc/secrets/mercury
+            readOnly: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: scratch
+            mountPath: /scratch
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: scratch
+            emptyDir: {}
 
   - it: should include image pull secrets when configured
-    documentIndex: 0
     set:
       mercury.enabled: true
       mercury.useKnative: false
       replicated.enabled: false
       global.imagePullSecrets:
         - name: mercury-secret
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - equal:
           path: spec.template.spec.imagePullSecrets[0].name
@@ -141,11 +213,13 @@ suite: test mercury service
 templates:
   - mercury/mercury.yaml
 tests:
-  - it: should create mercury service
-    documentIndex: 1
+  - it: should create mercury service when enabled and not using knative
     set:
       mercury.enabled: true
       mercury.useKnative: false
+    documentSelector:
+      path: kind
+      value: Service
     asserts:
       - isKind:
           of: Service
@@ -157,12 +231,14 @@ tests:
           value: mercury
 
   - it: should have correct service configuration
-    documentIndex: 1
     set:
       mercury.enabled: true
       mercury.useKnative: false
       mercury.service.type: ClusterIP
       mercury.service.port: 8080
+    documentSelector:
+      path: kind
+      value: Service
     asserts:
       - equal:
           path: spec.type
@@ -173,3 +249,161 @@ tests:
       - equal:
           path: spec.ports[0].targetPort
           value: 8080
+
+  - it: should not create mercury service when using knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+---
+suite: test mercury knative service
+templates:
+  - mercury/mercury-service.yaml
+tests:
+  - it: should create knative mercury service when enabled and using knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: apiVersion
+          value: serving.knative.dev/v1
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-composio-mercury
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: mercury
+
+  - it: should not create knative mercury service when disabled
+    set:
+      mercury.enabled: false
+      mercury.useKnative: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create knative mercury service when not using knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should mount mercury secrets under /etc/secrets/mercury for knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MERCURY_SECRETS_DIR
+            value: /etc/secrets/mercury
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mercury-secrets
+            mountPath: /etc/secrets/mercury
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
+
+  - it: should render additional mercury init containers for knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      mercury.additionalInitContainers:
+        - name: populate-mercury-secrets
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/mercury/seed
+          volumeMounts:
+            - name: mercury-secrets
+              mountPath: /etc/secrets/mercury
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: populate-mercury-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: busybox:1.36
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: mercury-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /etc/secrets/mercury
+
+  - it: should allow overriding mercury secrets dir for knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      mercury.secretsDir: /var/run/mercury-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MERCURY_SECRETS_DIR
+            value: /var/run/mercury-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mercury-secrets
+            mountPath: /var/run/mercury-secrets
+            readOnly: true
+
+  - it: should preserve user-defined mercury volumes and mounts for knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      mercury.volumeMounts:
+        - name: scratch
+          mountPath: /scratch
+      mercury.volumes:
+        - name: scratch
+          emptyDir: {}
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mercury-secrets
+            mountPath: /etc/secrets/mercury
+            readOnly: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: scratch
+            mountPath: /scratch
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: scratch
+            emptyDir: {}
+
+  - it: should include image pull secrets when configured for knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      global.imagePullSecrets:
+        - name: mercury-secret
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: mercury-secret

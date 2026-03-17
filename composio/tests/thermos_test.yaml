@@ -3,7 +3,9 @@ templates:
   - thermos/thermos.yaml
 tests:
   - it: should create thermos deployment
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - isKind:
           of: Deployment
@@ -18,7 +20,9 @@ tests:
           value: RELEASE-NAME
 
   - it: should have correct replica count
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       thermos.replicaCount: 2
     asserts:
@@ -27,7 +31,9 @@ tests:
           value: 2
 
   - it: should use correct image
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       replicated.enabled: false
       thermos.image.repository: test-thermos
@@ -42,14 +48,18 @@ tests:
           value: Always
 
   - it: should have correct port configuration
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - equal:
           path: spec.template.spec.containers[0].ports[0].containerPort
           value: 8180
 
   - it: should have correct resource configuration
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       thermos.resources:
         requests:
@@ -67,7 +77,9 @@ tests:
           value: "1"
 
   - it: should include image pull secrets when configured
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       replicated.enabled: false
       global.imagePullSecrets:
@@ -77,8 +89,80 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
           value: thermos-secret
 
+  - it: should mount thermos secrets under /etc/secrets/thermos
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_SECRET_DIR
+            value: /etc/secrets/thermos
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: thermos-secrets
+            mountPath: /etc/secrets/thermos
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: thermos-secrets
+            emptyDir: {}
+
+  - it: should render additional thermos init containers
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.additionalInitContainers:
+        - name: populate-thermos-secrets
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/thermos/seed
+          volumeMounts:
+            - name: thermos-secrets
+              mountPath: /etc/secrets/thermos
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: populate-thermos-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: busybox:1.36
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: thermos-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /etc/secrets/thermos
+
+  - it: should allow overriding thermos secrets dir
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.secretsDir: /var/run/thermos-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_SECRET_DIR
+            value: /var/run/thermos-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: thermos-secrets
+            mountPath: /var/run/thermos-secrets
+            readOnly: true
+
   - it: should have rolling update strategy
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - equal:
           path: spec.strategy.type
@@ -96,7 +180,9 @@ templates:
   - thermos/thermos.yaml
 tests:
   - it: should create thermos service
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Service
     asserts:
       - isKind:
           of: Service
@@ -108,7 +194,9 @@ tests:
           value: thermos
 
   - it: should have correct service configuration
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Service
     set:
       thermos.service.type: ClusterIP
       thermos.service.port: 8180

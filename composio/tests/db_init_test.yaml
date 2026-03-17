@@ -90,6 +90,7 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: POSTGRES_URL
+                optional: true
 
   - it: should have encryption key from core secret
     set:
@@ -104,6 +105,69 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: ENCRYPTION_KEY
+                optional: true
+
+  - it: should mount apollo db init secrets under /etc/secrets/apollo
+    set:
+      apollo.dbInit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APOLLO_SECRETS_DIR
+            value: /etc/secrets/apollo
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: apollo-secrets
+            mountPath: /etc/secrets/apollo
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: apollo-secrets
+            emptyDir: {}
+
+  - it: should render additional apollo db init init containers
+    set:
+      apollo.dbInit.enabled: true
+      apollo.dbInit.additionalInitContainers:
+        - name: prepare-apollo-db-init
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/apollo/bootstrap
+          volumeMounts:
+            - name: apollo-secrets
+              mountPath: /etc/secrets/apollo
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prepare-apollo-db-init
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: apollo-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /etc/secrets/apollo
+
+  - it: should allow overriding apollo db init secrets dir
+    set:
+      apollo.dbInit.enabled: true
+      apollo.secretsDir: /var/run/apollo-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APOLLO_SECRETS_DIR
+            value: /var/run/apollo-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: apollo-secrets
+            mountPath: /var/run/apollo-secrets
+            readOnly: true
 
   - it: should include image pull secrets when configured
     set:
@@ -216,6 +280,7 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: THERMOS_DATABASE_URL
+                optional: true
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -224,6 +289,69 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: THERMOS_DATABASE_URL
+                optional: true
+
+  - it: should mount thermos db init secrets under /etc/secrets/thermos
+    set:
+      thermos.dbInit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_SECRET_DIR
+            value: /etc/secrets/thermos
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: thermos-secrets
+            mountPath: /etc/secrets/thermos
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: thermos-secrets
+            emptyDir: {}
+
+  - it: should render additional thermos db init init containers
+    set:
+      thermos.dbInit.enabled: true
+      thermos.dbInit.additionalInitContainers:
+        - name: prepare-thermos-db-init
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/thermos/bootstrap
+          volumeMounts:
+            - name: thermos-secrets
+              mountPath: /etc/secrets/thermos
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prepare-thermos-db-init
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: thermos-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /etc/secrets/thermos
+
+  - it: should allow overriding thermos db init secrets dir
+    set:
+      thermos.dbInit.enabled: true
+      thermos.secretsDir: /var/run/thermos-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_SECRET_DIR
+            value: /var/run/thermos-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: thermos-secrets
+            mountPath: /var/run/thermos-secrets
+            readOnly: true
 
   - it: should have correct restart policy
     set:

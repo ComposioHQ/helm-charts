@@ -73,6 +73,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.apollo.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: apollo
           image: "{{ include "chart.registry" . }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
@@ -104,17 +108,21 @@ spec:
                 name: {{ .Release.Name }}-apollo-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: APOLLO_SECRETS_DIR
+              value: {{ .Values.apollo.secretsDir | quote }}
             {{- if eq .Values.apollo.objectStorage.backend "s3"}}
             - name: S3_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.apollo.objectStorage.accessKey.secretName }}
                   key: {{ .Values.apollo.objectStorage.accessKey.key }}
+                  optional: true
             - name: S3_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.apollo.objectStorage.secretKey.secretName }}
                   key: {{ .Values.apollo.objectStorage.secretKey.key }}
+                  optional: true
             {{- end }}
             {{- if eq .Values.apollo.objectStorage.backend "azure_blob_storage" }}
             - name: AZURE_CONNECTION_STRING
@@ -122,6 +130,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.apollo.objectStorage.azureConnectionString.secretName }}
                   key: {{ .Values.apollo.objectStorage.azureConnectionString.key }}
+                  optional: true
             {{- end }} 
             {{- if $externalRedisSentinelEnabled }}
             - name: REDIS_SENTINEL_HOSTS
@@ -140,6 +149,7 @@ spec:
                 secretKeyRef:
                   name: {{ $externalRedisSentinelSecretRef }}
                   key: {{ $externalRedisSentinel.usernameKey }}
+                  optional: true
             {{- end }}
             {{- if $externalRedisSentinel.passwordKey }}
             - name: REDIS_PASSWORD
@@ -147,6 +157,7 @@ spec:
                 secretKeyRef:
                   name: {{ $externalRedisSentinelSecretRef }}
                   key: {{ $externalRedisSentinel.passwordKey }}
+                  optional: true
             {{- end }}
             {{- if $externalRedisSentinel.sentinelPasswordKey }}
             - name: REDIS_SENTINEL_PASSWORD
@@ -154,6 +165,7 @@ spec:
                 secretKeyRef:
                   name: {{ $externalRedisSentinelSecretRef }}
                   key: {{ $externalRedisSentinel.sentinelPasswordKey }}
+                  optional: true
             {{- end }}
             {{- else if $externalRedis.enabled }}
             - name: REDIS_URL
@@ -161,6 +173,7 @@ spec:
                 secretKeyRef:
                   name: {{ $externalRedis.secretRef }}
                   key: {{ $externalRedis.key }}
+                  optional: true
             {{- end }}
             {{- if $internalRedisSentinelEnabled }}
             - name: REDIS_SENTINEL_HOSTS
@@ -190,6 +203,7 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
@@ -205,27 +219,32 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: POSTGRES_URL
+                  optional: true
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: JWT_SECRET
+                  optional: true
             {{- if .Values.apollo.smtp.enabled }}
             - name: SMTP_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.apollo.smtp.secretRef | default (printf "%s-smtp-credentials" .Release.Name) }}
                   key: {{ .Values.apollo.smtp.key }}
+                  optional: true
             {{- end }}
             {{- if .Values.aws.bedrock.secretName }}
             - name: AWS_BEDROCK_ACCESS_KEY_ID
@@ -233,11 +252,13 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.aws.bedrock.secretName }}
                   key: AWS_BEDROCK_ACCESS_KEY_ID
+                  optional: true
             - name: AWS_BEDROCK_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.aws.bedrock.secretName }}
                   key: AWS_BEDROCK_SECRET_ACCESS_KEY
+                  optional: true
             {{- end }}
             {{- if .Values.aws.bedrock.region }}
             - name: AWS_BEDROCK_REGION
@@ -253,17 +274,23 @@ spec:
           resources:
             {{- toYaml .Values.apollo.resources | nindent 12 }}
           volumeMounts:
+            - name: apollo-secrets
+              mountPath: {{ .Values.apollo.secretsDir | quote }}
+              readOnly: true
             {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
             - name: gcp-key
               mountPath: "{{ .Values.apollo.googleServiceAccount.mountPath }}"
               readOnly: true
             {{- end }}
-      {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
       volumes:
+        - name: apollo-secrets
+          emptyDir: {}
+        {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
         - name: gcp-key
           secret:
             secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
-      {{- end }}
+            optional: true
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

@@ -50,6 +50,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.frontend.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: frontend
           image: "{{ include "chart.registry" . }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
@@ -80,6 +84,8 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-frontend-config
           env:
+            - name: FRONTEND_SECRETS_DIR
+              value: {{ .Values.frontend.secretsDir | quote }}
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
@@ -94,18 +100,27 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.frontend.secrets.PLAIN_SECRET.secretName }}
                   key: {{ .Values.frontend.secrets.PLAIN_SECRET.secretKey }}
+                  optional: true
             {{- else if .Values.frontend.env.PLAIN_SECRET }}
             - name: PLAIN_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: PLAIN_SECRET
+                  optional: true
             {{- end }}
             {{- if .Values.frontend.extraEnv }}
             {{- toYaml .Values.frontend.extraEnv | nindent 12 }}
             {{- end }}
+          volumeMounts:
+            - name: frontend-secrets
+              mountPath: {{ .Values.frontend.secretsDir | quote }}
+              readOnly: true
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+      volumes:
+        - name: frontend-secrets
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

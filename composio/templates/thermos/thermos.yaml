@@ -47,6 +47,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.thermos.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: thermos
           image: "{{ include "chart.registry" . }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
@@ -80,30 +84,40 @@ spec:
                 name: {{ .Release.Name }}-thermos-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: THERMOS_SECRET_DIR
+              value: {{ .Values.thermos.secretsDir | quote }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
+                  optional: true
             - name: THERMOS_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
+                  optional: true
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}
           volumeMounts:
+            - name: thermos-secrets
+              mountPath: {{ .Values.thermos.secretsDir | quote }}
+              readOnly: true
             - name: cache-volume
               mountPath: /tmp
           resources:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
       volumes:
+        - name: thermos-secrets
+          emptyDir: {}
         - name: cache-volume
           emptyDir: {}
 ---

@@ -30,6 +30,8 @@ global:
   environment: development
   # -- Domain name for the deployment
   domain: localhost
+  # -- Disable preflight checks that depend on Kubernetes Secrets.
+  disableK8SecretCheck: false
   # Container registry configuration
   registry: 
     # -- ECR registry URL
@@ -169,6 +171,10 @@ apollo:
     tag: "r20260311_00"
     # -- Image pull policy
     pullPolicy: Always
+  # -- Directory exposed to Apollo containers via APOLLO_SECRETS_DIR.
+  secretsDir: "/etc/secrets/apollo"
+  # -- Additional init containers for Apollo. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
+  additionalInitContainers: []
 
   serviceAccount:
     # -- Enable service account creation
@@ -205,6 +211,8 @@ apollo:
       tag: "r20260311_00"
       # -- Image pull policy
       pullPolicy: Always
+    # -- Additional init containers for Apollo DB init. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
+    additionalInitContainers: []
   
   # Apollo service configuration
   service:
@@ -376,6 +384,10 @@ thermos:
     tag: "r20260311_00"
     # -- Image pull policy
     pullPolicy: Always
+  # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
+  secretsDir: "/etc/secrets/thermos"
+  # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
+  additionalInitContainers: []
 
   # Thermos database initialization container
   dbInit:
@@ -389,6 +401,8 @@ thermos:
       tag: "r20260311_00"
       # -- Image pull policy
       pullPolicy: Always
+    # -- Additional init containers for Thermos DB init. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
+    additionalInitContainers: []
   
   # Thermos service configuration
   service:
@@ -1010,6 +1024,10 @@ mercury:
     tag: "r20260311_00"
     # -- Image pull policy
     pullPolicy: Always
+  # -- Directory exposed to Mercury containers via MERCURY_SECRETS_DIR.
+  secretsDir: "/etc/secrets/mercury"
+  # -- Additional init containers for Mercury. Mount `mercury-secrets` to populate `.Values.mercury.secretsDir`.
+  additionalInitContainers: []
 
   # Liveness probe configuration
   livenessProbe:
@@ -1123,6 +1141,10 @@ frontend:
     tag: "r20260311_00"
     # -- Image pull policy
     pullPolicy: Always
+  # -- Directory exposed to Frontend containers via FRONTEND_SECRETS_DIR.
+  secretsDir: "/etc/secrets/frontend"
+  # -- Additional init containers for Frontend. Mount `frontend-secrets` to populate `.Values.frontend.secretsDir`.
+  additionalInitContainers: []
   # Frontend service configuration
   service:
     # -- Service type

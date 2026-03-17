@@ -48,6 +48,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.apollo.dbInit.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: apollo-db-init
           image: "{{ include "chart.registry" . }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
@@ -58,24 +62,33 @@ spec:
           {{- end }}
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: APOLLO_SECRETS_DIR
+              value: {{ .Values.apollo.secretsDir | quote }}
             # Apollo database URL
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: POSTGRES_URL
+                  optional: true
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+          volumeMounts:
+            - name: apollo-secrets
+              mountPath: {{ .Values.apollo.secretsDir | quote }}
+              readOnly: true
           resources:
             requests:
               cpu: 500m
@@ -83,6 +96,9 @@ spec:
             limits:
               cpu: 1000m
               memory: 1Gi
+      volumes:
+        - name: apollo-secrets
+          emptyDir: {}
   backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}
