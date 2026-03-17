@@ -66,6 +66,26 @@ externalRedis:
   secretRef: "composio-composio-secrets"
   # -- Key name in the secret containing the Redis URL
   key: "REDIS_URL"
+  # Redis Sentinel configuration for external HA Redis deployments
+  sentinel:
+    # -- Enable Apollo Redis Sentinel mode for external Redis
+    enabled: false
+    # -- Comma-separated Sentinel host[:port] entries
+    hosts: ""
+    # -- Sentinel master set name
+    masterName: ""
+    # -- Enable TLS for Sentinel discovery + Redis master connections
+    tlsEnabled: false
+    # -- Optional Redis DB index to use in Sentinel mode
+    db: ""
+    # -- Optional Secret containing Sentinel auth keys (defaults to externalRedis.secretRef)
+    secretRef: ""
+    # -- Optional secret key for REDIS_USERNAME
+    usernameKey: ""
+    # -- Optional secret key for REDIS_PASSWORD
+    passwordKey: ""
+    # -- Optional secret key for REDIS_SENTINEL_PASSWORD
+    sentinelPasswordKey: ""
     
 # Internal Redis configuration (embedded Redis instance)
 redis:
@@ -79,10 +99,25 @@ redis:
   auth:
     # -- Enable Redis authentication
     enabled: true
+    # -- Enable password authentication on bundled Redis Sentinels too
+    sentinel: true
     # -- Redis password
     password: ""
   # -- Redis architecture (standalone or replication)
   architecture: standalone
+  # Optional Bitnami Redis Sentinel settings for HA failover support in Apollo.
+  sentinel:
+    # -- Enable bundled Redis Sentinel and switch Apollo to Sentinel mode
+    enabled: false
+    # -- Redis Sentinel master set name
+    masterSet: "mymaster"
+    service:
+      ports:
+        # -- Redis Sentinel service port
+        sentinel: 26379
+  tls:
+    # -- Enable TLS for bundled Redis connections
+    enabled: false
   # Redis master node configuration
   master:
     # Persistence configuration
