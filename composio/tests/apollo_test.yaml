@@ -3,7 +3,9 @@ templates:
   - apollo/apollo.yaml
 tests:
   - it: should create apollo deployment
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -21,7 +23,9 @@ tests:
           value: RELEASE-NAME
 
   - it: should have correct replica count
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -32,7 +36,9 @@ tests:
           value: 3
 
   - it: should use correct image
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -48,7 +54,9 @@ tests:
           value: IfNotPresent
 
   - it: should have correct port configuration
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -58,7 +66,9 @@ tests:
           value: 9900
 
   - it: should have liveness probe
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -74,7 +84,9 @@ tests:
           value: 60
 
   - it: should have readiness probe
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -87,7 +99,9 @@ tests:
           value: 9900
 
   - it: should have rolling update strategy
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -103,7 +117,9 @@ tests:
           value: 1
 
   - it: should include image pull secrets when configured
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -189,7 +205,9 @@ tests:
             readOnly: true
 
   - it: should have correct resource limits
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -220,7 +238,9 @@ templates:
   - apollo/apollo.yaml
 tests:
   - it: should create apollo service
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Service
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -235,7 +255,9 @@ tests:
           value: apollo
 
   - it: should have correct service type and port
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Service
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -251,7 +273,9 @@ tests:
           value: 9900
 
   - it: should have correct selector labels
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Service
     set:
       redis.enabled: true
       externalRedis.enabled: false

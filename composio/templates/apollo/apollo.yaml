@@ -96,11 +96,13 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.apollo.objectStorage.accessKey.secretName }}
                   key: {{ .Values.apollo.objectStorage.accessKey.key }}
+                  optional: true
             - name: S3_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.apollo.objectStorage.secretKey.secretName }}
                   key: {{ .Values.apollo.objectStorage.secretKey.key }}
+                  optional: true
             {{- end }}
             {{- if eq .Values.apollo.objectStorage.backend "azure_blob_storage" }}
             - name: AZURE_CONNECTION_STRING
@@ -108,6 +110,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.apollo.objectStorage.azureConnectionString.secretName }}
                   key: {{ .Values.apollo.objectStorage.azureConnectionString.key }}
+                  optional: true
             {{- end }} 
             {{- if .Values.externalRedis.enabled }}
             - name: REDIS_URL
@@ -115,6 +118,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.externalRedis.secretRef }}
                   key: {{ .Values.externalRedis.key }}
+                  optional: true
             {{- end }}
             {{- if .Values.redis.enabled }}
             - name: REDIS_URL
@@ -129,6 +133,7 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
@@ -144,27 +149,32 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: POSTGRES_URL
+                  optional: true
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: JWT_SECRET
+                  optional: true
             {{- if .Values.apollo.smtp.enabled }}
             - name: SMTP_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.apollo.smtp.secretRef | default (printf "%s-smtp-credentials" .Release.Name) }}
                   key: {{ .Values.apollo.smtp.key }}
+                  optional: true
             {{- end }}
             {{- if .Values.aws.bedrock.secretName }}
             - name: AWS_BEDROCK_ACCESS_KEY_ID
@@ -172,11 +182,13 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.aws.bedrock.secretName }}
                   key: AWS_BEDROCK_ACCESS_KEY_ID
+                  optional: true
             - name: AWS_BEDROCK_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.aws.bedrock.secretName }}
                   key: AWS_BEDROCK_SECRET_ACCESS_KEY
+                  optional: true
             {{- end }}
             {{- if .Values.aws.bedrock.region }}
             - name: AWS_BEDROCK_REGION
@@ -207,6 +219,7 @@ spec:
         - name: gcp-key
           secret:
             secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
+            optional: true
         {{- end }}
 ---
 apiVersion: v1

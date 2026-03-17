@@ -91,16 +91,19 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
+                  optional: true
             - name: THERMOS_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
+                  optional: true
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}

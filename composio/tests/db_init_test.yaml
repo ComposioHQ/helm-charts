@@ -90,6 +90,7 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: POSTGRES_URL
+                optional: true
 
   - it: should have encryption key from core secret
     set:
@@ -104,6 +105,7 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: ENCRYPTION_KEY
+                optional: true
 
   - it: should mount apollo db init secrets under /etc/secrets/apollo
     set:
@@ -278,6 +280,7 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: THERMOS_DATABASE_URL
+                optional: true
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -286,6 +289,7 @@ tests:
               secretKeyRef:
                 name: my-secret
                 key: THERMOS_DATABASE_URL
+                optional: true
 
   - it: should mount thermos db init secrets under /etc/secrets/thermos
     set:

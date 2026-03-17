@@ -1,6 +1,10 @@
+{{- $disableK8SecretCheck := .Values.global.disableK8SecretCheck | default false }}
 {{- if .Values.apollo.smtp.enabled }}
+{{- $smtp := dict }}
+{{- if not $disableK8SecretCheck }}
 {{- $smtpContext := dict "secretRef" .Values.apollo.smtp.secretRef "key" .Values.apollo.smtp.key "namespace" .Release.Namespace }}
-{{- $smtp := include "apollo.parseSmtpUrl" $smtpContext | fromJson }}
+{{- $smtp = include "apollo.parseSmtpUrl" $smtpContext | fromJson }}
+{{- end }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -14,13 +18,14 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-smtp-preflight"
     spec:
-      {{- if .Values.apollo.smtp.enabled }}
+      {{- if and .Values.apollo.smtp.enabled (not $disableK8SecretCheck) }}
       collectors:
         - secret:
             name: "{{ .Values.apollo.smtp.secretRef }}"
             namespace: "{{ .Release.Namespace }}"
             key: "{{ .Values.apollo.smtp.key }}"
             includeValue: false
+        {{- if and (hasKey $smtp "host") (hasKey $smtp "port") }}
         # Optional: basic TCP connectivity to SMTP host:port (does not validate auth)
         - runPod:
             collectorName: "check-smtp-tcp"
@@ -40,6 +45,7 @@ stringData:
                       else
                         echo "RESULT=ERROR"
                       fi
+        {{- end }}
       analyzers:
         - secret:
             checkName: "SMTP password source secret present"
@@ -47,10 +53,11 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "{{ .Values.apollo.smtp.key }}"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing SMTP connection string Secret {{ .Values.apollo.smtp.secretRef }} or key {{ .Values.apollo.smtp.key }}."
               - pass:
                   message: "Found SMTP connection string Secret."
+        {{- if and (hasKey $smtp "host") (hasKey $smtp "port") }}
         - textAnalyze:
             checkName: "SMTP host reachable (TCP)"
             fileName: "/check-smtp-tcp.log"
@@ -61,6 +68,7 @@ stringData:
                   message: "SMTP {{ $smtp.host }}:{{ $smtp.port }} is reachable."
               - fail:
                   message: "Cannot reach SMTP {{ $smtp.host }}:{{ $smtp.port }} from the cluster."
+        {{- end }}
       {{- else }}
       collectors: []
       analyzers: []

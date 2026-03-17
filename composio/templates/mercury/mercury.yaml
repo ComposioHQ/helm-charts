@@ -41,6 +41,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.mercury.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: mercury
           image: "{{ include "chart.registry" . }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag }}"
@@ -72,6 +76,8 @@ spec:
                 name: {{ .Release.Name }}-mercury-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: MERCURY_SECRETS_DIR
+              value: {{ .Values.mercury.secretsDir | quote }}
             {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
@@ -85,6 +91,7 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
             {{- if .Values.otel.enabled }}
             # OTEL Resource attributes
             - name: OTEL_RESOURCE_ATTRIBUTES
@@ -92,12 +99,17 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
-          {{- with .Values.mercury.volumeMounts }}
           volumeMounts:
+            - name: mercury-secrets
+              mountPath: {{ .Values.mercury.secretsDir | quote }}
+              readOnly: true
+            {{- with .Values.mercury.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.mercury.volumes }}
+            {{- end }}
       volumes:
+        - name: mercury-secrets
+          emptyDir: {}
+        {{- with .Values.mercury.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
 ---

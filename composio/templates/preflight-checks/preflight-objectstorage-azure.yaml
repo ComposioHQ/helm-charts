@@ -1,3 +1,4 @@
+{{- $disableK8SecretCheck := .Values.global.disableK8SecretCheck | default false }}
 {{- if eq (.Values.apollo.objectStorage.backend) "azure_blob_storage" }}
 apiVersion: v1
 kind: Secret
@@ -12,7 +13,7 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-objectstorage-azure-preflight"
     spec:
-      {{- if eq .Values.apollo.objectStorage.backend "azure_blob_storage" }}
+      {{- if and (eq .Values.apollo.objectStorage.backend "azure_blob_storage") (not $disableK8SecretCheck) }}
       collectors:
         - secret:
             name: "{{ .Values.apollo.objectStorage.azureConnectionString.secretName }}"
@@ -27,7 +28,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "{{ .Values.apollo.objectStorage.azureConnectionString.key }}"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing Azure Secret {{ .Values.apollo.objectStorage.azureConnectionString.secretName }} or key {{ .Values.apollo.objectStorage.azureConnectionString.key }}."
               - pass:
                   message: "Found Azure connection string Secret."

@@ -1,3 +1,4 @@
+{{- $disableK8SecretCheck := .Values.global.disableK8SecretCheck | default false }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -13,6 +14,10 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-preflight-config"
     spec:
+      {{- if $disableK8SecretCheck }}
+      collectors: []
+      analyzers: []
+      {{- else }}
       {{- $coreSecret := include "composio.coreSecretName" . }}
       collectors:
         - secret:
@@ -63,7 +68,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "COMPOSIO_ADMIN_TOKEN"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing {{ $coreSecret }} or key COMPOSIO_ADMIN_TOKEN."
               - pass:
                   message: "Found {{ $coreSecret }} (COMPOSIO_ADMIN_TOKEN)."
@@ -74,7 +79,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "ENCRYPTION_KEY"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing {{ $coreSecret }} or key ENCRYPTION_KEY."
               - pass:
                   message: "Found {{ $coreSecret }} (ENCRYPTION_KEY)."
@@ -85,7 +90,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "JWT_SECRET"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing {{ $coreSecret }} or key JWT_SECRET."
               - pass:
                   message: "Found {{ $coreSecret }} (JWT_SECRET)."
@@ -97,7 +102,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing {{ $coreSecret }} or key TEMPORAL_TRIGGER_ENCRYPTION_KEY."
               - pass:
                   message: "Found {{ $coreSecret }} (TEMPORAL_TRIGGER_ENCRYPTION_KEY)."
@@ -108,7 +113,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "POSTGRES_URL"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing {{ $coreSecret }} or key POSTGRES_URL."
               - pass:
                   message: "Found {{ $coreSecret }} (POSTGRES_URL)."
@@ -118,7 +123,7 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "THERMOS_DATABASE_URL"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing {{ $coreSecret }} or key THERMOS_DATABASE_URL."
               - pass:
                   message: "Found {{ $coreSecret }} (THERMOS_DATABASE_URL)."
@@ -129,8 +134,9 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "REDIS_URL"
             outcomes:
-              - fail:
+              - warn:
                   message: "Missing {{ $coreSecret }} or key REDIS_URL."
               - pass:
                   message: "Found {{ $coreSecret }} (REDIS_URL)."
         {{ end }}
+      {{- end }}

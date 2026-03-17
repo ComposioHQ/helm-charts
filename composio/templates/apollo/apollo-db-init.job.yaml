@@ -70,16 +70,19 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: POSTGRES_URL
+                  optional: true
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: ENCRYPTION_KEY
+                  optional: true
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
           volumeMounts:
