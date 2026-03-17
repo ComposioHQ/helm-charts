@@ -54,7 +54,7 @@ stringData:
             key: "{{ .Values.apollo.smtp.key }}"
             outcomes:
               - warn:
-                  message: "Missing SMTP connection string Secret {{ .Values.apollo.smtp.secretRef }} or key {{ .Values.apollo.smtp.key }}."
+                  message: "Missing SMTP connection string Secret {{ .Values.apollo.smtp.secretRef }} or key {{ .Values.apollo.smtp.key }}. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found SMTP connection string Secret."
         {{- if and (hasKey $smtp "host") (hasKey $smtp "port") }}

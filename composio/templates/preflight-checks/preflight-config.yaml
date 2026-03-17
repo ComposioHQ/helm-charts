@@ -94,7 +94,7 @@ stringData:
             key: "COMPOSIO_ADMIN_TOKEN"
             outcomes:
               - warn:
-                  message: "Missing {{ $coreSecret }} or key COMPOSIO_ADMIN_TOKEN."
+                  message: "Missing {{ $coreSecret }} or key COMPOSIO_ADMIN_TOKEN. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $coreSecret }} (COMPOSIO_ADMIN_TOKEN)."
 
@@ -105,7 +105,7 @@ stringData:
             key: "ENCRYPTION_KEY"
             outcomes:
               - warn:
-                  message: "Missing {{ $coreSecret }} or key ENCRYPTION_KEY."
+                  message: "Missing {{ $coreSecret }} or key ENCRYPTION_KEY. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $coreSecret }} (ENCRYPTION_KEY)."
 
@@ -116,7 +116,7 @@ stringData:
             key: "JWT_SECRET"
             outcomes:
               - warn:
-                  message: "Missing {{ $coreSecret }} or key JWT_SECRET."
+                  message: "Missing {{ $coreSecret }} or key JWT_SECRET. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $coreSecret }} (JWT_SECRET)."
 
@@ -128,7 +128,7 @@ stringData:
             key: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
             outcomes:
               - warn:
-                  message: "Missing {{ $coreSecret }} or key TEMPORAL_TRIGGER_ENCRYPTION_KEY."
+                  message: "Missing {{ $coreSecret }} or key TEMPORAL_TRIGGER_ENCRYPTION_KEY. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $coreSecret }} (TEMPORAL_TRIGGER_ENCRYPTION_KEY)."
         {{- end }}
@@ -139,7 +139,7 @@ stringData:
             key: "POSTGRES_URL"
             outcomes:
               - warn:
-                  message: "Missing {{ $coreSecret }} or key POSTGRES_URL."
+                  message: "Missing {{ $coreSecret }} or key POSTGRES_URL. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $coreSecret }} (POSTGRES_URL)."
         - secret:
@@ -149,7 +149,7 @@ stringData:
             key: "THERMOS_DATABASE_URL"
             outcomes:
               - warn:
-                  message: "Missing {{ $coreSecret }} or key THERMOS_DATABASE_URL."
+                  message: "Missing {{ $coreSecret }} or key THERMOS_DATABASE_URL. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $coreSecret }} (THERMOS_DATABASE_URL)."
         {{- if and $externalRedis.enabled (not $externalRedisSentinelEnabled) }}
@@ -160,7 +160,7 @@ stringData:
             key: "{{ $externalRedis.key }}"
             outcomes:
               - warn:
-                  message: "Missing {{ $externalRedis.secretRef }} or key {{ $externalRedis.key }}."
+                  message: "Missing {{ $externalRedis.secretRef }} or key {{ $externalRedis.key }}. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $externalRedis.secretRef }} ({{ $externalRedis.key }})."
         {{- end }}
@@ -172,7 +172,7 @@ stringData:
             key: "{{ $externalRedisSentinel.usernameKey }}"
             outcomes:
               - warn:
-                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ $externalRedisSentinel.usernameKey }}."
+                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ $externalRedisSentinel.usernameKey }}. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $externalRedisSentinelSecretRef }} ({{ $externalRedisSentinel.usernameKey }})."
         {{- end }}
@@ -184,7 +184,7 @@ stringData:
             key: "{{ $externalRedisSentinel.passwordKey }}"
             outcomes:
               - warn:
-                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ $externalRedisSentinel.passwordKey }}."
+                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ $externalRedisSentinel.passwordKey }}. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $externalRedisSentinelSecretRef }} ({{ $externalRedisSentinel.passwordKey }})."
         {{- end }}
@@ -196,7 +196,7 @@ stringData:
             key: "{{ $externalRedisSentinel.sentinelPasswordKey }}"
             outcomes:
               - warn:
-                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ $externalRedisSentinel.sentinelPasswordKey }}."
+                  message: "Missing {{ $externalRedisSentinelSecretRef }} or key {{ $externalRedisSentinel.sentinelPasswordKey }}. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found {{ $externalRedisSentinelSecretRef }} ({{ $externalRedisSentinel.sentinelPasswordKey }})."
         {{- end }}

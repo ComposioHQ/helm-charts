@@ -35,7 +35,7 @@ stringData:
             key: "{{ .Values.apollo.objectStorage.accessKey.key }}"
             outcomes:
               - warn:
-                  message: "Missing S3 accessKey Secret {{ .Values.apollo.objectStorage.accessKey.secretName }} or key {{ .Values.apollo.objectStorage.accessKey.key }}."
+                  message: "Missing S3 accessKey Secret {{ .Values.apollo.objectStorage.accessKey.secretName }} or key {{ .Values.apollo.objectStorage.accessKey.key }}. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found S3 accessKey Secret."
 
@@ -46,7 +46,7 @@ stringData:
             key: "{{ .Values.apollo.objectStorage.secretKey.key }}"
             outcomes:
               - warn:
-                  message: "Missing S3 secretKey Secret {{ .Values.apollo.objectStorage.secretKey.secretName }} or key {{ .Values.apollo.objectStorage.secretKey.key }}."
+                  message: "Missing S3 secretKey Secret {{ .Values.apollo.objectStorage.secretKey.secretName }} or key {{ .Values.apollo.objectStorage.secretKey.key }}. This warning only applies when using Kubernetes Secret-based configuration. If you provide this value via init containers/file-mounted secrets, you can ignore this warning or set global.disableK8SecretCheck=true."
               - pass:
                   message: "Found S3 secretKey Secret."
       {{- else }}
