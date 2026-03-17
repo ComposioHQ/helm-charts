@@ -114,6 +114,80 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
           value: test-secret
 
+  - it: should mount apollo secrets under /etc/secrets/apollo
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APOLLO_SECRETS_DIR
+            value: /etc/secrets/apollo
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: apollo-secrets
+            mountPath: /etc/secrets/apollo
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: apollo-secrets
+            emptyDir: {}
+
+  - it: should render additional apollo init containers
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      redis.enabled: true
+      externalRedis.enabled: false
+      apollo.additionalInitContainers:
+        - name: populate-apollo-secrets
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/apollo/seed
+          volumeMounts:
+            - name: apollo-secrets
+              mountPath: /etc/secrets/apollo
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: populate-apollo-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: busybox:1.36
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: apollo-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /etc/secrets/apollo
+
+  - it: should allow overriding apollo secrets dir
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      redis.enabled: true
+      externalRedis.enabled: false
+      apollo.secretsDir: /var/run/apollo-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APOLLO_SECRETS_DIR
+            value: /var/run/apollo-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: apollo-secrets
+            mountPath: /var/run/apollo-secrets
+            readOnly: true
+
   - it: should have correct resource limits
     documentIndex: 1
     set:

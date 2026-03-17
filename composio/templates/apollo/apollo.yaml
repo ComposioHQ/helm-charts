@@ -53,6 +53,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.apollo.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: apollo
           image: "{{ include "chart.registry" . }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
@@ -84,6 +88,8 @@ spec:
                 name: {{ .Release.Name }}-apollo-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: APOLLO_SECRETS_DIR
+              value: {{ .Values.apollo.secretsDir | quote }}
             {{- if eq .Values.apollo.objectStorage.backend "s3"}}
             - name: S3_ACCESS_KEY_ID
               valueFrom:
@@ -186,17 +192,22 @@ spec:
           resources:
             {{- toYaml .Values.apollo.resources | nindent 12 }}
           volumeMounts:
+            - name: apollo-secrets
+              mountPath: {{ .Values.apollo.secretsDir | quote }}
+              readOnly: true
             {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
             - name: gcp-key
               mountPath: "{{ .Values.apollo.googleServiceAccount.mountPath }}"
               readOnly: true
             {{- end }}
-      {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
       volumes:
+        - name: apollo-secrets
+          emptyDir: {}
+        {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
         - name: gcp-key
           secret:
             secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
-      {{- end }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

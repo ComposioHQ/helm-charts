@@ -134,6 +134,10 @@ apollo:
     tag: "r20260311_00"
     # -- Image pull policy
     pullPolicy: Always
+  # -- Directory exposed to Apollo containers via APOLLO_SECRETS_DIR.
+  secretsDir: "/etc/secrets/apollo"
+  # -- Additional init containers for Apollo. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
+  additionalInitContainers: []
 
   serviceAccount:
     # -- Enable service account creation
@@ -170,6 +174,8 @@ apollo:
       tag: "r20260311_00"
       # -- Image pull policy
       pullPolicy: Always
+    # -- Additional init containers for Apollo DB init. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
+    additionalInitContainers: []
   
   # Apollo service configuration
   service:
@@ -341,6 +347,10 @@ thermos:
     tag: "r20260311_00"
     # -- Image pull policy
     pullPolicy: Always
+  # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
+  secretsDir: "/etc/secrets/thermos"
+  # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
+  additionalInitContainers: []
 
   # Thermos database initialization container
   dbInit:
@@ -354,6 +364,8 @@ thermos:
       tag: "r20260311_00"
       # -- Image pull policy
       pullPolicy: Always
+    # -- Additional init containers for Thermos DB init. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
+    additionalInitContainers: []
   
   # Thermos service configuration
   service:

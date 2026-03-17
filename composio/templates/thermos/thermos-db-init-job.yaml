@@ -45,6 +45,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.thermos.dbInit.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: thermos-db-init
           image: "{{ include "chart.registry" . }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
@@ -55,6 +59,8 @@ spec:
           {{- end }}
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: THERMOS_SECRET_DIR
+              value: {{ .Values.thermos.secretsDir | quote }}
             # Thermos database URL
             - name: POSTGRES_URL
               valueFrom:
@@ -73,6 +79,10 @@ spec:
             - name: EXTRA_ATLAS_FLAGS
               value: {{ .Values.thermos.dbInit.extraAtlasFlags | quote }}
             {{- end }}
+          volumeMounts:
+            - name: thermos-secrets
+              mountPath: {{ .Values.thermos.secretsDir | quote }}
+              readOnly: true
           resources:
             requests:
               cpu: 500m
@@ -80,6 +90,9 @@ spec:
             limits:
               cpu: 1000m
               memory: 1Gi
+      volumes:
+        - name: thermos-secrets
+          emptyDir: {}
   backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}
