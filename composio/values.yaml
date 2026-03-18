@@ -168,7 +168,7 @@ apollo:
     # -- Apollo image repository
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260311_00"
+    tag: "r20260318_00"
     # -- Image pull policy
     pullPolicy: Always
   # -- Directory exposed to Apollo containers via APOLLO_SECRETS_DIR.
@@ -208,7 +208,7 @@ apollo:
       # -- Database init image repository
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260311_00"
+      tag: "r20260318_00"
       # -- Image pull policy
       pullPolicy: Always
     # -- Additional init containers for Apollo DB init. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
@@ -381,7 +381,7 @@ thermos:
     # -- Thermos image repository
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260311_00"
+    tag: "r20260318_00"
     # -- Image pull policy
     pullPolicy: Always
   # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
@@ -398,7 +398,7 @@ thermos:
       # -- Database init image repository
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260311_00"
+      tag: "r20260318_00"
       # -- Image pull policy
       pullPolicy: Always
     # -- Additional init containers for Thermos DB init. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
@@ -1021,7 +1021,7 @@ mercury:
     # -- Mercury image repository
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260311_00"
+    tag: "r20260318_00"
     # -- Image pull policy
     pullPolicy: Always
   # -- Directory exposed to Mercury containers via MERCURY_SECRETS_DIR.
@@ -1138,7 +1138,7 @@ frontend:
     # -- Frontend image repository
     repository: composio-self-host/frontend
     # -- Frontend image tag
-    tag: "r20260311_00"
+    tag: "r20260318_00"
     # -- Image pull policy
     pullPolicy: Always
   # -- Directory exposed to Frontend containers via FRONTEND_SECRETS_DIR.
@@ -1200,7 +1200,7 @@ weaviate:
     # -- Weaviate image repository
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260311_00"
+    tag: "r20260318_00"
     # -- Image pull policy
     pullPolicy: Always
   # Weaviate service configuration
