@@ -46,6 +46,9 @@ databaseMigration:
   host: "<DATABASE_HOST>"
   port: "<DATABASE_PORT>"
   user: "postgres"
+  secretsDir: "/etc/secrets/postgres-init"
+  # -- Additional init containers for the postgres init job. Mount `postgres-init-secrets` to populate `.Values.databaseMigration.secretsDir`.
+  additionalInitContainers: []
   password:
     key: "password"
 

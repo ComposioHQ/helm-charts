@@ -16,10 +16,16 @@ spec:
       name: {{ include "composio.fullname" . }}-db-init-create
     spec:
       restartPolicy: OnFailure
+      {{- with .Values.databaseMigration.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
       - name: postgres-init
         image: {{ .Values.databaseMigration.image }}
         env:
+        - name: POSTGRES_INIT_SECRETS_DIR
+          value: {{ .Values.databaseMigration.secretsDir | quote }}
         - name: PGHOST
           value: {{ .Values.databaseMigration.host | quote }}
         - name: PGPORT
@@ -34,10 +40,14 @@ spec:
               optional: true
         - name: PGDATABASE
           value: "postgres"
-        command:
+        args:
         - /bin/sh
         - -c
         - |
+          secrets_dir="${POSTGRES_INIT_SECRETS_DIR:-{{ .Values.databaseMigration.secretsDir }}}"
+          if [ -f "$secrets_dir/PGPASSWORD" ]; then
+            export PGPASSWORD="$(cat "$secrets_dir/PGPASSWORD")"
+          fi
           cat <<'EOF' | psql
 
 
@@ -94,4 +104,11 @@ spec:
           -- Grant database creation privilege
           \c postgres
           EOF
+        volumeMounts:
+        - name: postgres-init-secrets
+          mountPath: {{ .Values.databaseMigration.secretsDir | quote }}
+          readOnly: true
+      volumes:
+      - name: postgres-init-secrets
+        emptyDir: {}
 {{- end }}
