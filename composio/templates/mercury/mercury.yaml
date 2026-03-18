@@ -78,14 +78,12 @@ spec:
             {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: MERCURY_SECRETS_DIR
               value: {{ .Values.mercury.secretsDir | quote }}
-            {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
                   optional: true
-            {{- end }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:

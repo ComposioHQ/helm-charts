@@ -152,6 +152,24 @@ tests:
             name: frontend-secrets
             emptyDir: {}
 
+  - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      openAI.enabled: false
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: OPENAI_API_KEY
+                optional: true
+
   - it: should render additional frontend init containers
     set:
       frontend.enabled: true

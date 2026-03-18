@@ -159,6 +159,23 @@ tests:
             mountPath: /var/run/thermos-secrets
             readOnly: true
 
+  - it: should rely on the image entrypoint for Thermos secret loading
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].command
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: /usr/local/bin/thermos
+      - equal:
+          path: spec.template.spec.containers[0].args[1]
+          value: --cache-dir
+      - equal:
+          path: spec.template.spec.containers[0].args[2]
+          value: /tmp/.lookup
+
   - it: should have rolling update strategy
     documentSelector:
       path: kind
