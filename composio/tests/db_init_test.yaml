@@ -427,6 +427,84 @@ tests:
             name: PGPORT
             value: "5432"
 
+  - it: should mount postgres init secrets dir and expose it to the container
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_INIT_SECRETS_DIR
+            value: /etc/secrets/postgres-init
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: postgres-init-secrets
+            mountPath: /etc/secrets/postgres-init
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: postgres-init-secrets
+            emptyDir: {}
+
+  - it: should render additional init containers for postgres init job
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.additionalInitContainers:
+        - name: inject-postgres-init-secret-files
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/postgres-init/PGPASSWORD
+          volumeMounts:
+            - name: postgres-init-secrets
+              mountPath: /etc/secrets/postgres-init
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: inject-postgres-init-secret-files
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: postgres-init-secrets
+
+  - it: should allow overriding postgres init secrets dir
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.secretsDir: /var/run/postgres-init-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_INIT_SECRETS_DIR
+            value: /var/run/postgres-init-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: postgres-init-secrets
+            mountPath: /var/run/postgres-init-secrets
+            readOnly: true
+
+  - it: should rely on the image entrypoint for postgres init startup
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].command
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: /bin/sh
+      - equal:
+          path: spec.template.spec.containers[0].args[1]
+          value: -c
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'export PGPASSWORD="\$\(cat "\$secrets_dir/PGPASSWORD"\)"'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'CREATE DATABASE composiodb;'
+
   - it: should run before db-init jobs (lower hook weight)
     set:
       databaseMigration.enabled: true
