@@ -3,6 +3,8 @@ values-override.yaml
 values.override.yaml
 **/values-override.yaml
 **/values.override.yaml
+# Allow the checked-in staging/QA override (non-sensitive config only)
+!composio/values-override.yaml
 **/.helm_ls_cache
 values-internal.yaml
 
@@ -19,6 +21,8 @@ secrets.yaml
 **/secrets.yaml
 *.secret.yaml
 **/*.secret.yaml
+sensitive-values.yaml
+**/sensitive-values.yaml
 
 # Chart dependencies (uncomment if you want to ignore packaged dependencies)
 # charts/*.tgz

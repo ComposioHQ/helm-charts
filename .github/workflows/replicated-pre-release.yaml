@@ -207,14 +207,17 @@ jobs:
           kubectl get namespaces &> /dev/null || exit 1
           echo "✅ GKE connection verified"
 
-      - name: Generate Values Override
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Generate Sensitive Values Override
         env:
-          VALUES_OVERRIDE: ${{ secrets.HELM_VALUES_OVERRIDE }}
+          HELM_SENSITIVE_VALUES: ${{ secrets.HELM_SENSITIVE_VALUES }}
         run: |
-          echo "🔧 Generating deployment values override..."
-          cat > values-override.yaml << EOF
-          $VALUES_OVERRIDE
-          EOF
+          echo "🔧 Writing sensitive values override..."
+          echo "$HELM_SENSITIVE_VALUES" > sensitive-values.yaml
 
       - name: Install Replicated CLI
         run: |
@@ -260,7 +263,8 @@ jobs:
             --install \
             --create-namespace \
             --namespace composio \
-            --values ./values-override.yaml \
+            --values ./composio/values-override.yaml \
+            --values ./sensitive-values.yaml \
             --wait \
             --timeout 20m \
             --version ${{ steps.get_version.outputs.unstable }}
