@@ -105,6 +105,25 @@ tests:
             name: mercury-secrets
             emptyDir: {}
 
+  - it: should keep OPENAI_API_KEY optional for deployment mode when openai integration is disabled
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      openAI.enabled: false
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: OPENAI_API_KEY
+                optional: true
+
   - it: should render additional mercury init containers
     set:
       mercury.enabled: true
@@ -317,6 +336,22 @@ tests:
           content:
             name: mercury-secrets
             emptyDir: {}
+
+  - it: should keep OPENAI_API_KEY optional for knative mode when openai integration is disabled
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      openAI.enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: OPENAI_API_KEY
+                optional: true
 
   - it: should render additional mercury init containers for knative
     set:

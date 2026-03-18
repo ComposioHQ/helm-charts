@@ -152,6 +152,25 @@ tests:
             name: apollo-secrets
             emptyDir: {}
 
+  - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      redis.enabled: true
+      externalRedis.enabled: false
+      openAI.enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: OPENAI_API_KEY
+                optional: true
+
   - it: should render additional apollo init containers
     documentSelector:
       path: kind

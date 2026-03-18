@@ -55,7 +55,7 @@ spec:
         - name: thermos
           image: "{{ include "chart.registry" . }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
           imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
-          command: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
+          args: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
           {{- with .Values.thermos.containerSecurityContext }}
           securityContext:

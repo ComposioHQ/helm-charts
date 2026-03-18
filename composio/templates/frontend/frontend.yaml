@@ -86,14 +86,12 @@ spec:
           env:
             - name: FRONTEND_SECRETS_DIR
               value: {{ .Values.frontend.secretsDir | quote }}
-            {{- if .Values.openAI.enabled }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
                   optional: true
-            {{- end }}
             {{- if and .Values.frontend.secrets .Values.frontend.secrets.PLAIN_SECRET }}
             - name: PLAIN_SECRET
               valueFrom:
