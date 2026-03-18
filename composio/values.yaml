@@ -40,9 +40,9 @@ global:
   imagePullSecrets:
     - name: ecr-secret
 
-databaseMigration: 
+databaseMigration:
   image: "postgres:15-alpine"
-  enabled: true
+  enabled: false
   host: "<DATABASE_HOST>"
   port: "<DATABASE_PORT>"
   user: "postgres"
