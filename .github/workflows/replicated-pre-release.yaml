@@ -263,7 +263,7 @@ jobs:
             --values ./values-override.yaml \
             --wait \
             --timeout 20m \
-            --version ${{ steps.get_version.outputs.unstable }} --release-notes "${{ github.event.release.body }}"
+            --version ${{ steps.get_version.outputs.unstable }}
 
       - name: Deployment Summary
         if: success()
