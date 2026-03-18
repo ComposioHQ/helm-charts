@@ -372,3 +372,65 @@ tests:
           path: spec.activeDeadlineSeconds
           value: 2400
 
+---
+suite: test postgres init job
+templates:
+  - database/postgres-init-job.yaml
+tests:
+  - it: should create postgres init job when enabled
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - isKind:
+          of: Job
+
+  - it: should not create postgres init job when disabled
+    set:
+      databaseMigration.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should have helm hook annotations with correct weight
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-5"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+
+  - it: should have PGPORT with no duplicate value entry
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.port: "5433"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGPORT
+            value: "5433"
+
+  - it: should default PGPORT to 5432 when port not set
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.port: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGPORT
+            value: "5432"
+
+  - it: should run before db-init jobs (lower hook weight)
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-5"
