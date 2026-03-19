@@ -216,6 +216,19 @@ apollo:
       pullPolicy: Always
     # -- Additional init containers for Apollo DB init. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
     additionalInitContainers: []
+    ## Replication database initialization (non-blocking)
+    ## Runs as a regular Job alongside the deployment, does not block helm install/upgrade.
+    replication:
+      # -- Enable replication database initialization
+      enabled: false
+      ## Secret containing replication database credentials
+      secret:
+        # -- Name of the Kubernetes secret for replication DB
+        name: ""
+        # -- Key in the secret containing the PostgreSQL URL
+        postgresUrlKey: "POSTGRES_URL"
+        # -- Key in the secret containing the encryption key
+        encryptionKeyKey: "ENCRYPTION_KEY"
   
   # Apollo service configuration
   service:
@@ -406,6 +419,17 @@ thermos:
       pullPolicy: Always
     # -- Additional init containers for Thermos DB init. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
     additionalInitContainers: []
+    ## Replication database initialization (non-blocking)
+    ## Runs as a regular Job alongside the deployment, does not block helm install/upgrade.
+    replication:
+      # -- Enable replication database initialization
+      enabled: false
+      ## Secret containing replication database credentials
+      secret:
+        # -- Name of the Kubernetes secret for replication DB
+        name: ""
+        # -- Key in the secret containing the Thermos database URL
+        thermosDbUrlKey: "THERMOS_DATABASE_URL"
   
   # Thermos service configuration
   service:
