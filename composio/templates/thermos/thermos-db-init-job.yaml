@@ -1,89 +1,98 @@
 {{- if .Values.thermos.dbInit.enabled }}
+{{- $coreSecret := include "composio.coreSecretName" . }}
+{{- $targets := list (dict "suffix" "" "secretName" $coreSecret "thermosDbUrlKey" "THERMOS_DATABASE_URL" "isHook" true) }}
+{{- if .Values.thermos.dbInit.replication.enabled }}
+{{- $repl := .Values.thermos.dbInit.replication }}
+{{- $targets = append $targets (dict "suffix" "-replication" "secretName" $repl.secret.name "thermosDbUrlKey" ($repl.secret.thermosDbUrlKey | default "THERMOS_DATABASE_URL") "isHook" false) }}
+{{- end }}
+{{- range $target := $targets }}
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Release.Name }}-thermos-db-init
+  name: {{ $.Release.Name }}-thermos-db-init{{ $target.suffix }}
   labels:
-    app: thermos-db-init
-    release: {{ .Release.Name }}
+    app: thermos-db-init{{ $target.suffix }}
+    release: {{ $.Release.Name }}
+  {{- if $target.isHook }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  {{- end }}
 spec:
   ttlSecondsAfterFinished: 86400
   template:
     metadata:
-      name: {{ .Release.Name }}-thermos-db-init
+      name: {{ $.Release.Name }}-thermos-db-init{{ $target.suffix }}
       labels:
-        app: thermos-db-init
-        release: {{ .Release.Name }}
+        app: thermos-db-init{{ $target.suffix }}
+        release: {{ $.Release.Name }}
     spec:
-      {{- if .Values.replicated.enabled }}
-      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- if $.Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" $ | nindent 6 }}
       {{- end }}
-      {{- if not .Values.replicated.enabled }}
-      {{- if .Values.global.imagePullSecrets }}
+      {{- if not $.Values.replicated.enabled }}
+      {{- if $.Values.global.imagePullSecrets }}
       imagePullSecrets:
-        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+        {{- toYaml $.Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       {{- end }}
-      {{- with .Values.thermos.dbInit.podSecurityContext }}
+      {{- with $.Values.thermos.dbInit.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
-      {{- with .Values.thermos.nodeSelector }}
+      restartPolicy: {{ $.Values.dbInit.job.restartPolicy | default "OnFailure" }}
+      {{- with $.Values.thermos.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.affinity }}
+      {{- with $.Values.thermos.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.tolerations }}
+      {{- with $.Values.thermos.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.dbInit.additionalInitContainers }}
+      {{- with $.Values.thermos.dbInit.additionalInitContainers }}
       initContainers:
 {{ tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
       containers:
-        - name: thermos-db-init
-          image: "{{ include "chart.registry" . }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
-          imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
-          {{- with .Values.thermos.dbInit.containerSecurityContext }}
+        - name: thermos-db-init{{ $target.suffix }}
+          image: "{{ include "chart.registry" $ }}/{{ $.Values.thermos.dbInit.image.repository }}:{{ $.Values.thermos.dbInit.image.tag }}"
+          imagePullPolicy: {{ $.Values.thermos.dbInit.image.pullPolicy }}
+          {{- with $.Values.thermos.dbInit.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
-            {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: THERMOS_SECRET_DIR
-              value: {{ .Values.thermos.secretsDir | quote }}
+              value: {{ $.Values.thermos.secretsDir | quote }}
             # Thermos database URL
             - name: POSTGRES_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: THERMOS_DATABASE_URL
+                  name: {{ $target.secretName }}
+                  key: {{ $target.thermosDbUrlKey }}
                   optional: true
             # Keep DATABASE_URL for backward compatibility with Atlas
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: THERMOS_DATABASE_URL
+                  name: {{ $target.secretName }}
+                  key: {{ $target.thermosDbUrlKey }}
                   optional: true
             - name: ADMIN_EMAIL
-              value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
-            {{- if .Values.thermos.dbInit.extraAtlasFlags }}
+              value: {{ $.Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+            {{- if $.Values.thermos.dbInit.extraAtlasFlags }}
             - name: EXTRA_ATLAS_FLAGS
-              value: {{ .Values.thermos.dbInit.extraAtlasFlags | quote }}
+              value: {{ $.Values.thermos.dbInit.extraAtlasFlags | quote }}
             {{- end }}
           volumeMounts:
             - name: thermos-secrets
-              mountPath: {{ .Values.thermos.secretsDir | quote }}
+              mountPath: {{ $.Values.thermos.secretsDir | quote }}
               readOnly: true
           resources:
             requests:
@@ -95,6 +104,7 @@ spec:
       volumes:
         - name: thermos-secrets
           emptyDir: {}
-  backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
-  activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
+  backoffLimit: {{ $.Values.dbInit.job.backoffLimit | default 3 }}
+  activeDeadlineSeconds: {{ $.Values.dbInit.job.activeDeadlineSeconds | default 300 }}
+{{- end }}
 {{- end }}

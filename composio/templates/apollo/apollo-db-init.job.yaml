@@ -1,93 +1,102 @@
 {{- if .Values.apollo.dbInit.enabled }}
+{{- $coreSecret := include "composio.coreSecretName" . }}
+{{- $targets := list (dict "suffix" "" "secretName" $coreSecret "postgresUrlKey" "POSTGRES_URL" "encryptionKeyKey" "ENCRYPTION_KEY" "isHook" true) }}
+{{- if .Values.apollo.dbInit.replication.enabled }}
+{{- $repl := .Values.apollo.dbInit.replication }}
+{{- $targets = append $targets (dict "suffix" "-replication" "secretName" $repl.secret.name "postgresUrlKey" ($repl.secret.postgresUrlKey | default "POSTGRES_URL") "encryptionKeyKey" ($repl.secret.encryptionKeyKey | default "ENCRYPTION_KEY") "isHook" false) }}
+{{- end }}
+{{- range $target := $targets }}
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Release.Name }}-apollo-db-init
+  name: {{ $.Release.Name }}-apollo-db-init{{ $target.suffix }}
   labels:
-    app: apollo-db-init
-    release: {{ .Release.Name }}
+    app: apollo-db-init{{ $target.suffix }}
+    release: {{ $.Release.Name }}
+  {{- if $target.isHook }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  {{- end }}
 spec:
   ttlSecondsAfterFinished: 86400
   template:
     metadata:
-      name: {{ .Release.Name }}-apollo-db-init
+      name: {{ $.Release.Name }}-apollo-db-init{{ $target.suffix }}
       labels:
-        app: apollo-db-init
-        release: {{ .Release.Name }}
+        app: apollo-db-init{{ $target.suffix }}
+        release: {{ $.Release.Name }}
     spec:
-      {{- if .Values.apollo.serviceAccount.enabled }}
-      serviceAccountName: {{ .Values.apollo.serviceAccount.name  }}
+      {{- if $.Values.apollo.serviceAccount.enabled }}
+      serviceAccountName: {{ $.Values.apollo.serviceAccount.name  }}
       {{- end }}
-      {{- if .Values.replicated.enabled }}
-      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- if $.Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" $ | nindent 6 }}
       {{- end }}
-      {{- if not .Values.replicated.enabled }}
-      {{- if .Values.global.imagePullSecrets }}
+      {{- if not $.Values.replicated.enabled }}
+      {{- if $.Values.global.imagePullSecrets }}
       imagePullSecrets:
-        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+        {{- toYaml $.Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       {{- end }}
-      {{- with .Values.apollo.dbInit.podSecurityContext }}
+      {{- with $.Values.apollo.dbInit.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
-      {{- with .Values.apollo.nodeSelector }}
+      restartPolicy: {{ $.Values.dbInit.job.restartPolicy | default "OnFailure" }}
+      {{- with $.Values.apollo.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.apollo.affinity }}
+      {{- with $.Values.apollo.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.apollo.tolerations }}
+      {{- with $.Values.apollo.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.apollo.dbInit.additionalInitContainers }}
+      {{- with $.Values.apollo.dbInit.additionalInitContainers }}
       initContainers:
 {{ tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
       containers:
-        - name: apollo-db-init
-          image: "{{ include "chart.registry" . }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
-          imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
-          {{- with .Values.apollo.dbInit.containerSecurityContext }}
+        - name: apollo-db-init{{ $target.suffix }}
+          image: "{{ include "chart.registry" $ }}/{{ $.Values.apollo.dbInit.image.repository }}:{{ $.Values.apollo.dbInit.image.tag }}"
+          imagePullPolicy: {{ $.Values.apollo.dbInit.image.pullPolicy }}
+          {{- with $.Values.apollo.dbInit.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
-            {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: APOLLO_SECRETS_DIR
-              value: {{ .Values.apollo.secretsDir | quote }}
+              value: {{ $.Values.apollo.secretsDir | quote }}
             # Apollo database URL
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: POSTGRES_URL
+                  name: {{ $target.secretName }}
+                  key: {{ $target.postgresUrlKey }}
                   optional: true
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: ENCRYPTION_KEY
+                  name: {{ $target.secretName }}
+                  key: {{ $target.encryptionKeyKey }}
                   optional: true
             - name: ORG_API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: ENCRYPTION_KEY
+                  name: {{ $target.secretName }}
+                  key: {{ $target.encryptionKeyKey }}
                   optional: true
             - name: ADMIN_EMAIL
-              value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+              value: {{ $.Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
           volumeMounts:
             - name: apollo-secrets
-              mountPath: {{ .Values.apollo.secretsDir | quote }}
+              mountPath: {{ $.Values.apollo.secretsDir | quote }}
               readOnly: true
           resources:
             requests:
@@ -99,6 +108,7 @@ spec:
       volumes:
         - name: apollo-secrets
           emptyDir: {}
-  backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
-  activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
+  backoffLimit: {{ $.Values.dbInit.job.backoffLimit | default 3 }}
+  activeDeadlineSeconds: {{ $.Values.dbInit.job.activeDeadlineSeconds | default 300 }}
+{{- end }}
 {{- end }}
