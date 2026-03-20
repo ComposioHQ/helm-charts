@@ -19,6 +19,20 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.release.tag_name }}
 
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Fetch Doppler secrets
+        run: |
+          doppler secrets download --no-file --format env-no-quotes \
+            --project helm-charts --config staging-gke \
+            | while IFS='=' read -r key value; do
+              echo "::add-mask::$value"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            done
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+
       - name: Extract version and set promotion channel
         id: metadata
         run: |
@@ -39,8 +53,8 @@ jobs:
 
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "promote=$PROMOTE" >> $GITHUB_OUTPUT
-          echo "✅ Tag: $TAG_NAME"
-          echo "✅ Promote: $PROMOTE"
+          echo "Tag: $TAG_NAME"
+          echo "Promote: $PROMOTE"
 
       - name: Install yq
         uses: mikefarah/yq@v4
@@ -60,7 +74,7 @@ jobs:
           set -e
           replicated app ls &> /dev/null || exit 1
         env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -74,8 +88,8 @@ jobs:
       - name: Get and bump version
         id: version
         env:
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ env.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
         run: |
           cd ./composio
           CURRENT_APPVERSION=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
@@ -90,7 +104,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           status: STARTED
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           title: "New ${{ steps.metadata.outputs.promote }} Release"
           summary: |
@@ -130,7 +144,7 @@ jobs:
           --promote "${{ steps.metadata.outputs.promote }}" \
           --version "${{ steps.version.outputs.new }}" --release-notes "${{ github.event.release.body }}"
         env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
           REPLICATED_APP: composio-rodent
 
       - name: Notify Slack - Success
@@ -138,7 +152,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           status: SUCCESS
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           message_id: ${{ steps.slack.outputs.message_id }}
           title: "New ${{ steps.metadata.outputs.promote }} Release"
@@ -152,7 +166,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           status: FAILURE
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           message_id: ${{ steps.slack.outputs.message_id }}
           title: "New ${{ steps.metadata.outputs.promote }} Release"
@@ -165,12 +179,31 @@ jobs:
     needs: [release-helm-chart]
     if: |
       github.event.action == 'prereleased'
-    env:
-      REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
     runs-on: depot-ubuntu-24.04-4
     permissions:
       contents: write
     steps:
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Fetch Doppler secrets
+        run: |
+          # Handle GKE_SA_KEY separately (multiline JSON)
+          echo "GKE_SA_KEY<<EOFGKESA" >> "$GITHUB_ENV"
+          doppler secrets get GKE_SA_KEY --plain --project helm-charts --config staging-gke >> "$GITHUB_ENV"
+          echo "EOFGKESA" >> "$GITHUB_ENV"
+
+          # Fetch remaining secrets
+          for key in DATABASE_HOST DATABASE_USER GKE_CLUSTER_NAME GKE_CLUSTER_ZONE GKE_PROJECT_ID \
+                     REPLICATED_API_TOKEN REPLICATED_APP REPLICATED_HELM_AUTH_TOKEN \
+                     REPLICATED_USERNAME REPLICATED_REGISTRY HELM_REGISTRY; do
+            val=$(doppler secrets get "$key" --plain --project helm-charts --config staging-gke)
+            echo "::add-mask::$val"
+            echo "$key=$val" >> "$GITHUB_ENV"
+          done
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+
       - name: Setup Helm
         uses: azure/setup-helm@v4
         with:
@@ -184,28 +217,23 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GKE_SA_KEY }}
-          project_id: ${{ secrets.GKE_PROJECT_ID }}
+          credentials_json: ${{ env.GKE_SA_KEY }}
+          project_id: ${{ env.GKE_PROJECT_ID }}
 
       - name: Install GKE Auth Plugin
         run: |
-          echo "🔧 Installing gke-gcloud-auth-plugin..."
           gcloud components install gke-gcloud-auth-plugin --quiet &> /dev/null || exit 1
-          echo "✅ GKE auth plugin installed successfully"
 
       - name: Configure kubectl for GKE
-        env:
-          GKE_CLUSTER_NAME: ${{ secrets.GKE_CLUSTER_NAME }}
-          GKE_CLUSTER_ZONE: ${{ secrets.GKE_CLUSTER_ZONE }}
         run: |
           gcloud container clusters get-credentials "$GKE_CLUSTER_NAME" --zone "$GKE_CLUSTER_ZONE" &> /dev/null || exit 1
-          echo "✅ Kubectl configured successfully"
+        env:
+          GKE_CLUSTER_NAME: ${{ env.GKE_CLUSTER_NAME }}
+          GKE_CLUSTER_ZONE: ${{ env.GKE_CLUSTER_ZONE }}
 
       - name: Verify GKE Connection
         run: |
-          echo "🔍 Verifying GKE cluster connection..."
           kubectl get namespaces &> /dev/null || exit 1
-          echo "✅ GKE connection verified"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -222,9 +250,9 @@ jobs:
           tar xf replicated.tar.gz replicated && rm replicated.tar.gz
           mv replicated /usr/local/bin/replicated
 
-      - name:  Check replicated
+      - name: Check replicated
         env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
         run: |
           set -e
           replicated app ls &> /dev/null || exit 1
@@ -232,8 +260,8 @@ jobs:
       - name: Get latest replicated version
         id: get_version
         env:
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ env.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
         run: |
           STABLE_VERSION=$(replicated channel ls | grep "Stable" | awk '{print $NF}')
           UNSTABLE_VERSION=$(replicated channel ls | grep "Unstable" | awk '{print $NF}')
@@ -242,15 +270,7 @@ jobs:
           echo "stable=$STABLE_VERSION" >> $GITHUB_OUTPUT
           echo "unstable=$UNSTABLE_VERSION" >> $GITHUB_OUTPUT
 
-
       - name: Deploy on kubernetes using replicated
-        env:
-          AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
-          REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
-          HELM_URL: ${{ secrets.HELM_REGISTRY }}
-          REPLICATED_REGISTRY: ${{ secrets.REPLICATED_REGISTRY }}
-          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
-          DATABASE_USER: ${{ secrets.DATABASE_USER }}
         run: |
           helm registry login $REPLICATED_REGISTRY --username $REPLICATED_USERNAME --password $AUTH_TOKEN
           helm upgrade composio $HELM_URL  \
@@ -265,16 +285,23 @@ jobs:
             --wait \
             --timeout 20m \
             --version ${{ steps.get_version.outputs.unstable }}
+        env:
+          AUTH_TOKEN: ${{ env.REPLICATED_HELM_AUTH_TOKEN }}
+          REPLICATED_USERNAME: ${{ env.REPLICATED_USERNAME }}
+          HELM_URL: ${{ env.HELM_REGISTRY }}
+          REPLICATED_REGISTRY: ${{ env.REPLICATED_REGISTRY }}
+          DATABASE_HOST: ${{ env.DATABASE_HOST }}
+          DATABASE_USER: ${{ env.DATABASE_USER }}
 
       - name: Deployment Summary
         if: success()
         run: |
-          echo "🎉 Deployment completed successfully!"
+          echo "Deployment completed successfully!"
 
       - name: Handle Deployment Failure
         if: failure()
         run: |
-          echo "❌ Deployment failed!"
+          echo "Deployment failed!"
 
   release-stable:
     runs-on: ubuntu-latest
@@ -285,6 +312,20 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.release.tag_name }}
+
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Fetch Doppler secrets
+        run: |
+          doppler secrets download --no-file --format env-no-quotes \
+            --project helm-charts --config staging-gke \
+            | while IFS='=' read -r key value; do
+              echo "::add-mask::$value"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            done
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
 
       - name: Extract version
         id: metadata
@@ -299,8 +340,8 @@ jobs:
 
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "promote=Stable" >> $GITHUB_OUTPUT
-          echo "✅ Tag: $TAG_NAME"
-          echo "✅ Promote: Stable"
+          echo "Tag: $TAG_NAME"
+          echo "Promote: Stable"
 
       - name: Install yq
         uses: mikefarah/yq@v4
@@ -320,7 +361,7 @@ jobs:
           set -e
           replicated app ls &> /dev/null || exit 1
         env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
 
       - name: Get latest sequence from Unstable
         id: get_sequence
@@ -337,15 +378,15 @@ jobs:
           echo "stable_version=$CURRENT_VERSION_STABLE" >> $GITHUB_OUTPUT
           echo "Promoting sequence $LATEST_SEQUENCE_UNSTABLE (version $CURRENT_VERSION_UNSTABLE) from Unstable to Stable"
         env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ env.REPLICATED_APP }}
 
       - name: Notify Slack - Started
         id: slack
         uses: ./.github/actions/slack-notify
         with:
           status: STARTED
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           title: "Promote to Stable"
           summary: |
@@ -355,15 +396,15 @@ jobs:
 
       - name: Promote from Stable to Unstable
         env:
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ env.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
         run: |
           set -e
           replicated release promote ${{ steps.get_sequence.outputs.sequence }} ${{ steps.get_sequence.outputs.channel_id }} --version ${{ steps.get_sequence.outputs.version }} --release-notes "${{ github.event.release.body }}"
 
       - name: Summary
         run: |
-          echo "### Helm Chart Release Created for Stable Channel 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "### Helm Chart Release Created for Stable Channel" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ steps.get_sequence.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
@@ -372,7 +413,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           status: SUCCESS
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           message_id: ${{ steps.slack.outputs.message_id }}
           title: "Promote to Stable"
@@ -386,7 +427,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           status: FAILURE
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           message_id: ${{ steps.slack.outputs.message_id }}
           title: "Promote to Stable"
