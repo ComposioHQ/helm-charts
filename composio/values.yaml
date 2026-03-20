@@ -389,6 +389,16 @@ thermos:
   # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
   additionalInitContainers: []
 
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-thermos"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Thermos database initialization container
   dbInit:
     # -- Enable database initialization
@@ -1028,6 +1038,16 @@ mercury:
   secretsDir: "/etc/secrets/mercury"
   # -- Additional init containers for Mercury. Mount `mercury-secrets` to populate `.Values.mercury.secretsDir`.
   additionalInitContainers: []
+
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-mercury"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
 
   # Liveness probe configuration
   livenessProbe:
