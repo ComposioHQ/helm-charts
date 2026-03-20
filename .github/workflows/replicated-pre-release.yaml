@@ -19,19 +19,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Install Doppler CLI
-        uses: dopplerhq/cli-action@v3
-
       - name: Fetch Doppler secrets
-        run: |
-          doppler secrets download --no-file --format env-no-quotes \
-            --project helm-charts --config staging-gke \
-            | while IFS='=' read -r key value; do
-              echo "::add-mask::$value"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            done
-        env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        uses: dopplerhq/secrets-fetch-action@v2
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: helm-charts
+          doppler-config: staging-gke
+          inject-env-vars: true
 
       - name: Extract version and set promotion channel
         id: metadata
@@ -183,26 +177,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Install Doppler CLI
-        uses: dopplerhq/cli-action@v3
-
       - name: Fetch Doppler secrets
-        run: |
-          # Handle GKE_SA_KEY separately (multiline JSON)
-          echo "GKE_SA_KEY<<EOFGKESA" >> "$GITHUB_ENV"
-          doppler secrets get GKE_SA_KEY --plain --project helm-charts --config staging-gke >> "$GITHUB_ENV"
-          echo "EOFGKESA" >> "$GITHUB_ENV"
-
-          # Fetch remaining secrets
-          for key in DATABASE_HOST DATABASE_USER GKE_CLUSTER_NAME GKE_CLUSTER_ZONE GKE_PROJECT_ID \
-                     REPLICATED_API_TOKEN REPLICATED_APP REPLICATED_HELM_AUTH_TOKEN \
-                     REPLICATED_USERNAME REPLICATED_REGISTRY HELM_REGISTRY; do
-            val=$(doppler secrets get "$key" --plain --project helm-charts --config staging-gke)
-            echo "::add-mask::$val"
-            echo "$key=$val" >> "$GITHUB_ENV"
-          done
-        env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        uses: dopplerhq/secrets-fetch-action@v2
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: helm-charts
+          doppler-config: staging-gke
+          inject-env-vars: true
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
@@ -313,19 +294,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Install Doppler CLI
-        uses: dopplerhq/cli-action@v3
-
       - name: Fetch Doppler secrets
-        run: |
-          doppler secrets download --no-file --format env-no-quotes \
-            --project helm-charts --config staging-gke \
-            | while IFS='=' read -r key value; do
-              echo "::add-mask::$value"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            done
-        env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        uses: dopplerhq/secrets-fetch-action@v2
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: helm-charts
+          doppler-config: staging-gke
+          inject-env-vars: true
 
       - name: Extract version
         id: metadata

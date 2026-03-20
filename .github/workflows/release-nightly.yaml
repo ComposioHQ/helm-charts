@@ -21,19 +21,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Doppler CLI
-        uses: dopplerhq/cli-action@v3
-
       - name: Fetch Doppler secrets
-        run: |
-          doppler secrets download --no-file --format env-no-quotes \
-            --project helm-charts --config staging-gke \
-            | while IFS='=' read -r key value; do
-              echo "::add-mask::$value"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            done
-        env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        uses: dopplerhq/secrets-fetch-action@v2
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: helm-charts
+          doppler-config: staging-gke
+          inject-env-vars: true
 
       - name: Install Replicated CLI
         run: |
