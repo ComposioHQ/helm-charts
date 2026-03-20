@@ -41,6 +41,24 @@ tests:
           path: spec.ttlSecondsAfterFinished
           value: 86400
 
+  - it: should not set serviceAccountName when SA is disabled
+    set:
+      apollo.dbInit.enabled: true
+      apollo.serviceAccount.enabled: false
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    set:
+      apollo.dbInit.enabled: true
+      apollo.serviceAccount.enabled: true
+      apollo.serviceAccount.name: apollo-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: apollo-sa
+
   - it: should have correct labels
     set:
       apollo.dbInit.enabled: true
@@ -241,6 +259,24 @@ tests:
       - equal:
           path: spec.ttlSecondsAfterFinished
           value: 86400
+
+  - it: should not set serviceAccountName when SA is disabled
+    set:
+      thermos.dbInit.enabled: true
+      thermos.serviceAccount.enabled: false
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    set:
+      thermos.dbInit.enabled: true
+      thermos.serviceAccount.enabled: true
+      thermos.serviceAccount.name: thermos-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: thermos-sa
 
   - it: should have correct labels
     set:

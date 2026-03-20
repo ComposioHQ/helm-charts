@@ -25,6 +25,30 @@ tests:
           path: metadata.labels["app.kubernetes.io/component"]
           value: frontend
 
+  - it: should not set serviceAccountName when SA is disabled
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      frontend.serviceAccount.enabled: false
+    documentIndex: 0
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      frontend.serviceAccount.enabled: true
+      frontend.serviceAccount.name: frontend-sa
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: frontend-sa
+
   - it: should have correct replica count
     set:
       frontend.enabled: true

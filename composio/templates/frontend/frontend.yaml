@@ -25,6 +25,9 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
+      {{- if .Values.frontend.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.frontend.serviceAccount.name }}
+      {{- end }}
       {{- if .Values.replicated.enabled }}
       {{- include "replicated.imagePullSecrets" . | nindent 6 }}
       {{- end }}

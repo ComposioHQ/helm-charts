@@ -19,6 +19,9 @@ spec:
         app: thermos-db-init
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.thermos.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.thermos.serviceAccount.name }}
+      {{- end }}
       {{- if .Values.replicated.enabled }}
       {{- include "replicated.imagePullSecrets" . | nindent 6 }}
       {{- end }}

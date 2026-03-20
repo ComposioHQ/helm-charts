@@ -35,6 +35,32 @@ tests:
       - hasDocuments:
           count: 0
 
+  - it: should not set serviceAccountName when SA is disabled
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.serviceAccount.enabled: false
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.serviceAccount.enabled: true
+      mercury.serviceAccount.name: mercury-sa
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: mercury-sa
+
   - it: should use correct replica count
     set:
       mercury.enabled: true

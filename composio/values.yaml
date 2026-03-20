@@ -392,6 +392,16 @@ thermos:
   # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
   additionalInitContainers: []
 
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-thermos"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Thermos database initialization container
   dbInit:
     # -- Enable database initialization
@@ -1032,6 +1042,16 @@ mercury:
   # -- Additional init containers for Mercury. Mount `mercury-secrets` to populate `.Values.mercury.secretsDir`.
   additionalInitContainers: []
 
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-mercury"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Liveness probe configuration
   livenessProbe:
     # -- Enable liveness probe
@@ -1148,6 +1168,17 @@ frontend:
   secretsDir: "/etc/secrets/frontend"
   # -- Additional init containers for Frontend. Mount `frontend-secrets` to populate `.Values.frontend.secretsDir`.
   additionalInitContainers: []
+
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-frontend"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Frontend service configuration
   service:
     # -- Service type
@@ -1206,6 +1237,16 @@ weaviate:
     tag: "r20260318_04"
     # -- Image pull policy
     pullPolicy: Always
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-weaviate"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Weaviate service configuration
   service:
     # -- Service type
