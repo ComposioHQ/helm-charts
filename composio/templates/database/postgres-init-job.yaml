@@ -110,11 +110,5 @@ spec:
           readOnly: true
       volumes:
       - name: postgres-init-secrets
-        {{- if .Values.databaseMigration.additionalInitContainers }}
         emptyDir: {}
-        {{- else }}
-        secret:
-          secretName: {{ include "composio.coreSecretName" . }}
-          optional: true
-        {{- end }}
 {{- end }}

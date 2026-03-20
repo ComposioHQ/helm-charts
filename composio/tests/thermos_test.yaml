@@ -131,9 +131,7 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: thermos-secrets
-            secret:
-              secretName: composio-composio-secrets
-              optional: true
+            emptyDir: {}
 
   - it: should render additional thermos init containers
     documentSelector:

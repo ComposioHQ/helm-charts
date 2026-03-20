@@ -121,13 +121,7 @@ spec:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
       volumes:
         - name: frontend-secrets
-          {{- if .Values.frontend.additionalInitContainers }}
           emptyDir: {}
-          {{- else }}
-          secret:
-            secretName: {{ include "composio.coreSecretName" . }}
-            optional: true
-          {{- end }}
 ---
 apiVersion: v1
 kind: Service

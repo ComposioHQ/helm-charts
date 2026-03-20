@@ -129,9 +129,7 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            secret:
-              secretName: composio-composio-secrets
-              optional: true
+            emptyDir: {}
 
   - it: should keep OPENAI_API_KEY optional for deployment mode when openai integration is disabled
     set:
@@ -238,9 +236,7 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            secret:
-              secretName: composio-composio-secrets
-              optional: true
+            emptyDir: {}
       - contains:
           path: spec.template.spec.volumes
           content:
@@ -370,9 +366,7 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            secret:
-              secretName: composio-composio-secrets
-              optional: true
+            emptyDir: {}
 
   - it: should keep OPENAI_API_KEY optional for knative mode when openai integration is disabled
     set:
@@ -467,9 +461,7 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            secret:
-              secretName: composio-composio-secrets
-              optional: true
+            emptyDir: {}
       - contains:
           path: spec.template.spec.volumes
           content:

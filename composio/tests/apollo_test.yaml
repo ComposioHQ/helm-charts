@@ -176,9 +176,7 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: apollo-secrets
-            secret:
-              secretName: composio-composio-secrets
-              optional: true
+            emptyDir: {}
 
   - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
     documentSelector:

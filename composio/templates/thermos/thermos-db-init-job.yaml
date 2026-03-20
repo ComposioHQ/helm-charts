@@ -97,13 +97,7 @@ spec:
               memory: 1Gi
       volumes:
         - name: thermos-secrets
-          {{- if .Values.thermos.dbInit.additionalInitContainers }}
           emptyDir: {}
-          {{- else }}
-          secret:
-            secretName: {{ include "composio.coreSecretName" . }}
-            optional: true
-          {{- end }}
   backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}
