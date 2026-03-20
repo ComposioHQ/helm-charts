@@ -282,7 +282,13 @@ spec:
             {{- end }}
       volumes:
         - name: apollo-secrets
+          {{- if .Values.apollo.additionalInitContainers }}
           emptyDir: {}
+          {{- else }}
+          secret:
+            secretName: {{ include "composio.coreSecretName" . }}
+            optional: true
+          {{- end }}
         {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
         - name: gcp-key
           secret:

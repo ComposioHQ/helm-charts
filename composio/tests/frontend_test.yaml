@@ -174,7 +174,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: frontend-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
     set:
@@ -223,6 +225,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/frontend
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: frontend-secrets
+            emptyDir: {}
 
   - it: should allow overriding frontend secrets dir
     set:

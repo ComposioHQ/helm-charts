@@ -109,7 +109,13 @@ spec:
             {{- end }}
       volumes:
         - name: mercury-secrets
+          {{- if .Values.mercury.additionalInitContainers }}
           emptyDir: {}
+          {{- else }}
+          secret:
+            secretName: {{ include "composio.coreSecretName" . }}
+            optional: true
+          {{- end }}
         {{- with .Values.mercury.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

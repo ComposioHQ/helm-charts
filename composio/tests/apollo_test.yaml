@@ -176,7 +176,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: apollo-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
     documentSelector:
@@ -227,6 +229,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/apollo
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: apollo-secrets
+            emptyDir: {}
 
   - it: should allow overriding apollo secrets dir
     documentSelector:

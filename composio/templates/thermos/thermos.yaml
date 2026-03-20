@@ -120,7 +120,13 @@ spec:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
       volumes:
         - name: thermos-secrets
+          {{- if .Values.thermos.additionalInitContainers }}
           emptyDir: {}
+          {{- else }}
+          secret:
+            secretName: {{ include "composio.coreSecretName" . }}
+            optional: true
+          {{- end }}
         - name: cache-volume
           emptyDir: {}
 ---

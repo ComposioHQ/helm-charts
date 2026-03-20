@@ -1,6 +1,7 @@
 ## Staging/QA values override for GKE deployment
-## Sensitive values (database hosts, credentials) are injected separately
-## via the HELM_SENSITIVE_VALUES secret at deploy time.
+## This file contains ONLY non-sensitive configuration.
+## Sensitive values (database hosts, credentials) are injected via --set flags
+## from GitHub secrets at deploy time.
 
 apollo:
   googleServiceAccount:
@@ -34,16 +35,17 @@ apollo:
     enabled: true
     smtpAuthorEmail: utkarsh@composio.io
   smtpAuthorEmail: utkarsh@composio.io
+
 databaseMigration:
   enabled: false
-  host: <DATABASE_HOST>  # Injected from HELM_SENSITIVE_VALUES secret
   image: postgres:15-alpine
   password:
     key: password
   port: "5432"
-  user: <DATABASE_USER>  # Injected from HELM_SENSITIVE_VALUES secret
+
 features:
   temporal: true
+
 frontend:
   enabled: true
   env:
@@ -59,22 +61,18 @@ frontend:
     className: nginx
     enabled: true
     host: staging-gke-app.composio.io
+
 global:
   domain: app.composio.io
+
 mercury:
   enabled: true
   replicaCount: 1
   useKnative: true
+
 replicated:
   enabled: true
+
 temporal:
   server:
-    config:
-      persistence:
-        default:
-          sql:
-            host: <DATABASE_HOST>  # Injected from HELM_SENSITIVE_VALUES secret
-        visibility:
-          sql:
-            host: <DATABASE_HOST>  # Injected from HELM_SENSITIVE_VALUES secret
     enabled: true

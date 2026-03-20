@@ -212,13 +212,6 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Generate Sensitive Values Override
-        env:
-          HELM_SENSITIVE_VALUES: ${{ secrets.HELM_SENSITIVE_VALUES }}
-        run: |
-          echo "🔧 Writing sensitive values override..."
-          echo "$HELM_SENSITIVE_VALUES" > sensitive-values.yaml
-
       - name: Install Replicated CLI
         run: |
           version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
@@ -256,15 +249,19 @@ jobs:
           REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
           HELM_URL: ${{ secrets.HELM_REGISTRY }}
           REPLICATED_REGISTRY: ${{ secrets.REPLICATED_REGISTRY }}
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          DATABASE_USER: ${{ secrets.DATABASE_USER }}
         run: |
-
           helm registry login $REPLICATED_REGISTRY --username $REPLICATED_USERNAME --password $AUTH_TOKEN
           helm upgrade composio $HELM_URL  \
             --install \
             --create-namespace \
             --namespace composio \
-            --values ./composio/values-override.yaml \
-            --values ./sensitive-values.yaml \
+            --values ./composio/staging-gke-values-override.yaml \
+            --set databaseMigration.host="$DATABASE_HOST" \
+            --set databaseMigration.user="$DATABASE_USER" \
+            --set temporal.server.config.persistence.default.sql.host="$DATABASE_HOST" \
+            --set temporal.server.config.persistence.visibility.sql.host="$DATABASE_HOST" \
             --wait \
             --timeout 20m \
             --version ${{ steps.get_version.outputs.unstable }}

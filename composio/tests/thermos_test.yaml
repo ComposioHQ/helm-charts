@@ -131,7 +131,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: thermos-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should render additional thermos init containers
     documentSelector:
@@ -161,6 +163,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/thermos
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: thermos-secrets
+            emptyDir: {}
 
   - it: should allow overriding thermos secrets dir
     documentSelector:

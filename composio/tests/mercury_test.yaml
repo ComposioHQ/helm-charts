@@ -129,7 +129,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should keep OPENAI_API_KEY optional for deployment mode when openai integration is disabled
     set:
@@ -180,6 +182,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/mercury
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
 
   - it: should allow overriding mercury secrets dir
     set:
@@ -231,7 +238,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
       - contains:
           path: spec.template.spec.volumes
           content:
@@ -361,7 +370,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should keep OPENAI_API_KEY optional for knative mode when openai integration is disabled
     set:
@@ -406,6 +417,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/mercury
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
 
   - it: should allow overriding mercury secrets dir for knative
     set:
@@ -451,7 +467,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: mercury-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
       - contains:
           path: spec.template.spec.volumes
           content:

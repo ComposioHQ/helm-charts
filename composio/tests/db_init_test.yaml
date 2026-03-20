@@ -144,7 +144,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: apollo-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should render additional apollo db init init containers
     set:
@@ -169,6 +171,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/apollo
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: apollo-secrets
+            emptyDir: {}
 
   - it: should allow overriding apollo db init secrets dir
     set:
@@ -346,7 +353,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: thermos-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should render additional thermos db init init containers
     set:
@@ -371,6 +380,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/thermos
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: thermos-secrets
+            emptyDir: {}
 
   - it: should allow overriding thermos db init secrets dir
     set:
@@ -482,7 +496,9 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: postgres-init-secrets
-            emptyDir: {}
+            secret:
+              secretName: composio-composio-secrets
+              optional: true
 
   - it: should render additional init containers for postgres init job
     set:
@@ -504,6 +520,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].name
           value: postgres-init-secrets
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: postgres-init-secrets
+            emptyDir: {}
 
   - it: should allow overriding postgres init secrets dir
     set:
