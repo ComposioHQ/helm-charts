@@ -1165,6 +1165,17 @@ frontend:
   secretsDir: "/etc/secrets/frontend"
   # -- Additional init containers for Frontend. Mount `frontend-secrets` to populate `.Values.frontend.secretsDir`.
   additionalInitContainers: []
+
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-frontend"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Frontend service configuration
   service:
     # -- Service type
