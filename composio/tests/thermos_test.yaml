@@ -19,6 +19,28 @@ tests:
           path: metadata.labels.release
           value: RELEASE-NAME
 
+  - it: should not set serviceAccountName when SA is disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.serviceAccount.enabled: false
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.serviceAccount.enabled: true
+      thermos.serviceAccount.name: thermos-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: thermos-sa
+
   - it: should have correct replica count
     documentSelector:
       path: kind
