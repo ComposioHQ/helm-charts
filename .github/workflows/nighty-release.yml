@@ -1,0 +1,127 @@
+name: nighty-release
+
+on:
+  schedule:
+    # 00:00 IST is 18:30 UTC (previous day)
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retag-latest-images:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.retag.outputs.release_tag }}
+      retagged_images: ${{ steps.retag.outputs.retagged_images }}
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate"
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Resolve latest digest and retag
+        id: retag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${AWS_REGION:-}" ]]; then
+            echo "AWS_REGION secret is required."
+            exit 1
+          fi
+
+          DATE_IST="$(TZ=Asia/Kolkata date +%Y%m%d)"
+          MAX_NN=0
+
+          # Find next NN across all target repositories so the release tag is shared.
+          for repo in ${IMAGE_REPOS}; do
+            tags_json="$(aws ecr describe-images \
+              --repository-name "${repo}" \
+              --query 'imageDetails[].imageTags[]' \
+              --output json || echo '[]')"
+
+            while IFS= read -r n; do
+              if (( 10#${n} > MAX_NN )); then
+                MAX_NN=$((10#${n}))
+              fi
+            done < <(echo "${tags_json}" | jq -r ".[]? | capture(\"^r${DATE_IST}_(?<n>[0-9]{2})$\").n? // empty")
+          done
+
+          NEXT_NN="$(printf '%02d' "$((MAX_NN + 1))")"
+          NEW_TAG="r${DATE_IST}_${NEXT_NN}"
+
+          echo "Using release tag: ${NEW_TAG}"
+          echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
+
+          results='[]'
+
+          for repo in ${IMAGE_REPOS}; do
+            image_json="$(aws ecr batch-get-image \
+              --repository-name "${repo}" \
+              --image-ids imageTag=latest \
+              --accepted-media-types \
+                application/vnd.oci.image.manifest.v1+json \
+                application/vnd.oci.image.index.v1+json \
+                application/vnd.docker.distribution.manifest.v2+json \
+                application/vnd.docker.distribution.manifest.list.v2+json \
+              --output json)"
+
+            digest="$(echo "${image_json}" | jq -r '.images[0].imageId.imageDigest // empty')"
+            manifest="$(echo "${image_json}" | jq -r '.images[0].imageManifest // empty')"
+            media_type="$(echo "${image_json}" | jq -r '.images[0].imageManifestMediaType // empty')"
+
+            if [[ -z "${digest}" || -z "${manifest}" ]]; then
+              echo "Failed to resolve latest image for repo: ${repo}"
+              exit 1
+            fi
+
+            metadata_json="$(aws ecr describe-images \
+              --repository-name "${repo}" \
+              --image-ids imageDigest="${digest}" \
+              --output json)"
+
+            pushed_at="$(echo "${metadata_json}" | jq -r '.imageDetails[0].imagePushedAt // empty')"
+            size_bytes="$(echo "${metadata_json}" | jq -r '.imageDetails[0].imageSizeInBytes // empty')"
+
+            if [[ -n "${media_type}" ]]; then
+              aws ecr put-image \
+                --repository-name "${repo}" \
+                --image-tag "${NEW_TAG}" \
+                --image-manifest-media-type "${media_type}" \
+                --image-manifest "${manifest}" \
+                >/dev/null
+            else
+              aws ecr put-image \
+                --repository-name "${repo}" \
+                --image-tag "${NEW_TAG}" \
+                --image-manifest "${manifest}" \
+                >/dev/null
+            fi
+
+            echo "repo=${repo} latest_digest=${digest} new_tag=${NEW_TAG} pushed_at=${pushed_at} size_bytes=${size_bytes}"
+
+            row="$(jq -n \
+              --arg repo "${repo}" \
+              --arg latest_digest "${digest}" \
+              --arg new_tag "${NEW_TAG}" \
+              --arg pushed_at "${pushed_at}" \
+              --arg size_bytes "${size_bytes}" \
+              '{repo: $repo, latest_digest: $latest_digest, new_tag: $new_tag, pushed_at: $pushed_at, size_bytes: $size_bytes}')"
+            results="$(echo "${results}" | jq -c --argjson row "${row}" '. + [$row]')"
+          done
+
+          echo "retagged_images<<EOF" >> "${GITHUB_OUTPUT}"
+          echo "${results}" >> "${GITHUB_OUTPUT}"
+          echo "EOF" >> "${GITHUB_OUTPUT}"
+
+      - name: Print outputs
+        run: |
+          echo "release_tag: ${{ steps.retag.outputs.release_tag }}"
+          echo "retagged_images: ${{ steps.retag.outputs.retagged_images }}"
