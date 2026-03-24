@@ -59,7 +59,7 @@ spec:
       {{- end }}
       containers:
         - name: frontend
-          image: "{{ include "chart.registry" . }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.frontend.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:
@@ -117,11 +117,17 @@ spec:
             - name: frontend-secrets
               mountPath: {{ .Values.frontend.secretsDir | quote }}
               readOnly: true
+            {{- with .Values.frontend.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
       volumes:
         - name: frontend-secrets
           emptyDir: {}
+        {{- with .Values.frontend.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

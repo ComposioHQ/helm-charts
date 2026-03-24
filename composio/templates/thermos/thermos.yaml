@@ -56,7 +56,7 @@ spec:
       {{- end }}
       containers:
         - name: thermos
-          image: "{{ include "chart.registry" . }}/{{ .Values.thermos.image.repository }}:{{ .Values.thermos.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.thermos.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
           args: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
@@ -116,6 +116,9 @@ spec:
               readOnly: true
             - name: cache-volume
               mountPath: /tmp
+            {{- with .Values.thermos.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
       volumes:
@@ -123,6 +126,9 @@ spec:
           emptyDir: {}
         - name: cache-volume
           emptyDir: {}
+        {{- with .Values.thermos.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -190,4 +196,4 @@ spec:
         value: {{ .Values.thermos.autoscaling.scaleUpPods | default 4 }}
         periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
       selectPolicy: Max
-{{- end }} 
+{{- end }}
