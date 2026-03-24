@@ -834,6 +834,13 @@ otel:
     serviceVersion: "1.0.0"
     # -- HTTP endpoint for metrics
     metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
+  mcp:
+    # -- MCP service name
+    serviceName: "mcp"
+    # -- MCP service version
+    serviceVersion: "1.0.0"
+    # -- HTTP endpoint for metrics
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
   
   # OpenTelemetry Collector configuration
   collector:
@@ -1149,6 +1156,99 @@ mercury:
     secretRef: 
       # -- Secret name for Lambda credentials
       name: "lambda-cred"
+
+# MCP (Model Context Protocol) Service Configuration
+mcp:
+  # -- Enable MCP service deployment
+  enabled: false
+  # -- Number of MCP replicas
+  replicaCount: 1
+
+  # MCP container image configuration
+  image:
+    # -- MCP image repository (used when imageName is not set)
+    repository: composio-self-host/mcp
+    # -- MCP image tag (used when imageName is not set)
+    tag: "latest"
+    # -- Image pull policy
+    pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+
+  # Service account configuration
+  serviceAccount:
+    # -- Enable service account for MCP
+    enabled: false
+    # -- Service account name
+    name: ""
+
+  # Service account name (flat field, used by fork template)
+  serviceAccountName: ""
+  # MCP service configuration
+  service:
+    # -- Service type (ClusterIP, NodePort, LoadBalancer)
+    type: ClusterIP
+    # -- Service port
+    port: 3000
+
+  # Database configuration
+  database:
+    urlSecret:
+      # -- Secret name containing database URL
+      name: "composio-composio-secrets"
+      # -- Key name in secret containing database URL
+      key: "DATABASE_URL"
+
+  # Resource requests and limits
+  resources:
+    requests:
+      # -- Memory request
+      memory: "512Mi"
+      # -- CPU request
+      cpu: "250m"
+    limits:
+      # -- Memory limit
+      memory: "1Gi"
+      # -- CPU limit
+      cpu: "500m"
+
+  # Pod security context
+  podSecurityContext: {}
+
+  # Container security context
+  containerSecurityContext: {}
+
+  # Node selector for pod assignment
+  nodeSelector: {}
+
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # Affinity rules
+  affinity: {}
+
+  # Additional volume mounts
+  volumeMounts: []
+  # Additional volumes
+  volumes: []
+  # Additional environment variables
+  env: []
+
+  # Extra configuration for ConfigMap
+  extraConfig: {}
+
+  # Ingress configuration
+  ingress:
+    # -- Enable ingress
+    enabled: false
+    # -- Ingress class name
+    className: ""
+    # -- Ingress annotations
+    annotations: {}
+    # -- Ingress host
+    host: ""
+    # -- TLS configuration
+    tls: []
 
 # Frontend service configuration (web UI)
 frontend:
