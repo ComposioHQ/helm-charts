@@ -17,8 +17,70 @@ jobs:
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
+      REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
       IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate"
     steps:
+      - name: Install Replicated CLI
+        run: |
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls \
+            "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
+            -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+          sudo mv replicated /usr/local/bin/replicated
+          replicated version
+
+      - name: Calculate release tag from latest Nightly manifest
+        id: calculate_release_tag
+        shell: bash
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${REPLICATED_API_TOKEN:-}" || -z "${REPLICATED_APP:-}" ]]; then
+            echo "REPLICATED_API_TOKEN and REPLICATED_APP secrets are required."
+            exit 1
+          fi
+
+          latest_nightly_sequence="$(replicated release ls | awk 'tolower($0) ~ /nightly/ {print $1; exit}')"
+          if [[ -z "${latest_nightly_sequence}" ]]; then
+            echo "Could not find latest Nightly release sequence from replicated release ls."
+            exit 1
+          fi
+
+          manifest_text="$(replicated release inspect "${latest_nightly_sequence}")"
+          current_tag="$(echo "${manifest_text}" | grep -Eo 'r[0-9]{8}_[0-9]{2}' | sort | tail -n1)"
+          if [[ -z "${current_tag}" ]]; then
+            echo "Could not extract current rYYYYMMDD_NN tag from Nightly release manifest."
+            exit 1
+          fi
+
+          if [[ ! "${current_tag}" =~ ^r([0-9]{8})_([0-9]{2})$ ]]; then
+            echo "Extracted tag '${current_tag}' is not in expected format rYYYYMMDD_NN."
+            exit 1
+          fi
+
+          current_date="${BASH_REMATCH[1]}"
+          current_nn="${BASH_REMATCH[2]}"
+          date_ist="$(TZ=Asia/Kolkata date +%Y%m%d)"
+
+          if [[ "${current_date}" == "${date_ist}" ]]; then
+            next_nn="$(printf '%02d' "$((10#${current_nn} + 1))")"
+          else
+            next_nn="01"
+          fi
+
+          new_tag="r${date_ist}_${next_nn}"
+          echo "Latest Nightly sequence: ${latest_nightly_sequence}"
+          echo "Source manifest tag: ${current_tag}"
+          echo "Calculated release tag: ${new_tag}"
+
+          echo "source_sequence=${latest_nightly_sequence}" >> "${GITHUB_OUTPUT}"
+          echo "source_manifest_tag=${current_tag}" >> "${GITHUB_OUTPUT}"
+          echo "release_tag=${new_tag}" >> "${GITHUB_OUTPUT}"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -37,27 +99,8 @@ jobs:
             exit 1
           fi
 
-          DATE_IST="$(TZ=Asia/Kolkata date +%Y%m%d)"
-          MAX_NN=0
-
-          # Find next NN across all target repositories so the release tag is shared.
-          for repo in ${IMAGE_REPOS}; do
-            tags_json="$(aws ecr describe-images \
-              --repository-name "${repo}" \
-              --query 'imageDetails[].imageTags[]' \
-              --output json || echo '[]')"
-
-            while IFS= read -r n; do
-              if (( 10#${n} > MAX_NN )); then
-                MAX_NN=$((10#${n}))
-              fi
-            done < <(echo "${tags_json}" | jq -r ".[]? | capture(\"^r${DATE_IST}_(?<n>[0-9]{2})$\").n? // empty")
-          done
-
-          NEXT_NN="$(printf '%02d' "$((MAX_NN + 1))")"
-          NEW_TAG="r${DATE_IST}_${NEXT_NN}"
-
-          echo "Using release tag: ${NEW_TAG}"
+          NEW_TAG="${{ steps.calculate_release_tag.outputs.release_tag }}"
+          echo "Using release tag from Nightly manifest calculation: ${NEW_TAG}"
           echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
 
           results='[]'
