@@ -107,6 +107,18 @@ spec:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
                   optional: true
+            - name: WEBHOOK_PAYLOAD_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: WEBHOOK_PAYLOAD_ENCRYPTION_KEY
+                  optional: true
+            - name: POLLING_TRIGGER_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: POLLING_TRIGGER_ENCRYPTION_KEY
+                  optional: true
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}

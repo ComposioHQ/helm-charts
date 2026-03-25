@@ -359,6 +359,11 @@ Image pull secrets
     {{- $pullSecrets = append $pullSecrets "replicated-pull-secret" -}}
   {{- end -}}
 
+  {{/* always include replicated-pull-secret when replicated is enabled */}}
+  {{- if ((.Values.replicated).enabled) }}
+    {{- $pullSecrets = append $pullSecrets "replicated-pull-secret" -}}
+  {{- end -}}
+
 
   {{- if (not (empty $pullSecrets)) -}}
 imagePullSecrets:
