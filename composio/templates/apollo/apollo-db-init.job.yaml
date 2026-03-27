@@ -62,7 +62,7 @@ spec:
           {{- end }}
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
-            - name: APOLLO_SECRETS_DIR
+            - name: APOLLO_SECRET_DIR
               value: {{ .Values.apollo.secretsDir | quote }}
             # Apollo database URL
             - name: DATABASE_URL
