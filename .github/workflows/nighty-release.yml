@@ -134,7 +134,7 @@ jobs:
 
           for repo in ${IMAGE_REPOS}; do
             image_json="$(aws ecr batch-get-image \
-              --repository-name "${repo}" \
+              --repository-name composio-self-host/"${repo}" \
               --image-ids imageTag=latest \
               --accepted-media-types \
                 application/vnd.oci.image.manifest.v1+json \
@@ -153,7 +153,7 @@ jobs:
             fi
 
             metadata_json="$(aws ecr describe-images \
-              --repository-name "${repo}" \
+              --repository-name composio-self-host/"${repo}" \
               --image-ids imageDigest="${digest}" \
               --output json)"
 
@@ -162,14 +162,14 @@ jobs:
 
             if [[ -n "${media_type}" ]]; then
               aws ecr put-image \
-                --repository-name "${repo}" \
+                --repository-name composio-self-host/"${repo}" \
                 --image-tag "${NEW_TAG}" \
                 --image-manifest-media-type "${media_type}" \
                 --image-manifest "${manifest}" \
                 >/dev/null
             else
               aws ecr put-image \
-                --repository-name "${repo}" \
+                --repository-name composio-self-host/"${repo}" \
                 --image-tag "${NEW_TAG}" \
                 --image-manifest "${manifest}" \
                 >/dev/null
@@ -178,7 +178,7 @@ jobs:
             echo "repo=${repo} latest_digest=${digest} new_tag=${NEW_TAG} pushed_at=${pushed_at} size_bytes=${size_bytes}"
 
             row="$(jq -n \
-              --arg repo "${repo}" \
+              --arg repo composio-self-host/"${repo}" \
               --arg latest_digest "${digest}" \
               --arg new_tag "${NEW_TAG}" \
               --arg pushed_at "${pushed_at}" \
