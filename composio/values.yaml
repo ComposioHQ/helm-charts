@@ -174,7 +174,7 @@ apollo:
     tag: "r20260325_04"
     # -- Image pull policy
     pullPolicy: Always
-  # -- Directory exposed to Apollo containers via APOLLO_SECRETS_DIR.
+  # -- Directory exposed to Apollo containers via APOLLO_SECRET_DIR.
   secretsDir: "/etc/secrets/apollo"
   # -- Additional init containers for Apollo. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
   additionalInitContainers: []

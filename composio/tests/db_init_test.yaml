@@ -132,7 +132,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: APOLLO_SECRETS_DIR
+            name: APOLLO_SECRET_DIR
             value: /etc/secrets/apollo
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
@@ -178,7 +178,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: APOLLO_SECRETS_DIR
+            name: APOLLO_SECRET_DIR
             value: /var/run/apollo-secrets
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
