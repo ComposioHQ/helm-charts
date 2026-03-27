@@ -109,7 +109,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN }}
+          # role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::519602868852:role/github-actions-helm-charts-ecr
           aws-region: us-east-1
 
       - name: Resolve latest digest and retag
