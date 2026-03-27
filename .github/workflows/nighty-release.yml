@@ -13,23 +13,8 @@ permissions:
   contents: read
 
 jobs:
-  determine-environment:
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.env.outputs.environment }}
-    steps:
-      - name: Determine environment
-        id: env
-        run: |
-          if [[ "${{ github.ref_name }}" == "release-stable" ]]; then
-            echo "environment=prod" >> "$GITHUB_OUTPUT"
-          else
-            echo "environment=staging" >> "$GITHUB_OUTPUT"
-          fi
-
   retag-latest-images:
     runs-on: ubuntu-latest
-    environment: ${{ needs.determine-environment.outputs.environment }}
     outputs:
       release_tag: ${{ steps.retag.outputs.release_tag }}
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
@@ -108,11 +93,19 @@ jobs:
           echo "base_tag=${base_tag}" >> "${GITHUB_OUTPUT}"
           echo "release_tag=${new_tag}" >> "${GITHUB_OUTPUT}"
 
+      - name: Determine AWS Assume Role ARN
+        id: env
+        run: |
+          if [[ "${{ github.ref_name }}" == "release-stable" ]]; then
+            echo "AWS_ROLE_ARN=arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr" >> "$GITHUB_OUTPUT"
+          else
+            echo "AWS_ROLE_ARN=arn:aws:iam::519602868852:role/github-actions-helm-charts-ecr" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN }}
-          role-to-assume: arn:aws:iam::519602868852:role/github-actions-helm-charts-ecr
+          role-to-assume: ${{ steps.env.outputs.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
       - name: Resolve latest digest and retag
