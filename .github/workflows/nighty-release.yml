@@ -5,13 +5,31 @@ on:
     # 00:00 IST is 18:30 UTC (previous day)
     - cron: "30 18 * * *"
   workflow_dispatch:
+  # Temp solution to test the workflow without merging it
+  pull_request:
+
 
 permissions:
   contents: read
 
 jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.ref_name }}" == "release-stable" ]]; then
+            echo "environment=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=staging" >> "$GITHUB_OUTPUT"
+          fi
+
   retag-latest-images:
     runs-on: ubuntu-latest
+    environment: ${{ needs.determine-environment.outputs.environment }}
     outputs:
       release_tag: ${{ steps.retag.outputs.release_tag }}
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
@@ -91,9 +109,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN }}
+          aws-region: us-east-1
 
       - name: Resolve latest digest and retag
         id: retag
