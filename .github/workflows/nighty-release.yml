@@ -36,6 +36,8 @@ jobs:
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate"
+    permissions:
+      id-token: write
     steps:
       - name: Calculate release tag from latest GitHub release
         id: calculate_release_tag
