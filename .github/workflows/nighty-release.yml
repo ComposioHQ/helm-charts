@@ -222,8 +222,10 @@ jobs:
           curl -Ls \
             "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
             -o replicated.tar.gz
+          echo "Extracting Replciated CLI..."
           tar xf replicated.tar.gz replicated && rm replicated.tar.gz
-          sudo mv replicated /usr/local/bin/replicated
+          echo "Installing Replicated CLI in /usr/local/bin/"
+          sudo install replicated /usr/local/bin/replicated
 
       - name: Check replicated
         run: |
@@ -289,6 +291,7 @@ jobs:
           yq eval -i '.mercury.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.frontend.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.weaviate.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          cd -
 
           cd ./manifests
           yq eval -i '.metadata.labels."app.kubernetes.io/version" = strenv(NEW_VERSION)' ./k8s-app.yaml
