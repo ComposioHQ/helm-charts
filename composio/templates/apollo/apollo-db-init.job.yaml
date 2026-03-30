@@ -54,7 +54,7 @@ spec:
       {{- end }}
       containers:
         - name: apollo-db-init
-          image: "{{ include "chart.registry" . }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.apollo.dbInit.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.apollo.dbInit.image.pullPolicy }}
           {{- with .Values.apollo.dbInit.containerSecurityContext }}
           securityContext:
@@ -89,6 +89,9 @@ spec:
             - name: apollo-secrets
               mountPath: {{ .Values.apollo.secretsDir | quote }}
               readOnly: true
+            {{- with .Values.apollo.dbInit.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             requests:
               cpu: 500m
@@ -99,6 +102,9 @@ spec:
       volumes:
         - name: apollo-secrets
           emptyDir: {}
+        {{- with .Values.apollo.dbInit.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
   backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}

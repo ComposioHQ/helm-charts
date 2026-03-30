@@ -57,14 +57,14 @@ stringData:
                         echo "RESULT=MISSING_CONFIG EXIT_CODE=1"
                         exit 0
                       fi
-                      
+
                       # Attempt to connect and run a simple query
                       if psql -c "SELECT 1;" > /tmp/output 2>&1; then
                         echo "RESULT=OK EXIT_CODE=0"
                       else
                         EXIT_CODE=$?
                         ERROR=$(cat /tmp/output 2>/dev/null || echo "Unknown error")
-                        
+
                         # Check for common errors
                         if echo "${ERROR}" | grep -qi "authentication failed\|password authentication failed"; then
                           echo "RESULT=AUTH_FAILED EXIT_CODE=${EXIT_CODE}"

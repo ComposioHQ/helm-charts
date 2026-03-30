@@ -79,7 +79,7 @@ spec:
       {{- end }}
       containers:
         - name: apollo
-          image: "{{ include "chart.registry" . }}/{{ .Values.apollo.image.repository }}:{{ .Values.apollo.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.apollo.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.apollo.image.pullPolicy }}
           {{- with .Values.apollo.containerSecurityContext }}
           securityContext:
@@ -193,9 +193,9 @@ spec:
             {{- else if $redisValues.enabled }}
             - name: REDIS_URL
             {{- if $redisAuth.password }}
-              value: "redis://:{{ $redisAuth.password }}@{{ .Release.Name }}-redis-master:6379"
+              value: "redis://:{{ $redisAuth.password }}@{{ .Values.redis.fullnameOverride | default (printf "%s-redis" .Release.Name) }}-master:6379"
             {{- else }}
-              value: "redis://{{ .Release.Name }}-redis-master:6379"
+              value: "redis://{{ .Values.redis.fullnameOverride | default (printf "%s-redis" .Release.Name) }}-master:6379"
             {{- end }}
             {{- end }}
             - name: ENCRYPTION_KEY
@@ -280,6 +280,9 @@ spec:
               mountPath: "{{ .Values.apollo.googleServiceAccount.mountPath }}"
               readOnly: true
             {{- end }}
+            {{- with .Values.apollo.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: apollo-secrets
           emptyDir: {}
@@ -288,6 +291,9 @@ spec:
           secret:
             secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
             optional: true
+        {{- end }}
+        {{- with .Values.apollo.volumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
 ---
 apiVersion: v1

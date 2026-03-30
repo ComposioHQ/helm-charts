@@ -27,16 +27,16 @@ data:
   otel-collector-config.yaml: |
     receivers:
       {{- toYaml .Values.otel.collector.config.receivers | nindent 6 }}
-    
+
     processors:
       {{- toYaml .Values.otel.collector.config.processors | nindent 6 }}
-    
+
     exporters:
       {{- toYaml .Values.otel.collector.config.exporters | nindent 6 }}
-    
+
     extensions:
       {{- toYaml .Values.otel.collector.config.extensions | nindent 6 }}
-    
+
     service:
       {{- toYaml .Values.otel.collector.config.service | nindent 6 }}
 ---
