@@ -218,6 +218,7 @@ jobs:
         run: |
           version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
             | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          echo "Downloading Replicated CLI..."
           curl -Ls \
             "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
             -o replicated.tar.gz
