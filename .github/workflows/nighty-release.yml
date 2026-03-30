@@ -327,7 +327,7 @@ jobs:
           --distribution eks \
           --version 1.35 \
           --nodes 2 \
-          --instance-type t3.large \
+          --instance-type c5.large \
           --disk 50 \
           --ttl 12h \
           --tag env="${{ steps.branch.outputs.branch_name }}"
