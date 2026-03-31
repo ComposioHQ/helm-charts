@@ -182,6 +182,8 @@ apollo:
   serviceAccount:
     # -- Enable service account creation
     enabled: true
+    # -- Create the service account. Set to false to use an existing service account
+    create: true
     # -- Name of the service account to create or use
     name: "composio-apollo"
     # -- Annotations to add to the service account
@@ -395,6 +397,8 @@ thermos:
   serviceAccount:
     # -- Enable service account creation
     enabled: false
+    # -- Create the service account. Set to false to use an existing service account
+    create: true
     # -- Name of the service account to create or use
     name: "composio-thermos"
     # -- Annotations to add to the service account
@@ -1045,6 +1049,8 @@ mercury:
   serviceAccount:
     # -- Enable service account creation
     enabled: false
+    # -- Create the service account. Set to false to use an existing service account
+    create: true
     # -- Name of the service account to create or use
     name: "composio-mercury"
     # -- Annotations to add to the service account
@@ -1172,6 +1178,8 @@ frontend:
   serviceAccount:
     # -- Enable service account creation
     enabled: false
+    # -- Create the service account. Set to false to use an existing service account
+    create: true
     # -- Name of the service account to create or use
     name: "composio-frontend"
     # -- Annotations to add to the service account
@@ -1240,6 +1248,8 @@ weaviate:
   serviceAccount:
     # -- Enable service account creation
     enabled: false
+    # -- Create the service account. Set to false to use an existing service account
+    create: true
     # -- Name of the service account to create or use
     name: "composio-weaviate"
     # -- Annotations to add to the service account
