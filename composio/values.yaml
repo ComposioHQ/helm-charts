@@ -180,11 +180,12 @@ apollo:
   additionalInitContainers: []
 
   serviceAccount:
-    # -- Enable service account creation
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: true
-    # -- Create the service account. Set to false to use an existing service account
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
     create: true
-    # -- Name of the service account to create or use
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
     name: "composio-apollo"
     # -- Annotations to add to the service account
     annotations: {}
@@ -395,11 +396,12 @@ thermos:
   additionalInitContainers: []
 
   serviceAccount:
-    # -- Enable service account creation
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: false
-    # -- Create the service account. Set to false to use an existing service account
-    create: false
-    # -- Name of the service account to create or use
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
     name: "composio-thermos"
     # -- Annotations to add to the service account
     annotations: {}
@@ -1047,11 +1049,12 @@ mercury:
   additionalInitContainers: []
 
   serviceAccount:
-    # -- Enable service account creation
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: false
-    # -- Create the service account. Set to false to use an existing service account
-    create: false
-    # -- Name of the service account to create or use
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
     name: "composio-mercury"
     # -- Annotations to add to the service account
     annotations: {}
@@ -1176,11 +1179,12 @@ frontend:
   additionalInitContainers: []
 
   serviceAccount:
-    # -- Enable service account creation
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: false
-    # -- Create the service account. Set to false to use an existing service account
-    create: false
-    # -- Name of the service account to create or use
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
     name: "composio-frontend"
     # -- Annotations to add to the service account
     annotations: {}
@@ -1246,11 +1250,12 @@ weaviate:
     # -- Image pull policy
     pullPolicy: Always
   serviceAccount:
-    # -- Enable service account creation
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: false
-    # -- Create the service account. Set to false to use an existing service account
-    create: false
-    # -- Name of the service account to create or use
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
     name: "composio-weaviate"
     # -- Annotations to add to the service account
     annotations: {}
