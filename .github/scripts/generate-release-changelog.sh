@@ -450,7 +450,7 @@ if [[ -z "${from_identifier}" || -z "${to_identifier}" ]]; then
   exit 1
 fi
 
-CHART_OCI_REF="${CHART_OCI_REF:-oci://registry.composio.io/composio-rodent/unstable/composio}"
+CHART_OCI_REF="${CHART_OCI_REF:-oci://registry.composio.io/composio-rodent/nightly/composio}"
 
 require_cmd git
 require_cmd curl
