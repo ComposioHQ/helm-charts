@@ -1,15 +1,20 @@
 name: Generate Release Changelog
 
 on:
+  push:
+    branches:
+      - ft-add-generate-changelog-action
   workflow_dispatch:
     inputs:
       from_release:
         description: Older chart version or git ref
         required: true
+        default: "0.1.72"
         type: string
       to_release:
         description: Newer chart version or git ref
         required: true
+        default: "0.1.84"
         type: string
       chart_oci_ref:
         description: OCI chart reference used when a version is not available in git history
@@ -45,7 +50,10 @@ jobs:
         id: generate
         shell: bash
         env:
-          CHART_OCI_REF: ${{ inputs.chart_oci_ref }}
+          CHANGELOG_FROM_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.from_release || '0.1.72' }}
+          CHANGELOG_TO_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.to_release || '0.1.84' }}
+          CHANGELOG_OUTPUT_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.output_file || 'release-changelog.md' }}
+          CHART_OCI_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.chart_oci_ref || 'oci://registry.composio.io/composio-rodent/nightly/composio' }}
           GITHUB_TOKEN: ${{ github.token }}
           CHANGELOG_GITHUB_TOKEN: ${{ secrets.CROSS_REPO_GITHUB_TOKEN }}
           CHART_REGISTRY_USERNAME: ${{ secrets.CHART_REGISTRY_USERNAME }}
@@ -54,9 +62,9 @@ jobs:
           REPLICATED_HELM_AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
         run: |
           ./.github/scripts/generate-release-changelog.sh \
-            "${{ inputs.from_release }}" \
-            "${{ inputs.to_release }}" \
-            "${{ inputs.output_file }}"
+            "${CHANGELOG_FROM_RELEASE}" \
+            "${CHANGELOG_TO_RELEASE}" \
+            "${CHANGELOG_OUTPUT_FILE}"
 
       - name: Publish step summary
         shell: bash
