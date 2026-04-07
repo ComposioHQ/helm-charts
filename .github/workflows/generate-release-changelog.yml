@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   generate-changelog:
@@ -46,6 +47,14 @@ jobs:
       - name: Install yq
         uses: mikefarah/yq@v4
 
+      - name: Configure AWS credentials for image metadata lookup
+        id: aws
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr
+          aws-region: us-east-1
+
       - name: Generate changelog
         id: generate
         shell: bash
@@ -60,6 +69,7 @@ jobs:
           CHART_REGISTRY_PASSWORD: ${{ secrets.CHART_REGISTRY_PASSWORD }}
           REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
           REPLICATED_HELM_AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
+          ENABLE_IMAGE_LABEL_LOOKUP: "1"
         run: |
           ./.github/scripts/generate-release-changelog.sh \
             "${CHANGELOG_FROM_RELEASE}" \

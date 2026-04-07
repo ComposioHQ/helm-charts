@@ -14,7 +14,7 @@ Identifiers can be any of:
 The generated markdown includes:
 - the OCI image tag delta from composio/values.yaml
 - the current helm-charts repo changes when chart versions map to git commits
-- per-repo source changelogs for mapped services
+- source repository and revision metadata from image labels when accessible
 EOF
 }
 
@@ -201,48 +201,233 @@ resolve_identifier() {
   resolve_from_chart_oci "${identifier}" "${prefix}"
 }
 
+normalize_source_repo() {
+  local source="$1"
+
+  source="${source#https://github.com/}"
+  source="${source#http://github.com/}"
+  source="${source#ssh://git@github.com/}"
+  source="${source#git@github.com:}"
+  source="${source#git://github.com/}"
+  source="${source#github.com/}"
+  source="${source%.git}"
+  source="${source#/}"
+
+  if [[ "${source}" == */* ]]; then
+    printf '%s' "${source}"
+  fi
+}
+
+ecr_fetch_image_config_json() {
+  local registry="$1"
+  local repository="$2"
+  local tag="$3"
+  local registry_id region image_json manifest_json manifest_media_type child_digest config_digest download_url
+
+  if [[ ! "${registry}" =~ ^([0-9]{12})\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com$ ]]; then
+    return 1
+  fi
+
+  registry_id="${BASH_REMATCH[1]}"
+  region="${BASH_REMATCH[2]}"
+
+  image_json="$(
+    aws ecr batch-get-image \
+      --region "${region}" \
+      --registry-id "${registry_id}" \
+      --repository-name "${repository}" \
+      --image-ids imageTag="${tag}" \
+      --accepted-media-types \
+        application/vnd.oci.image.manifest.v1+json \
+        application/vnd.oci.image.index.v1+json \
+        application/vnd.docker.distribution.manifest.v2+json \
+        application/vnd.docker.distribution.manifest.list.v2+json \
+      --output json \
+      2>/dev/null
+  )" || return 1
+
+  manifest_json="$(jq -er '.images[0].imageManifest | fromjson' <<<"${image_json}" 2>/dev/null)" || return 1
+  manifest_media_type="$(jq -r '.images[0].imageManifestMediaType // empty' <<<"${image_json}")"
+
+  if [[ "${manifest_media_type}" == *"image.index"* || "${manifest_media_type}" == *"manifest.list"* ]]; then
+    child_digest="$(jq -r '.manifests[0].digest // empty' <<<"${manifest_json}")"
+    [[ -n "${child_digest}" ]] || return 1
+
+    image_json="$(
+      aws ecr batch-get-image \
+        --region "${region}" \
+        --registry-id "${registry_id}" \
+        --repository-name "${repository}" \
+        --image-ids imageDigest="${child_digest}" \
+        --accepted-media-types \
+          application/vnd.oci.image.manifest.v1+json \
+          application/vnd.docker.distribution.manifest.v2+json \
+        --output json \
+        2>/dev/null
+    )" || return 1
+
+    manifest_json="$(jq -er '.images[0].imageManifest | fromjson' <<<"${image_json}" 2>/dev/null)" || return 1
+  fi
+
+  config_digest="$(jq -r '.config.digest // empty' <<<"${manifest_json}")"
+  [[ -n "${config_digest}" ]] || return 1
+
+  download_url="$(
+    aws ecr get-download-url-for-layer \
+      --region "${region}" \
+      --registry-id "${registry_id}" \
+      --repository-name "${repository}" \
+      --layer-digest "${config_digest}" \
+      --output json \
+      2>/dev/null \
+    | jq -r '.downloadUrl // empty'
+  )" || return 1
+
+  [[ -n "${download_url}" ]] || return 1
+  curl -fsSL "${download_url}"
+}
+
+lookup_image_label_metadata_json() {
+  local registry="$1"
+  local repository="$2"
+  local tag="$3"
+  local fallback_source_repo="$4"
+  local source_repo="${fallback_source_repo}"
+  local source_label=""
+  local revision=""
+  local metadata_origin="fallback-map"
+  local metadata_status="unavailable"
+  local config_json normalized_source
+
+  if [[ -z "${repository}" || -z "${tag}" ]]; then
+    jq -cn \
+      --arg source_repo "${source_repo}" \
+      --arg source_label "${source_label}" \
+      --arg revision "${revision}" \
+      --arg metadata_origin "${metadata_origin}" \
+      --arg metadata_status "missing-image-reference" \
+      '{
+        source_repo: $source_repo,
+        source_label: $source_label,
+        revision: $revision,
+        metadata_origin: $metadata_origin,
+        metadata_status: $metadata_status
+      }'
+    return 0
+  fi
+
+  if [[ "${ENABLE_IMAGE_LABEL_LOOKUP:-1}" != "1" ]]; then
+    metadata_status="lookup-disabled"
+  elif ! command -v aws >/dev/null 2>&1; then
+    metadata_status="aws-cli-missing"
+  elif ! config_json="$(ecr_fetch_image_config_json "${registry}" "${repository}" "${tag}")"; then
+    metadata_status="lookup-failed"
+  else
+    source_label="$(jq -r '.config.Labels["org.opencontainers.image.source"] // ""' <<<"${config_json}")"
+    revision="$(jq -r '.config.Labels["org.opencontainers.image.revision"] // ""' <<<"${config_json}")"
+    normalized_source="$(normalize_source_repo "${source_label}")"
+
+    if [[ -n "${normalized_source}" ]]; then
+      source_repo="${normalized_source}"
+    fi
+
+    if [[ -n "${source_label}" || -n "${revision}" ]]; then
+      metadata_origin="image-label"
+    fi
+
+    metadata_status="ok"
+  fi
+
+  jq -cn \
+    --arg source_repo "${source_repo}" \
+    --arg source_label "${source_label}" \
+    --arg revision "${revision}" \
+    --arg metadata_origin "${metadata_origin}" \
+    --arg metadata_status "${metadata_status}" \
+    '{
+      source_repo: $source_repo,
+      source_label: $source_label,
+      revision: $revision,
+      metadata_origin: $metadata_origin,
+      metadata_status: $metadata_status
+    }'
+}
+
 extract_images_json() {
   local file="$1"
 
   yq -o=json '
     {
       "apollo": {
+        "registry": (.global.registry.name // ""),
         "repository": (.apollo.image.repository // ""),
         "tag": (.apollo.image.tag // ""),
-        "source_repo": "ComposioHQ/apollo"
+        "fallback_source_repo": "ComposioHQ/apollo"
       },
       "apollo-db-init": {
+        "registry": (.global.registry.name // ""),
         "repository": (.apollo.dbInit.image.repository // ""),
         "tag": (.apollo.dbInit.image.tag // ""),
-        "source_repo": "ComposioHQ/apollo"
+        "fallback_source_repo": "ComposioHQ/apollo"
       },
       "thermos": {
+        "registry": (.global.registry.name // ""),
         "repository": (.thermos.image.repository // ""),
         "tag": (.thermos.image.tag // ""),
-        "source_repo": "ComposioHQ/hermes"
+        "fallback_source_repo": "ComposioHQ/hermes"
       },
       "thermos-db-init": {
+        "registry": (.global.registry.name // ""),
         "repository": (.thermos.dbInit.image.repository // ""),
         "tag": (.thermos.dbInit.image.tag // ""),
-        "source_repo": "ComposioHQ/hermes"
+        "fallback_source_repo": "ComposioHQ/hermes"
       },
       "mercury": {
+        "registry": (.global.registry.name // ""),
         "repository": (.mercury.image.repository // ""),
         "tag": (.mercury.image.tag // ""),
-        "source_repo": "ComposioHQ/mercury"
+        "fallback_source_repo": "ComposioHQ/mercury"
       },
       "frontend": {
+        "registry": (.global.registry.name // ""),
         "repository": (.frontend.image.repository // ""),
         "tag": (.frontend.image.tag // ""),
-        "source_repo": "ComposioHQ/frontend"
+        "fallback_source_repo": "ComposioHQ/frontend"
       },
       "weaviate": {
+        "registry": (.global.registry.name // ""),
         "repository": (.weaviate.image.repository // ""),
         "tag": (.weaviate.image.tag // ""),
-        "source_repo": ""
+        "fallback_source_repo": ""
       }
     }
   ' "${file}"
+}
+
+enrich_images_json() {
+  local images_json="$1"
+  local result_json="$images_json"
+  local component_json name registry repository tag fallback_source_repo metadata_json
+
+  while IFS= read -r component_json; do
+    name="$(jq -r '.name' <<<"${component_json}")"
+    registry="$(jq -r '.registry // ""' <<<"${component_json}")"
+    repository="$(jq -r '.repository // ""' <<<"${component_json}")"
+    tag="$(jq -r '.tag // ""' <<<"${component_json}")"
+    fallback_source_repo="$(jq -r '.fallback_source_repo // ""' <<<"${component_json}")"
+
+    metadata_json="$(lookup_image_label_metadata_json "${registry}" "${repository}" "${tag}" "${fallback_source_repo}")"
+
+    result_json="$(
+      jq -c \
+        --arg name "${name}" \
+        --argjson metadata "${metadata_json}" \
+        '.[$name] += $metadata' \
+        <<<"${result_json}"
+    )"
+  done < <(jq -c 'to_entries[] | {name: .key} + .value' <<<"${images_json}")
+
+  printf '%s' "${result_json}"
 }
 
 github_compare_request() {
@@ -320,8 +505,9 @@ append_helm_charts_section() {
 
 append_repo_sections() {
   local image_diff_json="$1"
-  local repo_groups_json group_json repo compare_url base_tag head_tag compare_json
-  local components repositories total_commits compare_commits files_changed
+  local repo_groups_json group_json repo compare_url base_revision head_revision compare_json
+  local components image_refs total_commits compare_commits files_changed
+  local revision_components total_components
 
   repo_groups_json="$(
     jq '
@@ -333,15 +519,20 @@ append_repo_sections() {
       | map({
           source_repo: .[0].source_repo,
           components: (map(.name) | unique),
-          repositories: (map(.repository) | unique),
-          from_tags: (map(.from_tag) | unique),
-          to_tags: (map(.to_tag) | unique)
+          image_refs: (map(.image_ref) | unique),
+          from_tags: (map(.from_tag) | map(select(length > 0)) | unique),
+          to_tags: (map(.to_tag) | map(select(length > 0)) | unique),
+          from_revisions: (map(.from_revision) | map(select(length > 0)) | unique),
+          to_revisions: (map(.to_revision) | map(select(length > 0)) | unique),
+          metadata_origins: (map(.metadata_origin) | unique),
+          revision_components: ([.[] | select((.from_revision // "") != "" and (.to_revision // "") != "")] | length),
+          total_components: length
         })
     ' <<<"${image_diff_json}"
   )"
 
   if [[ "$(jq 'length' <<<"${repo_groups_json}")" == "0" ]]; then
-    echo "_No mapped source repo tag changes detected._" >> "${output_file}"
+    echo "_No mapped source repo changes detected._" >> "${output_file}"
     echo >> "${output_file}"
     return 0
   fi
@@ -349,25 +540,35 @@ append_repo_sections() {
   while IFS= read -r group_json; do
     repo="$(jq -r '.source_repo' <<<"${group_json}")"
     components="$(jq -r '.components | join(", ")' <<<"${group_json}")"
-    repositories="$(jq -r '.repositories | join(", ")' <<<"${group_json}")"
+    image_refs="$(jq -r '.image_refs | join(", ")' <<<"${group_json}")"
+    revision_components="$(jq -r '.revision_components' <<<"${group_json}")"
+    total_components="$(jq -r '.total_components' <<<"${group_json}")"
 
     echo "### ${repo}" >> "${output_file}"
     echo >> "${output_file}"
     echo "- Components: \`${components}\`" >> "${output_file}"
-    echo "- Images: \`${repositories}\`" >> "${output_file}"
+    echo "- Images: \`${image_refs}\`" >> "${output_file}"
 
-    if [[ "$(jq '.from_tags | length' <<<"${group_json}")" != "1" || "$(jq '.to_tags | length' <<<"${group_json}")" != "1" ]]; then
-      echo "- This repo maps to multiple OCI tags in the selected releases, so compare output is omitted." >> "${output_file}"
+    if [[ "$(jq '.from_tags | length' <<<"${group_json}")" == "1" && "$(jq '.to_tags | length' <<<"${group_json}")" == "1" ]]; then
+      echo "- OCI tags: \`$(jq -r '.from_tags[0]' <<<"${group_json}")\` -> \`$(jq -r '.to_tags[0]' <<<"${group_json}")\`" >> "${output_file}"
+    else
+      echo "- OCI tags: mixed across components" >> "${output_file}"
+    fi
+
+    echo "- Revision metadata resolved for ${revision_components}/${total_components} changed components" >> "${output_file}"
+
+    if [[ "$(jq '.from_revisions | length' <<<"${group_json}")" != "1" || "$(jq '.to_revisions | length' <<<"${group_json}")" != "1" ]]; then
+      echo "- Revision labels were missing or inconsistent across components, so repo compare is omitted." >> "${output_file}"
       echo >> "${output_file}"
       continue
     fi
 
-    base_tag="$(jq -r '.from_tags[0]' <<<"${group_json}")"
-    head_tag="$(jq -r '.to_tags[0]' <<<"${group_json}")"
-    compare_url="https://github.com/${repo}/compare/${base_tag}...${head_tag}"
+    base_revision="$(jq -r '.from_revisions[0]' <<<"${group_json}")"
+    head_revision="$(jq -r '.to_revisions[0]' <<<"${group_json}")"
+    compare_url="https://github.com/${repo}/compare/${base_revision}...${head_revision}"
 
-    echo "- OCI tags: \`${base_tag}\` -> \`${head_tag}\`" >> "${output_file}"
-    echo "- Compare: [${repo} ${base_tag}...${head_tag}](${compare_url})" >> "${output_file}"
+    echo "- Revisions: \`${base_revision:0:12}\` -> \`${head_revision:0:12}\`" >> "${output_file}"
+    echo "- Compare: [${repo} ${base_revision:0:12}...${head_revision:0:12}](${compare_url})" >> "${output_file}"
 
     if [[ "${SKIP_GITHUB_COMPARE:-0}" == "1" ]]; then
       echo "- Compare API skipped via \`SKIP_GITHUB_COMPARE=1\`." >> "${output_file}"
@@ -375,8 +576,8 @@ append_repo_sections() {
       continue
     fi
 
-    if ! compare_json="$(github_compare_request "${repo}" "${base_tag}" "${head_tag}")"; then
-      echo "- Unable to load compare data. Check tag availability in ${repo} and workflow token access." >> "${output_file}"
+    if ! compare_json="$(github_compare_request "${repo}" "${base_revision}" "${head_revision}")"; then
+      echo "- Unable to load compare data. Check repo access and revision availability." >> "${output_file}"
       echo >> "${output_file}"
       continue
     fi
@@ -393,7 +594,7 @@ append_repo_sections() {
     echo >> "${output_file}"
 
     if [[ "${compare_commits}" == "0" ]]; then
-      echo "_No commits reported for this tag range._" >> "${output_file}"
+      echo "_No commits reported for this revision range._" >> "${output_file}"
       echo >> "${output_file}"
       continue
     fi
@@ -422,20 +623,26 @@ append_unmapped_components_section() {
 
   echo "## Unmapped Components" >> "${output_file}"
   echo >> "${output_file}"
-  echo "These OCI tags changed, but the workflow does not map them to a Composio source repository." >> "${output_file}"
+  echo "These OCI tags changed, but no source repo could be derived for them." >> "${output_file}"
   echo >> "${output_file}"
-  echo "| Component | Repository | From tag | To tag |" >> "${output_file}"
-  echo "| --- | --- | --- | --- |" >> "${output_file}"
+  echo "| Component | Image | From tag | To tag | From revision | To revision | Metadata status |" >> "${output_file}"
+  echo "| --- | --- | --- | --- | --- | --- | --- |" >> "${output_file}"
   jq -r '
     .[]
     | "| "
       + .name
       + " | "
-      + .repository
+      + .image_ref
       + " | "
       + (if .from_tag == "" then "-" else .from_tag end)
       + " | "
       + (if .to_tag == "" then "-" else .to_tag end)
+      + " | "
+      + (if .from_revision == "" then "-" else .from_revision[0:12] end)
+      + " | "
+      + (if .to_revision == "" then "-" else .to_revision[0:12] end)
+      + " | "
+      + (.metadata_status // "-")
       + " |"
   ' <<<"${unmapped_json}" >> "${output_file}"
   echo >> "${output_file}"
@@ -465,6 +672,8 @@ resolve_identifier "${to_identifier}" "TO"
 
 from_images_json="$(extract_images_json "${TMPDIR_PATH}/FROM-values.yaml")"
 to_images_json="$(extract_images_json "${TMPDIR_PATH}/TO-values.yaml")"
+from_images_json="$(enrich_images_json "${from_images_json}")"
+to_images_json="$(enrich_images_json "${to_images_json}")"
 
 image_diff_json="$(
   jq -cn \
@@ -474,10 +683,38 @@ image_diff_json="$(
         ($to | keys_unsorted[]) as $name
         | {
             name: $name,
+            registry: ($to[$name].registry // $from[$name].registry // ""),
             repository: ($to[$name].repository // $from[$name].repository // ""),
+            image_ref: (
+              if ($to[$name].registry // $from[$name].registry // "") == "" then
+                ($to[$name].repository // $from[$name].repository // "")
+              else
+                ($to[$name].registry // $from[$name].registry // "")
+                + "/"
+                + ($to[$name].repository // $from[$name].repository // "")
+              end
+            ),
             source_repo: ($to[$name].source_repo // $from[$name].source_repo // ""),
             from_tag: ($from[$name].tag // ""),
             to_tag: ($to[$name].tag // ""),
+            from_revision: ($from[$name].revision // ""),
+            to_revision: ($to[$name].revision // ""),
+            metadata_origin: (
+              if ($to[$name].metadata_origin // "") != "" and ($to[$name].metadata_origin // "") != "fallback-map" then
+                ($to[$name].metadata_origin // "")
+              else
+                ($from[$name].metadata_origin // $to[$name].metadata_origin // "")
+              end
+            ),
+            metadata_status: (
+              [
+                ($from[$name].metadata_status // ""),
+                ($to[$name].metadata_status // "")
+              ]
+              | map(select(length > 0))
+              | unique
+              | join(",")
+            ),
             changed: (($from[$name].tag // "") != ($to[$name].tag // ""))
           }
       ]
@@ -489,6 +726,7 @@ to_unique_tag_count="$(jq -r '[.[].to_tag | select(length > 0)] | unique | lengt
 from_release_oci_tag="$(jq -r '[.[].from_tag | select(length > 0)] | unique | if length == 1 then .[0] else "" end' <<<"${image_diff_json}")"
 to_release_oci_tag="$(jq -r '[.[].to_tag | select(length > 0)] | unique | if length == 1 then .[0] else "" end' <<<"${image_diff_json}")"
 changed_components_count="$(jq -r '[.[] | select(.changed)] | length' <<<"${image_diff_json}")"
+revision_resolved_count="$(jq -r '[.[] | select(.changed and (.from_revision // "") != "" and (.to_revision // "") != "")] | length' <<<"${image_diff_json}")"
 
 {
   echo "# Release changelog"
@@ -518,18 +756,21 @@ changed_components_count="$(jq -r '[.[] | select(.changed)] | length' <<<"${imag
     echo "- Releases use mixed OCI tags. See the per-component table below."
   fi
   echo "- Components changed: ${changed_components_count}"
+  echo "- Revision labels resolved for ${revision_resolved_count}/${changed_components_count} changed components"
   echo
-  echo "| Component | Image repository | Source repo | From tag | To tag | Changed |"
-  echo "| --- | --- | --- | --- | --- | --- |"
+  echo "| Component | Image | Source repo | From tag | To tag | From revision | To revision | Metadata |"
+  echo "| --- | --- | --- | --- | --- | --- | --- | --- |"
   jq -r '
     .[]
     | [
         .name,
-        .repository,
+        .image_ref,
         (if .source_repo == "" then "-" else .source_repo end),
         (if .from_tag == "" then "-" else .from_tag end),
         (if .to_tag == "" then "-" else .to_tag end),
-        (if .changed then "yes" else "no" end)
+        (if .from_revision == "" then "-" else .from_revision[0:12] end),
+        (if .to_revision == "" then "-" else .to_revision[0:12] end),
+        (if .metadata_origin == "" then "-" else .metadata_origin end)
       ]
     | "| " + join(" | ") + " |"
   ' <<<"${image_diff_json}"
@@ -544,6 +785,7 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     echo "output_file=${output_file}"
     echo "changed_components=${changed_components_count}"
+    echo "revision_resolved_components=${revision_resolved_count}"
     echo "from_chart_version=$(get_meta FROM chart_version)"
     echo "to_chart_version=$(get_meta TO chart_version)"
     echo "from_source_kind=$(get_meta FROM source_kind)"
