@@ -2,8 +2,8 @@ apiVersion: v2
 name: composio
 description: A Helm chart for Composio
 type: application
-version: "0.1.40"
-appVersion: "0.1.40"
+version: "0.1.84"
+appVersion: "0.1.84"
 dependencies:
   - name: redis
     version: "17.11.3"
@@ -17,4 +17,4 @@ dependencies:
   - name: replicated
     repository: oci://registry.replicated.com/library
     version: 1.18.1
-    condition: replicated.enabled 
+    condition: replicated.enabled

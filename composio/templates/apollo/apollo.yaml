@@ -108,7 +108,7 @@ spec:
                 name: {{ .Release.Name }}-apollo-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
-            - name: APOLLO_SECRETS_DIR
+            - name: APOLLO_SECRET_DIR
               value: {{ .Values.apollo.secretsDir | quote }}
             {{- if eq .Values.apollo.objectStorage.backend "s3"}}
             - name: S3_ACCESS_KEY_ID
