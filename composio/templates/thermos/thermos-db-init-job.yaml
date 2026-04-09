@@ -54,7 +54,7 @@ spec:
       {{- end }}
       containers:
         - name: thermos-db-init
-          image: "{{ include "chart.registry" . }}/{{ .Values.thermos.dbInit.image.repository }}:{{ .Values.thermos.dbInit.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.thermos.dbInit.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.thermos.dbInit.image.pullPolicy }}
           {{- with .Values.thermos.dbInit.containerSecurityContext }}
           securityContext:
@@ -84,10 +84,16 @@ spec:
             - name: EXTRA_ATLAS_FLAGS
               value: {{ .Values.thermos.dbInit.extraAtlasFlags | quote }}
             {{- end }}
+            {{- with .Values.thermos.dbInit.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: thermos-secrets
               mountPath: {{ .Values.thermos.secretsDir | quote }}
               readOnly: true
+            {{- with .Values.thermos.dbInit.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             requests:
               cpu: 500m
@@ -98,6 +104,9 @@ spec:
       volumes:
         - name: thermos-secrets
           emptyDir: {}
+        {{- with .Values.thermos.dbInit.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
   backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}

@@ -159,16 +159,21 @@ apollo:
   replicaCount: 2
   # Apollo container image configuration
   image:
-    # -- Apollo image repository
+    # -- Apollo image repository (used when imageName is not set)
     repository: composio-self-host/apollo
     # -- Apollo image tag
     tag: "r20260407_04"
     # -- Image pull policy
     pullPolicy: Always
+    imageName: ""
   # -- Directory exposed to Apollo containers via APOLLO_SECRET_DIR.
   secretsDir: "/etc/secrets/apollo"
   # -- Additional init containers for Apollo. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
   additionalInitContainers: []
+    # -- Additional volume mounts for the main container
+  volumeMounts: []
+  # -- Additional volumes for the pod
+  volumes: []
   serviceAccount:
     # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: true
@@ -199,12 +204,14 @@ apollo:
     enabled: true
     # Database init container image configuration
     image:
-      # -- Database init image repository
+      # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
       tag: "r20260407_04"
       # -- Image pull policy
       pullPolicy: Always
+      # -- Full image name (optional, overrides repository:tag if set)
+      imageName: ""
     # -- Additional init containers for Apollo DB init. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
     additionalInitContainers: []
   # Apollo service configuration
@@ -363,16 +370,23 @@ thermos:
   replicaCount: 2
   # Thermos container image configuration
   image:
-    # -- Thermos image repository
+    # -- Thermos image repository (used when imageName is not set)
     repository: composio-self-host/thermos
     # -- Thermos image tag
     tag: "r20260407_04"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
   # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
   secretsDir: "/etc/secrets/thermos"
   # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
   additionalInitContainers: []
+  # -- Additional volume mounts for the main container
+  volumeMounts: []
+  # -- Additional volumes for the pod
+  volumes: []
+
   serviceAccount:
     # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: false
@@ -391,14 +405,18 @@ thermos:
     enabled: true
     # Database init container image configuration
     image:
-      # -- Database init image repository
+      # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
       tag: "r20260407_04"
       # -- Image pull policy
       pullPolicy: Always
+      # -- Full image name (optional, overrides repository:tag if set)
+      imageName: ""
     # -- Additional init containers for Thermos DB init. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
     additionalInitContainers: []
+    # -- Additional environment variables for db init
+    env: []
   # Thermos service configuration
   service:
     # -- Service type
@@ -965,12 +983,14 @@ mercury:
   replicaCount: 1
   # Mercury container image configuration
   image:
-    # -- Mercury image repository
+    # -- Mercury image repository (used when imageName is not set)
     repository: composio-self-host/mercury
     # -- Mercury image tag
     tag: "r20260407_04"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
   # -- Directory exposed to Mercury containers via MERCURY_SECRETS_DIR.
   secretsDir: "/etc/secrets/mercury"
   # -- Additional init containers for Mercury. Mount `mercury-secrets` to populate `.Values.mercury.secretsDir`.
@@ -1062,6 +1082,18 @@ mercury:
     host: ""
     # -- TLS configuration
     tls: []
+
+  # -- Node selector for Mercury pods
+  nodeSelector: {}
+  # -- Tolerations for Mercury pods
+  tolerations: []
+  # -- Additional environment variables for Mercury (Knative service)
+  env: []
+  # -- Custom command override
+  command: []
+  # -- Custom args override
+  args: []
+  
   # -- Additional volume mounts
   volumeMounts: []
   # -- Additional volumes
@@ -1082,16 +1114,23 @@ frontend:
   replicaCount: 1
   # Frontend container image configuration
   image:
-    # -- Frontend image repository
+    # -- Frontend image repository (used when imageName is not set)
     repository: composio-self-host/frontend
     # -- Frontend image tag
     tag: "r20260407_04"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
   # -- Directory exposed to Frontend containers via FRONTEND_SECRETS_DIR.
   secretsDir: "/etc/secrets/frontend"
   # -- Additional init containers for Frontend. Mount `frontend-secrets` to populate `.Values.frontend.secretsDir`.
   additionalInitContainers: []
+  # -- Additional volume mounts
+  volumeMounts: []
+  # -- Additional volumes
+  volumes: []
+
   serviceAccount:
     # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: false
@@ -1154,12 +1193,14 @@ weaviate:
   replicaCount: 1
   # Weaviate container image configuration
   image:
-    # -- Weaviate image repository
+    # -- Weaviate image repository (used when imageName is not set)
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
     tag: "r20260407_04"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
   serviceAccount:
     # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: false
@@ -1238,3 +1279,9 @@ weaviate:
   # securityContext: {}
   # -- Additional environment variables
   # env: []
+
+  # -- Additional volume mounts
+  volumeMounts: []
+
+  # -- Additional volumes
+  volumes: []

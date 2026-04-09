@@ -74,7 +74,7 @@ stringData:
                   message: "Cluster does not have enough allocatable memory for Apollo service (requires {{ .Values.mercury.resources.requests.memory | default "2Gi" }})."
               - pass:
                   message: "Cluster has sufficient memory for Mercury service."
-        {{- if .Values.frontend.enabled }} 
+        {{- if .Values.frontend.enabled }}
         # --- Frontend Service Resource Checks ---
         - nodeResources:
             checkName: "Frontend CPU Request - Cluster Capacity"
