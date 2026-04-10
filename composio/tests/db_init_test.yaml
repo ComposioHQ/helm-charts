@@ -169,6 +169,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/apollo
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: apollo-secrets
+            emptyDir: {}
 
   - it: should allow overriding apollo db init secrets dir
     set:
@@ -371,6 +376,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/thermos
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: thermos-secrets
+            emptyDir: {}
 
   - it: should allow overriding thermos db init secrets dir
     set:
@@ -504,6 +514,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].name
           value: postgres-init-secrets
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: postgres-init-secrets
+            emptyDir: {}
 
   - it: should allow overriding postgres init secrets dir
     set:

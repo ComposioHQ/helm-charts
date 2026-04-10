@@ -1,0 +1,78 @@
+## Staging/QA values override for GKE deployment
+## This file contains ONLY non-sensitive configuration.
+## Sensitive values (database hosts, credentials) are injected via --set flags
+## from GitHub secrets at deploy time.
+
+apollo:
+  googleServiceAccount:
+    enabled: true
+    mountPath: /var/secrets/google
+    secretName: gcp-sa-key
+  oauth2_redirect_uri_override: https://staging-gke.composio.io/api/v3/toolkits/auth/callback
+  objectStorage:
+    azureConnectionString:
+      key: AZURE_CONNECTION_STRING
+      secretName: azure-cred
+    backend: azure_blob_storage
+    namespaces:
+      permanent: composio-permanent
+      temp: composio-temp
+  overwrite_apollo_url: https://staging-gke.composio.io
+  overwrite_fe_url: https://staging-gke-app.composio.io
+  s3Bucket: test-s3-protocol-for-gcs
+  s3Endpoint: https://storage.googleapis.com
+  s3EndpointUrl: https://storage.googleapis.com
+  s3ForcePathStyle: "true"
+  s3Region: auto
+  s3SignatureVersion: s3
+  search:
+    enabled: true
+    unified:
+      enabled: true
+      vectorStoreProvider: weaviate
+    vectorStoreProvider: weaviate
+  smtp:
+    enabled: true
+    smtpAuthorEmail: utkarsh@composio.io
+  smtpAuthorEmail: utkarsh@composio.io
+
+databaseMigration:
+  enabled: false
+  image: postgres:15-alpine
+  password:
+    key: password
+  port: "5432"
+
+features:
+  temporal: true
+
+frontend:
+  enabled: true
+  env:
+    BACKEND_URL: http://composio-apollo:9900
+    OVERRIDE_BACKEND_URL: https://staging-gke.composio.io
+  ingress:
+    annotations:
+      kubernetes.io/ingress.global-static-ip-name: tsuro-fe-ingress-ip
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+    className: nginx
+    enabled: true
+    host: staging-gke-app.composio.io
+
+global:
+  domain: app.composio.io
+
+mercury:
+  enabled: true
+  replicaCount: 1
+  useKnative: true
+
+replicated:
+  enabled: true
+
+temporal:
+  server:
+    enabled: true

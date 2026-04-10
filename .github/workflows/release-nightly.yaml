@@ -21,6 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fetch Doppler secrets
+        uses: dopplerhq/secrets-fetch-action@v2
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: helm-charts
+          doppler-config: staging-gke
+          inject-env-vars: true
+
       - name: Install Replicated CLI
         run: |
           version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
@@ -47,15 +55,15 @@ jobs:
           echo "current_version=$CURRENT_VERSION_CHANNEL" >> $GITHUB_OUTPUT
           echo "Promoting sequence $LATEST_SEQUENCE (version $CURRENT_VERSION) from Unstable to ${{ inputs.channel }}"
         env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ env.REPLICATED_APP }}
 
       - name: Notify Slack - Started
         id: slack
         uses: ./.github/actions/slack-notify
         with:
           status: STARTED
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           title: "Promote to ${{ inputs.channel }}"
           summary: |
@@ -64,8 +72,8 @@ jobs:
 
       - name: Promote from Unstable channel
         env:
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ env.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ env.REPLICATED_API_TOKEN }}
         run: |
           set -e
           replicated release promote ${{ steps.get_sequence.outputs.sequence }} ${{ steps.get_sequence.outputs.channel_id }} --version ${{ steps.get_sequence.outputs.version }} --release-notes "${{ github.event.release.body }}
@@ -75,7 +83,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           status: SUCCESS
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           message_id: ${{ steps.slack.outputs.message_id }}
           title: "Promote to ${{ inputs.channel }}"
@@ -88,7 +96,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           status: FAILURE
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
           channel: C093CVARNKC
           message_id: ${{ steps.slack.outputs.message_id }}
           title: "Promote to ${{ inputs.channel }}"

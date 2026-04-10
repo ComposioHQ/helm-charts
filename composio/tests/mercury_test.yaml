@@ -180,6 +180,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/mercury
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
 
   - it: should allow overriding mercury secrets dir
     set:
@@ -406,6 +411,11 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /etc/secrets/mercury
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mercury-secrets
+            emptyDir: {}
 
   - it: should allow overriding mercury secrets dir for knative
     set:
