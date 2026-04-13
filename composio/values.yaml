@@ -162,7 +162,7 @@ apollo:
     # -- Apollo image repository (used when imageName is not set)
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260409_03"
+    tag: "r20260414_01"
     # -- Image pull policy
     pullPolicy: Always
     imageName: ""
@@ -207,7 +207,7 @@ apollo:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260409_03"
+      tag: "r20260414_01"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -373,7 +373,7 @@ thermos:
     # -- Thermos image repository (used when imageName is not set)
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260409_03"
+    tag: "r20260414_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -407,7 +407,7 @@ thermos:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260409_03"
+      tag: "r20260414_01"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -985,7 +985,7 @@ mercury:
     # -- Mercury image repository (used when imageName is not set)
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260409_03"
+    tag: "r20260414_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1114,7 +1114,7 @@ frontend:
     # -- Frontend image repository (used when imageName is not set)
     repository: composio-self-host/frontend
     # -- Frontend image tag
-    tag: "r20260409_03"
+    tag: "r20260414_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1192,7 +1192,7 @@ weaviate:
     # -- Weaviate image repository (used when imageName is not set)
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260409_03"
+    tag: "r20260414_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
