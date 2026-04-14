@@ -273,6 +273,43 @@ tests:
             name: EXTRA_LIQUIBASE_ARGS
             value: "--contexts=ddl --log-level=DEBUG"
 
+  - it: should not set args when apollo.dbInit.args is empty
+    set:
+      apollo.dbInit.enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].args
+
+  - it: should set args when apollo.dbInit.args is provided (e.g. DDL preview mode)
+    set:
+      apollo.dbInit.enabled: true
+      apollo.dbInit.args:
+        - sh
+        - -c
+        - "cd /base/packages/db && make detect-ddl; exit 0"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: sh
+      - equal:
+          path: spec.template.spec.containers[0].args[1]
+          value: -c
+      - equal:
+          path: spec.template.spec.containers[0].args[2]
+          value: "cd /base/packages/db && make detect-ddl; exit 0"
+
+  - it: should support migrate-only args override
+    set:
+      apollo.dbInit.enabled: true
+      apollo.dbInit.args:
+        - sh
+        - -c
+        - "cd /base/packages/db && make migrate"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[2]
+          value: "cd /base/packages/db && make migrate"
+
 ---
 suite: test thermos db init job
 templates:

@@ -60,6 +60,10 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- with .Values.apollo.dbInit.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: APOLLO_SECRET_DIR
