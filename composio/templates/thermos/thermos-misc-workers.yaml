@@ -90,7 +90,7 @@ spec:
             {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: THERMOS_MODE
               value: "miscellaneous_worker"
-            - name: ENABLE_TEMPORAL_AUTO-RECOVERY
+            - name: ENABLE_TEMPORAL_AUTO_RECOVERY
               value: "false"
             - name: THERMOS_SECRET_DIR
               value: {{ .Values.thermosMiscWorkers.secretsDir | quote }}
