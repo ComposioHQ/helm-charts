@@ -460,6 +460,37 @@ thermos:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
+
+# Thermos misc-workers configuration (runs only THERMOS_MODE=miscellaneous_worker).
+# Disabled by default.
+thermosMiscWorkers:
+  enabled: false
+  replicaCount: 1
+  image:
+    # Same image as Thermos; behavior is controlled by THERMOS_MODE env var.
+    repository: composio-self-host/thermos
+    tag: "r20260409_03"
+    pullPolicy: Always
+    imageName: ""
+  # Reuse Thermos secrets dir by default.
+  secretsDir: "/etc/secrets/thermos"
+  additionalInitContainers: []
+  volumeMounts: []
+  volumes: []
+  podSecurityContext: {}
+  containerSecurityContext: {}
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  # Extra env vars appended to the container's env list (same shape as thermos.env).
+  env: []
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "200m"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
 # Database initialization job configuration
 dbInit:
   # -- Admin email for initial setup

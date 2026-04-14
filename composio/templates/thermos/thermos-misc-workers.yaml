@@ -1,0 +1,150 @@
+{{- if .Values.thermosMiscWorkers.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-thermos-misc-workers
+  labels:
+    app: thermos-misc-workers
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.thermosMiscWorkers.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: thermos-misc-workers
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: thermos-misc-workers
+        release: {{ .Release.Name }}
+    spec:
+      {{- if .Values.thermos.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.thermos.serviceAccount.name }}
+      {{- end }}
+      {{- if .Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- end }}
+      {{- if not .Values.replicated.enabled }}
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.thermosMiscWorkers.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.thermosMiscWorkers.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.thermosMiscWorkers.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.thermosMiscWorkers.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.thermosMiscWorkers.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: thermos-misc-workers
+          image: {{ include "composio.imageReference" (dict "image" .Values.thermosMiscWorkers.image "context" .) | quote }}
+          imagePullPolicy: {{ .Values.thermosMiscWorkers.image.pullPolicy }}
+          args: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
+          workingDir: "/tmp"
+          {{- with .Values.thermosMiscWorkers.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: 8180
+          livenessProbe:
+            httpGet:
+              path: /api
+              port: 8180
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api
+              port: 8180
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-thermos-config
+          env:
+            {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: THERMOS_MODE
+              value: "miscellaneous_worker"
+            - name: ENABLE_TEMPORAL_AUTO-RECOVERY
+              value: "false"
+            - name: THERMOS_SECRET_DIR
+              value: {{ .Values.thermosMiscWorkers.secretsDir | quote }}
+            - name: APOLLO_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: THERMOS_DATABASE_URL
+                  optional: true
+            - name: THERMOS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: THERMOS_DATABASE_URL
+                  optional: true
+            - name: POLLING_TRIGGER_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
+                  optional: true
+            - name: WEBHOOK_PAYLOAD_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
+                  optional: true
+            {{- if .Values.thermosMiscWorkers.env }}
+            {{- toYaml .Values.thermosMiscWorkers.env | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: thermos-secrets
+              mountPath: {{ .Values.thermosMiscWorkers.secretsDir | quote }}
+              readOnly: true
+            - name: cache-volume
+              mountPath: /tmp
+            {{- with .Values.thermosMiscWorkers.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.thermosMiscWorkers.resources | nindent 12 }}
+      volumes:
+        - name: thermos-secrets
+          emptyDir: {}
+        - name: cache-volume
+          emptyDir: {}
+        {{- with .Values.thermosMiscWorkers.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}
+
