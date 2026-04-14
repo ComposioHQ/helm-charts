@@ -216,6 +216,63 @@ tests:
           path: spec.activeDeadlineSeconds
           value: 2400
 
+  - it: should default SKIP_DDL_DETECTION to false
+    set:
+      apollo.dbInit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SKIP_DDL_DETECTION
+            value: "false"
+
+  - it: should set SKIP_DDL_DETECTION to true when configured
+    set:
+      apollo.dbInit.enabled: true
+      apollo.dbInit.skipDdlDetection: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SKIP_DDL_DETECTION
+            value: "true"
+
+  - it: should read PEER_CLUSTER_URL from core secret
+    set:
+      apollo.dbInit.enabled: true
+      secret.name: my-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PEER_CLUSTER_URL
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: PEER_CLUSTER_URL
+                optional: true
+
+  - it: should default EXTRA_LIQUIBASE_ARGS to empty string
+    set:
+      apollo.dbInit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: EXTRA_LIQUIBASE_ARGS
+            value: ""
+
+  - it: should pass EXTRA_LIQUIBASE_ARGS when configured
+    set:
+      apollo.dbInit.enabled: true
+      apollo.dbInit.extraLiquibaseArgs: "--contexts=ddl --log-level=DEBUG"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: EXTRA_LIQUIBASE_ARGS
+            value: "--contexts=ddl --log-level=DEBUG"
+
 ---
 suite: test thermos db init job
 templates:

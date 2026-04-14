@@ -214,6 +214,10 @@ apollo:
       imageName: ""
     # -- Additional init containers for Apollo DB init. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
     additionalInitContainers: []
+    # -- Skip the pre-migration DDL detection gate. Set to true only for emergency single-cluster migrations.
+    skipDdlDetection: false
+    # -- Extra Liquibase CLI arguments passed to every migration command (e.g. "--contexts=ddl --log-level=DEBUG").
+    extraLiquibaseArgs: ""
   # Apollo service configuration
   service:
     # -- Service type (ClusterIP, NodePort, LoadBalancer)

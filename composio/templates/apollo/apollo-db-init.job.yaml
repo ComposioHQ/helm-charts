@@ -85,6 +85,20 @@ spec:
                   optional: true
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+            # DDL detection gate — set SKIP_DDL_DETECTION=true to bypass for emergency deploys
+            - name: SKIP_DDL_DETECTION
+              value: {{ .Values.apollo.dbInit.skipDdlDetection | default false | quote }}
+            # Peer cluster DB URL for post-migration schema consistency validation.
+            # Populated from the core secret when the key exists; omitted (skipped) otherwise.
+            - name: PEER_CLUSTER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: PEER_CLUSTER_URL
+                  optional: true
+            # Extra Liquibase CLI arguments (e.g. "--contexts=ddl --log-level=DEBUG")
+            - name: EXTRA_LIQUIBASE_ARGS
+              value: {{ .Values.apollo.dbInit.extraLiquibaseArgs | default "" | quote }}
           volumeMounts:
             - name: apollo-secrets
               mountPath: {{ .Values.apollo.secretsDir | quote }}
