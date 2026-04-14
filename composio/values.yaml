@@ -218,36 +218,13 @@ apollo:
     skipDdlDetection: false
     # -- Extra Liquibase CLI arguments passed to every migration command (e.g. "--contexts=ddl --log-level=DEBUG").
     extraLiquibaseArgs: ""
-    # -- Override the command args passed to init_start.sh. When empty the container runs its default
-    # three-phase pipeline: detect-ddl → migrate → validate-schema-consistency.
-    # init_start.sh always runs first (loads file-based secrets) then execs whatever is listed here.
-    #
-    # Common overrides:
-    #
-    #   Preview pending DDL without applying (job always succeeds — purely informational):
-    #     args:
-    #       - sh
-    #       - -c
-    #       - "cd /base/packages/db && make detect-ddl; exit 0"
-    #
-    #   Migrate only (skip DDL detection and schema validation):
-    #     args:
-    #       - sh
-    #       - -c
-    #       - "cd /base/packages/db && make migrate"
-    #
-    #   Validate schema consistency only (no migration):
-    #     args:
-    #       - sh
-    #       - -c
-    #       - "cd /base/packages/db && make validate-schema-consistency"
-    #
-    #   DDL gate only — block the release if DDL is pending (no migration):
-    #     args:
-    #       - sh
-    #       - -c
-    #       - "cd /base/packages/db && make detect-ddl"
-    args: []
+    # -- Controls which phases the job runs. Allowed values:
+    #      full     (default) detect-ddl → migrate → validate-schema-consistency
+    #      preview  print pending DDL changes and exit 0 — informational, never blocks
+    #      migrate  run migrations only (skip DDL detection and schema validation)
+    #      detect   DDL gate only — exits 1 if DDL is pending, no migration applied
+    #      validate schema consistency check against peer cluster only, no migration
+    mode: "full"
   # Apollo service configuration
   service:
     # -- Service type (ClusterIP, NodePort, LoadBalancer)

@@ -273,20 +273,18 @@ tests:
             name: EXTRA_LIQUIBASE_ARGS
             value: "--contexts=ddl --log-level=DEBUG"
 
-  - it: should not set args when apollo.dbInit.args is empty
+  - it: should not set args when mode is full (default)
     set:
       apollo.dbInit.enabled: true
+      apollo.dbInit.mode: full
     asserts:
       - isNull:
           path: spec.template.spec.containers[0].args
 
-  - it: should set args when apollo.dbInit.args is provided (e.g. DDL preview mode)
+  - it: should set args to detect-ddl with exit 0 for preview mode
     set:
       apollo.dbInit.enabled: true
-      apollo.dbInit.args:
-        - sh
-        - -c
-        - "cd /base/packages/db && make detect-ddl; exit 0"
+      apollo.dbInit.mode: preview
     asserts:
       - equal:
           path: spec.template.spec.containers[0].args[0]
@@ -294,21 +292,45 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].args[1]
           value: -c
-      - equal:
+      - matchRegex:
           path: spec.template.spec.containers[0].args[2]
-          value: "cd /base/packages/db && make detect-ddl; exit 0"
+          pattern: "make detect-ddl"
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: "exit 0"
 
-  - it: should support migrate-only args override
+  - it: should set args to migrate only for migrate mode
     set:
       apollo.dbInit.enabled: true
-      apollo.dbInit.args:
-        - sh
-        - -c
-        - "cd /base/packages/db && make migrate"
+      apollo.dbInit.mode: migrate
     asserts:
-      - equal:
+      - matchRegex:
           path: spec.template.spec.containers[0].args[2]
-          value: "cd /base/packages/db && make migrate"
+          pattern: "make migrate"
+      - notMatchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: "detect-ddl"
+
+  - it: should set args to detect-ddl for detect mode
+    set:
+      apollo.dbInit.enabled: true
+      apollo.dbInit.mode: detect
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: "make detect-ddl"
+      - notMatchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: "exit 0"
+
+  - it: should set args to validate-schema-consistency for validate mode
+    set:
+      apollo.dbInit.enabled: true
+      apollo.dbInit.mode: validate
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: "make validate-schema-consistency"
 
 ---
 suite: test thermos db init job

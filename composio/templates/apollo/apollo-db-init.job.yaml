@@ -60,9 +60,24 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.apollo.dbInit.args }}
+          {{- $mode := .Values.apollo.dbInit.mode | default "full" }}
+          {{- if ne $mode "full" }}
           args:
-            {{- toYaml . | nindent 12 }}
+            - sh
+            - -c
+            - |
+              cd /base/packages/db
+              {{- if eq $mode "preview" }}
+              make detect-ddl; exit 0
+              {{- else if eq $mode "migrate" }}
+              make migrate
+              {{- else if eq $mode "detect" }}
+              make detect-ddl
+              {{- else if eq $mode "validate" }}
+              make validate-schema-consistency
+              {{- else }}
+              {{ fail (printf "apollo.dbInit.mode must be one of: full, preview, migrate, detect, validate — got %q" $mode) }}
+              {{- end }}
           {{- end }}
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
