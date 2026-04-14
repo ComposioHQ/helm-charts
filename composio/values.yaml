@@ -218,12 +218,36 @@ apollo:
     skipDdlDetection: false
     # -- Extra Liquibase CLI arguments passed to every migration command (e.g. "--contexts=ddl --log-level=DEBUG").
     extraLiquibaseArgs: ""
-    # -- Controls which phases the job runs. Allowed values:
-    #      full     (default) detect-ddl → migrate → validate-schema-consistency
-    #      preview  print pending DDL changes and exit 0 — informational, never blocks
-    #      migrate  run migrations only (skip DDL detection and schema validation)
-    #      detect   DDL gate only — exits 1 if DDL is pending, no migration applied
-    #      validate schema consistency check against peer cluster only, no migration
+    # -- Controls which phases the job runs.
+    #
+    # full (default)
+    #   Runs all three phases in sequence:
+    #     1. detect-ddl            — scans pending changesets for DDL (CREATE/ALTER/DROP).
+    #                                Exits 1 and blocks the deploy if any DDL is found.
+    #                                Bypass with skipDdlDetection: true for emergencies.
+    #     2. migrate               — applies all pending Liquibase changesets.
+    #     3. validate-schema-consistency — diffs this cluster's schema against the peer
+    #                                cluster (requires PEER_CLUSTER_URL in the core secret).
+    #                                Automatically skipped when PEER_CLUSTER_URL is absent.
+    #
+    # preview
+    #   Runs detect-ddl and prints any pending DDL changes, then exits 0.
+    #   The job always succeeds — nothing is applied to the database.
+    #   Useful as a read-only pre-release check to see what DDL is coming.
+    #
+    # migrate
+    #   Runs migrations only. Skips DDL detection and schema validation.
+    #   Use when you have already verified DDL externally or want a fast apply.
+    #
+    # detect
+    #   Runs the DDL gate only — exits 1 if any pending changeset contains DDL,
+    #   exits 0 if it is safe to proceed. No migration is applied.
+    #   Use as a pre-flight check before coordinating a dual-cluster DDL deploy.
+    #
+    # validate
+    #   Runs schema consistency check only — diffs this cluster against the peer
+    #   cluster (requires PEER_CLUSTER_URL in the core secret). No migration is applied.
+    #   Use after a migration to confirm both clusters are in sync.
     mode: "full"
   # Apollo service configuration
   service:
