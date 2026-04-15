@@ -303,6 +303,11 @@ metadata:
   labels:
     app: apollo
     release: {{ .Release.Name }}
+  {{- $serviceAnnotations := include "composio.apolloServiceAnnotations" . }}
+  {{- if $serviceAnnotations }}
+  annotations:
+    {{- $serviceAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.apollo.service.type }}
   ports:

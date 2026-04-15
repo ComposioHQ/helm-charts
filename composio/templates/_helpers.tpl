@@ -70,10 +70,158 @@ Check if Temporal is enabled via features.temporal flag
 This flag both deploys the temporal subchart (via Chart.yaml condition) and configures thermos to use it
 */}}
 {{- define "composio.temporalEnabled" -}}
-{{- if and .Values.features .Values.features.temporal -}}
+{{- if or (and .Values.temporal .Values.temporal.server .Values.temporal.server.enabled) (and .Values.features .Values.features.temporal) -}}
 true
 {{- else -}}
 false
+{{- end -}}
+{{- end -}}
+
+{{/*
+Detect legacy values files that still use cloud-specific switches and ingress keys.
+*/}}
+{{- define "composio.legacyValuesMode" -}}
+{{- if or .Values.cloud .Values.apollo.ingress.class .Values.frontend.ingress.class .Values.apollo.ingress.tlsSecretName .Values.frontend.ingress.tlsSecretName -}}
+true
+{{- else -}}
+false
+{{- end -}}
+{{- end -}}
+
+{{/*
+Legacy mode defaults to disabling Weaviate to match the old Ema chart behavior.
+*/}}
+{{- define "composio.weaviateEnabled" -}}
+{{- if eq (include "composio.legacyValuesMode" .) "true" -}}
+false
+{{- else if .Values.weaviate.enabled -}}
+true
+{{- else -}}
+false
+{{- end -}}
+{{- end -}}
+
+{{- define "composio.apolloIngressClass" -}}
+{{- default .Values.apollo.ingress.class .Values.apollo.ingress.className -}}
+{{- end -}}
+
+{{- define "composio.frontendIngressClass" -}}
+{{- default .Values.frontend.ingress.class .Values.frontend.ingress.className -}}
+{{- end -}}
+
+{{- define "composio.apolloIngressPathType" -}}
+{{- if and (eq (include "composio.legacyValuesMode" .) "true") .Values.apollo.ingress.class (eq (.Values.apollo.ingress.pathType | toString) "Prefix") -}}
+ImplementationSpecific
+{{- else if .Values.apollo.ingress.pathType -}}
+{{- .Values.apollo.ingress.pathType -}}
+{{- else if eq (include "composio.legacyValuesMode" .) "true" -}}
+ImplementationSpecific
+{{- else -}}
+Prefix
+{{- end -}}
+{{- end -}}
+
+{{- define "composio.frontendIngressPathType" -}}
+{{- if and (eq (include "composio.legacyValuesMode" .) "true") .Values.frontend.ingress.class (eq (.Values.frontend.ingress.pathType | toString) "Prefix") -}}
+ImplementationSpecific
+{{- else if .Values.frontend.ingress.pathType -}}
+{{- .Values.frontend.ingress.pathType -}}
+{{- else if eq (include "composio.legacyValuesMode" .) "true" -}}
+ImplementationSpecific
+{{- else -}}
+Prefix
+{{- end -}}
+{{- end -}}
+
+{{- define "composio.apolloIngressTls" -}}
+{{- if and (kindIs "slice" .Values.apollo.ingress.tls) (gt (len .Values.apollo.ingress.tls) 0) -}}
+{{- toYaml .Values.apollo.ingress.tls -}}
+{{- else if and .Values.apollo.ingress.tls .Values.apollo.ingress.tlsSecretName -}}
+- hosts:
+    - {{ .Values.apollo.ingress.host | quote }}
+  secretName: {{ .Values.apollo.ingress.tlsSecretName }}
+{{- end -}}
+{{- end -}}
+
+{{- define "composio.frontendIngressTls" -}}
+{{- if and (kindIs "slice" .Values.frontend.ingress.tls) (gt (len .Values.frontend.ingress.tls) 0) -}}
+{{- toYaml .Values.frontend.ingress.tls -}}
+{{- else if and .Values.frontend.ingress.tls .Values.frontend.ingress.tlsSecretName -}}
+- hosts:
+    - {{ .Values.frontend.ingress.host | quote }}
+  secretName: {{ .Values.frontend.ingress.tlsSecretName }}
+{{- end -}}
+{{- end -}}
+
+{{- define "composio.apolloIngressAnnotations" -}}
+{{- $annotations := dict "nginx.ingress.kubernetes.io/rewrite-target" "/" "nginx.ingress.kubernetes.io/ssl-redirect" "true" "nginx.ingress.kubernetes.io/proxy-body-size" "50m" "nginx.ingress.kubernetes.io/use-regex" "true" -}}
+{{- if eq .Values.cloud "azure" -}}
+  {{- if .Values.apollo.ingress.enable_ssl_server_snippet -}}
+    {{- $_ := set $annotations "nginx.ingress.kubernetes.io/server-snippet" (printf "if ($ssl_server_name != \"%s\") { return 444; }\n" .Values.apollo.ingress.host) -}}
+  {{- end -}}
+{{- else if eq .Values.cloud "gcp" -}}
+  {{- if .Values.apollo.ingress.preSharedCert -}}
+    {{- $_ := set $annotations "ingress.gcp.kubernetes.io/pre-shared-cert" .Values.apollo.ingress.preSharedCert -}}
+  {{- end -}}
+  {{- if eq .Values.apollo.ingress.class "gce-internal" -}}
+    {{- $_ := set $annotations "kubernetes.io/ingress.regional-static-ip-name" .Values.apollo.ingress.staticIPName -}}
+  {{- else if eq .Values.apollo.ingress.class "gce" -}}
+    {{- $_ := set $annotations "kubernetes.io/ingress.global-static-ip-name" .Values.apollo.ingress.staticIPName -}}
+  {{- end -}}
+{{- end -}}
+{{- with .Values.apollo.ingress.annotations -}}
+  {{- $annotations = mergeOverwrite $annotations . -}}
+{{- end -}}
+{{- toYaml $annotations -}}
+{{- end -}}
+
+{{- define "composio.frontendIngressAnnotations" -}}
+{{- $annotations := dict "nginx.ingress.kubernetes.io/rewrite-target" "/" "nginx.ingress.kubernetes.io/ssl-redirect" "true" "nginx.ingress.kubernetes.io/proxy-body-size" "50m" "nginx.ingress.kubernetes.io/use-regex" "true" -}}
+{{- if eq .Values.cloud "azure" -}}
+  {{- if .Values.frontend.ingress.enable_ssl_server_snippet -}}
+    {{- $_ := set $annotations "nginx.ingress.kubernetes.io/server-snippet" (printf "if ($ssl_server_name != \"%s\") { return 444; }\n" .Values.frontend.ingress.host) -}}
+  {{- end -}}
+{{- else if eq .Values.cloud "gcp" -}}
+  {{- if .Values.frontend.ingress.preSharedCert -}}
+    {{- $_ := set $annotations "ingress.gcp.kubernetes.io/pre-shared-cert" .Values.frontend.ingress.preSharedCert -}}
+  {{- end -}}
+  {{- if eq .Values.frontend.ingress.class "gce-internal" -}}
+    {{- $_ := set $annotations "kubernetes.io/ingress.regional-static-ip-name" .Values.frontend.ingress.staticIPName -}}
+  {{- else if eq .Values.frontend.ingress.class "gce" -}}
+    {{- $_ := set $annotations "kubernetes.io/ingress.global-static-ip-name" .Values.frontend.ingress.staticIPName -}}
+  {{- end -}}
+{{- end -}}
+{{- with .Values.frontend.ingress.annotations -}}
+  {{- $annotations = mergeOverwrite $annotations . -}}
+{{- end -}}
+{{- toYaml $annotations -}}
+{{- end -}}
+
+{{- define "composio.apolloServiceAnnotations" -}}
+{{- $annotations := dict -}}
+{{- if and (eq .Values.cloud "gcp") (eq .Values.apollo.service.type "ClusterIP") -}}
+  {{- $_ := set $annotations "cloud.google.com/neg" "{\"ingress\": true}" -}}
+{{- else if eq .Values.cloud "azure" -}}
+  {{- $_ := set $annotations "service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path" "/api/healthz" -}}
+{{- end -}}
+{{- with .Values.apollo.service.annotations -}}
+  {{- $annotations = mergeOverwrite $annotations . -}}
+{{- end -}}
+{{- if gt (len $annotations) 0 -}}
+{{- toYaml $annotations -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "composio.frontendServiceAnnotations" -}}
+{{- $annotations := dict -}}
+{{- if and (eq .Values.cloud "gcp") (eq (.Values.frontend.service.type | default "ClusterIP") "ClusterIP") -}}
+  {{- $_ := set $annotations "cloud.google.com/neg" "{\"ingress\": true}" -}}
+{{- end -}}
+{{- with .Values.frontend.service.annotations -}}
+  {{- $annotations = mergeOverwrite $annotations . -}}
+{{- end -}}
+{{- if gt (len $annotations) 0 -}}
+{{- toYaml $annotations -}}
 {{- end -}}
 {{- end -}}
 

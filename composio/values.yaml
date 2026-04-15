@@ -194,6 +194,10 @@ apollo:
     className: ""
     # -- Ingress annotations
     annotations: {}
+    # -- Ingress path for Apollo
+    path: /
+    # -- Kubernetes pathType for the Apollo ingress path
+    pathType: Prefix
     # -- Hostname for Apollo ingress
     host: "abc.example.com"
     # -- TLS configuration
@@ -218,6 +222,8 @@ apollo:
   service:
     # -- Service type (ClusterIP, NodePort, LoadBalancer)
     type: NodePort
+    # -- Additional annotations for the Apollo Service
+    annotations: {}
     # -- Service port
     port: 9900
     # -- NodePort for external access (only applicable when type is NodePort)
@@ -512,8 +518,6 @@ temporal:
   fullnameOverride: "temporal-stack"
   # Temporal server configuration
   server:
-    # -- Enable Temporal server
-    enabled: false
     # Liveness probe configuration
     livenessProbe:
       # -- Enable liveness probe
@@ -1177,6 +1181,8 @@ frontend:
   service:
     # -- Service type
     type: ClusterIP
+    # -- Additional annotations for the Frontend Service
+    annotations: {}
     # -- Service port
     port: 3000
   # Resource requests and limits for frontend pods
@@ -1211,6 +1217,10 @@ frontend:
     className: ""
     # -- Ingress annotations
     annotations: {}
+    # -- Ingress path for Frontend
+    path: /
+    # -- Kubernetes pathType for the Frontend ingress path
+    pathType: Prefix
     # -- Hostname for frontend ingress
     host: ""
     # -- TLS configuration

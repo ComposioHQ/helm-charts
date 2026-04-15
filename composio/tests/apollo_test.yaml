@@ -467,3 +467,21 @@ tests:
       - equal:
           path: spec.selector.release
           value: RELEASE-NAME
+
+  - it: should merge custom service annotations
+    documentSelector:
+      path: kind
+      value: Service
+    set:
+      redis.enabled: true
+      externalRedis.enabled: false
+      apollo.service.annotations:
+        cloud.google.com/neg: '{"ingress": true}'
+        service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /api/healthz
+    asserts:
+      - equal:
+          path: metadata.annotations["cloud.google.com/neg"]
+          value: '{"ingress": true}'
+      - equal:
+          path: metadata.annotations["service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path"]
+          value: /api/healthz

@@ -1,0 +1,187 @@
+suite: legacy GCP apollo ingress compatibility
+templates:
+  - apollo/apollo-ingress.yaml
+tests:
+  - it: should support legacy GCP ingress fields for apollo
+    set:
+      cloud: gcp
+      apollo.ingress.enabled: true
+      apollo.ingress.class: gce
+      apollo.ingress.host: api.dev.composio.ema.co
+      apollo.ingress.preSharedCert: composio-api-cert
+      apollo.ingress.staticIPName: composio-ingress-global-ip
+      apollo.ingress.path: /*
+      apollo.ingress.pathType: ImplementationSpecific
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: gce
+      - equal:
+          path: metadata.annotations["ingress.gcp.kubernetes.io/pre-shared-cert"]
+          value: composio-api-cert
+      - equal:
+          path: metadata.annotations["kubernetes.io/ingress.global-static-ip-name"]
+          value: composio-ingress-global-ip
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /*
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: ImplementationSpecific
+
+---
+suite: legacy GCP frontend ingress compatibility
+templates:
+  - frontend/frontend-ingress.yaml
+tests:
+  - it: should support legacy GCP ingress fields for frontend
+    set:
+      cloud: gcp
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.class: gce
+      frontend.ingress.host: dev.composio.ema.co
+      frontend.ingress.preSharedCert: composio-dev-ssl
+      frontend.ingress.staticIPName: composio-ing-global-ip
+      frontend.ingress.path: /*
+      frontend.ingress.pathType: ImplementationSpecific
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: gce
+      - equal:
+          path: metadata.annotations["ingress.gcp.kubernetes.io/pre-shared-cert"]
+          value: composio-dev-ssl
+      - equal:
+          path: metadata.annotations["kubernetes.io/ingress.global-static-ip-name"]
+          value: composio-ing-global-ip
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /*
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: ImplementationSpecific
+
+---
+suite: legacy service annotation compatibility
+templates:
+  - apollo/apollo.yaml
+tests:
+  - it: should add legacy GCP NEG annotation to apollo service
+    documentIndex: 1
+    set:
+      cloud: gcp
+      redis.enabled: false
+      externalRedis.enabled: true
+      apollo.service.type: ClusterIP
+    asserts:
+      - equal:
+          path: metadata.annotations["cloud.google.com/neg"]
+          value: '{"ingress": true}'
+
+  - it: should add legacy Azure health probe annotation to apollo service
+    documentIndex: 1
+    set:
+      cloud: azure
+      redis.enabled: false
+      externalRedis.enabled: true
+      apollo.service.type: ClusterIP
+    asserts:
+      - equal:
+          path: metadata.annotations["service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path"]
+          value: /api/healthz
+
+---
+suite: legacy frontend service annotation compatibility
+templates:
+  - frontend/frontend.yaml
+tests:
+  - it: should add legacy GCP NEG annotation to frontend service
+    documentIndex: 1
+    set:
+      cloud: gcp
+      frontend.enabled: true
+      frontend.service.type: ClusterIP
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+    asserts:
+      - equal:
+          path: metadata.annotations["cloud.google.com/neg"]
+          value: '{"ingress": true}'
+
+---
+suite: legacy Azure apollo ingress compatibility
+templates:
+  - apollo/apollo-ingress.yaml
+tests:
+  - it: should support legacy Azure ingress fields for apollo
+    set:
+      cloud: azure
+      apollo.ingress.enabled: true
+      apollo.ingress.class: nginx
+      apollo.ingress.host: api.dev-adp.composio.ema.co
+      apollo.ingress.tls: true
+      apollo.ingress.tlsSecretName: dev-adp-apollo-tls
+      apollo.ingress.path: /
+      apollo.ingress.enable_ssl_server_snippet: true
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - contains:
+          path: spec.tls[0].hosts
+          content: api.dev-adp.composio.ema.co
+      - equal:
+          path: spec.tls[0].secretName
+          value: dev-adp-apollo-tls
+      - matchRegex:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/server-snippet"]
+          pattern: 'ssl_server_name'
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: ImplementationSpecific
+
+---
+suite: legacy Azure frontend ingress compatibility
+templates:
+  - frontend/frontend-ingress.yaml
+tests:
+  - it: should support legacy Azure ingress fields for frontend
+    set:
+      cloud: azure
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.class: nginx
+      frontend.ingress.host: dev-adp.composio.ema.co
+      frontend.ingress.tls: true
+      frontend.ingress.tlsSecretName: dev-adp-composio-tls
+      frontend.ingress.path: /
+      frontend.ingress.enable_ssl_server_snippet: true
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - contains:
+          path: spec.tls[0].hosts
+          content: dev-adp.composio.ema.co
+      - equal:
+          path: spec.tls[0].secretName
+          value: dev-adp-composio-tls
+      - matchRegex:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/server-snippet"]
+          pattern: 'ssl_server_name'
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: ImplementationSpecific
+
+---
+suite: legacy Weaviate compatibility
+templates:
+  - weaviate/weaviate.yaml
+tests:
+  - it: should not create weaviate resources for legacy cloud values by default
+    set:
+      cloud: gcp
+    asserts:
+      - hasDocuments:
+          count: 0

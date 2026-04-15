@@ -80,7 +80,7 @@ data:
   S3_BUCKET: {{ .Values.apollo.s3Bucket | quote }}
   TEST_DEBUG: "true"
   SIDECAR_FILE_CACHE_PATH: "/base/sidecar_export.json"
-  {{- if .Values.weaviate.enabled }}
+  {{- if eq (include "composio.weaviateEnabled" .) "true" }}
   WEAVIATE_URL: {{ printf "http://%s-weaviate:%v" .Release.Name (.Values.weaviate.service.port | default 8080) | quote }}
   WEAVIATE_HOST: {{ printf "%s-weaviate" .Release.Name | quote }}
   WEAVIATE_PORT: {{ .Values.weaviate.service.port | default 8080 | quote }}
@@ -93,7 +93,7 @@ data:
   # Master Toggle
   UNIFIED_SEARCH_ENABLED: {{ .Values.apollo.search.unified.enabled | default false | toString | quote }}
   # Vector Store Provider Selection
-  {{- if .Values.weaviate.enabled }}
+  {{- if eq (include "composio.weaviateEnabled" .) "true" }}
   VECTOR_STORE_PROVIDER: {{ .Values.apollo.search.vectorStoreProvider | default "weaviate" | quote }}
   {{- if .Values.apollo.search.unified.enabled }}
   UNIFIED_VECTOR_STORE_PROVIDER: {{ .Values.apollo.search.unified.vectorStoreProvider | default "weaviate" | quote }}
