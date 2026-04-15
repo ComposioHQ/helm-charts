@@ -64,6 +64,8 @@ spec:
           env:
             - name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
               value: {{ .Values.weaviate.auth.anonymousAccess | default "true" | quote }}
+            - name: DISABLE_TELEMETRY
+              value: true
             - name: PERSISTENCE_DATA_PATH
               value: "/var/lib/weaviate"
             - name: DEFAULT_VECTORIZER_MODULE
