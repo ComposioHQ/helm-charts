@@ -91,7 +91,7 @@ spec:
             - name: THERMOS_MODE
               value: "miscellaneous_worker"
             - name: ENABLE_TEMPORAL_AUTO_RECOVERY
-              value: "false"
+              value: "true"
             - name: THERMOS_SECRET_DIR
               value: {{ .Values.thermosMiscWorkers.secretsDir | quote }}
             - name: APOLLO_ADMIN_TOKEN
