@@ -316,21 +316,6 @@ jobs:
           REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
           REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
 
-      - name: Create Release Cluster
-        env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-        run: |
-          echo "Creating Replicated Nightly CMX EKS Cluster..."
-          replicated cluster create \
-          --distribution eks \
-          --version 1.35 \
-          --nodes 2 \
-          --instance-type c5.large \
-          --disk 50 \
-          --ttl 12h \
-          --tag env="${{ steps.branch.outputs.branch_name }}"
-
       - name: Commit and push nightly updates
         if: success()
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -356,7 +341,7 @@ jobs:
             *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
             *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
             *Branch:* `${{ steps.branch.outputs.branch_name }}`
-            *State:* Replicated release and cluster creation completed, branch pushed.
+            *State:* Replicated release completed, branch pushed.
 
       - name: Notify Slack - Failure
         if: failure() && steps.slack.outputs.message_id
@@ -371,7 +356,7 @@ jobs:
             *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
             *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
             *Branch:* `${{ steps.branch.outputs.branch_name }}`
-            *State:* Replicated release or cluster creation failed before PR creation.
+            *State:* Replicated release failed before PR creation.
 
 
   create-nightly-release-pr:
