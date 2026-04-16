@@ -287,6 +287,7 @@ jobs:
           yq eval -i '.apollo.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.thermos.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.thermos.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.thermosMiscWorkers.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.mercury.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.frontend.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.weaviate.image.tag = strenv(RELEASE_TAG)' ./values.yaml
