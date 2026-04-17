@@ -82,6 +82,9 @@ spec:
                   optional: true
             - name: USE_APOLLO_GET_DOWNLOAD_URL_API
               value: "true"
+            {{- with .Values.mercury.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
           volumeMounts:
@@ -98,4 +101,3 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 {{- end }}
- 

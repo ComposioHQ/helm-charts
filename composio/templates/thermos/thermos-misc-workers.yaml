@@ -1,12 +1,13 @@
+{{- if .Values.thermosMiscWorkers.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-thermos
+  name: {{ .Release.Name }}-thermos-misc-workers
   labels:
-    app: thermos
+    app: thermos-misc-workers
     release: {{ .Release.Name }}
 spec:
-  replicas: {{ .Values.thermos.replicaCount }}
+  replicas: {{ .Values.thermosMiscWorkers.replicaCount }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -14,12 +15,12 @@ spec:
       maxSurge: 1
   selector:
     matchLabels:
-      app: thermos
+      app: thermos-misc-workers
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: thermos
+        app: thermos-misc-workers
         release: {{ .Release.Name }}
     spec:
       {{- if .Values.thermos.serviceAccount.enabled }}
@@ -34,33 +35,33 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- end }}
       {{- end }}
-      {{- with .Values.thermos.podSecurityContext }}
+      {{- with .Values.thermosMiscWorkers.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.nodeSelector }}
+      {{- with .Values.thermosMiscWorkers.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.affinity }}
+      {{- with .Values.thermosMiscWorkers.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.tolerations }}
+      {{- with .Values.thermosMiscWorkers.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermos.additionalInitContainers }}
+      {{- with .Values.thermosMiscWorkers.additionalInitContainers }}
       initContainers:
 {{ tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
       containers:
-        - name: thermos
-          image: {{ include "composio.imageReference" (dict "image" .Values.thermos.image "context" .) | quote }}
-          imagePullPolicy: {{ .Values.thermos.image.pullPolicy }}
+        - name: thermos-misc-workers
+          image: {{ include "composio.imageReference" (dict "image" .Values.thermosMiscWorkers.image "context" .) | quote }}
+          imagePullPolicy: {{ .Values.thermosMiscWorkers.image.pullPolicy }}
           args: ["/usr/local/bin/thermos", "--cache-dir", "/tmp/.lookup"]
           workingDir: "/tmp"
-          {{- with .Values.thermos.containerSecurityContext }}
+          {{- with .Values.thermosMiscWorkers.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -87,8 +88,12 @@ spec:
                 name: {{ .Release.Name }}-thermos-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            - name: THERMOS_MODE
+              value: "miscellaneous_worker"
+            - name: ENABLE_TEMPORAL_AUTO_RECOVERY
+              value: {{ .Values.thermosMiscWorkers.temporalAutoRecoveryEnabled | default true | quote }}
             - name: THERMOS_SECRET_DIR
-              value: {{ .Values.thermos.secretsDir | quote }}
+              value: {{ .Values.thermosMiscWorkers.secretsDir | quote }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -119,93 +124,27 @@ spec:
                   name: {{ $coreSecret }}
                   key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
                   optional: true
-            {{- if .Values.thermos.env }}
-            {{- toYaml .Values.thermos.env | nindent 12 }}
+            {{- if .Values.thermosMiscWorkers.env }}
+            {{- toYaml .Values.thermosMiscWorkers.env | nindent 12 }}
             {{- end }}
           volumeMounts:
             - name: thermos-secrets
-              mountPath: {{ .Values.thermos.secretsDir | quote }}
+              mountPath: {{ .Values.thermosMiscWorkers.secretsDir | quote }}
               readOnly: true
             - name: cache-volume
               mountPath: /tmp
-            {{- with .Values.thermos.volumeMounts }}
+            {{- with .Values.thermosMiscWorkers.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           resources:
-            {{- toYaml .Values.thermos.resources | nindent 12 }}
+            {{- toYaml .Values.thermosMiscWorkers.resources | nindent 12 }}
       volumes:
         - name: thermos-secrets
           emptyDir: {}
         - name: cache-volume
           emptyDir: {}
-        {{- with .Values.thermos.volumes }}
+        {{- with .Values.thermosMiscWorkers.volumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ .Release.Name }}-thermos
-  labels:
-    app: thermos
-    release: {{ .Release.Name }}
-spec:
-  type: {{ .Values.thermos.service.type }}
-  ports:
-    - port: {{ .Values.thermos.service.port }}
-      targetPort: 8180
-      protocol: TCP
-  selector:
-    app: thermos
-    release: {{ .Release.Name }}
----
-{{- if .Values.thermos.autoscaling.enabled }}
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: {{ .Release.Name }}-thermos
-  labels:
-    app: thermos
-    release: {{ .Release.Name }}
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: {{ .Release.Name }}-thermos
-  minReplicas: {{ .Values.thermos.autoscaling.minReplicas | default 2 }}
-  maxReplicas: {{ .Values.thermos.autoscaling.maxReplicas | default 10 }}
-  metrics:
-    {{- if .Values.thermos.autoscaling.targetCPUUtilizationPercentage }}
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: {{ .Values.thermos.autoscaling.targetCPUUtilizationPercentage }}
-    {{- end }}
-    {{- if .Values.thermos.autoscaling.targetMemoryUtilizationPercentage }}
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: {{ .Values.thermos.autoscaling.targetMemoryUtilizationPercentage }}
-    {{- end }}
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: {{ .Values.thermos.autoscaling.scaleDownStabilizationWindowSeconds | default 300 }}
-      policies:
-      - type: Percent
-        value: {{ .Values.thermos.autoscaling.scaleDownPercent | default 10 }}
-        periodSeconds: {{ .Values.thermos.autoscaling.scaleDownPeriodSeconds | default 60 }}
-    scaleUp:
-      stabilizationWindowSeconds: {{ .Values.thermos.autoscaling.scaleUpStabilizationWindowSeconds | default 60 }}
-      policies:
-      - type: Percent
-        value: {{ .Values.thermos.autoscaling.scaleUpPercent | default 100 }}
-        periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
-      - type: Pods
-        value: {{ .Values.thermos.autoscaling.scaleUpPods | default 4 }}
-        periodSeconds: {{ .Values.thermos.autoscaling.scaleUpPeriodSeconds | default 15 }}
-      selectPolicy: Max
 {{- end }}
+

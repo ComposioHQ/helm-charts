@@ -50,7 +50,7 @@ spec:
       {{- end }}
       containers:
         - name: weaviate
-          image: "{{ include "chart.registry" . }}/{{ .Values.weaviate.image.repository }}:{{ .Values.weaviate.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.weaviate.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.weaviate.image.pullPolicy }}
           {{- with .Values.weaviate.securityContext }}
           securityContext:
@@ -64,6 +64,8 @@ spec:
           env:
             - name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
               value: {{ .Values.weaviate.auth.anonymousAccess | default "true" | quote }}
+            - name: DISABLE_TELEMETRY
+              value: "true"
             - name: PERSISTENCE_DATA_PATH
               value: "/var/lib/weaviate"
             - name: DEFAULT_VECTORIZER_MODULE
@@ -89,18 +91,28 @@ spec:
             periodSeconds: {{ .Values.weaviate.readinessProbe.periodSeconds | default 10 }}
             timeoutSeconds: {{ .Values.weaviate.readinessProbe.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.weaviate.readinessProbe.failureThreshold | default 3 }}
-          {{- if .Values.weaviate.persistence.enabled }}
+          {{- if or .Values.weaviate.persistence.enabled .Values.weaviate.volumeMounts }}
           volumeMounts:
+            {{- if .Values.weaviate.persistence.enabled }}
             - name: data
               mountPath: /var/lib/weaviate
+            {{- end }}
+            {{- with .Values.weaviate.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.weaviate.resources | nindent 12 }}
-      {{- if .Values.weaviate.persistence.enabled }}
+      {{- if or .Values.weaviate.persistence.enabled .Values.weaviate.volumes }}
       volumes:
+        {{- if .Values.weaviate.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-weaviate-pvc
+        {{- end }}
+        {{- with .Values.weaviate.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- end }}
 ---
 {{- if .Values.weaviate.persistence.enabled }}
@@ -146,4 +158,3 @@ spec:
     {{- include "composio.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: weaviate
 {{- end }}
-
