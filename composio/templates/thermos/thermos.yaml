@@ -22,6 +22,9 @@ spec:
         app: thermos
         release: {{ .Release.Name }}
     spec:
+      {{- if .Values.thermos.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.thermos.serviceAccount.name  }}
+      {{- end }}
       {{- if .Values.replicated.enabled }}
       {{- include "replicated.imagePullSecrets" . | nindent 6 }}
       {{- end }}
@@ -46,6 +49,16 @@ spec:
       {{- with .Values.thermos.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.toolkitRegistry.enabled }}
+      initContainers:
+        - name: wait-for-toolkit-registry
+          image: "{{ include "chart.registry" . }}/{{ .Values.toolkitRegistry.image.repository }}:{{ .Values.toolkitRegistry.image.tag }}"
+          imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - until pg_isready -h {{ .Release.Name }}-toolkit-registry -p {{ .Values.toolkitRegistry.service.port | int }} -U {{ .Values.toolkitRegistry.auth.username }} -d {{ .Values.toolkitRegistry.database.name }}; do echo "waiting for toolkit registry"; sleep 2; done
       {{- end }}
       containers:
         - name: thermos
@@ -95,6 +108,10 @@ spec:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
+            {{- if .Values.toolkitRegistry.enabled }}
+            - name: TOOLKIT_REGISTRY_DB_URL
+              value: {{ printf "postgresql://%s:%s@%s-toolkit-registry:%v/%s?sslmode=disable" .Values.toolkitRegistry.auth.username .Values.toolkitRegistry.auth.password .Release.Name (.Values.toolkitRegistry.service.port | int) .Values.toolkitRegistry.database.name | quote }}
+            {{- end }}
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}
             {{- end }}
@@ -103,9 +120,17 @@ spec:
               mountPath: /tmp
           resources:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
+        {{- if .Values.cloudSqlProxy.enabled }}
+        {{- include "composio.cloudSqlProxyContainer" . | nindent 8 }}
+        {{- end }}
       volumes:
         - name: cache-volume
           emptyDir: {}
+        {{- if .Values.cloudSqlProxy.credentials.secretName }}
+        - name: cloud-sql-proxy-credentials
+          secret:
+            secretName: {{ .Values.cloudSqlProxy.credentials.secretName }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

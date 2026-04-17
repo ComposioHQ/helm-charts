@@ -342,6 +342,16 @@ thermos:
     # -- Image pull policy
     pullPolicy: Always
 
+  serviceAccount:
+    # -- Enable service account creation
+    enabled: false
+    # -- Name of the service account to create or use
+    name: "composio-thermos"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+
   # Thermos database initialization container
   dbInit:
     # -- Enable database initialization
@@ -401,6 +411,70 @@ thermos:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
+
+# Toolkit registry configuration (read-only Postgres with toolkit/tool/trigger data)
+toolkitRegistry:
+  # -- Enable a standalone toolkit registry Postgres deployment for Thermos registry reads
+  enabled: false
+  # -- Number of toolkit registry pod replicas
+  replicaCount: 1
+  image:
+    # -- Toolkit registry image repository
+    repository: composio-self-host/thermos-toolkit-registry
+    # -- Toolkit registry image tag
+    tag: "r20260311_00"
+    # -- Image pull policy
+    pullPolicy: Always
+  service:
+    # -- Toolkit registry service type
+    type: ClusterIP
+    # -- Toolkit registry service port
+    port: 5432
+  database:
+    # -- Toolkit registry database name
+    name: thermos
+  auth:
+    # -- Read-only toolkit registry username baked into the image
+    username: registry_reader
+    # -- Read-only toolkit registry password baked into the image
+    password: registry_reader
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+# Cloud SQL Auth Proxy sidecar configuration for Apollo and Thermos DB access
+cloudSqlProxy:
+  # -- Enable Cloud SQL Auth Proxy sidecars for Apollo and Thermos workloads.
+  enabled: false
+  # -- GCP instance connection name in PROJECT:REGION:INSTANCE format.
+  instanceConnectionName: ""
+  # -- Port the sidecar should listen on inside the pod.
+  port: 5432
+  # -- Prefer the instance private IP.
+  privateIp: true
+  image:
+    # -- Cloud SQL proxy image repository.
+    repository: gcr.io/cloud-sql-connectors/cloud-sql-proxy
+    # -- Cloud SQL proxy image tag.
+    tag: "2.18.3"
+    # -- Image pull policy.
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+  credentials:
+    # -- Optional secret containing a JSON service account key for the proxy.
+    secretName: ""
+    # -- Key inside the credentials secret.
+    secretKey: "key.json"
 
 # Database initialization job configuration
 dbInit:

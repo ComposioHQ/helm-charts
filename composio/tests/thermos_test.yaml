@@ -88,6 +88,30 @@ tests:
           path: spec.strategy.rollingUpdate.maxSurge
           value: 1
 
+  - it: should wire toolkit registry db url only when enabled
+    documentIndex: 1
+    set:
+      toolkitRegistry.enabled: true
+      toolkitRegistry.image.repository: composio-self-host/thermos-toolkit-registry
+      toolkitRegistry.image.tag: pr-tag
+      toolkitRegistry.image.pullPolicy: IfNotPresent
+      toolkitRegistry.auth.username: registry_reader
+      toolkitRegistry.auth.password: registry_reader
+      toolkitRegistry.service.port: 5432
+      toolkitRegistry.database.name: thermos
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+            value: postgresql://registry_reader:registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-toolkit-registry:pr-tag
+
 ---
 suite: test thermos service
 templates:
@@ -119,4 +143,44 @@ tests:
           value: 8180
       - equal:
           path: spec.ports[0].targetPort
-          value: 8180 
+          value: 8180
+
+---
+suite: test toolkit registry resources
+templates:
+  - thermos/toolkit-registry.yaml
+tests:
+  - it: should not render toolkit registry when disabled
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render toolkit registry deployment and service when enabled
+    set:
+      toolkitRegistry.enabled: true
+      toolkitRegistry.image.repository: composio-self-host/thermos-toolkit-registry
+      toolkitRegistry.image.tag: pr-tag
+      toolkitRegistry.service.port: 5432
+      toolkitRegistry.auth.username: registry_reader
+      toolkitRegistry.database.name: thermos
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-toolkit-registry
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-toolkit-registry:pr-tag
+        documentIndex: 0
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 5432
+        documentIndex: 1

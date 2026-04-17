@@ -191,11 +191,21 @@ spec:
               mountPath: "{{ .Values.apollo.googleServiceAccount.mountPath }}"
               readOnly: true
             {{- end }}
-      {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
+        {{- if .Values.cloudSqlProxy.enabled }}
+        {{- include "composio.cloudSqlProxyContainer" . | nindent 8 }}
+        {{- end }}
+      {{- if or (and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled) .Values.cloudSqlProxy.credentials.secretName }}
       volumes:
+        {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
         - name: gcp-key
           secret:
             secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
+        {{- end }}
+        {{- if .Values.cloudSqlProxy.credentials.secretName }}
+        - name: cloud-sql-proxy-credentials
+          secret:
+            secretName: {{ .Values.cloudSqlProxy.credentials.secretName }}
+        {{- end }}
       {{- end }}
 ---
 apiVersion: v1

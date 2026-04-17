@@ -1,0 +1,78 @@
+{{- if .Values.toolkitRegistry.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-toolkit-registry
+  labels:
+    app: toolkit-registry
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.toolkitRegistry.replicaCount }}
+  selector:
+    matchLabels:
+      app: toolkit-registry
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: toolkit-registry
+        release: {{ .Release.Name }}
+    spec:
+      {{- if .Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- end }}
+      {{- if not .Values.replicated.enabled }}
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      containers:
+        - name: toolkit-registry
+          image: "{{ include "chart.registry" . }}/{{ .Values.toolkitRegistry.image.repository }}:{{ .Values.toolkitRegistry.image.tag }}"
+          imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -h 127.0.0.1 -p 5432 -U {{ .Values.toolkitRegistry.auth.username }} -d {{ .Values.toolkitRegistry.database.name }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -h 127.0.0.1 -p 5432 -U {{ .Values.toolkitRegistry.auth.username }} -d {{ .Values.toolkitRegistry.database.name }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.toolkitRegistry.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-toolkit-registry
+  labels:
+    app: toolkit-registry
+    release: {{ .Release.Name }}
+spec:
+  type: {{ .Values.toolkitRegistry.service.type }}
+  ports:
+    - name: postgres
+      port: {{ .Values.toolkitRegistry.service.port }}
+      targetPort: 5432
+      protocol: TCP
+  selector:
+    app: toolkit-registry
+    release: {{ .Release.Name }}
+{{- end }}

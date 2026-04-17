@@ -48,6 +48,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.cloudSqlProxy.enabled }}
+      initContainers:
+        {{- include "composio.cloudSqlProxyJobInitContainer" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: apollo-db-init
           image: "{{ include "chart.registry" . }}/{{ .Values.apollo.dbInit.image.repository }}:{{ .Values.apollo.dbInit.image.tag }}"
@@ -83,6 +87,12 @@ spec:
             limits:
               cpu: 1000m
               memory: 1Gi
+      {{- if .Values.cloudSqlProxy.credentials.secretName }}
+      volumes:
+        - name: cloud-sql-proxy-credentials
+          secret:
+            secretName: {{ .Values.cloudSqlProxy.credentials.secretName }}
+      {{- end }}
   backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
 {{- end }}
