@@ -33,9 +33,18 @@ jobs:
   generate-changelog:
     runs-on: ubuntu-latest
     steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COMPOSIO_INTERNAL_READER_APP_ID }}
+          private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -63,8 +72,8 @@ jobs:
           CHANGELOG_TO_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.to_release || '0.1.84' }}
           CHANGELOG_OUTPUT_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.output_file || 'release-changelog.md' }}
           CHART_OCI_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.chart_oci_ref || 'oci://registry.composio.io/composio-rodent/nightly/composio' }}
-          GITHUB_TOKEN: ${{ github.token }}
-          CHANGELOG_GITHUB_TOKEN: ${{ secrets.CROSS_REPO_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          CHANGELOG_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           CHART_REGISTRY_USERNAME: ${{ secrets.CHART_REGISTRY_USERNAME }}
           CHART_REGISTRY_PASSWORD: ${{ secrets.CHART_REGISTRY_PASSWORD }}
           REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
