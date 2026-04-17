@@ -5,6 +5,42 @@ on:
     # 00:00 IST is 18:30 UTC (previous day)
     - cron: "30 18 * * *"
   workflow_dispatch:
+    inputs:
+      apollo_image_tag:
+        description: "ECR source tag for apollo (default latest). Resolved image is retagged to the nightly release tag."
+        required: false
+        type: string
+        default: "latest"
+      apollo_db_init_image_tag:
+        description: "ECR source tag for apollo-db-init (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      thermos_image_tag:
+        description: "ECR source tag for thermos (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      thermos_db_init_image_tag:
+        description: "ECR source tag for thermos-db-init (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      mercury_image_tag:
+        description: "ECR source tag for mercury (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      frontend_image_tag:
+        description: "ECR source tag for frontend (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      weaviate_image_tag:
+        description: "ECR source tag for weaviate (default latest)."
+        required: false
+        type: string
+        default: "latest"
 
 permissions:
   contents: write
@@ -19,6 +55,14 @@ jobs:
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate"
+      # Per-repo ECR source tags (manual runs only; empty on schedule). Empty = use "latest".
+      SOURCE_TAG_APOLLO: ${{ github.event.inputs.apollo_image_tag || '' }}
+      SOURCE_TAG_APOLLO_DB_INIT: ${{ github.event.inputs.apollo_db_init_image_tag || '' }}
+      SOURCE_TAG_THERMOS: ${{ github.event.inputs.thermos_image_tag || '' }}
+      SOURCE_TAG_THERMOS_DB_INIT: ${{ github.event.inputs.thermos_db_init_image_tag || '' }}
+      SOURCE_TAG_MERCURY: ${{ github.event.inputs.mercury_image_tag || '' }}
+      SOURCE_TAG_FRONTEND: ${{ github.event.inputs.frontend_image_tag || '' }}
+      SOURCE_TAG_WEAVIATE: ${{ github.event.inputs.weaviate_image_tag || '' }}
     permissions:
       id-token: write
     steps:
@@ -121,12 +165,35 @@ jobs:
           echo "Using release tag from latest GitHub release calculation: ${NEW_TAG}"
           echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
 
+          resolve_source_tag() {
+            local r="$1"
+            local v=""
+            case "${r}" in
+              apollo) v="${SOURCE_TAG_APOLLO:-}" ;;
+              apollo-db-init) v="${SOURCE_TAG_APOLLO_DB_INIT:-}" ;;
+              thermos) v="${SOURCE_TAG_THERMOS:-}" ;;
+              thermos-db-init) v="${SOURCE_TAG_THERMOS_DB_INIT:-}" ;;
+              mercury) v="${SOURCE_TAG_MERCURY:-}" ;;
+              frontend) v="${SOURCE_TAG_FRONTEND:-}" ;;
+              weaviate) v="${SOURCE_TAG_WEAVIATE:-}" ;;
+              *) v="" ;;
+            esac
+            if [[ -n "${v}" ]]; then
+              printf '%s' "${v}"
+            else
+              printf '%s' "latest"
+            fi
+          }
+
           results='[]'
 
           for repo in ${IMAGE_REPOS}; do
+            SOURCE_TAG="$(resolve_source_tag "${repo}")"
+            echo "Resolving composio-self-host/${repo} from tag: ${SOURCE_TAG} → will publish tag: ${NEW_TAG}"
+
             image_json="$(aws ecr batch-get-image \
               --repository-name composio-self-host/"${repo}" \
-              --image-ids imageTag=latest \
+              --image-ids imageTag="${SOURCE_TAG}" \
               --accepted-media-types \
                 application/vnd.oci.image.manifest.v1+json \
                 application/vnd.oci.image.index.v1+json \
