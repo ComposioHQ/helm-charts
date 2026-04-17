@@ -387,6 +387,10 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.replicated-release.outputs.branch_name }}
 
+      - name: Record nightly branch HEAD
+        id: nightly_head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Create nightly release PR
         id: create_pr
         uses: actions/github-script@v7
@@ -444,6 +448,45 @@ jobs:
             });
 
             core.setOutput("pr_url", pr.html_url);
+
+      - name: Ensure GitHub release exists for nightly image tag
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag_name = "${{ needs.retag-latest-images.outputs.release_tag }}";
+            const target_commitish = "${{ steps.nightly_head.outputs.sha }}";
+            const version = "${{ needs.replicated-release.outputs.version }}";
+            const prUrl = "${{ steps.create_pr.outputs.pr_url }}";
+
+            try {
+              await github.rest.repos.getReleaseByTag({ owner, repo, tag: tag_name });
+              core.info(`GitHub release for tag ${tag_name} already exists; skipping create.`);
+            } catch (e) {
+              const status = e.status ?? e.response?.status;
+              if (status !== 404) {
+                throw e;
+              }
+              const body = [
+                `Nightly image tag **\`${tag_name}\`** (Helm / Replicated appVersion **${version}**).`,
+                "",
+                prUrl ? `Tracking PR: ${prUrl}` : "",
+              ].join("\n");
+
+              await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name,
+                target_commitish,
+                name: version,
+                body,
+                draft: false,
+                prerelease: true,
+              });
+              core.info(`Created GitHub release ${tag_name} at ${target_commitish}`);
+            }
 
       # - name: Notify Slack - Success
       #   if: success()
