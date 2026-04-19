@@ -193,11 +193,9 @@ spec:
             {{- end }}
       {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
       volumes:
-        {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
         - name: gcp-key
           secret:
             secretName: {{ .Values.apollo.googleServiceAccount.secretName }}
-        {{- end }}
       {{- end }}
 ---
 apiVersion: v1

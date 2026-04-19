@@ -367,7 +367,6 @@ imagePullSecrets:
     {{- end }}
   {{- end }}
 {{- end -}}
-
 {{/*
 Parse SMTP connection string from secret
 Expects format: smtp://{username}:{password}@{host}:{port}
