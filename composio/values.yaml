@@ -408,7 +408,7 @@ toolkitRegistry:
   # Enabled by default for on-prem installs; disable only if you explicitly want Thermos to fall back to the primary registry DB.
   enabled: true
   # -- Number of toolkit registry pod replicas
-  replicaCount: 1
+  replicaCount: 2
   image:
     # -- Toolkit registry image repository
     repository: composio-self-host/thermos-toolkit-registry
