@@ -369,60 +369,6 @@ imagePullSecrets:
 {{- end -}}
 
 {{/*
-Cloud SQL Auth Proxy sidecar container
-*/}}
-{{- define "composio.cloudSqlProxyContainer" -}}
-- name: cloud-sql-proxy
-  image: "{{ .Values.cloudSqlProxy.image.repository }}:{{ .Values.cloudSqlProxy.image.tag }}"
-  imagePullPolicy: {{ .Values.cloudSqlProxy.image.pullPolicy }}
-  {{- if .Values.cloudSqlProxy.credentials.secretName }}
-  env:
-    - name: GOOGLE_APPLICATION_CREDENTIALS
-      value: /var/secrets/google/{{ .Values.cloudSqlProxy.credentials.secretKey }}
-  volumeMounts:
-    - name: cloud-sql-proxy-credentials
-      mountPath: /var/secrets/google
-      readOnly: true
-  {{- end }}
-  args:
-    {{- if .Values.cloudSqlProxy.privateIp }}
-    - "--private-ip"
-    {{- end }}
-    - "--port={{ .Values.cloudSqlProxy.port }}"
-    - "{{ .Values.cloudSqlProxy.instanceConnectionName }}"
-  resources:
-    {{- toYaml .Values.cloudSqlProxy.resources | nindent 4 }}
-{{- end -}}
-
-{{/*
-Cloud SQL Auth Proxy sidecar for Jobs using native sidecar init containers
-*/}}
-{{- define "composio.cloudSqlProxyJobInitContainer" -}}
-- name: cloud-sql-proxy
-  restartPolicy: Always
-  image: "{{ .Values.cloudSqlProxy.image.repository }}:{{ .Values.cloudSqlProxy.image.tag }}"
-  imagePullPolicy: {{ .Values.cloudSqlProxy.image.pullPolicy }}
-  {{- if .Values.cloudSqlProxy.credentials.secretName }}
-  env:
-    - name: GOOGLE_APPLICATION_CREDENTIALS
-      value: /var/secrets/google/{{ .Values.cloudSqlProxy.credentials.secretKey }}
-  volumeMounts:
-    - name: cloud-sql-proxy-credentials
-      mountPath: /var/secrets/google
-      readOnly: true
-  {{- end }}
-  args:
-    {{- if .Values.cloudSqlProxy.privateIp }}
-    - "--private-ip"
-    {{- end }}
-    - "--port={{ .Values.cloudSqlProxy.port }}"
-    - "{{ .Values.cloudSqlProxy.instanceConnectionName }}"
-  resources:
-    {{- toYaml .Values.cloudSqlProxy.resources | nindent 4 }}
-{{- end -}}
-
-
-{{/*
 Parse SMTP connection string from secret
 Expects format: smtp://{username}:{password}@{host}:{port}
 Returns a map with keys: username, password, host, port

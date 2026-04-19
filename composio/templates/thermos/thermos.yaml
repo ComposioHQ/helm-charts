@@ -22,9 +22,6 @@ spec:
         app: thermos
         release: {{ .Release.Name }}
     spec:
-      {{- if .Values.thermos.serviceAccount.enabled }}
-      serviceAccountName: {{ .Values.thermos.serviceAccount.name  }}
-      {{- end }}
       {{- if .Values.replicated.enabled }}
       {{- include "replicated.imagePullSecrets" . | nindent 6 }}
       {{- end }}
@@ -120,17 +117,9 @@ spec:
               mountPath: /tmp
           resources:
             {{- toYaml .Values.thermos.resources | nindent 12 }}
-        {{- if .Values.cloudSqlProxy.enabled }}
-        {{- include "composio.cloudSqlProxyContainer" . | nindent 8 }}
-        {{- end }}
       volumes:
         - name: cache-volume
           emptyDir: {}
-        {{- if .Values.cloudSqlProxy.credentials.secretName }}
-        - name: cloud-sql-proxy-credentials
-          secret:
-            secretName: {{ .Values.cloudSqlProxy.credentials.secretName }}
-        {{- end }}
 ---
 apiVersion: v1
 kind: Service
