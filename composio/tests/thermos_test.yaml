@@ -3,7 +3,7 @@ templates:
   - thermos/thermos.yaml
 tests:
   - it: should create thermos deployment
-    documentIndex: 1
+    documentIndex: 0
     asserts:
       - isKind:
           of: Deployment
@@ -18,7 +18,7 @@ tests:
           value: RELEASE-NAME
 
   - it: should have correct replica count
-    documentIndex: 1
+    documentIndex: 0
     set:
       thermos.replicaCount: 2
     asserts:
@@ -27,7 +27,7 @@ tests:
           value: 2
 
   - it: should use correct image
-    documentIndex: 1
+    documentIndex: 0
     set:
       thermos.image.repository: test-thermos
       thermos.image.tag: latest
@@ -35,20 +35,20 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: test-thermos:latest
+          value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/test-thermos:latest
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: Always
 
   - it: should have correct port configuration
-    documentIndex: 1
+    documentIndex: 0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].ports[0].containerPort
           value: 8180
 
   - it: should have correct resource configuration
-    documentIndex: 1
+    documentIndex: 0
     set:
       thermos.resources:
         requests:
@@ -66,7 +66,7 @@ tests:
           value: "1"
 
   - it: should include image pull secrets when configured
-    documentIndex: 1
+    documentIndex: 0
     set:
       global.imagePullSecrets:
         - name: thermos-secret
@@ -76,7 +76,7 @@ tests:
           value: thermos-secret
 
   - it: should have rolling update strategy
-    documentIndex: 1
+    documentIndex: 0
     asserts:
       - equal:
           path: spec.strategy.type
@@ -88,17 +88,8 @@ tests:
           path: spec.strategy.rollingUpdate.maxSurge
           value: 1
 
-  - it: should wire toolkit registry db url only when enabled
-    documentIndex: 1
-    set:
-      toolkitRegistry.enabled: true
-      toolkitRegistry.image.repository: composio-self-host/thermos-toolkit-registry
-      toolkitRegistry.image.tag: pr-tag
-      toolkitRegistry.image.pullPolicy: IfNotPresent
-      toolkitRegistry.auth.username: registry_reader
-      toolkitRegistry.auth.password: registry_reader
-      toolkitRegistry.service.port: 5432
-      toolkitRegistry.database.name: thermos
+  - it: should wire toolkit registry db url by default
+    documentIndex: 0
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -110,7 +101,19 @@ tests:
           value: wait-for-toolkit-registry
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-toolkit-registry:pr-tag
+          value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-toolkit-registry:r20260311_00
+
+  - it: should skip toolkit registry wiring when explicitly disabled
+    documentIndex: 0
+    set:
+      toolkitRegistry.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+      - isNull:
+          path: spec.template.spec.initContainers
 
 ---
 suite: test thermos service
@@ -118,7 +121,7 @@ templates:
   - thermos/thermos.yaml
 tests:
   - it: should create thermos service
-    documentIndex: 0
+    documentIndex: 1
     asserts:
       - isKind:
           of: Service
@@ -130,7 +133,7 @@ tests:
           value: thermos
 
   - it: should have correct service configuration
-    documentIndex: 0
+    documentIndex: 1
     set:
       thermos.service.type: ClusterIP
       thermos.service.port: 8180
@@ -150,19 +153,7 @@ suite: test toolkit registry resources
 templates:
   - thermos/toolkit-registry.yaml
 tests:
-  - it: should not render toolkit registry when disabled
-    asserts:
-      - hasDocuments:
-          count: 0
-
-  - it: should render toolkit registry deployment and service when enabled
-    set:
-      toolkitRegistry.enabled: true
-      toolkitRegistry.image.repository: composio-self-host/thermos-toolkit-registry
-      toolkitRegistry.image.tag: pr-tag
-      toolkitRegistry.service.port: 5432
-      toolkitRegistry.auth.username: registry_reader
-      toolkitRegistry.database.name: thermos
+  - it: should render toolkit registry deployment and service by default
     asserts:
       - hasDocuments:
           count: 2
@@ -175,7 +166,7 @@ tests:
         documentIndex: 0
       - equal:
           path: spec.template.spec.containers[0].image
-          value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-toolkit-registry:pr-tag
+          value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-toolkit-registry:r20260311_00
         documentIndex: 0
       - isKind:
           of: Service
@@ -184,3 +175,10 @@ tests:
           path: spec.ports[0].port
           value: 5432
         documentIndex: 1
+
+  - it: should not render toolkit registry when disabled
+    set:
+      toolkitRegistry.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
