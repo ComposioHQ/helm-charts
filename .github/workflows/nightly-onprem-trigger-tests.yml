@@ -1,0 +1,113 @@
+name: Nightly Onprem Trigger Tests
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-onprem-trigger-tests-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  resolve-version:
+    name: Resolve Replicated Release Version
+    if: >
+      github.event.pull_request.state == 'open' &&
+      (
+        (
+          github.event.action == 'labeled' &&
+          (
+            github.event.label.name == 'nightly' ||
+            github.event.label.name == 'nightly-release'
+          )
+        ) ||
+        (
+          github.event.action != 'labeled' &&
+          (
+            contains(github.event.pull_request.labels.*.name, 'nightly') ||
+            contains(github.event.pull_request.labels.*.name, 'nightly-release')
+          )
+        )
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      helm_chart_version: ${{ steps.version.outputs.helm_chart_version }}
+    steps:
+      - name: Checkout PR manifest only
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            manifests/k8s-app.yaml
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve replicated release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(
+            awk '
+              /^  descriptor:/ { in_descriptor=1; next }
+              in_descriptor && /^    version:/ {
+                gsub(/"/, "", $2)
+                print $2
+                exit
+              }
+            ' manifests/k8s-app.yaml
+          )"
+
+          if [[ -z "${version}" ]]; then
+            echo "Unable to resolve .spec.descriptor.version from manifests/k8s-app.yaml" >&2
+            exit 1
+          fi
+
+          echo "helm_chart_version=${version}" >> "${GITHUB_OUTPUT}"
+
+  onprem-trigger-tests:
+    name: Onprem Trigger Tests
+    if: >
+      github.event.pull_request.state == 'open' &&
+      (
+        (
+          github.event.action == 'labeled' &&
+          (
+            github.event.label.name == 'nightly' ||
+            github.event.label.name == 'nightly-release'
+          )
+        ) ||
+        (
+          github.event.action != 'labeled' &&
+          (
+            contains(github.event.pull_request.labels.*.name, 'nightly') ||
+            contains(github.event.pull_request.labels.*.name, 'nightly-release')
+          )
+        )
+      )
+    needs:
+      - resolve-version
+    permissions:
+      contents: read
+    uses: ComposioHQ/onprem-testbed/.github/workflows/replicated-cmx-harness.yml@main
+    with:
+      helm_chart_version: ${{ needs.resolve-version.outputs.helm_chart_version }}
+      harness_env_json: '{"RUN_TRIGGER_TESTS":"1"}'
+      workflow_source_repository: ComposioHQ/onprem-testbed
+      workflow_source_ref: main
+    secrets:
+      replicated_token: ${{ secrets.REPLICATED_API_TOKEN }}
+      replicated_license: ${{ secrets.REPLICATED_LICENSE }}
+      replicated_app: ${{ secrets.REPLICATED_APP }}
+      seeded_fixture_encryption_key: ${{ secrets.SEEDED_FIXTURE_ENCRYPTION_KEY }}
+      workflow_source_token: ${{ secrets.ONPREM_TESTBED_DISPATCH_TOKEN }}
