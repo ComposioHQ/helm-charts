@@ -10,6 +10,7 @@ Identifiers can be any of:
 - a git ref that contains composio/Chart.yaml and composio/values.yaml
 - a Helm chart version present in git history
 - a Helm chart version published at CHART_OCI_REF
+- the special identifier WORKTREE for the current checked-out files
 
 The generated markdown includes:
 - the OCI image tag delta from composio/values.yaml
@@ -186,9 +187,43 @@ EOF
   return 0
 }
 
+resolve_from_worktree() {
+  local identifier="$1"
+  local prefix="$2"
+  local chart_version app_version
+
+  if [[ "${identifier}" != "WORKTREE" ]]; then
+    return 1
+  fi
+
+  if [[ ! -f "composio/Chart.yaml" || ! -f "composio/values.yaml" ]]; then
+    echo "WORKTREE resolution requires composio/Chart.yaml and composio/values.yaml in the current checkout." >&2
+    exit 1
+  fi
+
+  cp "composio/Chart.yaml" "${TMPDIR_PATH}/${prefix}-Chart.yaml"
+  cp "composio/values.yaml" "${TMPDIR_PATH}/${prefix}-values.yaml"
+
+  chart_version="$(yq -r '.version // ""' "${TMPDIR_PATH}/${prefix}-Chart.yaml")"
+  app_version="$(yq -r '.appVersion // ""' "${TMPDIR_PATH}/${prefix}-Chart.yaml")"
+
+  set_meta "${prefix}" identifier "${identifier}"
+  set_meta "${prefix}" source_kind "worktree"
+  set_meta "${prefix}" source_ref "WORKTREE"
+  set_meta "${prefix}" source_date ""
+  set_meta "${prefix}" chart_version "${chart_version}"
+  set_meta "${prefix}" app_version "${app_version}"
+
+  return 0
+}
+
 resolve_identifier() {
   local identifier="$1"
   local prefix="$2"
+
+  if resolve_from_worktree "${identifier}" "${prefix}"; then
+    return 0
+  fi
 
   if resolve_from_git_ref "${identifier}" "${prefix}"; then
     return 0
@@ -477,6 +512,27 @@ append_helm_charts_section() {
   echo "### ComposioHQ/helm-charts" >> "${output_file}"
   echo >> "${output_file}"
   echo "- Chart versions: \`$(get_meta FROM chart_version)\` -> \`$(get_meta TO chart_version)\`" >> "${output_file}"
+
+  if [[ "${to_kind}" == "worktree" ]]; then
+    if [[ "${from_kind}" == "chart-oci" ]]; then
+      echo "- Base release was resolved from OCI and the target is the current working tree, so no helm-charts git commit range could be determined." >> "${output_file}"
+      echo >> "${output_file}"
+      return 0
+    fi
+
+    echo "- Compared against the current working tree state, so no committed helm-charts range is attached for the target side." >> "${output_file}"
+    echo "- Base git ref: \`${from_ref:0:7}\`" >> "${output_file}"
+    echo >> "${output_file}"
+    echo '```diff' >> "${output_file}"
+    git diff --stat "${from_ref}" -- \
+      composio/Chart.yaml \
+      composio/values.yaml \
+      manifests/k8s-app.yaml \
+      manifests/composio.yaml >> "${output_file}" || true
+    echo '```' >> "${output_file}"
+    echo >> "${output_file}"
+    return 0
+  fi
 
   if [[ "${from_kind}" == "chart-oci" || "${to_kind}" == "chart-oci" ]]; then
     echo "- One or both chart versions were resolved from OCI only, so no helm-charts git commit range could be determined." >> "${output_file}"
