@@ -41,6 +41,11 @@ on:
         required: false
         type: string
         default: "latest"
+      thermos_toolkit_registry_image_tag:
+        description: "ECR source tag for thermos-toolkit-registry (default latest)."
+        required: false
+        type: string
+        default: "latest"
 
 permissions:
   contents: write
@@ -54,7 +59,7 @@ jobs:
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate"
+      IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate thermos-toolkit-registry"
       # Per-repo ECR source tags (manual runs only; empty on schedule). Empty = use "latest".
       SOURCE_TAG_APOLLO: ${{ github.event.inputs.apollo_image_tag || '' }}
       SOURCE_TAG_APOLLO_DB_INIT: ${{ github.event.inputs.apollo_db_init_image_tag || '' }}
@@ -63,6 +68,7 @@ jobs:
       SOURCE_TAG_MERCURY: ${{ github.event.inputs.mercury_image_tag || '' }}
       SOURCE_TAG_FRONTEND: ${{ github.event.inputs.frontend_image_tag || '' }}
       SOURCE_TAG_WEAVIATE: ${{ github.event.inputs.weaviate_image_tag || '' }}
+      SOURCE_TAG_THERMOS_TOOLKIT_REGISTRY: ${{ github.event.inputs.thermos_toolkit_registry_image_tag || '' }}
     permissions:
       id-token: write
     steps:
@@ -176,6 +182,7 @@ jobs:
               mercury) v="${SOURCE_TAG_MERCURY:-}" ;;
               frontend) v="${SOURCE_TAG_FRONTEND:-}" ;;
               weaviate) v="${SOURCE_TAG_WEAVIATE:-}" ;;
+              thermos-toolkit-registry) v="${SOURCE_TAG_THERMOS_TOOLKIT_REGISTRY:-}" ;;
               *) v="" ;;
             esac
             if [[ -n "${v}" ]]; then
@@ -358,6 +365,7 @@ jobs:
           yq eval -i '.mercury.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.frontend.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           yq eval -i '.weaviate.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.toolkitRegistry.image.tag = strenv(RELEASE_TAG)' ./values.yaml
           cd -
 
           cd ./manifests

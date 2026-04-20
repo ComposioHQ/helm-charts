@@ -151,15 +151,18 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[1].name
           value: populate-thermos-secrets
       - equal:
-          path: spec.template.spec.initContainers[0].image
+          path: spec.template.spec.initContainers[1].image
           value: busybox:1.36
       - equal:
-          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          path: spec.template.spec.initContainers[1].volumeMounts[0].name
           value: thermos-secrets
       - equal:
-          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          path: spec.template.spec.initContainers[1].volumeMounts[0].mountPath
           value: /etc/secrets/thermos
 
   - it: should allow overriding thermos secrets dir
@@ -213,6 +216,54 @@ tests:
           path: spec.strategy.rollingUpdate.maxSurge
           value: 1
 
+  - it: should wire toolkit registry db url by default
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+            value: postgresql://registry_reader:registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].image
+          pattern: ".*/composio-self-host/thermos-toolkit-registry:r20260409_03$"
+
+  - it: should append thermos additional init containers after toolkit registry wait
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.additionalInitContainers:
+        - name: custom-init
+          image: busybox
+          command: ['sh', '-c', 'echo custom']
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: custom-init
+
+  - it: should skip toolkit registry wiring when explicitly disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      toolkitRegistry.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+      - isNull:
+          path: spec.template.spec.initContainers
+
 ---
 suite: test thermos service
 templates:
@@ -249,3 +300,93 @@ tests:
       - equal:
           path: spec.ports[0].targetPort
           value: 8180
+---
+suite: test toolkit registry resources
+templates:
+  - thermos/toolkit-registry.yaml
+tests:
+  - it: should render toolkit registry deployment and service by default
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-toolkit-registry
+        documentIndex: 0
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ".*/composio-self-host/thermos-toolkit-registry:r20260409_03$"
+        documentIndex: 0
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 5432
+        documentIndex: 1
+
+  - it: should allow toolkit registry init containers and env
+    documentIndex: 0
+    set:
+      toolkitRegistry.initContainers:
+        - name: prep
+          image: busybox
+          command: ['sh', '-c', 'echo prep']
+      toolkitRegistry.env:
+        - name: PGAPPNAME
+          value: toolkit-registry
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prep
+      - equal:
+          path: spec.template.spec.containers[0].env[0].name
+          value: PGAPPNAME
+      - equal:
+          path: spec.template.spec.containers[0].env[0].value
+          value: toolkit-registry
+
+  - it: should not render toolkit registry when disabled
+    set:
+      toolkitRegistry.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+---
+suite: test thermos misc workers deployment
+templates:
+  - thermos/thermos-misc-workers.yaml
+tests:
+  - it: should wire toolkit registry db url for misc workers when enabled
+    set:
+      thermosMiscWorkers.enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+            value: postgresql://registry_reader:registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+
+  - it: should append misc worker additional init containers after toolkit registry wait
+    set:
+      thermosMiscWorkers.enabled: true
+      thermosMiscWorkers.additionalInitContainers:
+        - name: custom-misc-init
+          image: busybox
+          command: ['sh', '-c', 'echo misc']
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: custom-misc-init

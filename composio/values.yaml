@@ -461,6 +461,46 @@ thermos:
     # -- Number of pods to scale up at once
     scaleUpPods: 4
 
+# Toolkit registry configuration (read-only Postgres with toolkit/tool/trigger data)
+toolkitRegistry:
+  # -- Enable the standalone toolkit registry Postgres deployment used by Thermos for toolkit/tool/trigger reads.
+  # Enabled by default for on-prem installs; disable only if you explicitly want Thermos to fall back to the primary registry DB.
+  enabled: true
+  # -- Number of toolkit registry pod replicas
+  replicaCount: 2
+  image:
+    # -- Toolkit registry image repository (used when imageName is not set)
+    repository: composio-self-host/thermos-toolkit-registry
+    # -- Toolkit registry image tag
+    tag: "r20260409_03"
+    # -- Image pull policy
+    pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+  service:
+    # -- Toolkit registry service type
+    type: ClusterIP
+    # -- Toolkit registry service port
+    port: 5432
+  database:
+    # -- Toolkit registry database name
+    name: thermos
+  auth:
+    # -- Read-only toolkit registry username baked into the image
+    username: registry_reader
+    # -- Read-only toolkit registry password baked into the image
+    password: registry_reader
+  # -- Additional init containers for toolkit registry pods
+  initContainers: []
+  # -- Additional environment variables for toolkit registry pods
+  env: []
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
 # Thermos misc-workers configuration (runs only THERMOS_MODE=miscellaneous_worker).
 # Disabled by default.
 thermosMiscWorkers:
