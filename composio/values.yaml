@@ -367,7 +367,7 @@ apollo:
 # Thermos service configuration (workflow execution service)
 thermos:
   # -- Number of Thermos pod replicas
-  replicaCount: 2
+  replicaCount: 1
   # Thermos container image configuration
   image:
     # -- Thermos image repository (used when imageName is not set)
@@ -426,14 +426,14 @@ thermos:
   resources:
     requests:
       # -- Memory request for Thermos
-      memory: "4Gi"
+      memory: "2Gi"
       # -- CPU request for Thermos
-      cpu: "2"
+      cpu: "1500m"
     limits:
       # -- Memory limit for Thermos
-      memory: "5Gi"
+      memory: "4Gi"
       # -- CPU limit for Thermos
-      cpu: "2"
+      cpu: "3"
   # Horizontal Pod Autoscaler configuration for Thermos
   autoscaling:
     # -- Enable HPA
