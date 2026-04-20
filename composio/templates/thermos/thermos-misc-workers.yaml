@@ -137,7 +137,7 @@ spec:
                   optional: true
             {{- if .Values.toolkitRegistry.enabled }}
             - name: TOOLKIT_REGISTRY_DB_URL
-              value: {{ printf "postgresql://%s:%s@%s-toolkit-registry:%v/%s?sslmode=disable" .Values.toolkitRegistry.auth.username .Values.toolkitRegistry.auth.password .Release.Name (.Values.toolkitRegistry.service.port | int) .Values.toolkitRegistry.database.name | quote }}
+              value: {{ printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" .Values.toolkitRegistry.auth.username .Release.Name (.Values.toolkitRegistry.service.port | int) .Values.toolkitRegistry.database.name | quote }}
             {{- end }}
             {{- if .Values.thermosMiscWorkers.env }}
             {{- toYaml .Values.thermosMiscWorkers.env | nindent 12 }}
