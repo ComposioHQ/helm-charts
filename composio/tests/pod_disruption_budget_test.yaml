@@ -1,0 +1,142 @@
+suite: test pod disruption budgets
+templates:
+  - poddisruptionbudgets.yaml
+tests:
+  - it: should not render any pod disruption budgets by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render apollo pod disruption budget when enabled
+    set:
+      redis.enabled: true
+      externalRedis.enabled: false
+      apollo.podDisruptionBudget.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-apollo-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels.app
+          value: apollo
+      - equal:
+          path: spec.selector.matchLabels.release
+          value: RELEASE-NAME
+
+  - it: should render frontend pod disruption budget when enabled
+    set:
+      frontend.enabled: true
+      frontend.podDisruptionBudget.enabled: true
+      frontend.podDisruptionBudget.minAvailable: 1
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-composio-frontend-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.minAvailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: frontend
+
+  - it: should render mercury pod disruption budget when enabled
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+      mercury.podDisruptionBudget.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-composio-mercury-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: mercury
+
+  - it: should not render mercury pod disruption budget when using knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      mercury.podDisruptionBudget.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render thermos pod disruption budget when enabled
+    set:
+      thermos.podDisruptionBudget.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-thermos-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels.app
+          value: thermos
+
+  - it: should render thermos misc workers pod disruption budget when enabled
+    set:
+      thermosMiscWorkers.enabled: true
+      thermosMiscWorkers.podDisruptionBudget.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-thermos-misc-workers-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels.app
+          value: thermos-misc-workers
+
+  - it: should render weaviate pod disruption budget when enabled
+    set:
+      weaviate.enabled: true
+      weaviate.podDisruptionBudget.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-weaviate-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: weaviate
+
+  - it: should render otel collector pod disruption budget when enabled
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.podDisruptionBudget.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-otel-collector-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: otel-collector

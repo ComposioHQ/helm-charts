@@ -157,6 +157,11 @@ openAI:
 apollo:
   # -- Number of Apollo pod replicas
   replicaCount: 2
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Apollo.
+    enabled: false
+    # -- Maximum number of Apollo pods that can be unavailable during voluntary disruptions.
+    maxUnavailable: 1
   # Apollo container image configuration
   image:
     # -- Apollo image repository (used when imageName is not set)
@@ -368,6 +373,11 @@ apollo:
 thermos:
   # -- Number of Thermos pod replicas
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for the OTEL collector.
+    enabled: false
+    # -- Maximum number of collector pods that can be unavailable during voluntary disruptions.
+    maxUnavailable: 1
   # Thermos container image configuration
   image:
     # -- Thermos image repository (used when imageName is not set)
@@ -506,6 +516,11 @@ toolkitRegistry:
 thermosMiscWorkers:
   enabled: false
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Thermos misc workers.
+    enabled: false
+    # -- Maximum number of Thermos misc worker pods that can be unavailable during voluntary disruptions.
+    maxUnavailable: 1
   # -- Toggle Temporal auto-recovery logic in misc workers.
   # Controls ENABLE_TEMPORAL_AUTO_RECOVERY env var.
   temporalAutoRecoveryEnabled: true
@@ -876,6 +891,11 @@ otel:
     enabled: true
     # -- Number of collector replicas
     replicaCount: 1
+    podDisruptionBudget:
+      # -- Enable a PodDisruptionBudget for the OTEL collector.
+      enabled: false
+      # -- Maximum number of collector pods that can be unavailable during voluntary disruptions.
+      maxUnavailable: 1
     # Collector image configuration
     image:
       # -- Collector image repository
@@ -1054,6 +1074,11 @@ mercury:
   useKnative: false
   # -- Number of Mercury pod replicas (when not using Knative)
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Mercury deployment mode.
+    enabled: false
+    # -- Maximum number of Mercury pods that can be unavailable during voluntary disruptions.
+    maxUnavailable: 1
   # Mercury container image configuration
   image:
     # -- Mercury image repository (used when imageName is not set)
@@ -1183,6 +1208,11 @@ frontend:
   enabled: false
   # -- Number of frontend pod replicas
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Frontend.
+    enabled: false
+    # -- Maximum number of Frontend pods that can be unavailable during voluntary disruptions.
+    maxUnavailable: 1
   # Frontend container image configuration
   image:
     # -- Frontend image repository (used when imageName is not set)
@@ -1261,6 +1291,11 @@ weaviate:
   enabled: true
   # -- Number of Weaviate pod replicas
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Weaviate.
+    enabled: false
+    # -- Maximum number of Weaviate pods that can be unavailable during voluntary disruptions.
+    maxUnavailable: 1
   # Weaviate container image configuration
   image:
     # -- Weaviate image repository (used when imageName is not set)
