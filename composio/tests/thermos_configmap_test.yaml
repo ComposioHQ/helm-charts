@@ -1,0 +1,17 @@
+suite: test thermos configmap
+templates:
+  - thermos/thermos-config.yaml
+tests:
+  - it: should create thermos configmap
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-thermos-config
+
+  - it: should default the main thermos mode to all
+    asserts:
+      - equal:
+          path: data.THERMOS_MODE
+          value: "all"

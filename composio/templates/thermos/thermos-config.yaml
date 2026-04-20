@@ -5,6 +5,7 @@ metadata:
 data:
   PORT: "8180"
   HOST: "0.0.0.0"
+  THERMOS_MODE: "all"
   APOLLO_ENDPOINT: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   COMPOSIO_ENV: "production"
   LOG_ENCODING: "json"
