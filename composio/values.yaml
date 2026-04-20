@@ -374,6 +374,9 @@ thermos:
       memory: "5Gi"
       # -- CPU limit for Thermos
       cpu: "2"
+
+  # -- Additional init containers for Thermos pods
+  additionalInitContainers: []
   
   # Horizontal Pod Autoscaler configuration for Thermos
   autoscaling:
@@ -429,6 +432,10 @@ toolkitRegistry:
     username: registry_reader
     # -- Read-only toolkit registry password baked into the image
     password: registry_reader
+  # -- Additional init containers for toolkit registry pods
+  initContainers: []
+  # -- Additional environment variables for toolkit registry pods
+  env: []
   resources:
     requests:
       cpu: "250m"

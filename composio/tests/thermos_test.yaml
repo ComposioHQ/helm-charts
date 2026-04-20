@@ -103,6 +103,21 @@ tests:
           path: spec.template.spec.initContainers[0].image
           value: artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-toolkit-registry:r20260311_00
 
+  - it: should append thermos additional init containers after toolkit registry wait
+    documentIndex: 0
+    set:
+      thermos.additionalInitContainers:
+        - name: custom-init
+          image: busybox
+          command: ['sh', '-c', 'echo custom']
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: custom-init
+
   - it: should skip toolkit registry wiring when explicitly disabled
     documentIndex: 0
     set:
@@ -175,6 +190,27 @@ tests:
           path: spec.ports[0].port
           value: 5432
         documentIndex: 1
+
+  - it: should allow toolkit registry init containers and env
+    documentIndex: 0
+    set:
+      toolkitRegistry.initContainers:
+        - name: prep
+          image: busybox
+          command: ['sh', '-c', 'echo prep']
+      toolkitRegistry.env:
+        - name: PGAPPNAME
+          value: toolkit-registry
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prep
+      - equal:
+          path: spec.template.spec.containers[0].env[0].name
+          value: PGAPPNAME
+      - equal:
+          path: spec.template.spec.containers[0].env[0].value
+          value: toolkit-registry
 
   - it: should not render toolkit registry when disabled
     set:
