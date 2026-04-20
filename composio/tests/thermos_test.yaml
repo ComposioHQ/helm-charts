@@ -225,7 +225,7 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: TOOLKIT_REGISTRY_DB_URL
-            value: postgresql://registry_reader:registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+            value: postgresql://registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
       - equal:
           path: spec.template.spec.initContainers[0].name
           value: wait-for-toolkit-registry
@@ -371,7 +371,7 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: TOOLKIT_REGISTRY_DB_URL
-            value: postgresql://registry_reader:registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+            value: postgresql://registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
       - equal:
           path: spec.template.spec.initContainers[0].name
           value: wait-for-toolkit-registry
