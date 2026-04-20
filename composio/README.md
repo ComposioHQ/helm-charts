@@ -75,9 +75,18 @@ A Helm chart for Composio
 | dbInit.job.backoffLimit | int | `3` | Maximum number of retries for failed jobs |
 | dbInit.job.restartPolicy | string | `"OnFailure"` | Job restart policy |
 | elasticsearch.enabled | bool | `false` | Enable Elasticsearch |
-| externalRedis.enabled | bool | `true` | Enable external Redis. Set to true to use an external Redis instance |
-| externalRedis.key | string | `"url"` | Key name in the secret containing the Redis URL |
-| externalRedis.secretRef | string | `"redis-cred"` | Secret name containing Redis connection URL |
+| externalRedis.enabled | bool | `false` | Enable external Redis. Set to true to use an external Redis instance |
+| externalRedis.key | string | `"REDIS_URL"` | Key name in the secret containing the Redis URL |
+| externalRedis.secretRef | string | `"composio-composio-secrets"` | Secret name containing Redis connection URL |
+| externalRedis.sentinel.db | string | `""` | Optional Redis DB index to use in Sentinel mode |
+| externalRedis.sentinel.enabled | bool | `false` | Enable Apollo Redis Sentinel mode for external Redis |
+| externalRedis.sentinel.hosts | string | `""` | Comma-separated Sentinel host[:port] entries |
+| externalRedis.sentinel.masterName | string | `""` | Sentinel master set name |
+| externalRedis.sentinel.passwordKey | string | `""` | Optional secret key for `REDIS_PASSWORD` |
+| externalRedis.sentinel.secretRef | string | `""` | Optional Secret containing Sentinel auth keys (defaults to `externalRedis.secretRef`) |
+| externalRedis.sentinel.sentinelPasswordKey | string | `""` | Optional secret key for `REDIS_SENTINEL_PASSWORD` |
+| externalRedis.sentinel.tlsEnabled | bool | `false` | Enable TLS for Sentinel discovery and Redis master connections |
+| externalRedis.sentinel.usernameKey | string | `""` | Optional secret key for `REDIS_USERNAME` |
 | externalSecrets.ecr.server | string | `"008971668139.dkr.ecr.us-east-1.amazonaws.com"` | ECR server URL |
 | externalSecrets.ecr.token | string | `""` |  |
 | externalSecrets.ecr.username | string | `"AWS"` | ECR username (typically "AWS") |
@@ -232,14 +241,19 @@ A Helm chart for Composio
 | rbac.pspEnabled | bool | `false` | Enable Pod Security Policies |
 | redis.architecture | string | `"standalone"` | Redis architecture (standalone or replication) |
 | redis.auth.enabled | bool | `true` | Enable Redis authentication |
-| redis.auth.password | string | `"redis123"` | Redis password |
-| redis.enabled | bool | `false` | Enable internal Redis. Set to false when using externalRedis |
+| redis.auth.password | string | `""` | Redis password |
+| redis.auth.sentinel | bool | `true` | Enable password authentication on bundled Redis Sentinels too |
+| redis.enabled | bool | `true` | Enable internal Redis. Set to false when using externalRedis |
 | redis.master.persistence.enabled | bool | `true` | Enable persistent storage |
 | redis.master.persistence.size | string | `"8Gi"` | Size of persistent volume |
 | redis.master.resources.limits.cpu | string | `"2"` | CPU limit for Redis master |
 | redis.master.resources.limits.memory | string | `"4Gi"` | Memory limit for Redis master |
 | redis.master.resources.requests.cpu | string | `"2"` | CPU request for Redis master |
 | redis.master.resources.requests.memory | string | `"4Gi"` | Memory request for Redis master |
+| redis.sentinel.enabled | bool | `false` | Enable bundled Redis Sentinel and switch Apollo to Sentinel mode |
+| redis.sentinel.masterSet | string | `"mymaster"` | Redis Sentinel master set name |
+| redis.sentinel.service.ports.sentinel | int | `26379` | Redis Sentinel service port |
+| redis.tls.enabled | bool | `false` | Enable TLS for bundled Redis connections |
 | redis.master.sysctl.enabled | bool | `false` | Disable sysctl for GKE Autopilot |
 | redis.master.sysctlImage.enabled | bool | `false` | Disable sysctl image for GKE Autopilot |
 | serviceAccount.annotations | object | `{}` | Service account annotations |
@@ -387,6 +401,121 @@ The Bitnami Redis subchart persists the Redis password in a Kubernetes Secret (`
    You should see `PONG`. If you see `NOAUTH Authentication required`, repeat steps 1-3.
 
 This applies **any time** you change `redis.auth.password` while using the chart's internal Redis. It does not apply if you are using an external Redis (`externalRedis.enabled: true`).
+
+### Redis Sentinel support
+
+For a standalone step-by-step guide, see [docs/redis-sentinel.md](../docs/redis-sentinel.md).
+
+Apollo now supports Redis Sentinel mode. In Sentinel mode the chart does **not** set `REDIS_URL`; instead it passes the Sentinel-specific env vars Hermes expects:
+
+- `REDIS_SENTINEL_HOSTS`
+- `REDIS_SENTINEL_MASTER_NAME`
+- `REDIS_SENTINEL_PASSWORD` (optional)
+- `REDIS_USERNAME` (optional)
+- `REDIS_PASSWORD` (optional)
+- `REDIS_DB` (optional)
+- `REDIS_TLS_ENABLED`
+
+Use one of the following patterns.
+
+#### External Redis with direct URL
+
+Use this when your provider gives you a single Redis endpoint and you do **not** want Sentinel failover:
+
+```yaml
+externalRedis:
+  enabled: true
+  secretRef: composio-composio-secrets
+  key: REDIS_URL
+
+redis:
+  enabled: false
+```
+
+Your secret must contain:
+
+```yaml
+stringData:
+  REDIS_URL: redis://:password@redis.example.com:6379
+```
+
+#### External Redis with Sentinel
+
+Use this when your provider exposes Sentinel nodes and a master set name:
+
+```yaml
+externalRedis:
+  enabled: true
+  secretRef: composio-composio-secrets
+  sentinel:
+    enabled: true
+    hosts: "sentinel-0.redis.example.com:26379,sentinel-1.redis.example.com:26379,sentinel-2.redis.example.com:26379"
+    masterName: "mymaster"
+    tlsEnabled: true
+    db: "0"
+    secretRef: redis-sentinel-credentials
+    usernameKey: REDIS_USERNAME
+    passwordKey: REDIS_PASSWORD
+    sentinelPasswordKey: REDIS_SENTINEL_PASSWORD
+
+redis:
+  enabled: false
+```
+
+The Sentinel auth secret can contain any subset you need:
+
+```yaml
+stringData:
+  REDIS_USERNAME: default
+  REDIS_PASSWORD: your-master-password
+  REDIS_SENTINEL_PASSWORD: your-sentinel-password
+```
+
+Notes:
+
+- `externalRedis.sentinel.secretRef` defaults to `externalRedis.secretRef` if omitted.
+- `externalRedis.sentinel.hosts` and `externalRedis.sentinel.masterName` are required when Sentinel mode is enabled.
+- `externalRedis.key` / `REDIS_URL` is ignored in Sentinel mode.
+- Preflight checks validate whichever Sentinel secret keys you configure.
+
+#### Bundled Bitnami Redis with Sentinel
+
+Use this when you want the chart-managed Redis dependency to run in replication mode with Sentinel:
+
+```yaml
+redis:
+  enabled: true
+  architecture: replication
+  sentinel:
+    enabled: true
+    masterSet: mymaster
+  auth:
+    enabled: true
+    sentinel: true
+    password: "replace-me"
+
+externalRedis:
+  enabled: false
+```
+
+Notes:
+
+- `redis.architecture` must be `replication` when `redis.sentinel.enabled=true`.
+- Apollo will automatically use the bundled Sentinel service at `<release-name>-redis:26379`.
+- If you enable TLS in the Redis subchart, also set `redis.tls.enabled: true` so Apollo advertises `REDIS_TLS_ENABLED=true`.
+- If you change `redis.auth.password`, follow the password-rotation steps in the section above before or during upgrade.
+
+#### Example upgrade
+
+```bash
+helm upgrade <release-name> composio/ -f your-values.yaml -n <namespace>
+```
+
+After the upgrade, verify Apollo has the Sentinel env vars:
+
+```bash
+kubectl exec deploy/<release-name>-apollo -n <namespace> -- printenv | grep '^REDIS'
+```
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

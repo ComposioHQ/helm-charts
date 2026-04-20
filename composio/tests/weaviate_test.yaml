@@ -25,6 +25,30 @@ tests:
           path: metadata.labels["app.kubernetes.io/component"]
           value: weaviate
 
+  - it: should not set serviceAccountName when SA is disabled
+    set:
+      weaviate.enabled: true
+      weaviate.image.repository: test-weaviate
+      weaviate.image.tag: "v1.0.0"
+      weaviate.serviceAccount.enabled: false
+    documentIndex: 0
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    set:
+      weaviate.enabled: true
+      weaviate.image.repository: test-weaviate
+      weaviate.image.tag: "v1.0.0"
+      weaviate.serviceAccount.enabled: true
+      weaviate.serviceAccount.name: weaviate-sa
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: weaviate-sa
+
   - it: should have correct replica count
     set:
       weaviate.enabled: true

@@ -1,3 +1,4 @@
+{{- $disableK8SecretCheck := .Values.global.disableK8SecretCheck | default false }}
 {{- if .Values.openAI.enabled }}
 apiVersion: v1
 kind: Secret
@@ -12,7 +13,7 @@ stringData:
     metadata:
       name: "{{ .Release.Name }}-openai-preflight"
     spec:
-      {{- if .Values.openAI.enabled }}
+      {{- if and .Values.openAI.enabled (not $disableK8SecretCheck) }}
       collectors:
         # --- Validate OpenAI key by real HTTP request ---
         - runPod:

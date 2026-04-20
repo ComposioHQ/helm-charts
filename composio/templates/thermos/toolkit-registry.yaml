@@ -29,11 +29,11 @@ spec:
       {{- end }}
       {{- with .Values.toolkitRegistry.initContainers }}
       initContainers:
-        {{- toYaml . | nindent 8 }}
+{{ tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
       containers:
         - name: toolkit-registry
-          image: "{{ include "chart.registry" . }}/{{ .Values.toolkitRegistry.image.repository }}:{{ .Values.toolkitRegistry.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
           ports:
             - name: postgres

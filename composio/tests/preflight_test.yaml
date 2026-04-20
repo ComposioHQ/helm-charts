@@ -1,0 +1,99 @@
+suite: test core preflight secret checks
+templates:
+  - preflight-checks/preflight-config.yaml
+tests:
+  - it: should disable Kubernetes secret checks in core preflight
+    set:
+      global.disableK8SecretCheck: true
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)collectors:\s*\[\]'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)analyzers:\s*\[\]'
+
+---
+suite: test postgres preflight secret checks
+templates:
+  - preflight-checks/preflight-db-connection.yaml
+tests:
+  - it: should disable Kubernetes secret checks in postgres preflight
+    set:
+      databaseMigration.enabled: true
+      global.disableK8SecretCheck: true
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)collectors:\s*\[\]'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)analyzers:\s*\[\]'
+
+---
+suite: test openai preflight secret checks
+templates:
+  - preflight-checks/preflight-openai.yaml
+tests:
+  - it: should disable Kubernetes secret checks in openai preflight
+    set:
+      openAI.enabled: true
+      global.disableK8SecretCheck: true
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)collectors:\s*\[\]'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)analyzers:\s*\[\]'
+
+---
+suite: test s3 preflight secret checks
+templates:
+  - preflight-checks/preflight-objectstorage-s3.yaml
+tests:
+  - it: should disable Kubernetes secret checks in s3 preflight
+    set:
+      apollo.objectStorage.backend: s3
+      global.disableK8SecretCheck: true
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)collectors:\s*\[\]'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)analyzers:\s*\[\]'
+
+---
+suite: test azure preflight secret checks
+templates:
+  - preflight-checks/preflight-objectstorage-azure.yaml
+tests:
+  - it: should disable Kubernetes secret checks in azure preflight
+    set:
+      apollo.objectStorage.backend: azure_blob_storage
+      global.disableK8SecretCheck: true
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)collectors:\s*\[\]'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)analyzers:\s*\[\]'
+
+---
+suite: test smtp preflight secret checks
+templates:
+  - preflight-checks/preflight-smtp.yaml
+tests:
+  - it: should disable Kubernetes secret checks in smtp preflight
+    set:
+      apollo.smtp.enabled: true
+      global.disableK8SecretCheck: true
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)collectors:\s*\[\]'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: '(?s)analyzers:\s*\[\]'

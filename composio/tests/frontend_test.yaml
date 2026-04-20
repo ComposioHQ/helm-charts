@@ -25,6 +25,30 @@ tests:
           path: metadata.labels["app.kubernetes.io/component"]
           value: frontend
 
+  - it: should not set serviceAccountName when SA is disabled
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      frontend.serviceAccount.enabled: false
+    documentIndex: 0
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      frontend.serviceAccount.enabled: true
+      frontend.serviceAccount.name: frontend-sa
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: frontend-sa
+
   - it: should have correct replica count
     set:
       frontend.enabled: true
@@ -127,6 +151,98 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[0].name
           value: frontend-secret
+
+  - it: should mount frontend secrets dir
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FRONTEND_SECRETS_DIR
+            value: /etc/secrets/frontend
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: frontend-secrets
+            mountPath: /etc/secrets/frontend
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: frontend-secrets
+            emptyDir: {}
+
+  - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      openAI.enabled: false
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: OPENAI_API_KEY
+                optional: true
+
+  - it: should render additional frontend init containers
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      frontend.additionalInitContainers:
+        - name: populate-frontend-secrets
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/frontend/seed
+          volumeMounts:
+            - name: frontend-secrets
+              mountPath: /etc/secrets/frontend
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: populate-frontend-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: busybox:1.36
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: frontend-secrets
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /etc/secrets/frontend
+
+  - it: should allow overriding frontend secrets dir
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      frontend.secretsDir: /var/run/frontend-secrets
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FRONTEND_SECRETS_DIR
+            value: /var/run/frontend-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: frontend-secrets
+            mountPath: /var/run/frontend-secrets
+            readOnly: true
 
   - it: should have correct resource limits
     set:

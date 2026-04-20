@@ -25,6 +25,9 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
+      {{- if .Values.frontend.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.frontend.serviceAccount.name }}
+      {{- end }}
       {{- if .Values.replicated.enabled }}
       {{- include "replicated.imagePullSecrets" . | nindent 6 }}
       {{- end }}
@@ -50,9 +53,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.frontend.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: frontend
-          image: "{{ include "chart.registry" . }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          image: {{ include "composio.imageReference" (dict "image" .Values.frontend.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:
@@ -80,32 +87,47 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-frontend-config
           env:
-            {{- if .Values.openAI.enabled }}
+            - name: FRONTEND_SECRETS_DIR
+              value: {{ .Values.frontend.secretsDir | quote }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
                   optional: true
-            {{- end }}
             {{- if and .Values.frontend.secrets .Values.frontend.secrets.PLAIN_SECRET }}
             - name: PLAIN_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.frontend.secrets.PLAIN_SECRET.secretName }}
                   key: {{ .Values.frontend.secrets.PLAIN_SECRET.secretKey }}
+                  optional: true
             {{- else if .Values.frontend.env.PLAIN_SECRET }}
             - name: PLAIN_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: PLAIN_SECRET
+                  optional: true
             {{- end }}
             {{- if .Values.frontend.extraEnv }}
             {{- toYaml .Values.frontend.extraEnv | nindent 12 }}
             {{- end }}
+          volumeMounts:
+            - name: frontend-secrets
+              mountPath: {{ .Values.frontend.secretsDir | quote }}
+              readOnly: true
+            {{- with .Values.frontend.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+      volumes:
+        - name: frontend-secrets
+          emptyDir: {}
+        {{- with .Values.frontend.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service
