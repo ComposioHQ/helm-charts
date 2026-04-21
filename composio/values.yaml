@@ -160,7 +160,7 @@ apollo:
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Apollo.
     enabled: false
-    # -- Maximum number of Apollo pods that can be unavailable during voluntary disruptions.
+    # -- Maximum number of Apollo pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
     maxUnavailable: 1
   # Apollo container image configuration
   image:
@@ -376,7 +376,7 @@ thermos:
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Thermos.
     enabled: false
-    # -- Maximum number of Thermos pods that can be unavailable during voluntary disruptions.
+    # -- Maximum number of Thermos pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
     maxUnavailable: 1
   # Thermos container image configuration
   image:
@@ -478,7 +478,7 @@ thermosMiscWorkers:
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Thermos misc workers.
     enabled: false
-    # -- Maximum number of Thermos misc worker pods that can be unavailable during voluntary disruptions.
+    # -- Maximum number of Thermos misc worker pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
     maxUnavailable: 1
   # -- Toggle Temporal auto-recovery logic in misc workers.
   # Controls ENABLE_TEMPORAL_AUTO_RECOVERY env var.
@@ -853,7 +853,7 @@ otel:
     podDisruptionBudget:
       # -- Enable a PodDisruptionBudget for the OTEL collector.
       enabled: false
-      # -- Maximum number of collector pods that can be unavailable during voluntary disruptions.
+      # -- Maximum number of collector pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
       maxUnavailable: 1
     # Collector image configuration
     image:
@@ -1036,7 +1036,7 @@ mercury:
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Mercury deployment mode.
     enabled: false
-    # -- Maximum number of Mercury pods that can be unavailable during voluntary disruptions.
+    # -- Maximum number of Mercury pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
     maxUnavailable: 1
   # Mercury container image configuration
   image:
@@ -1170,7 +1170,7 @@ frontend:
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Frontend.
     enabled: false
-    # -- Maximum number of Frontend pods that can be unavailable during voluntary disruptions.
+    # -- Maximum number of Frontend pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
     maxUnavailable: 1
   # Frontend container image configuration
   image:
@@ -1253,7 +1253,7 @@ weaviate:
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Weaviate.
     enabled: false
-    # -- Maximum number of Weaviate pods that can be unavailable during voluntary disruptions.
+    # -- Maximum number of Weaviate pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
     maxUnavailable: 1
   # Weaviate container image configuration
   image:
