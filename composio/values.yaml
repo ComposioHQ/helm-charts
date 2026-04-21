@@ -167,7 +167,7 @@ apollo:
     # -- Apollo image repository (used when imageName is not set)
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260409_03"
+    tag: "r20260420_05"
     # -- Image pull policy
     pullPolicy: Always
     imageName: ""
@@ -212,7 +212,7 @@ apollo:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260409_03"
+      tag: "r20260420_05"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -383,7 +383,7 @@ thermos:
     # -- Thermos image repository (used when imageName is not set)
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260409_03"
+    tag: "r20260420_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -417,7 +417,7 @@ thermos:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260409_03"
+      tag: "r20260420_05"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -470,7 +470,6 @@ thermos:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
-
 # Toolkit registry configuration (read-only Postgres with toolkit/tool/trigger data)
 toolkitRegistry:
   # -- Enable the standalone toolkit registry Postgres deployment used by Thermos for toolkit/tool/trigger reads.
@@ -482,7 +481,7 @@ toolkitRegistry:
     # -- Toolkit registry image repository (used when imageName is not set)
     repository: composio-self-host/thermos-toolkit-registry
     # -- Toolkit registry image tag
-    tag: "r20260409_03"
+    tag: "r20260420_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -527,7 +526,7 @@ thermosMiscWorkers:
   image:
     # Same image as Thermos; behavior is controlled by THERMOS_MODE env var.
     repository: composio-self-host/thermos
-    tag: "r20260409_03"
+    tag: "r20260420_05"
     pullPolicy: Always
     imageName: ""
   # Reuse Thermos secrets dir by default.
@@ -1084,7 +1083,7 @@ mercury:
     # -- Mercury image repository (used when imageName is not set)
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260409_03"
+    tag: "r20260420_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1218,7 +1217,7 @@ frontend:
     # -- Frontend image repository (used when imageName is not set)
     repository: composio-self-host/frontend
     # -- Frontend image tag
-    tag: "r20260409_03"
+    tag: "r20260420_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1301,7 +1300,7 @@ weaviate:
     # -- Weaviate image repository (used when imageName is not set)
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260409_03"
+    tag: "r20260420_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
