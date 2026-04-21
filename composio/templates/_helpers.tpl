@@ -158,6 +158,40 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Render a PodDisruptionBudget from a common shape.
+Expected keys:
+- root: chart root context
+- name: resource name
+- labels: metadata labels map
+- selectorLabels: selector labels map
+- pdb: pod disruption budget values
+*/}}
+{{- define "composio.podDisruptionBudget" -}}
+{{- $root := .root -}}
+{{- $pdb := .pdb | default (dict) -}}
+{{- if $pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .name }}
+  namespace: {{ $root.Release.Namespace }}
+  labels:
+    {{- toYaml .labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- toYaml .selectorLabels | nindent 6 }}
+  {{- if hasKey $pdb "minAvailable" }}
+  minAvailable: {{ get $pdb "minAvailable" }}
+  {{- else if hasKey $pdb "maxUnavailable" }}
+  maxUnavailable: {{ get $pdb "maxUnavailable" }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Apollo labels
 */}}
 {{- define "composio.apollo.labels" -}}
