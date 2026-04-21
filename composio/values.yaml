@@ -657,6 +657,8 @@ temporal:
             retention: 10d
           - name: webhook
             retention: 10d
+          - name: timer-shards
+            retention: 10d
     # Temporal frontend service configuration
     frontend:
       # Liveness probe configuration
