@@ -13,7 +13,7 @@
   "root" .
   "name" (printf "%s-frontend-pdb" (include "composio.fullname" .))
   "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "frontend"))
-  "selectorLabels" (merge (include "composio.selectorLabels" . | fromYaml) (dict "app.kubernetes.io/component" "frontend"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "frontend")
   "pdb" (.Values.frontend.podDisruptionBudget | default (dict))
 ) -}}
 {{- if $frontendPdb }}
@@ -26,7 +26,7 @@
   "root" .
   "name" (printf "%s-mercury-pdb" (include "composio.fullname" .))
   "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "mercury"))
-  "selectorLabels" (merge (include "composio.selectorLabels" . | fromYaml) (dict "app.kubernetes.io/component" "mercury"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "mercury")
   "pdb" (.Values.mercury.podDisruptionBudget | default (dict))
 ) -}}
 {{- if $mercuryPdb }}
@@ -63,7 +63,7 @@
   "root" .
   "name" (printf "%s-weaviate-pdb" .Release.Name)
   "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "weaviate"))
-  "selectorLabels" (merge (include "composio.selectorLabels" . | fromYaml) (dict "app.kubernetes.io/component" "weaviate"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "weaviate")
   "pdb" (.Values.weaviate.podDisruptionBudget | default (dict))
 ) -}}
 {{- if $weaviatePdb }}
@@ -76,7 +76,7 @@
   "root" .
   "name" (printf "%s-otel-collector-pdb" .Release.Name)
   "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "otel-collector"))
-  "selectorLabels" (merge (include "composio.selectorLabels" . | fromYaml) (dict "app.kubernetes.io/component" "otel-collector"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "otel-collector")
   "pdb" (.Values.otel.collector.podDisruptionBudget | default (dict))
 ) -}}
 {{- if $otelCollectorPdb }}
