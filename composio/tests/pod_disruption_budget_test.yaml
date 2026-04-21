@@ -45,6 +45,10 @@ tests:
       - equal:
           path: spec.selector.matchLabels["app.kubernetes.io/component"]
           value: frontend
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
 
   - it: should render mercury pod disruption budget when enabled
     set:
@@ -63,6 +67,10 @@ tests:
       - equal:
           path: spec.selector.matchLabels["app.kubernetes.io/component"]
           value: mercury
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
 
   - it: should not render mercury pod disruption budget when using knative
     set:
@@ -122,6 +130,10 @@ tests:
       - equal:
           path: spec.selector.matchLabels["app.kubernetes.io/component"]
           value: weaviate
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
 
   - it: should render otel collector pod disruption budget when enabled
     set:
@@ -140,3 +152,7 @@ tests:
       - equal:
           path: spec.selector.matchLabels["app.kubernetes.io/component"]
           value: otel-collector
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]

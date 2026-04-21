@@ -374,9 +374,9 @@ thermos:
   # -- Number of Thermos pod replicas
   replicaCount: 1
   podDisruptionBudget:
-    # -- Enable a PodDisruptionBudget for the OTEL collector.
+    # -- Enable a PodDisruptionBudget for Thermos.
     enabled: false
-    # -- Maximum number of collector pods that can be unavailable during voluntary disruptions.
+    # -- Maximum number of Thermos pods that can be unavailable during voluntary disruptions.
     maxUnavailable: 1
   # Thermos container image configuration
   image:
