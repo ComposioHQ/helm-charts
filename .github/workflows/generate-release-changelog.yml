@@ -1,20 +1,15 @@
 name: Generate Release Changelog
 
 on:
-  push:
-    branches:
-      - ft-add-generate-changelog-action
   workflow_dispatch:
     inputs:
       from_release:
         description: Older chart version or git ref
         required: true
-        default: "0.1.72"
         type: string
       to_release:
         description: Newer chart version or git ref
         required: true
-        default: "0.1.84"
         type: string
       chart_oci_ref:
         description: OCI chart reference used when a version is not available in git history
