@@ -1,0 +1,86 @@
+{{- $apolloPdb := include "composio.podDisruptionBudget" (dict
+  "root" .
+  "name" (printf "%s-apollo-pdb" .Release.Name)
+  "labels" (dict "app" "apollo" "release" .Release.Name)
+  "selectorLabels" (dict "app" "apollo" "release" .Release.Name)
+  "pdb" (.Values.apollo.podDisruptionBudget | default (dict))
+) -}}
+{{- if $apolloPdb }}
+{{ $apolloPdb }}
+{{- end }}
+{{- if .Values.frontend.enabled }}
+{{- $frontendPdb := include "composio.podDisruptionBudget" (dict
+  "root" .
+  "name" (printf "%s-frontend-pdb" (include "composio.fullname" .))
+  "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "frontend"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "frontend")
+  "pdb" (.Values.frontend.podDisruptionBudget | default (dict))
+) -}}
+{{- if $frontendPdb }}
+---
+{{ $frontendPdb }}
+{{- end }}
+{{- end }}
+{{- if and .Values.mercury.enabled (not .Values.mercury.useKnative) }}
+{{- $mercuryPdb := include "composio.podDisruptionBudget" (dict
+  "root" .
+  "name" (printf "%s-mercury-pdb" (include "composio.fullname" .))
+  "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "mercury"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "mercury")
+  "pdb" (.Values.mercury.podDisruptionBudget | default (dict))
+) -}}
+{{- if $mercuryPdb }}
+---
+{{ $mercuryPdb }}
+{{- end }}
+{{- end }}
+{{- $thermosPdb := include "composio.podDisruptionBudget" (dict
+  "root" .
+  "name" (printf "%s-thermos-pdb" .Release.Name)
+  "labels" (dict "app" "thermos" "release" .Release.Name)
+  "selectorLabels" (dict "app" "thermos" "release" .Release.Name)
+  "pdb" (.Values.thermos.podDisruptionBudget | default (dict))
+) -}}
+{{- if $thermosPdb }}
+---
+{{ $thermosPdb }}
+{{- end }}
+{{- if .Values.thermosMiscWorkers.enabled }}
+{{- $thermosMiscWorkersPdb := include "composio.podDisruptionBudget" (dict
+  "root" .
+  "name" (printf "%s-thermos-misc-workers-pdb" .Release.Name)
+  "labels" (dict "app" "thermos-misc-workers" "release" .Release.Name)
+  "selectorLabels" (dict "app" "thermos-misc-workers" "release" .Release.Name)
+  "pdb" (.Values.thermosMiscWorkers.podDisruptionBudget | default (dict))
+) -}}
+{{- if $thermosMiscWorkersPdb }}
+---
+{{ $thermosMiscWorkersPdb }}
+{{- end }}
+{{- end }}
+{{- if .Values.weaviate.enabled }}
+{{- $weaviatePdb := include "composio.podDisruptionBudget" (dict
+  "root" .
+  "name" (printf "%s-weaviate-pdb" .Release.Name)
+  "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "weaviate"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "weaviate")
+  "pdb" (.Values.weaviate.podDisruptionBudget | default (dict))
+) -}}
+{{- if $weaviatePdb }}
+---
+{{ $weaviatePdb }}
+{{- end }}
+{{- end }}
+{{- if and .Values.otel.enabled .Values.otel.collector.enabled }}
+{{- $otelCollectorPdb := include "composio.podDisruptionBudget" (dict
+  "root" .
+  "name" (printf "%s-otel-collector-pdb" .Release.Name)
+  "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "otel-collector"))
+  "selectorLabels" (dict "app.kubernetes.io/component" "otel-collector")
+  "pdb" (.Values.otel.collector.podDisruptionBudget | default (dict))
+) -}}
+{{- if $otelCollectorPdb }}
+---
+{{ $otelCollectorPdb }}
+{{- end }}
+{{- end }}

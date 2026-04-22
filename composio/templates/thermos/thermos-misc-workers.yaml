@@ -51,9 +51,20 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.thermosMiscWorkers.additionalInitContainers }}
+      {{- if or .Values.toolkitRegistry.enabled .Values.thermosMiscWorkers.additionalInitContainers }}
       initContainers:
+        {{- if .Values.toolkitRegistry.enabled }}
+        - name: wait-for-toolkit-registry
+          image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}
+          imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - until pg_isready -h {{ .Release.Name }}-toolkit-registry -p {{ .Values.toolkitRegistry.service.port | int }} -U {{ .Values.toolkitRegistry.auth.username }} -d {{ .Values.toolkitRegistry.database.name }}; do echo "waiting for toolkit registry"; sleep 2; done
+        {{- end }}
+        {{- with .Values.thermosMiscWorkers.additionalInitContainers }}
 {{ tpl (toYaml .) $ | nindent 8 }}
+        {{- end }}
       {{- end }}
       containers:
         - name: thermos-misc-workers
@@ -124,6 +135,10 @@ spec:
                   name: {{ $coreSecret }}
                   key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
                   optional: true
+            {{- if .Values.toolkitRegistry.enabled }}
+            - name: TOOLKIT_REGISTRY_DB_URL
+              value: {{ printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" .Values.toolkitRegistry.auth.username .Release.Name (.Values.toolkitRegistry.service.port | int) .Values.toolkitRegistry.database.name | quote }}
+            {{- end }}
             {{- if .Values.thermosMiscWorkers.env }}
             {{- toYaml .Values.thermosMiscWorkers.env | nindent 12 }}
             {{- end }}
@@ -147,4 +162,3 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
 {{- end }}
-

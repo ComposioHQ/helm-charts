@@ -283,7 +283,7 @@ A Helm chart for Composio
 | temporal.schema.update.enabled | bool | `true` | Enable schema updates |
 | temporal.server.config.logLevel | string | `"info"` | Log level (debug, info, warn, error) |
 | temporal.server.config.namespaces.create | bool | `true` | Enable namespace creation |
-| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"}]` | List of namespaces to create |
+| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"},{"name":"timer-shards","retention":"10d"}]` | List of namespaces to create |
 | temporal.server.config.numHistoryShards | int | `512` | Number of history shards (affects scalability) |
 | temporal.server.config.persistence.default.driver | string | `"sql"` | Database driver |
 | temporal.server.config.persistence.default.sql.database | string | `"temporal"` | Database name |

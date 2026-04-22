@@ -5,6 +5,7 @@ metadata:
 data:
   PORT: "8180"
   HOST: "0.0.0.0"
+  THERMOS_MODE: "all"
   APOLLO_ENDPOINT: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   COMPOSIO_ENV: "production"
   LOG_ENCODING: "json"
@@ -18,6 +19,7 @@ data:
   TEMPORAL_CLOUD_NAMESPACE: "default"
   TEMPORAL_WEBHOOK_NAMESPACE: "webhook"
   TEMPORAL_BATCHED_POLLING_NAMESPACE: "batched-polling"
+  TEMPORAL_TIMER_SHARDS_NAMESPACE: "timer-shards"
   DISABLE_TEMPORAL_TLS: "true"
   {{- else }}
   DISABLE_TEMPORAL: "true"

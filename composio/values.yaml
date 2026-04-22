@@ -157,12 +157,17 @@ openAI:
 apollo:
   # -- Number of Apollo pod replicas
   replicaCount: 2
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Apollo.
+    enabled: false
+    # -- Maximum number of Apollo pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Apollo container image configuration
   image:
     # -- Apollo image repository (used when imageName is not set)
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260409_03"
+    tag: "r20260421_05"
     # -- Image pull policy
     pullPolicy: Always
     imageName: ""
@@ -207,7 +212,7 @@ apollo:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260409_03"
+      tag: "r20260421_05"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -367,13 +372,18 @@ apollo:
 # Thermos service configuration (workflow execution service)
 thermos:
   # -- Number of Thermos pod replicas
-  replicaCount: 2
+  replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Thermos.
+    enabled: false
+    # -- Maximum number of Thermos pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Thermos container image configuration
   image:
     # -- Thermos image repository (used when imageName is not set)
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260409_03"
+    tag: "r20260421_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -407,7 +417,7 @@ thermos:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260409_03"
+      tag: "r20260421_05"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -426,14 +436,14 @@ thermos:
   resources:
     requests:
       # -- Memory request for Thermos
-      memory: "4Gi"
+      memory: "2Gi"
       # -- CPU request for Thermos
-      cpu: "2"
+      cpu: "1500m"
     limits:
       # -- Memory limit for Thermos
-      memory: "5Gi"
+      memory: "4Gi"
       # -- CPU limit for Thermos
-      cpu: "2"
+      cpu: "3"
   # Horizontal Pod Autoscaler configuration for Thermos
   autoscaling:
     # -- Enable HPA
@@ -460,19 +470,63 @@ thermos:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
-
+# Toolkit registry configuration (read-only Postgres with toolkit/tool/trigger data)
+toolkitRegistry:
+  # -- Enable the standalone toolkit registry Postgres deployment used by Thermos for toolkit/tool/trigger reads.
+  # Enabled by default for on-prem installs; disable only if you explicitly want Thermos to fall back to the primary registry DB.
+  enabled: true
+  # -- Number of toolkit registry pod replicas
+  replicaCount: 2
+  image:
+    # -- Toolkit registry image repository (used when imageName is not set)
+    repository: composio-self-host/thermos-toolkit-registry
+    # -- Toolkit registry image tag
+    tag: "r20260421_05"
+    # -- Image pull policy
+    pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+  service:
+    # -- Toolkit registry service type
+    type: ClusterIP
+    # -- Toolkit registry service port
+    port: 5432
+  database:
+    # -- Toolkit registry database name
+    name: thermos
+  auth:
+    # -- Read-only toolkit registry username baked into the image
+    username: registry_reader
+    # -- Read-only toolkit registry password baked into the image
+    password: registry_reader
+  # -- Additional init containers for toolkit registry pods
+  initContainers: []
+  # -- Additional environment variables for toolkit registry pods
+  env: []
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
 # Thermos misc-workers configuration (runs only THERMOS_MODE=miscellaneous_worker).
 # Disabled by default.
 thermosMiscWorkers:
   enabled: false
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Thermos misc workers.
+    enabled: false
+    # -- Maximum number of Thermos misc worker pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # -- Toggle Temporal auto-recovery logic in misc workers.
   # Controls ENABLE_TEMPORAL_AUTO_RECOVERY env var.
   temporalAutoRecoveryEnabled: true
   image:
     # Same image as Thermos; behavior is controlled by THERMOS_MODE env var.
     repository: composio-self-host/thermos
-    tag: "r20260409_03"
+    tag: "r20260421_05"
     pullPolicy: Always
     imageName: ""
   # Reuse Thermos secrets dir by default.
@@ -601,6 +655,8 @@ temporal:
           - name: batched-polling
             retention: 10d
           - name: webhook
+            retention: 10d
+          - name: timer-shards
             retention: 10d
     # Temporal frontend service configuration
     frontend:
@@ -836,6 +892,11 @@ otel:
     enabled: true
     # -- Number of collector replicas
     replicaCount: 1
+    podDisruptionBudget:
+      # -- Enable a PodDisruptionBudget for the OTEL collector.
+      enabled: false
+      # -- Maximum number of collector pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+      maxUnavailable: 1
     # Collector image configuration
     image:
       # -- Collector image repository
@@ -1014,12 +1075,17 @@ mercury:
   useKnative: false
   # -- Number of Mercury pod replicas (when not using Knative)
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Mercury deployment mode.
+    enabled: false
+    # -- Maximum number of Mercury pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Mercury container image configuration
   image:
     # -- Mercury image repository (used when imageName is not set)
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260409_03"
+    tag: "r20260421_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1143,12 +1209,17 @@ frontend:
   enabled: false
   # -- Number of frontend pod replicas
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Frontend.
+    enabled: false
+    # -- Maximum number of Frontend pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Frontend container image configuration
   image:
     # -- Frontend image repository (used when imageName is not set)
     repository: composio-self-host/frontend
     # -- Frontend image tag
-    tag: "r20260409_03"
+    tag: "r20260421_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1221,12 +1292,17 @@ weaviate:
   enabled: true
   # -- Number of Weaviate pod replicas
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Weaviate.
+    enabled: false
+    # -- Maximum number of Weaviate pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Weaviate container image configuration
   image:
     # -- Weaviate image repository (used when imageName is not set)
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260409_03"
+    tag: "r20260421_05"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
