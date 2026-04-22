@@ -486,7 +486,7 @@ thermosMiscWorkers:
   image:
     # Same image as Thermos; behavior is controlled by THERMOS_MODE env var.
     repository: composio-self-host/thermos
-    tag: "r20260409_03"
+    tag: "r20260415_05"
     pullPolicy: Always
     imageName: ""
   # Reuse Thermos secrets dir by default.
