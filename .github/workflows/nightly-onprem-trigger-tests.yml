@@ -25,11 +25,11 @@ jobs:
       (
         (
           github.event.action == 'labeled' &&
-          github.event.label.name == 'nightly'
+          github.event.label.name == 'nightly-reease'
         ) ||
         (
           github.event.action != 'labeled' &&
-          contains(github.event.pull_request.labels.*.name, 'nightly')
+          contains(github.event.pull_request.labels.*.name, 'nightly-release')
         )
       )
     runs-on: ubuntu-latest
