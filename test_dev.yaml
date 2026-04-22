@@ -1,0 +1,1801 @@
+COMPUTED VALUES:
+COMPUTED VALUES: null
+apollo:
+  additionalInitContainers: []
+  auth:
+    disabledModes: []
+    jwt:
+      allowedAlgs:
+      - RS256
+      clockSkewSeconds: 60
+      enabled: true
+      issuer: https://ec58-2401-4900-1cbc-3f81-e06c-3314-6e6e-9b19.ngrok-free.app/
+      jwksUrl: https://2d94-2401-4900-1cbc-3f81-e06c-3314-6e6e-9b19.ngrok-free.app/.well-known/jwks.json
+  autoscaling:
+    enabled: false
+    maxReplicas: 10
+    minReplicas: 2
+    scaleDownPercent: 10
+    scaleDownPeriodSeconds: 60
+    scaleDownStabilizationWindowSeconds: 300
+    scaleUpPercent: 100
+    scaleUpPeriodSeconds: 15
+    scaleUpPods: 4
+    scaleUpStabilizationWindowSeconds: 60
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  dbInit:
+    additionalInitContainers: []
+    enabled: true
+  googleServiceAccount:
+    enabled: true
+    mountPath: /var/secrets/google
+    secretName: gcp-sa-key
+  ingress:
+    annotations: {}
+    className: ""
+    enabled: false
+    host: abc.example.com
+    tls: []
+  oauth2_redirect_uri_override: https://staging-gke.composio.io/api/v3/toolkits/auth/callback
+  objectStorage:
+    accessKey:
+      key: S3_ACCESS_KEY_ID
+      secretName: s3-cred
+    azureConnectionString:
+      key: AZURE_CONNECTION_STRING
+      secretName: azure-cred
+    backend: s3
+    namespaces:
+      permanent: test-composio-s3-demo
+      temp: test-composio-s3-demo
+    secretKey:
+      key: S3_SECRET_ACCESS_KEY
+      secretName: s3-cred
+  overwrite_apollo_url: https://staging-gke.composio.io
+  overwrite_fe_url: https://staging-gke-app.composio.io
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "1"
+      memory: 6Gi
+    requests:
+      cpu: "1"
+      memory: 5Gi
+  search:
+    embeddings:
+      dimensions: 1024
+      model: text-embedding-3-large
+      provider: openai
+    enabled: true
+    reranker:
+      model: openai:gpt-5.2
+      openaiCompatBaseUrl: https://api.openai.com/v1
+    unified:
+      embeddings:
+        dimensions: 1024
+        model: text-embedding-3-large
+        provider: openai
+      enabled: true
+      indexPlan: UsecasePlansOpenai
+      indexTool: ToolDataOpenai
+      vectorStoreProvider: weaviate
+    vectorStoreProvider: weaviate
+    weaviate:
+      collection: ToolSchemas
+  secretsDir: /etc/secrets/apollo
+  service:
+    nodePort: 30900
+    port: 9900
+    type: NodePort
+  serviceAccount:
+    annotations: {}
+    create: true
+    enabled: true
+    labels: {}
+    name: composio-apollo
+  signup:
+    allowedDomains: ""
+    inviteOnly: false
+  smtp:
+    enabled: true
+    key: SMTP_CONNECTION_STRING
+    secretRef: composio-composio-secrets
+    smtpAuthorEmail: utkarsh@composio.io
+  smtpAuthorEmail: utkarsh@composio.io
+  volumeMounts: []
+  volumes: []
+aws:
+  bedrock:
+    endpoint: https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1
+    region: us-east-1
+    secretName: ""
+  lambda:
+    functionName: mercury
+  region: us-east-1
+  s3:
+    lambdaBucketName: tools
+cassandra:
+  enabled: false
+databaseMigration:
+  additionalInitContainers: []
+  enabled: true
+  host: 34.61.37.198
+  image: postgres:15-alpine
+  password:
+    key: password
+  port: "5432"
+  secretsDir: /etc/secrets/postgres-init
+  user: postgres
+dbInit:
+  adminEmail: hello@composio.dev
+  enabled: false
+  job:
+    activeDeadlineSeconds: 2400
+    backoffLimit: 3
+    restartPolicy: OnFailure
+elasticsearch:
+  enabled: false
+externalRedis:
+  enabled: false
+  key: REDIS_URL
+  secretRef: composio-composio-secrets
+  sentinel:
+    db: ""
+    enabled: false
+    hosts: ""
+    masterName: ""
+    passwordKey: ""
+    secretRef: ""
+    sentinelPasswordKey: ""
+    tlsEnabled: false
+    usernameKey: ""
+externalSecrets:
+  ecr:
+    server: 008971668139.dkr.ecr.us-east-1.amazonaws.com
+    token: ""
+    username: AWS
+features:
+  temporal: true
+frontend:
+  additionalInitContainers: []
+  enabled: true
+  env:
+    BACKEND_URL: http://composio-apollo:9900
+    NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: "true"
+    NEXT_PUBLIC_SELF_HOSTED: "true"
+    NODE_ENV: production
+    OVERRIDE_BACKEND_URL: https://staging-gke.composio.io
+    PORT: "3000"
+  ingress:
+    annotations:
+      kubernetes.io/ingress.global-static-ip-name: tsuro-fe-ingress-ip
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+    className: nginx
+    enabled: true
+    host: staging-gke-app.composio.io
+    tls: []
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "1"
+      memory: 3Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+  secretsDir: /etc/secrets/frontend
+  service:
+    port: 3000
+    type: ClusterIP
+  serviceAccount:
+    annotations: {}
+    create: true
+    enabled: false
+    labels: {}
+    name: composio-frontend
+  volumeMounts: []
+  volumes: []
+global:
+  disableK8SecretCheck: true
+  domain: app.composio.io
+  environment: development
+  imagePullSecrets:
+  - name: ecr-secret
+  registry:
+    name: 008971668139.dkr.ecr.us-east-1.amazonaws.com
+  replicated:
+    channelName: Nightly
+    customerEmail: qa@composio.dev
+    customerName: QA
+    dockerconfigjson: eyJhdXRocyI6eyJhcnRpZmFjdHMuY29tcG9zaW8uaW8iOnsiYXV0aCI6Ik16aFRkVTQyV1d0eVpVTkZSblYzYUc5eE1UQkNNM2Q2TW5oVU9qTTRVM1ZPTmxscmNtVkRSVVoxZDJodmNURXdRak4zZWpKNFZBPT0ifSwicmVnaXN0cnkuY29tcG9zaW8uaW8iOnsiYXV0aCI6Ik16aFRkVTQyV1d0eVpVTkZSblYzYUc5eE1UQkNNM2Q2TW5oVU9qTTRVM1ZPTmxscmNtVkRSVVoxZDJodmNURXdRak4zZWpKNFZBPT0ifX19
+    licenseFields:
+      expires_at:
+        description: License Expiration
+        name: expires_at
+        signature:
+          v1: sBJc8KFNeRZvuDYgDj/KAOcrEao8qltwiqwZx28nSErY+0X5/aZELxaHnhjPP+CgYaVGqv/O2MihvwlBb1r24/5dNnty1znUfMw+PDdcvFNrzRlIr8jckHtnZ+Fu/VhAedFu4YKAsgCKV9nBN3Qt9BLFPn8siAP3Urm1vb0W0CQ/p/c53PpjWDOPv1JabUxoRA6ZeDk8pLCEo3awSNvmhuy3HI7pTIV7JX5+5f19KPIic3I7uTl6IPKB/wS0bBVecYouC7KA1JuKB8KMMsZ8Lx71+m0CKzyhyiUKUVYOtZrVgKH66GzF67KgEXavW1mY+2ZTzGivxxiOiLDmJ3vlfg==
+        title: Expiration
+        value: ""
+        valueType: String
+    licenseID: 38SuN6YkreCEFuwhoq10B3wz2xT
+    licenseType: dev
+grafana:
+  enabled: false
+  replicas: 1
+ingress:
+  enabled: false
+mercury:
+  additionalInitContainers: []
+  args: []
+  autoscaling:
+    maxScale: 10
+    minScale: 1
+    target: 80
+  awsLambda:
+    enabled: false
+    secretRef:
+      name: lambda-cred
+  command: []
+  containerConcurrency: 0
+  enabled: true
+  env: []
+  ingress:
+    annotations: {}
+    className: ""
+    enabled: false
+    host: ""
+    tls: []
+  knative:
+    maxReplicas: 5
+    minReplicas: 1
+    replicas: 2
+  livenessProbe:
+    enabled: false
+  nodeSelector: {}
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  readinessProbe:
+    enabled: false
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+  secretsDir: /etc/secrets/mercury
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  service:
+    port: 8080
+    type: ClusterIP
+  serviceAccount:
+    annotations: {}
+    create: true
+    enabled: false
+    labels: {}
+    name: composio-mercury
+  timeoutSeconds: 300
+  tolerations: []
+  useKnative: false
+  volumeMounts: []
+  volumes: []
+namespace:
+  create: false
+  name: composio
+openAI:
+  baseUrl: https://api.openai.com/v1
+  enabled: false
+  key: OPENAI_API_KEY
+  secretRef: composio-composio-secrets
+otel:
+  apollo:
+    metricsEndpoint: http://composio-otel-collector:4318/v1/metrics
+    serviceName: apollo
+    serviceVersion: 1.0.0
+  collector:
+    config:
+      exporters:
+        debug:
+          verbosity: basic
+        googlecloud:
+          metric:
+            prefix: custom.googleapis.com/composio/
+          project: self-host-kubernetes
+          trace: {}
+        prometheus:
+          endpoint: 0.0.0.0:8889
+      extensions:
+        health_check:
+          endpoint: 0.0.0.0:13133
+        pprof:
+          endpoint: 0.0.0.0:1777
+        zpages:
+          endpoint: 0.0.0.0:55679
+      processors:
+        batch:
+          send_batch_size: 1024
+          timeout: 1s
+        memory_limiter:
+          check_interval: 1s
+          limit_mib: 512
+      receivers:
+        jaeger:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:14250
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+      service:
+        extensions:
+        - health_check
+        - pprof
+        - zpages
+        pipelines:
+          metrics:
+            exporters:
+            - debug
+            - prometheus
+            - googlecloud
+            processors:
+            - memory_limiter
+            - batch
+            receivers:
+            - otlp
+          traces:
+            exporters:
+            - debug
+            - googlecloud
+            processors:
+            - memory_limiter
+            - batch
+            receivers:
+            - otlp
+            - jaeger
+    enabled: true
+    googleCloud:
+      enabled: true
+      projectId: self-host-kubernetes
+      serviceAccount:
+        annotations:
+          iam.gke.io/gcp-service-account: otel-collector@self-host-kubernetes.iam.gserviceaccount.com
+        create: true
+        name: otel-collector
+    image:
+      pullPolicy: IfNotPresent
+      repository: otel/opentelemetry-collector-contrib
+      tag: 0.91.0
+    podDisruptionBudget:
+      enabled: false
+      maxUnavailable: 1
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    service:
+      ports:
+        jaeger:
+          port: 14250
+          protocol: TCP
+          targetPort: 14250
+        otlp:
+          port: 4317
+          protocol: TCP
+          targetPort: 4317
+        otlp-http:
+          port: 4318
+          protocol: TCP
+          targetPort: 4318
+        prometheus:
+          port: 8889
+          protocol: TCP
+          targetPort: 8889
+      type: ClusterIP
+  enabled: true
+  environment: development
+  exporter:
+    otlp:
+      endpoint: composio-otel-collector:4317
+      headers: ""
+      insecure: true
+      metricsEndpoint: composio-otel-collector:4317
+      tracesEndpoint: http://composio-otel-collector:4318/v1/traces
+  frontend:
+    metricsEndpoint: http://composio-otel-collector:4318/v1/metrics
+    serviceName: frontend
+    serviceVersion: 1.0.0
+  logs:
+    enabled: false
+  mercury:
+    metricsEndpoint: http://composio-otel-collector:4318/v1/metrics
+    serviceName: mercury-openapi
+    serviceVersion: 1.0.0
+  metrics:
+    enabled: true
+    exportInterval: 60000
+  thermos:
+    metricsEndpoint: http://composio-otel-collector:4318/v1/metrics
+    serviceName: thermos
+    serviceVersion: 1.0.0
+  traces:
+    enabled: true
+    sampler: always_on
+    samplerArg: 1
+prometheus:
+  enabled: false
+  imagePullSecrets: []
+  nodeExporter:
+    enabled: false
+rbac:
+  create: false
+  namespaced: true
+  pspEnabled: false
+redis:
+  architecture: replication
+  auth:
+    enabled: true
+    existingSecret: ""
+    existingSecretPasswordKey: ""
+    password: redis123
+    sentinel: true
+    usePasswordFiles: false
+  clusterDomain: cluster.local
+  common:
+    exampleValue: common-chart
+    global:
+      disableK8SecretCheck: false
+      domain: localhost
+      environment: development
+      imagePullSecrets:
+      - name: ecr-secret
+      imageRegistry: ""
+      redis:
+        password: ""
+      registry:
+        name: 008971668139.dkr.ecr.us-east-1.amazonaws.com
+      replicated:
+        channelName: Nightly
+        customerEmail: qa@composio.dev
+        customerName: QA
+        dockerconfigjson: eyJhdXRocyI6eyJhcnRpZmFjdHMuY29tcG9zaW8uaW8iOnsiYXV0aCI6Ik16aFRkVTQyV1d0eVpVTkZSblYzYUc5eE1UQkNNM2Q2TW5oVU9qTTRVM1ZPTmxscmNtVkRSVVoxZDJodmNURXdRak4zZWpKNFZBPT0ifSwicmVnaXN0cnkuY29tcG9zaW8uaW8iOnsiYXV0aCI6Ik16aFRkVTQyV1d0eVpVTkZSblYzYUc5eE1UQkNNM2Q2TW5oVU9qTTRVM1ZPTmxscmNtVkRSVVoxZDJodmNURXdRak4zZWpKNFZBPT0ifX19
+        licenseFields:
+          expires_at:
+            description: License Expiration
+            name: expires_at
+            signature:
+              v1: sBJc8KFNeRZvuDYgDj/KAOcrEao8qltwiqwZx28nSErY+0X5/aZELxaHnhjPP+CgYaVGqv/O2MihvwlBb1r24/5dNnty1znUfMw+PDdcvFNrzRlIr8jckHtnZ+Fu/VhAedFu4YKAsgCKV9nBN3Qt9BLFPn8siAP3Urm1vb0W0CQ/p/c53PpjWDOPv1JabUxoRA6ZeDk8pLCEo3awSNvmhuy3HI7pTIV7JX5+5f19KPIic3I7uTl6IPKB/wS0bBVecYouC7KA1JuKB8KMMsZ8Lx71+m0CKzyhyiUKUVYOtZrVgKH66GzF67KgEXavW1mY+2ZTzGivxxiOiLDmJ3vlfg==
+            title: Expiration
+            value: ""
+            valueType: String
+        licenseID: 38SuN6YkreCEFuwhoq10B3wz2xT
+        licenseType: dev
+      storageClass: ""
+  commonAnnotations: {}
+  commonConfiguration: |-
+    # Enable AOF https://redis.io/topics/persistence#append-only-file
+    appendonly yes
+    # Disable RDB persistence, AOF persistence already enabled.
+    save ""
+  commonLabels: {}
+  diagnosticMode:
+    args:
+    - infinity
+    command:
+    - sleep
+    enabled: false
+  enabled: true
+  existingConfigmap: ""
+  extraDeploy: []
+  fullnameOverride: ""
+  global:
+    disableK8SecretCheck: false
+    domain: localhost
+    environment: development
+    imagePullSecrets:
+    - name: ecr-secret
+    imageRegistry: ""
+    redis:
+      password: ""
+    registry:
+      name: 008971668139.dkr.ecr.us-east-1.amazonaws.com
+    replicated:
+      channelName: Nightly
+      customerEmail: qa@composio.dev
+      customerName: QA
+      dockerconfigjson: eyJhdXRocyI6eyJhcnRpZmFjdHMuY29tcG9zaW8uaW8iOnsiYXV0aCI6Ik16aFRkVTQyV1d0eVpVTkZSblYzYUc5eE1UQkNNM2Q2TW5oVU9qTTRVM1ZPTmxscmNtVkRSVVoxZDJodmNURXdRak4zZWpKNFZBPT0ifSwicmVnaXN0cnkuY29tcG9zaW8uaW8iOnsiYXV0aCI6Ik16aFRkVTQyV1d0eVpVTkZSblYzYUc5eE1UQkNNM2Q2TW5oVU9qTTRVM1ZPTmxscmNtVkRSVVoxZDJodmNURXdRak4zZWpKNFZBPT0ifX19
+      licenseFields:
+        expires_at:
+          description: License Expiration
+          name: expires_at
+          signature:
+            v1: sBJc8KFNeRZvuDYgDj/KAOcrEao8qltwiqwZx28nSErY+0X5/aZELxaHnhjPP+CgYaVGqv/O2MihvwlBb1r24/5dNnty1znUfMw+PDdcvFNrzRlIr8jckHtnZ+Fu/VhAedFu4YKAsgCKV9nBN3Qt9BLFPn8siAP3Urm1vb0W0CQ/p/c53PpjWDOPv1JabUxoRA6ZeDk8pLCEo3awSNvmhuy3HI7pTIV7JX5+5f19KPIic3I7uTl6IPKB/wS0bBVecYouC7KA1JuKB8KMMsZ8Lx71+m0CKzyhyiUKUVYOtZrVgKH66GzF67KgEXavW1mY+2ZTzGivxxiOiLDmJ3vlfg==
+          title: Expiration
+          value: ""
+          valueType: String
+      licenseID: 38SuN6YkreCEFuwhoq10B3wz2xT
+      licenseType: dev
+    storageClass: ""
+  image:
+    debug: false
+    digest: ""
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+    registry: docker.io
+    repository: redis
+    tag: latest
+  kubeVersion: ""
+  master:
+    affinity: {}
+    args: []
+    command: []
+    configuration: ""
+    containerPorts:
+      redis: 6379
+    containerSecurityContext:
+      enabled: true
+      runAsUser: 1001
+    count: 1
+    customLivenessProbe: {}
+    customReadinessProbe: {}
+    customStartupProbe: {}
+    disableCommands:
+    - FLUSHDB
+    - FLUSHALL
+    dnsConfig: {}
+    dnsPolicy: ""
+    extraEnvVars: []
+    extraEnvVarsCM: ""
+    extraEnvVarsSecret: ""
+    extraFlags: []
+    extraVolumeMounts: []
+    extraVolumes: []
+    hostAliases: []
+    initContainers: []
+    kind: StatefulSet
+    lifecycleHooks: {}
+    livenessProbe:
+      enabled: true
+      failureThreshold: 5
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+    minReadySeconds: 0
+    nodeAffinityPreset:
+      key: ""
+      type: ""
+      values: []
+    nodeSelector: {}
+    persistence:
+      accessModes:
+      - ReadWriteOnce
+      annotations: {}
+      dataSource: {}
+      enabled: true
+      existingClaim: ""
+      labels: {}
+      medium: ""
+      path: /data
+      selector: {}
+      size: 8Gi
+      sizeLimit: ""
+      storageClass: ""
+      subPath: ""
+      subPathExpr: ""
+    podAffinityPreset: ""
+    podAnnotations: {}
+    podAntiAffinityPreset: soft
+    podLabels: {}
+    podSecurityContext:
+      enabled: true
+      fsGroup: 1001
+    preExecCmds: []
+    priorityClassName: ""
+    readinessProbe:
+      enabled: true
+      failureThreshold: 5
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 1
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: "2"
+        memory: 4Gi
+    schedulerName: ""
+    service:
+      annotations: {}
+      clusterIP: ""
+      externalIPs: []
+      externalTrafficPolicy: Cluster
+      extraPorts: []
+      internalTrafficPolicy: Cluster
+      loadBalancerIP: ""
+      loadBalancerSourceRanges: []
+      nodePorts:
+        redis: ""
+      ports:
+        redis: 6379
+      sessionAffinity: None
+      sessionAffinityConfig: {}
+      type: ClusterIP
+    serviceAccount:
+      annotations: {}
+      automountServiceAccountToken: true
+      create: false
+      name: ""
+    shareProcessNamespace: false
+    sidecars: []
+    startupProbe:
+      enabled: false
+      failureThreshold: 5
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+    sysctl:
+      enabled: false
+    sysctlImage:
+      enabled: false
+    terminationGracePeriodSeconds: 30
+    tolerations: []
+    topologySpreadConstraints: []
+    updateStrategy:
+      type: RollingUpdate
+  metrics:
+    command: []
+    containerSecurityContext:
+      enabled: true
+      runAsUser: 1001
+    customLivenessProbe: {}
+    customReadinessProbe: {}
+    customStartupProbe: {}
+    enabled: false
+    extraArgs: {}
+    extraEnvVars: []
+    extraVolumeMounts: []
+    extraVolumes: []
+    image:
+      digest: ""
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+      registry: docker.io
+      repository: bitnami/redis-exporter
+      tag: 1.50.0-debian-11-r13
+    livenessProbe:
+      enabled: true
+      failureThreshold: 5
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    podAnnotations:
+      prometheus.io/port: "9121"
+      prometheus.io/scrape: "true"
+    podLabels: {}
+    prometheusRule:
+      additionalLabels: {}
+      enabled: false
+      namespace: ""
+      rules: []
+    readinessProbe:
+      enabled: true
+      failureThreshold: 3
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    redisTargetHost: localhost
+    resources:
+      limits: {}
+      requests: {}
+    service:
+      annotations: {}
+      clusterIP: ""
+      externalTrafficPolicy: Cluster
+      extraPorts: []
+      loadBalancerIP: ""
+      loadBalancerSourceRanges: []
+      port: 9121
+      type: ClusterIP
+    serviceMonitor:
+      additionalLabels: {}
+      enabled: false
+      honorLabels: false
+      interval: 30s
+      metricRelabelings: []
+      namespace: ""
+      podTargetLabels: []
+      relabellings: []
+      scrapeTimeout: ""
+    startupProbe:
+      enabled: false
+      failureThreshold: 5
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+  nameOverride: ""
+  nameResolutionThreshold: 5
+  nameResolutionTimeout: 5
+  networkPolicy:
+    allowExternal: true
+    enabled: false
+    extraEgress: []
+    extraIngress: []
+    ingressNSMatchLabels: {}
+    ingressNSPodMatchLabels: {}
+  pdb:
+    create: false
+    maxUnavailable: ""
+    minAvailable: 1
+  podSecurityPolicy:
+    create: false
+    enabled: false
+  rbac:
+    create: false
+    rules: []
+  replica:
+    affinity: {}
+    args: []
+    autoscaling:
+      enabled: false
+      maxReplicas: 11
+      minReplicas: 1
+      targetCPU: ""
+      targetMemory: ""
+    command: []
+    configuration: ""
+    containerPorts:
+      redis: 6379
+    containerSecurityContext:
+      enabled: true
+      runAsUser: 1001
+    customLivenessProbe: {}
+    customReadinessProbe: {}
+    customStartupProbe: {}
+    disableCommands:
+    - FLUSHDB
+    - FLUSHALL
+    dnsConfig: {}
+    dnsPolicy: ""
+    externalMaster:
+      enabled: false
+      host: ""
+      port: 6379
+    extraEnvVars: []
+    extraEnvVarsCM: ""
+    extraEnvVarsSecret: ""
+    extraFlags: []
+    extraVolumeMounts: []
+    extraVolumes: []
+    hostAliases: []
+    initContainers: []
+    lifecycleHooks: {}
+    livenessProbe:
+      enabled: true
+      failureThreshold: 5
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+    minReadySeconds: 0
+    nodeAffinityPreset:
+      key: ""
+      type: ""
+      values: []
+    nodeSelector: {}
+    persistence:
+      accessModes:
+      - ReadWriteOnce
+      annotations: {}
+      dataSource: {}
+      enabled: true
+      existingClaim: ""
+      labels: {}
+      medium: ""
+      path: /data
+      selector: {}
+      size: 8Gi
+      sizeLimit: ""
+      storageClass: ""
+      subPath: ""
+      subPathExpr: ""
+    podAffinityPreset: ""
+    podAnnotations: {}
+    podAntiAffinityPreset: soft
+    podLabels: {}
+    podManagementPolicy: ""
+    podSecurityContext:
+      enabled: true
+      fsGroup: 1001
+    preExecCmds: []
+    priorityClassName: ""
+    readinessProbe:
+      enabled: true
+      failureThreshold: 5
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 1
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: "2"
+        memory: 4Gi
+    schedulerName: ""
+    service:
+      annotations: {}
+      clusterIP: ""
+      externalTrafficPolicy: Cluster
+      extraPorts: []
+      internalTrafficPolicy: Cluster
+      loadBalancerIP: ""
+      loadBalancerSourceRanges: []
+      nodePorts:
+        redis: ""
+      ports:
+        redis: 6379
+      sessionAffinity: None
+      sessionAffinityConfig: {}
+      type: ClusterIP
+    serviceAccount:
+      annotations: {}
+      automountServiceAccountToken: true
+      create: false
+      name: ""
+    shareProcessNamespace: false
+    sidecars: []
+    startupProbe:
+      enabled: true
+      failureThreshold: 22
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    sysctl:
+      enabled: false
+    sysctlImage:
+      enabled: false
+    terminationGracePeriodSeconds: 30
+    tolerations: []
+    topologySpreadConstraints: []
+    updateStrategy:
+      type: RollingUpdate
+  secretAnnotations: {}
+  sentinel:
+    annotations: {}
+    args: []
+    automateClusterRecovery: false
+    command: []
+    configuration: ""
+    containerPorts:
+      sentinel: 26379
+    containerSecurityContext:
+      enabled: true
+      runAsUser: 1001
+    customLivenessProbe: {}
+    customReadinessProbe: {}
+    customStartupProbe: {}
+    downAfterMilliseconds: 5000
+    enabled: true
+    externalMaster:
+      enabled: false
+      host: ""
+      port: 6379
+    extraEnvVars: []
+    extraEnvVarsCM: ""
+    extraEnvVarsSecret: ""
+    extraVolumeMounts: []
+    extraVolumes: []
+    failoverTimeout: 10000
+    getMasterTimeout: 220
+    image:
+      debug: false
+      digest: ""
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+      registry: ghcr.io
+      repository: zcube/bitnami-compat/redis-sentinel
+      tag: 7.0.11
+    lifecycleHooks: {}
+    livenessProbe:
+      enabled: true
+      failureThreshold: 5
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+    masterSet: mymaster
+    parallelSyncs: 1
+    persistence:
+      accessModes:
+      - ReadWriteOnce
+      annotations: {}
+      dataSource: {}
+      enabled: false
+      labels: {}
+      medium: ""
+      selector: {}
+      size: 100Mi
+      sizeLimit: ""
+      storageClass: ""
+    preExecCmds: []
+    quorum: 2
+    readinessProbe:
+      enabled: true
+      failureThreshold: 5
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 1
+    redisShutdownWaitFailover: true
+    resources:
+      limits: {}
+      requests: {}
+    service:
+      annotations: {}
+      clusterIP: ""
+      externalTrafficPolicy: Cluster
+      extraPorts: []
+      headless:
+        annotations: {}
+      loadBalancerIP: ""
+      loadBalancerSourceRanges: []
+      nodePorts:
+        redis: ""
+        sentinel: ""
+      ports:
+        redis: 6379
+        sentinel: 26379
+      sessionAffinity: None
+      sessionAffinityConfig: {}
+      type: ClusterIP
+    startupProbe:
+      enabled: true
+      failureThreshold: 22
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    terminationGracePeriodSeconds: 30
+  serviceAccount:
+    annotations: {}
+    automountServiceAccountToken: true
+    create: true
+    name: ""
+  serviceBindings:
+    enabled: false
+  sysctl:
+    command: []
+    enabled: false
+    image:
+      digest: ""
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+      registry: docker.io
+      repository: bitnami/bitnami-shell
+      tag: 11-debian-11-r118
+    mountHostSys: false
+    resources:
+      limits: {}
+      requests: {}
+  tls:
+    authClients: true
+    autoGenerated: false
+    certCAFilename: ""
+    certFilename: ""
+    certKeyFilename: ""
+    certificatesSecret: ""
+    dhParamsFilename: ""
+    enabled: false
+    existingSecret: ""
+  useExternalDNS:
+    additionalAnnotations: {}
+    annotationKey: external-dns.alpha.kubernetes.io/
+    enabled: false
+    suffix: ""
+  useHostnames: true
+  volumePermissions:
+    containerSecurityContext:
+      runAsUser: 0
+    enabled: false
+    image:
+      digest: ""
+      pullPolicy: IfNotPresent
+      pullSecrets: []
+      registry: docker.io
+      repository: bitnami/bitnami-shell
+      tag: 11-debian-11-r118
+    resources:
+      limits: {}
+      requests: {}
+replicated:
+  app: composio-rodent
+  appID: ""
+  appName: composio
+  automountServiceAccountToken: false
+  channelID: 360XUfT1CjsK4nG3WOB9QXoN6IK
+  channelName: Unstable
+  channelSequence: 28
+  clusterRole: ""
+  commonAnnotations: {}
+  commonLabels: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+  createPullSecret: true
+  enabled: true
+  existingSecret:
+    name: ""
+  extraEnv: []
+  extraVolumeMounts: []
+  extraVolumes: []
+  global:
+    disableK8SecretCheck: false
+    domain: localhost
+    environment: development
+    imagePullSecrets:
+    - name: ecr-secret
+    imageRegistry: ""
+    registry:
+      name: 008971668139.dkr.ecr.us-east-1.amazonaws.com
+    replicated:
+      channelName: Unstable
+      customerEmail: qa@composio.dev
+      customerName: QA
+      dockerconfigjson: eyJhdXRocyI6eyJhcnRpZmFjdHMuY29tcG9zaW8uaW8iOnsiYXV0aCI6IlpYbEtjRWxxYjJsTk1FWlNWVmRTUmxac1ZUUk5la0pHVlRGR2QxVlhaRTFrYm10NFZtcGFURlF3V25kSmFYZHBZM2xKTmtscVRrSlZWa1pyVW0xa1QwNHdOVXhoVnpsVlpHNUtSbUZGU25CVk0xWkdZVVU1Y1dKVFNqazZaWGxLY0VscWIybE5NRVpTVlZkU1JsWnNWVFJOZWtKR1ZURkdkMVZYWkUxa2JtdDRWbXBhVEZRd1duZEphWGRwWTNsSk5rbHFUa0pWVmtaclVtMWtUMDR3TlV4aFZ6bFZaRzVLUm1GRlNuQlZNMVpHWVVVNWNXSlRTams9In0sInJlZ2lzdHJ5LmNvbXBvc2lvLmlvIjp7ImF1dGgiOiJaWGxLY0VscWIybE5NRVpTVlZkU1JsWnNWVFJOZWtKR1ZURkdkMVZYWkUxa2JtdDRWbXBhVEZRd1duZEphWGRwWTNsSk5rbHFUa0pWVmtaclVtMWtUMDR3TlV4aFZ6bFZaRzVLUm1GRlNuQlZNMVpHWVVVNWNXSlRTams2WlhsS2NFbHFiMmxOTUVaU1ZWZFNSbFpzVlRSTmVrSkdWVEZHZDFWWFpFMWtibXQ0Vm1wYVRGUXdXbmRKYVhkcFkzbEpOa2xxVGtKVlZrWnJVbTFrVDA0d05VeGhWemxWWkc1S1JtRkZTbkJWTTFaR1lVVTVjV0pUU2prPSJ9fX0=
+      licenseFields:
+        expires_at:
+          description: License Expiration
+          name: expires_at
+          signature:
+            v1: ReTkXlSe3ahgi2icfVCgOunpafHQEC8P8JZ2uHMLbqlXR0EaXs+p+cl2oRqN6aKYqUdSnd7RXArTtpNE5+MHm9x2Y05+E6+3cg0yfRj0dCDZivEru9XPIq2vPQRc4OBHwgvVV8+p9ZwbJ795KXhG1V7de+rMYlnwfxYRsdRHJ7aAC19qXoLET/hTjj5gKfq3JwFg0rS5tK4YwlVus41+Egmj4QrcxTe3gzVruEjlu9C1wAC82UcqHW6epfXqdsNk4eW4L1BpNq2j3YRlDSDDerx/axrSMwJCNs0mFL1I1tCf9e5HXhaRRefjnTjk+AhloA1rPlTc++w+MpfzAVmzuA==
+          title: Expiration
+          value: ""
+          valueType: String
+      licenseID: eyJpIjoiM0FRUWRFVlU4MzBFU1FwUWdMdnkxVjZLT0ZwIiwicyI6IjNBUVFkRmdON05LaW9UdnJFaEJpU3VFaE9qbSJ9
+      licenseType: prod
+  highAvailability:
+    podAntiAffinityPreset: soft
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+  hostAliases: []
+  hostIPC: false
+  hostNetwork: false
+  image:
+    pullPolicy: IfNotPresent
+    registry: proxy.replicated.com
+    repository: library/replicated-sdk-image
+    tag: 1.12.1
+  imagePullSecrets: []
+  initContainers: []
+  integration:
+    enabled: false
+    licenseID: ""
+    mockData: ""
+  isAirgap: false
+  license: |
+    apiVersion: kots.io/v1beta1
+    kind: License
+    metadata:
+        name: qa
+    spec:
+        appSlug: composio-rodent
+        channelID: 360XUfT1CjsK4nG3WOB9QXoN6IK
+        channelName: Unstable
+        channels:
+            - channelID: 360XUfT1CjsK4nG3WOB9QXoN6IK
+              channelName: Unstable
+              channelSlug: unstable
+              endpoint: https://selfhosted.composio.io
+              isDefault: true
+              isSemverRequired: true
+              replicatedProxyDomain: artifacts.composio.io
+        customerEmail: qa@composio.dev
+        customerName: QA
+        endpoint: https://selfhosted.composio.io
+        entitlements:
+            expires_at:
+                description: License Expiration
+                signature:
+                    v1: UILpbRpmX1jWJ3DL7dXGXVuSsDbfRxo49Xiu8LvNMNc1eTwBmT4vLJZiYInfyP4cTzyAaA54Dn2Q3pVp99gta67KIfH1r4dbQZCNoWQdQEDalCtW56jIRhnLB02Z5bZy3+09k6qBWSQn3EvCqyoYK8FVVikXN2QveEpSqLAvWY2DeYvSwQ0DTf3QL1yzTx7vJeIRUSC752Y+NVCnjh2qyxh8V5WZLefLoC4Fb0w0fHmNqcRViTAsX7Fn8fwrFuy10fUZWRRGr0+UH17cZyI56RY1OYIVlwZXDNQbLGVXXaJXtpgNQqJ/Vk+9IsdgEfExzEYCKYYBcrKEq9sCFdVnWA==
+                title: Expiration
+                value: ""
+                valueType: String
+        isSemverRequired: true
+        licenseID: eyJpIjoiM0FRUWRFVlU4MzBFU1FwUWdMdnkxVjZLT0ZwIiwicyI6IjNBUVFkRmdON05LaW9UdnJFaEJpU3VFaE9qbSJ9
+        licenseSequence: 12
+        licenseType: prod
+        replicatedProxyDomain: artifacts.composio.io
+        signature: eyJsaWNlbnNlRGF0YSI6ImV5SmhjR2xXWlhKemFXOXVJam9pYTI5MGN5NXBieTkyTVdKbGRHRXhJaXdpYTJsdVpDSTZJa3hwWTJWdWMyVWlMQ0p0WlhSaFpHRjBZU0k2ZXlKdVlXMWxJam9pY1dFaWZTd2ljM0JsWXlJNmV5SnNhV05sYm5ObFNVUWlPaUpsZVVwd1NXcHZhVTB3UmxKVlYxSkdWbXhWTkUxNlFrWlZNVVozVlZka1RXUnVhM2hXYWxwTVZEQmFkMGxwZDJsamVVazJTV3BPUWxWV1JtdFNiV1JQVGpBMVRHRlhPVlZrYmtwR1lVVktjRlV6VmtaaFJUbHhZbE5LT1NJc0lteHBZMlZ1YzJWVWVYQmxJam9pY0hKdlpDSXNJbU4xYzNSdmJXVnlUbUZ0WlNJNklsRkJJaXdpWVhCd1UyeDFaeUk2SW1OdmJYQnZjMmx2TFhKdlpHVnVkQ0lzSW1Ob1lXNXVaV3hKUkNJNklqTTJNRmhWWmxReFEycHpTelJ1UnpOWFQwSTVVVmh2VGpaSlN5SXNJbU5vWVc1dVpXeE9ZVzFsSWpvaVZXNXpkR0ZpYkdVaUxDSmpkWE4wYjIxbGNrVnRZV2xzSWpvaWNXRkFZMjl0Y0c5emFXOHVaR1YySWl3aVkyaGhibTVsYkhNaU9sdDdJbU5vWVc1dVpXeEpSQ0k2SWpNMk1GaFZabFF4UTJwelN6UnVSek5YVDBJNVVWaHZUalpKU3lJc0ltTm9ZVzV1Wld4VGJIVm5Jam9pZFc1emRHRmliR1VpTENKamFHRnVibVZzVG1GdFpTSTZJbFZ1YzNSaFlteGxJaXdpYVhORVpXWmhkV3gwSWpwMGNuVmxMQ0psYm1Sd2IybHVkQ0k2SW1oMGRIQnpPaTh2YzJWc1ptaHZjM1JsWkM1amIyMXdiM05wYnk1cGJ5SXNJbkpsY0d4cFkyRjBaV1JRY205NGVVUnZiV0ZwYmlJNkltRnlkR2xtWVdOMGN5NWpiMjF3YjNOcGJ5NXBieUlzSW1selUyVnRkbVZ5VW1WeGRXbHlaV1FpT25SeWRXVjlYU3dpYkdsalpXNXpaVk5sY1hWbGJtTmxJam94TWl3aVpXNWtjRzlwYm5RaU9pSm9kSFJ3Y3pvdkwzTmxiR1pvYjNOMFpXUXVZMjl0Y0c5emFXOHVhVzhpTENKeVpYQnNhV05oZEdWa1VISnZlSGxFYjIxaGFXNGlPaUpoY25ScFptRmpkSE11WTI5dGNHOXphVzh1YVc4aUxDSmxiblJwZEd4bGJXVnVkSE1pT25zaVpYaHdhWEpsYzE5aGRDSTZleUowYVhSc1pTSTZJa1Y0Y0dseVlYUnBiMjRpTENKa1pYTmpjbWx3ZEdsdmJpSTZJa3hwWTJWdWMyVWdSWGh3YVhKaGRHbHZiaUlzSW5aaGJIVmxJam9pSWl3aWRtRnNkV1ZVZVhCbElqb2lVM1J5YVc1bklpd2ljMmxuYm1GMGRYSmxJanA3SW5ZeElqb2lWVWxNY0dKU2NHMVlNV3BYU2pORVREZGtXRWRZVm5WVGMwUmlabEo0YnpRNVdHbDFPRXgyVGsxT1l6RmxWSGRDYlZRMGRreEtXbWxaU1c1bWVWQTBZMVI2ZVVGaFFUVTBSRzR5VVROd1ZuQTVPV2QwWVRZM1MwbG1TREZ5TkdSaVVWcERUbTlYVVdSUlJVUmhiRU4wVnpVMmFrbFNhRzVNUWpBeVdqVmlXbmt6S3pBNWF6WnhRbGRUVVc0elJYWkRjWGx2V1VzNFJsWldhV3RZVGpKUmRtVkZjRk54VEVGMlYxa3lSR1ZaZGxOM1VUQkVWR1l6VVV3eGVYcFVlRGQyU21WSlVsVlRRemMxTWxrclRsWkRibXBvTW5GNWVHZzRWalZYV2t4bFpreHZRelJHWWpCM01HWkliVTV4WTFKV2FWUkJjMWczUm00NFpuZHlSblY1TVRCbVZWcFhVbEpIY2pBclZVZ3hOMk5hZVVrMU5sSlpNVTlaU1Zac2QxcFlSRTVSWWt4SFZsaFlZVXBZZEhCblRsRnhTaTlXYXlzNVNYTmtaMFZtUlhoNlJWbERTMWxaUW1OeVMwVnhPWE5EUm1SV2JsZEJQVDBpZlgxOUxDSnBjMU5sYlhabGNsSmxjWFZwY21Wa0lqcDBjblZsZlgwPSIsImlubmVyU2lnbmF0dXJlIjoiZXlKc2FXTmxibk5sVTJsbmJtRjBkWEpsSWpvaWJFeDRWbk5DUWpsRmNHaG5XWFUzYmpkRVpYbzBUVlZqWVZGblFUUXJSQ3RuUlhVelptZG1ha3BLYkdKbU9WUjBkMUJoVTJ3dlpVTkZVakJ1Y1VsRFFtOWxRbUppTkdsWU9FVjJlbFpxTVhaeFFsaDBjVVJyUVdKT01pdEhUSFphWWs1dlNWTTBTVkJRVDJKc2FuUm9hVWQxVkdWemRYVldRV2xvUWxSWE1YWjJhbmxMVW1WQ1JERm5hRTkwTHpWc1VYVkZSVVZSVEVKMmQwTllURGRCSzB4QlJtc3lieTlPT0hRNFdFOUZUWFV3VFVkWVJVRnNWR0puVURSME5VUm5NVXh1U3pVNFp5OHZhWGh5WjFsVGRVZHNTVmMwYTFCQ2RFMXhXVlZ4TkdnM0t5dExkblpHV1hkQ1ZIWkVVQ3RoVTFGMVpUaExOa2hYWkRGdlNVRlRNSFJXWWpKNGMzSlVkRWRIT1VGM1lsbE1VbXd6Y1RGck1rdElhMnRoT0c4ek1GSlNWVGh2UzJNNEwwUXlZWEpNWTJ0TmNHVnJORkpFYW5sSFRVSllabTA0Y2pBeEx6ZFFSVUZLV0hFclNXMWFiRE12VjBkUlBUMGlMQ0p3ZFdKc2FXTkxaWGtpT2lJdExTMHRMVUpGUjBsT0lGQlZRa3hKUXlCTFJWa3RMUzB0TFZ4dVRVbEpRa2xxUVU1Q1oydHhhR3RwUnpsM01FSkJVVVZHUVVGUFEwRlJPRUZOU1VsQ1EyZExRMEZSUlVGemVHaEVXVGxJV21GSGFGVmFPR053VUhvd1JWeHVNbWcyVm1GcE1XVm1OMUZ2YWtVM01tcHBheTlpYkdkMllqZGxObEJKUkdKVU9TczVkRXhsVWtNMWNXcHVNRWwzUkV3NGJUTnlXRGQ2WjI4eE9IWlhURnh1V0dSUWFsSm9TekpsZVc5M2VGSndTM1U0UVUxVFpGZGFlbGMwTkhvMmMxVjJjRmx5Y0ZncmVtbGtaRGhLU2tZemRVdDBXSGt3UzJSeVNYQkJlbmxzTVZ4dU4zVlJRV2c1TmxaTWRsZHdkMjVNTTBndlVrTm5UbkZKWW5oNFYxVk1lSG94WW5FcmNuWnVTRmhGZG5sVk5IWnFlbU5QZEhSRVVHcDJZMlF4TWt0RE1seHVVMWw2WTNKUWFsaG5jRmRSYzJWNVVYSnBiRkpGWkROcloxRTNUbnBsYm1FemVEWlBLMU5QZG5keE5XMWxPRU1yTURrNE1ta3hZakpRT0V4VVlYVlFZbHh1YzJGTVVrazRhbHBDYldWUllXc3lXRkZSYmxnM1JXWk9XbFJRUzFJclNGVlpVMlp4V2xoMGMyc3hja1kwY0ZGclNqUTJOa05VYlc5aE5FdHBVbTFVUVZ4dU1uZEpSRUZSUVVKY2JpMHRMUzB0UlU1RUlGQlZRa3hKUXlCTFJWa3RMUzB0TFZ4dUlpd2lhMlY1VTJsbmJtRjBkWEpsSWpvaVpYbEtlbUZYWkhWWldGSXhZMjFWYVU5cFNtNWlNRGxXVTJ0a1NXSlZNVXRPTTFWM1lrVlJlazFYVGtaU1ZXaE5ZMGRTU1ZSVlJqUmtWbEpHVmtWSmVWUlhlRzFVTUZKV1lrVnNiVTlYYUZCYVZrazBXak5LYm1ORk9IaFZhMVozWTJ0c05WVnRWVEZhYlhCWFN6QjRiRlF5Y0VsT1UzUklVMGRzTWxkVVVqVmhSVVY0VkRGd2FGZEhjSFJTTWxwb1dXeE9RbVF5T1hWT1NFMTZVbTAwZVdReFRrWlRlbVJhVkVSR2JXTnNhekZqUnpFeFZucEtiV0Z0T0hkbFJrWnBUVzFSZUUxSWNIaFdWMmhvWW1sek5GcEdXakpoVlVab1YwVlNkazVyV2xOT01uQnFZMjFXZVZreFZUVldiRzh4VFRKc1NVNHljREJqUjNSd1ZsUkdkVk5HWjNKU1dGcHpVVlprUms0eFNsbGhNVnBVWWtWNFMyVnNXbE5UVTNSVldXMUdiMkl6Umsxak1GWmhaV3hGY2xKRldsaFBSVnBzVFc1c1ZWa3dPVzVsVTNSMFpFUlNVRXN3WkVOWFYyaG9UbmwwTmxreFJqRk1NbXhHV2tSVk0yUlZTa1JXYWtwU1pVUnNiRmRFYUhoTlEzUXlWbXBzTVZZeU5YQlRWa0p3VGpBeGVrNVVTWGxSTTJnMVlteENTRTlWY0haT1JXaExZMWRTY2xSR1pEQlZWMHBWVDFSV01WWkZlRzVXUkVFMFdtdE9RbFJWTlRKTU1GSmFZVEF4VVZWclZucFhibWhVVWtWak0yUXdhR0ZaVlZaUlQwVktVbG93UlRsUVUwbHpTVzFrYzJJeVNtaGlSWFJzWlZWc2EwbHFiMmxaYlZKc1dsUlZNazVVV1hkWk1scHBUa1JPYWs5WFNYbFBSMHB0VDFSb2JGbFhUbWhhYlVVeVRrUlphV1pSUFQwaWZRPT0ifQ==
+  licenseFields: ""
+  minimalRBAC: false
+  nameOverride: ""
+  namespaceOverride: ""
+  nodeSelector: {}
+  parentChartURL: oci://registry.composio.io/composio-rodent/unstable/composio
+  podLabels: {}
+  podSecurityContext:
+    fsGroup: 1001
+    runAsGroup: 1001
+    runAsUser: 1001
+    seccompProfile:
+      type: RuntimeDefault
+    supplementalGroups:
+    - 1001
+  priorityClassName: ""
+  proxy:
+    httpsProxy: ""
+    noProxy: ""
+  readinessProbe:
+    failureThreshold: 3
+    httpGet:
+      path: /healthz
+      port: 3000
+      scheme: HTTP
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
+  registry: artifacts.composio.io
+  releaseCreatedAt: "2026-03-02T12:51:09Z"
+  releaseImages:
+  - artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo-db-init:r20260421_02
+  - artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/apollo:r20260421_02
+  - artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/mercury:r20260421_02
+  - artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos-db-init:r20260421_02
+  - artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/thermos:r20260421_02
+  - artifacts.composio.io/proxy/composio-rodent/008971668139.dkr.ecr.us-east-1.amazonaws.com/composio-self-host/weaviate:r20260421_02
+  - docker.io/redis:latest
+  - postgres:15-alpine
+  - proxy.replicated.com/library/replicated-sdk-image:1.12.1
+  releaseNotes: ""
+  releaseSequence: 30
+  replicaCount: 1
+  replicatedAppDomain: ""
+  replicatedAppEndpoint: https://selfhosted.composio.io
+  replicatedID: ""
+  reportAllImages: false
+  resources:
+    limits:
+      cpu: 500m
+      memory: 500Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+  restartPolicy: Always
+  schedulerName: ""
+  service:
+    port: 3000
+    type: ClusterIP
+  serviceAccountName: ""
+  terminationGracePeriodSeconds: 30
+  tlsCertSecretName: ""
+  tolerations: []
+  topologySpreadConstraints: []
+  versionLabel: 0.1.55
+secret:
+  name: composio-composio-secrets
+serviceAccount:
+  annotations: {}
+  create: true
+  name: ""
+temporal:
+  additionalAnnotations: {}
+  additionalLabels: {}
+  admintools:
+    additionalEnv: []
+    additionalEnvSecretName: ""
+    additionalInitContainers: []
+    additionalVolumeMounts: []
+    additionalVolumes: []
+    affinity: {}
+    containerSecurityContext: {}
+    deploymentAnnotations: {}
+    deploymentLabels: {}
+    enabled: false
+    image:
+      pullPolicy: IfNotPresent
+      repository: temporalio/admin-tools
+      tag: 1.28.0-tctl-1.18.2-cli-1.3.0
+    livenessProbe:
+      enabled: false
+    nodeSelector: {}
+    podAnnotations: {}
+    podDisruptionBudget: {}
+    podLabels: {}
+    readinessProbe:
+      enabled: false
+    resources: {}
+    securityContext: {}
+    service:
+      annotations: {}
+      port: 22
+      type: ClusterIP
+    tolerations: []
+  cassandra:
+    config:
+      cluster_size: 3
+      heap_new_size: 128M
+      max_heap_size: 512M
+      num_tokens: 4
+      ports:
+        cql: 9042
+      seed_size: 0
+    enabled: false
+    image:
+      pullPolicy: IfNotPresent
+      repo: cassandra
+      tag: 3.11.3
+    persistence:
+      enabled: false
+    service:
+      type: ClusterIP
+  debug: false
+  elasticsearch:
+    enabled: false
+    host: elasticsearch-master-headless
+    imageTag: 7.17.3
+    logLevel: error
+    password: ""
+    persistence:
+      enabled: false
+    port: 9200
+    replicas: 3
+    scheme: http
+    username: ""
+    version: v7
+    visibilityIndex: temporal_visibility_v1_dev
+  fullnameOverride: temporal-stack
+  global:
+    disableK8SecretCheck: false
+    domain: localhost
+    environment: development
+    imagePullSecrets:
+    - name: ecr-secret
+    registry:
+      name: 008971668139.dkr.ecr.us-east-1.amazonaws.com
+    replicated:
+      channelName: Unstable
+      customerEmail: qa@composio.dev
+      customerName: QA
+      dockerconfigjson: eyJhdXRocyI6eyJhcnRpZmFjdHMuY29tcG9zaW8uaW8iOnsiYXV0aCI6IlpYbEtjRWxxYjJsTk1FWlNWVmRTUmxac1ZUUk5la0pHVlRGR2QxVlhaRTFrYm10NFZtcGFURlF3V25kSmFYZHBZM2xKTmtscVRrSlZWa1pyVW0xa1QwNHdOVXhoVnpsVlpHNUtSbUZGU25CVk0xWkdZVVU1Y1dKVFNqazZaWGxLY0VscWIybE5NRVpTVlZkU1JsWnNWVFJOZWtKR1ZURkdkMVZYWkUxa2JtdDRWbXBhVEZRd1duZEphWGRwWTNsSk5rbHFUa0pWVmtaclVtMWtUMDR3TlV4aFZ6bFZaRzVLUm1GRlNuQlZNMVpHWVVVNWNXSlRTams9In0sInJlZ2lzdHJ5LmNvbXBvc2lvLmlvIjp7ImF1dGgiOiJaWGxLY0VscWIybE5NRVpTVlZkU1JsWnNWVFJOZWtKR1ZURkdkMVZYWkUxa2JtdDRWbXBhVEZRd1duZEphWGRwWTNsSk5rbHFUa0pWVmtaclVtMWtUMDR3TlV4aFZ6bFZaRzVLUm1GRlNuQlZNMVpHWVVVNWNXSlRTams2WlhsS2NFbHFiMmxOTUVaU1ZWZFNSbFpzVlRSTmVrSkdWVEZHZDFWWFpFMWtibXQ0Vm1wYVRGUXdXbmRKYVhkcFkzbEpOa2xxVGtKVlZrWnJVbTFrVDA0d05VeGhWemxWWkc1S1JtRkZTbkJWTTFaR1lVVTVjV0pUU2prPSJ9fX0=
+      licenseFields:
+        expires_at:
+          description: License Expiration
+          name: expires_at
+          signature:
+            v1: ReTkXlSe3ahgi2icfVCgOunpafHQEC8P8JZ2uHMLbqlXR0EaXs+p+cl2oRqN6aKYqUdSnd7RXArTtpNE5+MHm9x2Y05+E6+3cg0yfRj0dCDZivEru9XPIq2vPQRc4OBHwgvVV8+p9ZwbJ795KXhG1V7de+rMYlnwfxYRsdRHJ7aAC19qXoLET/hTjj5gKfq3JwFg0rS5tK4YwlVus41+Egmj4QrcxTe3gzVruEjlu9C1wAC82UcqHW6epfXqdsNk4eW4L1BpNq2j3YRlDSDDerx/axrSMwJCNs0mFL1I1tCf9e5HXhaRRefjnTjk+AhloA1rPlTc++w+MpfzAVmzuA==
+          title: Expiration
+          value: ""
+          valueType: String
+      licenseID: eyJpIjoiM0FRUWRFVlU4MzBFU1FwUWdMdnkxVjZLT0ZwIiwicyI6IjNBUVFkRmdON05LaW9UdnJFaEJpU3VFaE9qbSJ9
+      licenseType: prod
+  grafana:
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+        - disableDeletion: false
+          editable: true
+          folder: ""
+          name: default
+          options:
+            path: /var/lib/grafana/dashboards/default
+          orgId: 1
+          type: file
+    dashboards:
+      default:
+        misc-advanced-visibility-specific-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/advanced-visibility-specific.json
+        misc-clustermonitoring-kubernetes-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/clustermonitoring-kubernetes.json
+        misc-frontend-service-specific-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/frontend-service-specific.json
+        misc-history-service-specific-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/history-service-specific.json
+        misc-matching-service-specific-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/matching-service-specific.json
+        misc-worker-service-specific-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/worker-service-specific.json
+        sdk-general-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/sdk/sdk-general.json
+        server-general-github:
+          datasource: TemporalMetrics
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/server/server-general.json
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+        - access: proxy
+          isDefault: true
+          name: TemporalMetrics
+          type: prometheus
+          url: http://{{ .Release.Name }}-prometheus-server
+    enabled: false
+    rbac:
+      create: false
+      namespaced: true
+      pspEnabled: false
+    replicas: 1
+    testFramework:
+      enabled: false
+  imagePullSecrets: {}
+  mysql:
+    enabled: false
+  nameOverride: ""
+  prometheus:
+    enabled: false
+    nodeExporter:
+      enabled: false
+  schema:
+    containerSecurityContext: {}
+    createDatabase:
+      enabled: false
+    podAnnotations: {}
+    podLabels: {}
+    resources: {}
+    securityContext: {}
+    setup:
+      backoffLimit: 100
+      enabled: true
+    update:
+      backoffLimit: 100
+      enabled: true
+  server:
+    additionalEnv: []
+    additionalInitContainers: []
+    additionalVolumeMounts: []
+    additionalVolumes: []
+    affinity: {}
+    config:
+      logLevel: info
+      namespaces:
+        create: true
+        namespace:
+        - name: default
+          retention: 7d
+        - name: batched-polling
+          retention: 10d
+        - name: webhook
+          retention: 10d
+        - name: timer-shards
+          retention: 10d
+      numHistoryShards: 512
+      persistence:
+        additionalStores: {}
+        default:
+          cassandra:
+            consistency:
+              default:
+                consistency: local_quorum
+                serialConsistency: local_serial
+            existingSecret: ""
+            hosts: []
+            keyspace: temporal
+            password: password
+            replicationFactor: 1
+            user: user
+          driver: sql
+          sql:
+            database: temporal
+            driver: postgres12
+            existingSecret: composio-composio-secrets
+            host: 34.61.37.198
+            maxConnLifetime: 1h
+            maxConns: 20
+            maxIdleConns: 20
+            password: temporal
+            port: 5432
+            secretName: ""
+            user: postgres
+        defaultStore: default
+        visibility:
+          cassandra:
+            consistency:
+              default:
+                consistency: local_quorum
+                serialConsistency: local_serial
+            existingSecret: ""
+            hosts: []
+            keyspace: temporal_visibility
+            password: password
+            replicationFactor: 1
+            user: user
+          driver: sql
+          sql:
+            database: temporal_visibility
+            driver: postgres12
+            existingSecret: composio-composio-secrets
+            host: 34.61.37.198
+            maxConnLifetime: 1h
+            maxConns: 20
+            maxIdleConns: 20
+            password: temporal
+            port: 5432
+            secretName: ""
+            user: postgres
+    deploymentAnnotations: {}
+    deploymentLabels: {}
+    enabled: true
+    frontend:
+      additionalEnv: []
+      affinity: {}
+      containerSecurityContext: {}
+      deploymentAnnotations: {}
+      deploymentLabels: {}
+      ingress:
+        annotations: {}
+        enabled: false
+        hosts:
+        - /
+        tls: []
+      livenessProbe:
+        enabled: false
+      metrics:
+        annotations:
+          enabled: true
+        prometheus: {}
+        serviceMonitor: {}
+      nodeSelector: {}
+      podAnnotations: {}
+      podDisruptionBudget: {}
+      podLabels: {}
+      readinessProbe:
+        enabled: false
+      resources: {}
+      service:
+        annotations: {}
+        httpPort: 7243
+        membershipPort: 6933
+        port: 7233
+        type: ClusterIP
+      tolerations: []
+      topologySpreadConstraints: []
+    history:
+      additionalEnv: []
+      additionalEnvSecretName: ""
+      affinity: {}
+      containerSecurityContext: {}
+      deploymentAnnotations: {}
+      deploymentLabels: {}
+      livenessProbe:
+        enabled: false
+      metrics:
+        annotations:
+          enabled: true
+        prometheus: {}
+        serviceMonitor: {}
+      nodeSelector: {}
+      podAnnotations: {}
+      podDisruptionBudget: {}
+      podLabels: {}
+      readinessProbe:
+        enabled: false
+      resources: {}
+      service:
+        membershipPort: 6934
+        port: 7234
+      tolerations: []
+      topologySpreadConstraints: []
+    image:
+      pullPolicy: IfNotPresent
+      repository: temporalio/server
+      tag: 1.28.0
+    internalFrontend:
+      additionalEnv: []
+      affinity: {}
+      containerSecurityContext: {}
+      deploymentAnnotations: {}
+      deploymentLabels: {}
+      enabled: false
+      metrics:
+        annotations:
+          enabled: true
+        prometheus: {}
+        serviceMonitor: {}
+      nodeSelector: {}
+      podAnnotations: {}
+      podDisruptionBudget: {}
+      podLabels: {}
+      resources: {}
+      service:
+        annotations: {}
+        httpPort: 7246
+        membershipPort: 6936
+        port: 7236
+        type: ClusterIP
+      tolerations: []
+      topologySpreadConstraints: []
+    livenessProbe:
+      enabled: false
+    matching:
+      additionalEnv: []
+      affinity: {}
+      containerSecurityContext: {}
+      deploymentAnnotations: {}
+      deploymentLabels: {}
+      livenessProbe:
+        enabled: false
+      metrics:
+        annotations:
+          enabled: false
+        prometheus: {}
+        serviceMonitor: {}
+      nodeSelector: {}
+      podAnnotations: {}
+      podDisruptionBudget: {}
+      podLabels: {}
+      readinessProbe:
+        enabled: false
+      resources: {}
+      service:
+        membershipPort: 6935
+        port: 7235
+      tolerations: []
+      topologySpreadConstraints: []
+    metrics:
+      annotations:
+        enabled: true
+      excludeTags: {}
+      prometheus:
+        timerType: histogram
+      serviceMonitor:
+        additionalLabels: {}
+        enabled: false
+        interval: 30s
+        metricRelabelings: []
+      tags: {}
+    nodeSelector: {}
+    podAnnotations: {}
+    podLabels: {}
+    readinessProbe:
+      enabled: false
+    replicaCount: 2
+    resources: {}
+    secretAnnotations: {}
+    secretLabels: {}
+    securityContext:
+      fsGroup: 1000
+      runAsUser: 1000
+    tolerations: []
+    worker:
+      additionalEnv: []
+      affinity: {}
+      containerSecurityContext: {}
+      deploymentAnnotations: {}
+      deploymentLabels: {}
+      livenessProbe:
+        enabled: false
+      metrics:
+        annotations:
+          enabled: true
+        prometheus: {}
+        serviceMonitor: {}
+      nodeSelector: {}
+      podAnnotations: {}
+      podDisruptionBudget: {}
+      podLabels: {}
+      readinessProbe:
+        enabled: false
+      resources: {}
+      service:
+        membershipPort: 6939
+        port: 7239
+      tolerations: []
+      topologySpreadConstraints: []
+  serviceAccount:
+    create: false
+  web:
+    additionalEnv: []
+    additionalEnvSecretName: ""
+    additionalVolumeMounts: []
+    additionalVolumes: []
+    affinity: {}
+    containerSecurityContext: {}
+    deploymentAnnotations: {}
+    deploymentLabels: {}
+    enabled: false
+    image:
+      pullPolicy: IfNotPresent
+      repository: temporalio/ui
+      tag: 2.38.3
+    ingress:
+      annotations: {}
+      enabled: false
+      hosts:
+      - /
+      tls: []
+    livenessProbe:
+      enabled: false
+    nodeSelector: {}
+    podAnnotations: {}
+    podDisruptionBudget: {}
+    podLabels: {}
+    readinessProbe:
+      enabled: false
+    replicaCount: 1
+    resources: {}
+    securityContext: {}
+    service:
+      annotations: {}
+      port: 8080
+      type: ClusterIP
+    tolerations: []
+    topologySpreadConstraints: []
+testFramework:
+  enabled: false
+thermos:
+  additionalInitContainers: []
+  autoscaling:
+    enabled: false
+    maxReplicas: 10
+    minReplicas: 2
+    scaleDownPercent: 10
+    scaleDownPeriodSeconds: 60
+    scaleDownStabilizationWindowSeconds: 300
+    scaleUpPercent: 100
+    scaleUpPeriodSeconds: 15
+    scaleUpPods: 4
+    scaleUpStabilizationWindowSeconds: 60
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  dbInit:
+    additionalInitContainers: []
+    enabled: true
+    env: []
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "2"
+      memory: 5Gi
+    requests:
+      cpu: "2"
+      memory: 4Gi
+  secretsDir: /etc/secrets/thermos
+  service:
+    port: 8180
+    type: ClusterIP
+  serviceAccount:
+    annotations: {}
+    create: true
+    enabled: false
+    labels: {}
+    name: composio-thermos
+  volumeMounts: []
+  volumes: []
+thermosMiscWorkers:
+  additionalInitContainers: []
+  affinity: {}
+  containerSecurityContext: {}
+  enabled: false
+  env: []
+  nodeSelector: {}
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  podSecurityContext: {}
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 1Gi
+  secretsDir: /etc/secrets/thermos
+  temporalAutoRecoveryEnabled: true
+  tolerations: []
+  volumeMounts: []
+  volumes: []
+toolkitRegistry:
+  auth:
+    password: registry_reader
+    username: registry_reader
+  database:
+    name: thermos
+  enabled: true
+  env: []
+  initContainers: []
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  service:
+    port: 5432
+    type: ClusterIP
+weaviate:
+  auth:
+    anonymousAccess: "true"
+  enabled: true
+  livenessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+  modules: text2vec-openai,text2vec-cohere,text2vec-huggingface,ref2vec-centroid,generative-openai,qna-openai
+  persistence:
+    enabled: false
+    size: 10Gi
+    storageClass: ""
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+  service:
+    grpcPort: 50051
+    port: 8080
+    type: ClusterIP
+  serviceAccount:
+    annotations: {}
+    create: true
+    enabled: false
+    labels: {}
+    name: composio-weaviate
+  vectorizer: none
+  volumeMounts: []
+  volumes: []
