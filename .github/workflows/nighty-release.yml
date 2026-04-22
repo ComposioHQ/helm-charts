@@ -319,57 +319,41 @@ jobs:
           REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
         run: |
           set -euo pipefail
-          channels_json="$(replicated channel ls --output json)"
-          nightly_channel_json="$(
-            echo "${channels_json}" | jq -c '
-              (
-                if type == "array" then
-                  .
-                elif (.channels? | type) == "array" then
-                  .channels
-                elif (.data? | type) == "array" then
-                  .data
-                else
-                  []
-                end
-              ) |
-              map(select((.name // .Name // .channelName // .ChannelName // "") == "Nightly")) |
-              first // empty
-            '
+          app_id="$(
+            curl -fsSL "https://api.replicated.com/vendor/v3/apps" \
+              --header "Accept: application/json" \
+              --header "Authorization: ${REPLICATED_API_TOKEN}" \
+              | jq -r --arg app "${REPLICATED_APP}" '
+                  .apps[]
+                  | select(.id == $app or .slug == $app or .name == $app)
+                  | .id
+                ' \
+              | head -n1
           )"
 
-          if [[ -z "${nightly_channel_json}" ]]; then
-            echo "Nightly channel was not found in replicated channel ls output" >&2
+          if [[ -z "${app_id}" || "${app_id}" == "null" ]]; then
+            echo "Unable to resolve Replicated app ID for ${REPLICATED_APP}" >&2
+            exit 1
+          fi
+
+          channels_json="$(
+            curl -fsSLG "https://api.replicated.com/vendor/v3/app/${app_id}/channels" \
+              --data-urlencode "channelName=Nightly" \
+              --header "Accept: application/json" \
+              --header "Authorization: ${REPLICATED_API_TOKEN}"
+          )"
+
+          if [[ "$(echo "${channels_json}" | jq -r '.totalCount')" != "1" ]]; then
+            echo "Nightly channel was not found in Replicated channels API response" >&2
             exit 1
           fi
 
           CURRENT_APPVERSION="$(
-            echo "${nightly_channel_json}" | jq -r '
-              .releaseLabel //
-              .ReleaseLabel //
-              .releaseVersion //
-              .ReleaseVersion //
-              .currentReleaseVersion //
-              .CurrentReleaseVersion //
-              .release.versionLabel //
-              .release.version //
-              .release.sequence //
-              .version //
-              .Version //
-              .releaseSequence //
-              .ReleaseSequence //
-              .currentReleaseSequence //
-              .CurrentReleaseSequence //
-              empty
-            '
+            echo "${channels_json}" | jq -r '.channels[0].currentVersion // empty'
           )"
 
           if [[ -z "${CURRENT_APPVERSION}" || "${CURRENT_APPVERSION}" == "null" ]]; then
-            CURRENT_APPVERSION="$(replicated channel ls | awk '$1 == "Nightly" {print $NF; exit}')"
-          fi
-
-          if [[ -z "${CURRENT_APPVERSION}" || "${CURRENT_APPVERSION}" == "null" ]]; then
-            echo "Failed to resolve the current version promoted to the Nightly channel" >&2
+            echo "Nightly channel response did not include currentVersion" >&2
             exit 1
           fi
 
