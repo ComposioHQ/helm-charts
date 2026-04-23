@@ -626,6 +626,122 @@ jobs:
             });
 
             core.setOutput("pr_url", pr.html_url);
+            core.setOutput("pr_number", String(pr.number));
+
+      - name: Create GitHub App token for onprem testbed
+        id: onprem-app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COMPOSIO_INTERNAL_READER_APP_ID }}
+          private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Dispatch onprem test harness
+        uses: actions/github-script@v7
+        timeout-minutes: 360
+        env:
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          HELM_CHART_VERSION: ${{ needs.replicated-release.outputs.version }}
+          NIGHTLY_BRANCH: ${{ needs.replicated-release.outputs.branch_name }}
+          NIGHTLY_HEAD_SHA: ${{ steps.nightly_head.outputs.sha }}
+          ONPREM_WORKFLOW_FILE: replicated-cmx-harness.yml
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+          PR_URL: ${{ steps.create_pr.outputs.pr_url }}
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
+        with:
+          github-token: ${{ steps.onprem-app-token.outputs.token }}
+          script: |
+            const version = process.env.HELM_CHART_VERSION || "";
+            const target = {
+              owner: "ComposioHQ",
+              repo: "onprem-testbed",
+              workflow_id: process.env.ONPREM_WORKFLOW_FILE || "replicated-cmx-harness.yml",
+            };
+            const sourceRunId = String(context.runId);
+            const sourceRunAttempt = process.env.GITHUB_RUN_ATTEMPT || "";
+            const runTitleFragment = `source ${sourceRunId}/${sourceRunAttempt}`;
+            const dispatchStartedAt = new Date(Date.now() - 60_000);
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+            await github.rest.repos.createDispatchEvent({
+              owner: target.owner,
+              repo: target.repo,
+              event_type: "replicated-cmx-harness",
+              client_payload: {
+                helm_chart_version: version,
+                harness_env_json: JSON.stringify({ RUN_TRIGGER_TESTS: "1" }),
+                source_context: {
+                  repository: `${context.repo.owner}/${context.repo.repo}`,
+                  workflow: context.workflow,
+                  run_id: String(context.runId),
+                  run_attempt: process.env.GITHUB_RUN_ATTEMPT || "",
+                  ref: process.env.NIGHTLY_BRANCH || "",
+                  sha: process.env.NIGHTLY_HEAD_SHA || "",
+                  release_tag: process.env.RELEASE_TAG || "",
+                  nightly_release_pr_url: process.env.PR_URL || "",
+                  nightly_release_pr_number: Number(process.env.PR_NUMBER || "0"),
+                },
+              },
+            });
+
+            core.info(`Dispatched onprem-testbed harness for Helm chart version ${version}`);
+
+            async function findWorkflowRun() {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: target.owner,
+                repo: target.repo,
+                workflow_id: target.workflow_id,
+                event: "repository_dispatch",
+                per_page: 50,
+              });
+
+              const candidateRuns = data.workflow_runs
+                .filter((run) => new Date(run.created_at) >= dispatchStartedAt)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              const exact = candidateRuns.find((run) =>
+                (run.display_title || "").includes(runTitleFragment),
+              );
+              if (exact) {
+                return exact;
+              }
+              return candidateRuns.length === 1 ? candidateRuns[0] : null;
+            }
+
+            let run = null;
+            for (let attempt = 1; attempt <= 60; attempt += 1) {
+              run = await findWorkflowRun();
+              if (run) {
+                break;
+              }
+              core.info(`Waiting for onprem-testbed workflow run to appear (${attempt}/60)`);
+              await sleep(10_000);
+            }
+
+            if (!run) {
+              throw new Error(`Unable to find onprem-testbed workflow run matching ${runTitleFragment}`);
+            }
+
+            core.notice(`Onprem test harness run: ${run.html_url}`);
+            await core.summary
+              .addHeading("Onprem Test Harness")
+              .addRaw(`Run: ${run.html_url}\n`)
+              .write();
+
+            while (run.status !== "completed") {
+              core.info(`Onprem test harness status: ${run.status}`);
+              await sleep(30_000);
+              const { data } = await github.rest.actions.getWorkflowRun({
+                owner: target.owner,
+                repo: target.repo,
+                run_id: run.id,
+              });
+              run = data;
+            }
+
+            core.info(`Onprem test harness conclusion: ${run.conclusion}`);
+            if (run.conclusion !== "success") {
+              throw new Error(`Onprem test harness failed with conclusion '${run.conclusion}': ${run.html_url}`);
+            }
 
       - name: Ensure GitHub release has changelog body
         uses: actions/github-script@v7
@@ -717,20 +833,3 @@ jobs:
       #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
       #       *Branch:* `${{ needs.replicated-release.outputs.branch_name }}`
       #       *State:* PR creation failed after pushing the nightly branch.
-
-  onprem-trigger-tests:
-    name: Onprem Trigger Tests
-    needs:
-      - replicated-release
-      - create-nightly-release-pr
-    permissions:
-      contents: read
-    uses: ComposioHQ/onprem-testbed/.github/workflows/replicated-cmx-harness.yml@main
-    with:
-      helm_chart_version: ${{ needs.replicated-release.outputs.version }}
-      harness_env_json: '{"RUN_TRIGGER_TESTS":"1"}'
-    secrets:
-      replicated_token: ${{ secrets.REPLICATED_API_TOKEN }}
-      replicated_license: ${{ secrets.REPLICATED_LICENSE }}
-      replicated_app: ${{ secrets.REPLICATED_APP }}
-      seeded_fixture_encryption_key: ${{ secrets.SEEDED_FIXTURE_ENCRYPTION_KEY }}
