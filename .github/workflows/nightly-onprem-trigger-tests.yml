@@ -25,11 +25,11 @@ jobs:
       (
         (
           github.event.action == 'labeled' &&
-          github.event.label.name == 'nightly'
+          github.event.label.name == 'nightly-release'
         ) ||
         (
           github.event.action != 'labeled' &&
-          contains(github.event.pull_request.labels.*.name, 'nightly')
+          contains(github.event.pull_request.labels.*.name, 'nightly-release')
         )
       )
     runs-on: ubuntu-latest
@@ -94,4 +94,7 @@ jobs:
       helm_chart_version: ${{ needs.resolve-version.outputs.helm_chart_version }}
       harness_env_json: '{"RUN_TRIGGER_TESTS":"1"}'
     secrets:
+      replicated_token: ${{ secrets.REPLICATED_API_TOKEN }}
+      replicated_license: ${{ secrets.REPLICATED_LICENSE }}
       replicated_app: ${{ secrets.REPLICATED_APP }}
+      seeded_fixture_encryption_key: ${{ secrets.SEEDED_FIXTURE_ENCRYPTION_KEY }}
