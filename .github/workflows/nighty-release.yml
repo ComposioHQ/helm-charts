@@ -52,8 +52,124 @@ permissions:
   pull-requests: write
 
 jobs:
+  changelog-preflight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COMPOSIO_INTERNAL_READER_APP_ID }}
+          private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          fetch-tags: true
+          ref: release-stable
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
+      - name: Resolve current Nightly version
+        id: current-version
+        env:
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          app_id="$(
+            curl -fsSL "https://api.replicated.com/vendor/v3/apps" \
+              --header "Accept: application/json" \
+              --header "Authorization: ${REPLICATED_API_TOKEN}" \
+              | jq -r --arg app "${REPLICATED_APP}" '
+                  .apps[]
+                  | select(.id == $app or .slug == $app or .name == $app)
+                  | .id
+                ' \
+              | head -n1
+          )"
+
+          if [[ -z "${app_id}" || "${app_id}" == "null" ]]; then
+            echo "Unable to resolve Replicated app ID for ${REPLICATED_APP}" >&2
+            exit 1
+          fi
+
+          channels_json="$(
+            curl -fsSLG "https://api.replicated.com/vendor/v3/app/${app_id}/channels" \
+              --data-urlencode "channelName=Nightly" \
+              --header "Accept: application/json" \
+              --header "Authorization: ${REPLICATED_API_TOKEN}"
+          )"
+
+          if [[ "$(echo "${channels_json}" | jq -r '.totalCount')" != "1" ]]; then
+            echo "Nightly channel was not found in Replicated channels API response" >&2
+            exit 1
+          fi
+
+          current_version="$(
+            echo "${channels_json}" | jq -r '.channels[0].currentVersion // empty'
+          )"
+
+          if [[ -z "${current_version}" || "${current_version}" == "null" ]]; then
+            echo "Nightly channel response did not include currentVersion" >&2
+            exit 1
+          fi
+
+          echo "current=${current_version}" >> "${GITHUB_OUTPUT}"
+          echo "Current Nightly version: ${current_version}"
+
+      - name: Configure AWS credentials for changelog image metadata lookup
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr
+          aws-region: us-east-1
+
+      - name: Login to chart registry
+        shell: bash
+        env:
+          CHART_OCI_REF: oci://registry.composio.io/composio-rodent/nightly/composio
+          REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
+          REPLICATED_TOKEN: ${{ secrets.REPLICATED_TOKEN }}
+        run: |
+          set -euo pipefail
+          registry_host="${CHART_OCI_REF#oci://}"
+          registry_host="${registry_host%%/*}"
+          printf '%s' "${REPLICATED_TOKEN}" | helm registry login "${registry_host}" --username "${REPLICATED_USERNAME}" --password-stdin
+
+      - name: Generate release changelog preflight
+        id: changelog
+        shell: bash
+        env:
+          CHANGELOG_FROM_RELEASE: ${{ steps.current-version.outputs.current }}
+          CHANGELOG_TO_RELEASE: WORKTREE
+          CHANGELOG_OUTPUT_FILE: release-changelog-preflight.md
+          CHART_OCI_REF: oci://registry.composio.io/composio-rodent/nightly/composio
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          CHANGELOG_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          ENABLE_IMAGE_LABEL_LOOKUP: "1"
+        run: |
+          set -euo pipefail
+          bash ./.github/scripts/generate-release-changelog.sh \
+            "${CHANGELOG_FROM_RELEASE}" \
+            "${CHANGELOG_TO_RELEASE}" \
+            "${CHANGELOG_OUTPUT_FILE}"
+
   retag-latest-images:
     runs-on: ubuntu-latest
+    needs:
+      - changelog-preflight
     outputs:
       release_tag: ${{ steps.retag.outputs.release_tag }}
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
