@@ -100,25 +100,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Create onprem testbed app token
-        id: onprem-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.COMPOSIO_INTERNAL_READER_APP_ID }}
-          private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
-          permission-actions: write
-          permission-workflows: write
-          permission-contents: read
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            onprem-testbed
-            helm-charts
-
       - name: Run onprem test harness
         shell: bash
         timeout-minutes: 360
         env:
-          GH_TOKEN: ${{ steps.onprem-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.ONPREM_TESTBED_WORKFLOW_DISPATCH_TOKEN }}
           HELM_CHART_VERSION: ${{ needs.resolve-version.outputs.helm_chart_version }}
           ONPREM_REPO: ComposioHQ/onprem-testbed
           ONPREM_WORKFLOW_FILE: replicated-cmx-harness.yml
