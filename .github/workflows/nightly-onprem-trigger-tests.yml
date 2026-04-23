@@ -108,6 +108,7 @@ jobs:
           private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
           permission-actions: write
           permission-workflows: write
+          permission-contents: read
           owner: ${{ github.repository_owner }}
           repositories: |
             onprem-testbed
