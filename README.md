@@ -1,4 +1,4 @@
-[![Helm Chart](https://img.shields.io/badge/Helm-Chart-0f1689?logo=helm)](https://helm.sh/)
+[![Helm Chart](https://img.shields.io/badge/Helm-Chart-0f1689?logo=helm)](https://helm.sh/) .
 [![Documentation](https://img.shields.io/badge/Docs-Online-blue)](https://composiohq.github.io/helm-charts/index.html)
  
 # Composio Helm Charts
