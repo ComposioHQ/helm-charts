@@ -123,11 +123,23 @@ jobs:
           set -euo pipefail
           dispatch_started="$(date -u +%s)"
 
-          gh workflow run "${ONPREM_WORKFLOW_FILE}" \
-            --repo "${ONPREM_REPO}" \
-            --ref main \
-            --field "helm_chart_version=${HELM_CHART_VERSION}" \
-            --field "harness_env_json=${HARNESS_ENV_JSON}"
+          echo "gh auth status:"
+          gh auth status || true
+
+          echo "repo visible?"
+          gh api repos/ComposioHQ/onprem-testbed --jq '.full_name'
+
+          echo "workflow visible?"
+          gh api repos/ComposioHQ/onprem-testbed/actions/workflows/replicated-cmx-harness.yml --jq '.id,.path,.state'
+
+          echo "dispatch capability test:"
+          gh api -i -X POST \
+            repos/ComposioHQ/onprem-testbed/actions/workflows/replicated-cmx-harness.yml/dispatches \
+            -f ref=main \
+            -F inputs[helm_chart_version]="${HELM_CHART_VERSION}" \
+            -F inputs[harness_env_json]="${HARNESS_ENV_JSON}"
+
+          echo "Waiting for workflow_dispatch run from capability test."
 
           run_id=""
           for attempt in {1..60}; do
