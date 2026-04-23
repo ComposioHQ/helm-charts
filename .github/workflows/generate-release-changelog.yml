@@ -59,6 +59,18 @@ jobs:
           role-to-assume: arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr
           aws-region: us-east-1
 
+      - name: Login to chart registry
+        shell: bash
+        env:
+          CHART_OCI_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.chart_oci_ref || 'oci://registry.composio.io/composio-rodent/nightly/composio' }}
+          REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
+          REPLICATED_TOKEN: ${{ secrets.REPLICATED_TOKEN }}
+        run: |
+          set -euo pipefail
+          registry_host="${CHART_OCI_REF#oci://}"
+          registry_host="${registry_host%%/*}"
+          printf '%s' "${REPLICATED_TOKEN}" | helm registry login "${registry_host}" --username "${REPLICATED_USERNAME}" --password-stdin
+
       - name: Generate changelog
         id: generate
         shell: bash
@@ -69,10 +81,6 @@ jobs:
           CHART_OCI_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.chart_oci_ref || 'oci://registry.composio.io/composio-rodent/nightly/composio' }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           CHANGELOG_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          CHART_REGISTRY_USERNAME: ${{ secrets.CHART_REGISTRY_USERNAME }}
-          CHART_REGISTRY_PASSWORD: ${{ secrets.CHART_REGISTRY_PASSWORD }}
-          REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
-          REPLICATED_HELM_AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
           ENABLE_IMAGE_LABEL_LOOKUP: "1"
         run: |
           bash ./.github/scripts/generate-release-changelog.sh \
