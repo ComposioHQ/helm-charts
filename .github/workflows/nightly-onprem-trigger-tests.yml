@@ -108,6 +108,7 @@ jobs:
           private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
           owner: ComposioHQ
           permission-actions: write
+          permission-contents: write
 
       - name: Run onprem test harness
         shell: bash
