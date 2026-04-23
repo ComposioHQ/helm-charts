@@ -128,21 +128,26 @@ resolve_from_git_chart_version() {
 resolve_from_chart_oci() {
   local version="$1"
   local prefix="$2"
-  local pull_root chart_dir chart_name app_version
+  local pull_root chart_dir chart_name app_version helm_pull_log
 
   require_cmd helm
 
   pull_root="${TMPDIR_PATH}/chart-$(safe_name "${version}")"
+  helm_pull_log="${TMPDIR_PATH}/helm-pull-$(safe_name "${version}").log"
   chart_name="$(chart_name_from_ref)"
   rm -rf "${pull_root}"
   mkdir -p "${pull_root}"
 
-  if ! helm pull "${CHART_OCI_REF}" --version "${version}" --untar --untardir "${pull_root}" >/dev/null 2>&1; then
+  if ! helm pull "${CHART_OCI_REF}" --version "${version}" --untar --untardir "${pull_root}" >"${helm_pull_log}" 2>&1; then
     cat >&2 <<EOF
 Failed to resolve chart version ${version}.
 Checked git history and then tried pulling ${CHART_OCI_REF}:${version}.
 If the chart is private, run helm registry login before generating the changelog.
 EOF
+    if [[ -s "${helm_pull_log}" ]]; then
+      echo "Helm pull output:" >&2
+      sed 's/^/  /' "${helm_pull_log}" >&2
+    fi
     exit 1
   fi
 
