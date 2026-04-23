@@ -1,6 +1,9 @@
 name: Nightly Onprem Trigger Tests
 
 on:
+  push:
+    branches:
+      - fx-onprem-trigger-tests
   pull_request_target:
     types:
       - opened
@@ -12,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nightly-onprem-trigger-tests-pr-${{ github.event.pull_request.number }}
+  group: nightly-onprem-trigger-tests-${{ github.event_name == 'pull_request_target' && github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 # Automated nightly-release PRs call the harness from nighty-release.yml after PR creation.
@@ -21,6 +24,8 @@ jobs:
   resolve-version:
     name: Resolve Replicated Release Version
     if: >
+      github.event_name == 'push' ||
+      (
       github.event.pull_request.state == 'open' &&
       (
         (
@@ -32,6 +37,7 @@ jobs:
           contains(github.event.pull_request.labels.*.name, 'nightly-release')
         )
       )
+      )
     runs-on: ubuntu-latest
     outputs:
       helm_chart_version: ${{ steps.version.outputs.helm_chart_version }}
@@ -39,8 +45,8 @@ jobs:
       - name: Checkout PR manifest only
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
           persist-credentials: false
           sparse-checkout: |
@@ -74,6 +80,8 @@ jobs:
   onprem-trigger-tests:
     name: Onprem Trigger Tests
     if: >
+      github.event_name == 'push' ||
+      (
       github.event.pull_request.state == 'open' &&
       (
         (
@@ -85,13 +93,95 @@ jobs:
           contains(github.event.pull_request.labels.*.name, 'nightly')
         )
       )
+      )
     needs:
       - resolve-version
+    runs-on: ubuntu-latest
     permissions:
-      contents: write
-    uses: ComposioHQ/onprem-testbed/.github/workflows/replicated-cmx-harness.yml@main
-    with:
-      helm_chart_version: ${{ needs.resolve-version.outputs.helm_chart_version }}
-      harness_env_json: '{"RUN_TRIGGER_TESTS":"1"}'
-    secrets:
-      replicated_app: ${{ secrets.REPLICATED_APP }}
+      contents: read
+    steps:
+      - name: Create onprem testbed app token
+        id: onprem-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COMPOSIO_INTERNAL_READER_APP_ID }}
+          private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
+          owner: ComposioHQ
+          repositories: onprem-testbed
+          permission-actions: write
+
+      - name: Run onprem test harness
+        shell: bash
+        timeout-minutes: 360
+        env:
+          GH_TOKEN: ${{ steps.onprem-token.outputs.token }}
+          HELM_CHART_VERSION: ${{ needs.resolve-version.outputs.helm_chart_version }}
+          ONPREM_REPO: ComposioHQ/onprem-testbed
+          ONPREM_WORKFLOW_FILE: replicated-cmx-harness.yml
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1"}'
+        run: |
+          set -euo pipefail
+          dispatch_started="$(date -u +%s)"
+
+          gh workflow run "${ONPREM_WORKFLOW_FILE}" \
+            --repo "${ONPREM_REPO}" \
+            --ref main \
+            --field "helm_chart_version=${HELM_CHART_VERSION}" \
+            --field "harness_env_json=${HARNESS_ENV_JSON}"
+
+          run_id=""
+          for attempt in {1..60}; do
+            runs_json="$(
+              gh run list \
+                --repo "${ONPREM_REPO}" \
+                --workflow "${ONPREM_WORKFLOW_FILE}" \
+                --event workflow_dispatch \
+                --limit 20 \
+                --json databaseId,createdAt,url
+            )"
+            run_id="$(
+              jq -r --argjson started "${dispatch_started}" '
+                [.[] | select((.createdAt | fromdateiso8601) >= ($started - 60))]
+                | sort_by(.createdAt)
+                | reverse
+                | .[0].databaseId // empty
+              ' <<<"${runs_json}"
+            )"
+            if [[ -n "${run_id}" ]]; then
+              break
+            fi
+            echo "Waiting for onprem-testbed workflow run to appear (${attempt}/60)"
+            sleep 10
+          done
+
+          if [[ -z "${run_id}" ]]; then
+            echo "Unable to find onprem-testbed workflow_dispatch run for chart ${HELM_CHART_VERSION}" >&2
+            exit 1
+          fi
+
+          run_url="$(gh run view "${run_id}" --repo "${ONPREM_REPO}" --json url --jq '.url')"
+          echo "Onprem test harness run: ${run_url}"
+          {
+            echo "### Onprem Test Harness"
+            echo
+            echo "Run: ${run_url}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          while true; do
+            run_json="$(gh run view "${run_id}" --repo "${ONPREM_REPO}" --json status,conclusion,url)"
+            status="$(jq -r '.status' <<<"${run_json}")"
+            conclusion="$(jq -r '.conclusion // ""' <<<"${run_json}")"
+            run_url="$(jq -r '.url' <<<"${run_json}")"
+
+            if [[ "${status}" == "completed" ]]; then
+              break
+            fi
+            echo "Onprem test harness status: ${status}"
+            sleep 30
+          done
+
+          echo "Onprem test harness conclusion: ${conclusion}"
+          if [[ "${conclusion}" != "success" ]]; then
+            echo "Onprem test harness failed with conclusion '${conclusion}': ${run_url}" >&2
+            exit 1
+          fi
