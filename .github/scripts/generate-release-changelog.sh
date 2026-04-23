@@ -125,31 +125,12 @@ resolve_from_git_chart_version() {
   return 0
 }
 
-login_to_chart_registry_if_needed() {
-  local registry_host
-  local username="${CHART_REGISTRY_USERNAME:-${REPLICATED_USERNAME:-}}"
-  local password="${CHART_REGISTRY_PASSWORD:-${REPLICATED_HELM_AUTH_TOKEN:-}}"
-
-  if [[ "${HELM_REGISTRY_LOGIN_DONE:-0}" == "1" ]]; then
-    return 0
-  fi
-
-  if [[ -z "${username}" || -z "${password}" ]]; then
-    return 0
-  fi
-
-  registry_host="$(echo "${CHART_OCI_REF}" | sed -E 's#^oci://([^/]+)/.*#\1#')"
-  printf '%s' "${password}" | helm registry login "${registry_host}" --username "${username}" --password-stdin >/dev/null
-  HELM_REGISTRY_LOGIN_DONE=1
-}
-
 resolve_from_chart_oci() {
   local version="$1"
   local prefix="$2"
   local pull_root chart_dir chart_name app_version
 
   require_cmd helm
-  login_to_chart_registry_if_needed
 
   pull_root="${TMPDIR_PATH}/chart-$(safe_name "${version}")"
   chart_name="$(chart_name_from_ref)"
@@ -160,8 +141,7 @@ resolve_from_chart_oci() {
     cat >&2 <<EOF
 Failed to resolve chart version ${version}.
 Checked git history and then tried pulling ${CHART_OCI_REF}:${version}.
-If the chart is private, set CHART_REGISTRY_USERNAME / CHART_REGISTRY_PASSWORD
-or REPLICATED_USERNAME / REPLICATED_HELM_AUTH_TOKEN for the workflow.
+If the chart is private, run helm registry login before generating the changelog.
 EOF
     exit 1
   fi

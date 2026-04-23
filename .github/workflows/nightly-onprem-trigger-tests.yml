@@ -98,4 +98,3 @@ jobs:
       replicated_license: ${{ secrets.REPLICATED_LICENSE }}
       replicated_app: ${{ secrets.REPLICATED_APP }}
       seeded_fixture_encryption_key: ${{ secrets.SEEDED_FIXTURE_ENCRYPTION_KEY }}
-      workflow_source_token: ${{ secrets.ONPREM_TESTBED_DISPATCH_TOKEN }}
