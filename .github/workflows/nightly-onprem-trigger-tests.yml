@@ -106,10 +106,12 @@ jobs:
         with:
           app-id: ${{ secrets.COMPOSIO_INTERNAL_READER_APP_ID }}
           private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
-          owner: ComposioHQ
-          repositories: onprem-testbed
           permission-actions: write
           permission-workflows: write
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            onprem-testbed
+            helm-charts
 
       - name: Run onprem test harness
         shell: bash
