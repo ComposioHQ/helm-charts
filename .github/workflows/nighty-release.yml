@@ -733,6 +733,7 @@ jobs:
           owner: ComposioHQ
           repositories: onprem-testbed
           permission-actions: write
+          permission-workflows: write
 
       - name: Run onprem test harness
         shell: bash
