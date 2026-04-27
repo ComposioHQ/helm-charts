@@ -80,6 +80,12 @@ spec:
                   optional: true
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
+            # When toolkit-registry sidecar is enabled (default), thermos-db-init
+            # runs Atlas migrations only — toolkit data is served by the standalone
+            # thermos-toolkit-registry Postgres. When disabled, the init container
+            # restores the SQL dump baked into the image into DATABASE_URL.
+            - name: TOOLKIT_REGISTRY_ENABLED
+              value: {{ .Values.toolkitRegistry.enabled | quote }}
             {{- if .Values.thermos.dbInit.extraAtlasFlags }}
             - name: EXTRA_ATLAS_FLAGS
               value: {{ .Values.thermos.dbInit.extraAtlasFlags | quote }}
