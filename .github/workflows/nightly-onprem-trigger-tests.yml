@@ -87,11 +87,22 @@ jobs:
       )
     needs:
       - resolve-version
+    runs-on: ubuntu-latest
     permissions:
-      contents: write
-    uses: ComposioHQ/onprem-testbed/.github/workflows/replicated-cmx-harness.yml@main
-    with:
-      helm_chart_version: ${{ needs.resolve-version.outputs.helm_chart_version }}
-      harness_env_json: '{"RUN_TRIGGER_TESTS":"1"}'
-    secrets:
-      replicated_app: ${{ secrets.REPLICATED_APP }}
+      contents: read
+    steps:
+      - name: Checkout harness trigger script
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts/run-onprem-test-harness.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Run onprem test harness
+        shell: bash
+        timeout-minutes: 360
+        env:
+          GH_TOKEN: ${{ secrets.ONPREM_TESTBED_WORKFLOW_DISPATCH_TOKEN }}
+          HELM_CHART_VERSION: ${{ needs.resolve-version.outputs.helm_chart_version }}
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1"}'
+        run: bash .github/scripts/run-onprem-test-harness.sh
