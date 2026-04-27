@@ -720,14 +720,22 @@ jobs:
     needs:
       - replicated-release
       - create-nightly-release-pr
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-    uses: ComposioHQ/onprem-testbed/.github/workflows/replicated-cmx-harness.yml@main
-    with:
-      helm_chart_version: ${{ needs.replicated-release.outputs.version }}
-      harness_env_json: '{"RUN_TRIGGER_TESTS":"1"}'
-    secrets:
-      replicated_token: ${{ secrets.REPLICATED_API_TOKEN }}
-      replicated_license: ${{ secrets.REPLICATED_LICENSE }}
-      replicated_app: ${{ secrets.REPLICATED_APP }}
-      seeded_fixture_encryption_key: ${{ secrets.SEEDED_FIXTURE_ENCRYPTION_KEY }}
+    steps:
+      - name: Checkout harness trigger script
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts/run-onprem-test-harness.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Run onprem test harness
+        shell: bash
+        timeout-minutes: 360
+        env:
+          GH_TOKEN: ${{ secrets.ONPREM_TESTBED_WORKFLOW_DISPATCH_TOKEN }}
+          HELM_CHART_VERSION: ${{ needs.replicated-release.outputs.version }}
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1"}'
+        run: bash .github/scripts/run-onprem-test-harness.sh
