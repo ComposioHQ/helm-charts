@@ -111,7 +111,7 @@ templates/
 
 `Thermos` has two non-obvious bits:
 
-- `thermos-misc-workers.yaml` — extra workers (e.g. trigger workers) gated by `features.temporal`.
+- `thermos-misc-workers.yaml` — runs Thermos in `THERMOS_MODE=miscellaneous_worker` (trigger / auth-refresh logic). Gated by its own toggle `thermosMiscWorkers.enabled` (default `false`); `features.temporal` is a separate switch and does **not** turn the misc workers on by itself.
 - `toolkit-registry.yaml` — sidecar/companion deployment used by on-prem Thermos for toolkit discovery (default-on as of `910cb20`).
 
 ## Values.yaml: top-level keys
@@ -137,7 +137,7 @@ Always-true conventions:
 - Image references are rendered via `{{ include "chart.registry" . }}/{{ .Values.<svc>.image.repository }}:{{ .Values.<svc>.image.tag }}`.
 - Resource names use `{{ .Release.Name }}-<service>` (e.g. `composio-apollo`).
 - Sensitive values come from `secret.name` (default `composio-composio-secrets`) via `valueFrom.secretKeyRef`. Never hardcode secrets.
-- Conditional rendering: every service block is gated by `{{- if .Values.<service>.enabled }}`.
+- Conditional rendering: optional services and feature blocks are gated by `{{- if .Values.<thing>.enabled }}` (e.g. `weaviate.enabled`, `redis.enabled`, `mercury.enabled`, `frontend.enabled`, `thermosMiscWorkers.enabled`, `databaseMigration.enabled`). The core services `apollo` and `thermos` do **not** have a top-level `enabled` field — their main templates render unconditionally and there is no supported way to disable them via values.
 
 `overwrite-values.yaml` at the repo root is an annotated example of the most common production tweaks (external DB, disabling Weaviate, Temporal config, etc.). Consult it before adding new config knobs.
 
@@ -245,14 +245,12 @@ Key invariants enforced by CI:
 The chart is published two ways:
 
 1. **GitHub Pages Helm repo** — packaged `.tgz` files land in `helm-release/` and `index.yaml` is regenerated. Hosted at `https://composiohq.github.io/helm-charts/`. Older PR `helm-release.yaml` automation is referenced in `claude.md`; verify the live workflow before relying on it.
-2. **Replicated** — `manifests/composio.yaml` is a KOTS `HelmChart` resource that pins `spec.chart.chartVersion` (currently `0.1.110`). The `manifests/composio-*.tgz` you see committed alongside it (e.g. `composio-0.1.40.tgz`) is **not** regenerated on every chart bump in `master`/`release-stable`; the actual chart artifact KOTS pulls is produced by the release pipeline (`nighty-release.yml` → Replicated). Treat the committed `.tgz` as a historical/seed artifact rather than the canonical bundle.
+2. **Replicated** — `manifests/composio.yaml` is a KOTS `HelmChart` resource that pins `spec.chart.chartVersion` (currently `0.1.110`). KOTS resolves the chart by `name` + `chartVersion`; the manifest does **not** reference a specific `.tgz` filename. The `manifests/composio-*.tgz` you see committed alongside it (e.g. `composio-0.1.40.tgz`) is a historical/seed artifact and is not regenerated on every chart bump — the actual chart artifact for a Replicated release is produced by the release pipeline (`nighty-release.yml` → Replicated registry).
 
-Versions to bump when releasing:
+Versions to bump when cutting a release:
 
 - `composio/Chart.yaml` → `version` and `appVersion`
 - `manifests/composio.yaml` → `spec.chart.chartVersion`
-
-If you regenerate the bundled `manifests/composio-<version>.tgz` (e.g. for embedded-cluster testing), update the file reference in `manifests/composio.yaml` accordingly. Don't assume the existing committed `.tgz` matches the current `chartVersion`.
 
 Image tags used by the nightly release flow are inputs to `nighty-release.yml` (apollo, apollo-db-init, thermos, thermos-db-init, mercury, frontend, weaviate, thermos-toolkit-registry — all default `latest`).
 
@@ -261,11 +259,11 @@ Image tags used by the nightly release flow are inputs to `nighty-release.yml` (
 ### Adding a new service
 
 1. Create `composio/templates/<service>/` with at minimum `<service>.yaml`, `<service>-configmap.yaml`, and a service-account if needed.
-2. Add a `<service>:` block to `values.yaml` with `enabled`, `image`, `replicaCount`, `resources`, `service`, `ingress`, `serviceAccount`. Comment each option with `## ` so the rendered docs pick them up.
-3. Gate every template with `{{- if .Values.<service>.enabled }} ... {{- end }}`.
+2. Add a `<service>:` block to `values.yaml` with `enabled`, `image`, `replicaCount`, `resources`, `service`, `ingress`, `serviceAccount`. Document each option with the `# --` helm-docs marker (the existing values use `# --`, not `##`); plain `##` comments are dropped by `helm-docs` and won't appear in the generated table in `composio/README.md`.
+3. Gate every template with `{{- if .Values.<service>.enabled }} ... {{- end }}` if the service is meant to be optional. (Note: the existing core services `apollo` and `thermos` are intentionally *not* gated — don't follow them as the pattern for a new optional service.)
 4. Add helpers to `_helpers.tpl` if you need shared name/label logic.
 5. Create `composio/tests/<service>_test.yaml` covering enabled/disabled, default image, custom resources, ingress on/off.
-6. Run `./run-tests.sh <service>` and `helm template . --debug` before opening a PR.
+6. Run `helm unittest . -f tests/<service>_test.yaml -v` (the `run-tests.sh` shortcut only knows about hardcoded targets — `apollo`, `mercury`, `thermos`, `minio`, `knative`, `helpers`, `secrets`, `db`, `ingress` — so add a new `case` arm to the script if you want a friendly alias) and `helm template . --debug` before opening a PR.
 
 ### Modifying an existing service
 
