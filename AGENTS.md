@@ -167,7 +167,8 @@ cd composio
 ./run-tests.sh debug
 ./run-tests.sh with-subchart     # include bundled charts
 
-# Direct equivalents
+# Direct equivalents (must run from inside composio/ — there is no Chart.yaml at the repo root)
+cd composio
 helm unittest . -f 'tests/*_test.yaml'
 helm unittest . -f 'tests/apollo_test.yaml'
 
@@ -177,20 +178,20 @@ ct lint --check-version-increment=false --target-branch release-stable
 
 Installing into a real cluster:
 
-```bash
-# Default (dev) values
-helm install composio composio/ -n composio --create-namespace
+> The shipped defaults assume Replicated mode (`replicated.enabled: true`, `global.imagePullSecrets[0].name: ecr-secret`). A naked `helm install composio composio/` will produce workloads that reference an `ecr-secret` that is never rendered (the `templates/ecr-secret.yaml` Secret is only created when `externalSecrets.ecr.token` is set), so pods will fail to pull images. Always supply either a Replicated pull secret, an `externalSecrets.ecr.token`, or `--set replicated.enabled=false --set global.imagePullSecrets=null` for a vanilla install. The example below shows the values you'll actually need.
 
-# Custom values
+```bash
+# Vanilla Kubernetes install with ECR auth
+helm install composio composio/ \
+  --set replicated.enabled=false \
+  --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
+  -n composio --create-namespace
+
+# Custom values file (recommended for anything beyond a smoke test)
 helm install composio composio/ -f my-values.yaml -n composio
 
 # Upgrade
 helm upgrade composio composio/ -f my-values.yaml -n composio
-
-# ECR auth at install time
-helm install composio composio/ \
-  --set externalSecrets.ecr.token="$(aws ecr get-login-password --region us-east-1)" \
-  -n composio --create-namespace
 ```
 
 ## Tests: structure and conventions
@@ -263,7 +264,7 @@ Image tags used by the nightly release flow are inputs to `nighty-release.yml` (
 3. Gate every template with `{{- if .Values.<service>.enabled }} ... {{- end }}` if the service is meant to be optional. (Note: the existing core services `apollo` and `thermos` are intentionally *not* gated — don't follow them as the pattern for a new optional service.)
 4. Add helpers to `_helpers.tpl` if you need shared name/label logic.
 5. Create `composio/tests/<service>_test.yaml` covering enabled/disabled, default image, custom resources, ingress on/off.
-6. Run `helm unittest . -f tests/<service>_test.yaml -v` (the `run-tests.sh` shortcut only knows about hardcoded targets — `apollo`, `mercury`, `thermos`, `minio`, `knative`, `helpers`, `secrets`, `db`, `ingress` — so add a new `case` arm to the script if you want a friendly alias) and `helm template . --debug` before opening a PR.
+6. From inside `composio/`, run `helm unittest . -f tests/<service>_test.yaml -v` and `helm template . --debug` before opening a PR. The `run-tests.sh` shortcut only knows about hardcoded targets (`apollo`, `mercury`, `thermos`, `minio`, `knative`, `helpers`, `secrets`, `db`, `ingress`) — add a new `case` arm in the script if you want a friendly alias.
 
 ### Modifying an existing service
 
