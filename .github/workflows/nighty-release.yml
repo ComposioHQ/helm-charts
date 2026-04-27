@@ -514,6 +514,7 @@ jobs:
 
       - name: Notify Slack - Replicated Release Ready
         if: success()
+        continue-on-error: true
         uses: ./.github/actions/slack-notify
         with:
           status: SUCCESS
@@ -529,6 +530,7 @@ jobs:
 
       - name: Notify Slack - Failure
         if: failure() && steps.slack.outputs.message_id
+        continue-on-error: true
         uses: ./.github/actions/slack-notify
         with:
           status: FAILURE
@@ -687,6 +689,55 @@ jobs:
               core.info(`Created GitHub release ${tag_name} at ${target_commitish}`);
             }
 
+      - name: Prepare Slack release announcement
+        id: slack_release_announcement
+        shell: bash
+        env:
+          VERSION: ${{ needs.replicated-release.outputs.version }}
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
+          BRANCH_NAME: ${{ needs.replicated-release.outputs.branch_name }}
+          PR_URL: ${{ steps.create_pr.outputs.pr_url }}
+          RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.retag-latest-images.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          changelog_file="release-changelog/release-changelog.md"
+          slack_changelog_file="${RUNNER_TEMP}/nightly-release-slack-changelog.md"
+          max_changelog_chars=2400
+
+          if (( $(wc -c < "${changelog_file}") <= max_changelog_chars )); then
+            cp "${changelog_file}" "${slack_changelog_file}"
+          else
+            head -c "${max_changelog_chars}" "${changelog_file}" > "${slack_changelog_file}"
+            {
+              echo
+              echo
+              echo "_Changelog truncated for Slack; see the GitHub release for full notes._"
+            } >> "${slack_changelog_file}"
+          fi
+
+          {
+            echo "summary<<__SLACK_RELEASE_SUMMARY__"
+            printf "*Version:* `%s`\n" "${VERSION}"
+            printf "*Release Tag:* `%s`\n" "${RELEASE_TAG}"
+            printf "*Branch:* `%s`\n" "${BRANCH_NAME}"
+            printf "*PR:* %s\n" "${PR_URL}"
+            printf "*GitHub Release:* <%s|%s>\n" "${RELEASE_URL}" "${RELEASE_TAG}"
+            echo
+            cat "${slack_changelog_file}"
+            echo "__SLACK_RELEASE_SUMMARY__"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Notify Slack - Nightly release changelog
+        if: success()
+        continue-on-error: true
+        uses: ./.github/actions/slack-notify
+        with:
+          status: SUCCESS
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: "${{ vars.POD_IMPLEMENTATIONS_SLACK_CHANNEL_ID || '#pod-impementations' }}"
+          title: "Nightly Release ${{ needs.replicated-release.outputs.version }}"
+          summary: ${{ steps.slack_release_announcement.outputs.summary }}
+
       # - name: Notify Slack - Success
       #   if: success()
       #   uses: ./.github/actions/slack-notify
@@ -714,28 +765,3 @@ jobs:
       #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
       #       *Branch:* `${{ needs.replicated-release.outputs.branch_name }}`
       #       *State:* PR creation failed after pushing the nightly branch.
-
-  onprem-trigger-tests:
-    name: Onprem Trigger Tests
-    needs:
-      - replicated-release
-      - create-nightly-release-pr
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout harness trigger script
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            .github/scripts/run-onprem-test-harness.sh
-          sparse-checkout-cone-mode: false
-
-      - name: Run onprem test harness
-        shell: bash
-        timeout-minutes: 360
-        env:
-          GH_TOKEN: ${{ secrets.ONPREM_TESTBED_WORKFLOW_DISPATCH_TOKEN }}
-          HELM_CHART_VERSION: ${{ needs.replicated-release.outputs.version }}
-          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1"}'
-        run: bash .github/scripts/run-onprem-test-harness.sh

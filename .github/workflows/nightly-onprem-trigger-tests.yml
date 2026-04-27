@@ -15,8 +15,8 @@ concurrency:
   group: nightly-onprem-trigger-tests-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-# Automated nightly-release PRs call the harness from nighty-release.yml after PR creation.
-# This workflow remains for manually labeled nightly PRs.
+# Nightly release PRs get this label from nighty-release.yml.
+# Manually applying the same label also runs the onprem trigger tests.
 jobs:
   resolve-version:
     name: Resolve Replicated Release Version
@@ -78,11 +78,11 @@ jobs:
       (
         (
           github.event.action == 'labeled' &&
-          github.event.label.name == 'nightly'
+          github.event.label.name == 'nightly-release'
         ) ||
         (
           github.event.action != 'labeled' &&
-          contains(github.event.pull_request.labels.*.name, 'nightly')
+          contains(github.event.pull_request.labels.*.name, 'nightly-release')
         )
       )
     needs:

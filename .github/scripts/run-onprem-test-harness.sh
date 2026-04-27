@@ -7,15 +7,30 @@ set -euo pipefail
 ONPREM_REPO="${ONPREM_REPO:-ComposioHQ/onprem-testbed}"
 ONPREM_WORKFLOW_FILE="${ONPREM_WORKFLOW_FILE:-replicated-cmx-harness.yml}"
 ONPREM_REF="${ONPREM_REF:-main}"
-HARNESS_ENV_JSON="${HARNESS_ENV_JSON:-{\"RUN_TRIGGER_TESTS\":\"1\"}}"
+if [[ -z "${HARNESS_ENV_JSON:-}" ]]; then
+  HARNESS_ENV_JSON='{"RUN_TRIGGER_TESTS":"1"}'
+fi
+
+if ! jq -e . >/dev/null <<<"${HARNESS_ENV_JSON}"; then
+  echo "HARNESS_ENV_JSON must be valid JSON: ${HARNESS_ENV_JSON}" >&2
+  exit 1
+fi
 
 dispatch_started="$(date -u +%s)"
+dispatch_inputs="$(
+  jq -n \
+    --arg helm_chart_version "${HELM_CHART_VERSION}" \
+    --arg harness_env_json "${HARNESS_ENV_JSON}" \
+    '{
+      helm_chart_version: $helm_chart_version,
+      harness_env_json: $harness_env_json
+    }'
+)"
 
 gh workflow run "${ONPREM_WORKFLOW_FILE}" \
   --repo "${ONPREM_REPO}" \
   --ref "${ONPREM_REF}" \
-  --field "helm_chart_version=${HELM_CHART_VERSION}" \
-  --field "harness_env_json=${HARNESS_ENV_JSON}"
+  --json <<<"${dispatch_inputs}"
 
 run_id=""
 for attempt in {1..60}; do
