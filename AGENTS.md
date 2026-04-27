@@ -7,8 +7,7 @@ Guide for AI agents (Claude, Codex, etc.) and human contributors working in this
 Helm charts for deploying the **Composio platform** — a multi-service backend that connects LLMs to 500+ third-party tools — onto Kubernetes. The published chart powers Composio's on-prem / self-hosted offering and is also distributed via Replicated for the SaaS-managed enterprise install.
 
 - Repo: `https://github.com/ComposioHQ/helm-charts`
-- Default branch: `master`
-- Stable branch (auto-PR'd from CI): `release-stable`
+- Default branch (GitHub `HEAD`): `release-stable` — this is also the branch every doc URL in `README.md` links to. There is no `master` branch; commit history that looks like "main development" still flows through `release-stable`.
 - Helm repo (GitHub Pages): `https://composiohq.github.io/helm-charts/`
 - Enterprise portal: `https://enterprise.composio.io/composio-rodent`
 - Replicated app slug: `composio-rodent`
@@ -173,7 +172,7 @@ helm unittest . -f 'tests/*_test.yaml'
 helm unittest . -f 'tests/apollo_test.yaml'
 
 # chart-testing lint (matches CI)
-ct lint --check-version-increment=false --target-branch master
+ct lint --check-version-increment=false --target-branch release-stable
 ```
 
 Installing into a real cluster:
@@ -246,12 +245,14 @@ Key invariants enforced by CI:
 The chart is published two ways:
 
 1. **GitHub Pages Helm repo** — packaged `.tgz` files land in `helm-release/` and `index.yaml` is regenerated. Hosted at `https://composiohq.github.io/helm-charts/`. Older PR `helm-release.yaml` automation is referenced in `claude.md`; verify the live workflow before relying on it.
-2. **Replicated** — `manifests/composio.yaml` pins the chart version (e.g. `0.1.110`) and bundles `manifests/composio-<version>.tgz`. The KOTS resources in `manifests/` are what end customers install.
+2. **Replicated** — `manifests/composio.yaml` is a KOTS `HelmChart` resource that pins `spec.chart.chartVersion` (currently `0.1.110`). The `manifests/composio-*.tgz` you see committed alongside it (e.g. `composio-0.1.40.tgz`) is **not** regenerated on every chart bump in `master`/`release-stable`; the actual chart artifact KOTS pulls is produced by the release pipeline (`nighty-release.yml` → Replicated). Treat the committed `.tgz` as a historical/seed artifact rather than the canonical bundle.
 
-Two version numbers to keep in sync when releasing:
+Versions to bump when releasing:
 
 - `composio/Chart.yaml` → `version` and `appVersion`
-- `manifests/composio.yaml` → `spec.chart.chartVersion` (and the bundled `composio-<version>.tgz`)
+- `manifests/composio.yaml` → `spec.chart.chartVersion`
+
+If you regenerate the bundled `manifests/composio-<version>.tgz` (e.g. for embedded-cluster testing), update the file reference in `manifests/composio.yaml` accordingly. Don't assume the existing committed `.tgz` matches the current `chartVersion`.
 
 Image tags used by the nightly release flow are inputs to `nighty-release.yml` (apollo, apollo-db-init, thermos, thermos-db-init, mercury, frontend, weaviate, thermos-toolkit-registry — all default `latest`).
 
@@ -294,8 +295,8 @@ git add Chart.yaml Chart.lock charts/
 
 ## Branch / PR conventions
 
-- Open PRs against `master` (default branch).
-- `release-stable` is updated automatically by release workflows; do not push there directly.
+- Open PRs against `release-stable` (the actual default branch on GitHub). Recent merged PRs (#251, #249, #248, #244, #241) all targeted `release-stable`. The `master` branch referenced in older docs and `claude.md` does not exist.
+- Nightly release automation in `nighty-release.yml` opens its own PRs against `release-stable`.
 - Conventional-commit style titles are used in history (`feat:`, `fix:`, `chore:`). Match the surrounding style.
 - Required PR description sections used by other Composio repos (`# Description`, `# How did I test this PR`) are not enforced here, but are recommended.
 - PRs labeled `nightly-release` trigger the on-prem trigger tests.
@@ -323,7 +324,7 @@ helm template composio composio/ -f overwrite-values.yaml --debug | less
 cd composio && helm unittest . -f tests/apollo_test.yaml -v
 
 # Reproduce the CI lint locally
-ct lint --check-version-increment=false --target-branch master
+ct lint --check-version-increment=false --target-branch release-stable
 
 # Package the chart locally (mirrors what release jobs do)
 helm package composio/ -d helm-release/
