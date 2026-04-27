@@ -429,6 +429,17 @@ tests:
             name: TOOLKIT_REGISTRY_ENABLED
             value: "false"
 
+  - it: should default TOOLKIT_REGISTRY_ENABLED=true when toolkitRegistry stanza is omitted
+    set:
+      thermos.dbInit.enabled: true
+      toolkitRegistry: null
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_ENABLED
+            value: "true"
+
 ---
 suite: test postgres init job
 templates:
