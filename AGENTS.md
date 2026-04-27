@@ -77,11 +77,11 @@ The chart deploys a microservices stack. Service-to-service ports below are the 
 
 The same chart supports three modes, toggled via values:
 
-1. **Standard Kubernetes** — vanilla Deployments/Services. Default.
-2. **Knative serverless** — set `mercury.useKnative: true` (and the `knative:` block). Renders Knative Services + CRDs from `templates/knative/`.
-3. **Replicated SaaS / KOTS** — set `replicated.enabled: true`. Uses `manifests/composio.yaml` (KOTS HelmChart) and `templates/replicated/` for the pull secret. Embedded-cluster install via `manifests/embedded-cluster.yaml`.
+1. **Replicated SaaS / KOTS** — `replicated.enabled: true`. **This is the shipped default** in `composio/values.yaml` (and the mode `chart.registry` rewrites image URLs for via the `artifacts.composio.io` proxy). Uses `manifests/composio.yaml` (KOTS HelmChart) and `templates/replicated/` for the pull secret. Embedded-cluster install via `manifests/embedded-cluster.yaml`.
+2. **Standard Kubernetes** — set `replicated.enabled: false` to render vanilla Deployments/Services with the raw ECR registry under `global.registry.name`. Most production overrides do this (see `overwrite-values.yaml`).
+3. **Knative serverless** — set `mercury.useKnative: true` (and the `knative:` block). Renders Knative Services + CRDs from `templates/knative/`. Orthogonal to the Replicated/standard split.
 
-Optional features are gated by the `features:` block (e.g. `features.temporal: true` enables the Temporal subchart and the Thermos trigger/auth-refresh workers).
+Optional features are gated by the `features:` block. `features.temporal: true` enables the Temporal subchart but does **not** by itself deploy the Thermos misc-worker pod that runs trigger / auth-refresh logic — that requires `thermosMiscWorkers.enabled: true` in addition.
 
 ## Templates: where to look
 
