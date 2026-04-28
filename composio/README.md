@@ -190,9 +190,11 @@ A Helm chart for Composio
 | otel.collector.googleCloud.serviceAccount.annotations | object | `{"iam.gke.io/gcp-service-account":"otel-collector@self-host-kubernetes.iam.gserviceaccount.com"}` | Service account annotations (for Workload Identity) |
 | otel.collector.googleCloud.serviceAccount.create | bool | `false` | Create service account |
 | otel.collector.googleCloud.serviceAccount.name | string | `"otel-collector"` | Service account name |
+| otel.collector.image.imageName | string | `""` | Full image name (overrides repository:tag when set) |
 | otel.collector.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | otel.collector.image.repository | string | `"otel/opentelemetry-collector-contrib"` | Collector image repository |
 | otel.collector.image.tag | string | `"0.91.0"` | Collector image tag |
+| otel.collector.nodeSelector | object | `{}` | Node selector for collector pods |
 | otel.collector.replicaCount | int | `1` | Number of collector replicas |
 | otel.collector.resources.limits.cpu | string | `"1000m"` | CPU limit for collector |
 | otel.collector.resources.limits.memory | string | `"1Gi"` | Memory limit for collector |
@@ -211,6 +213,8 @@ A Helm chart for Composio
 | otel.collector.service.ports.prometheus.protocol | string | `"TCP"` | Prometheus protocol |
 | otel.collector.service.ports.prometheus.targetPort | int | `8889` | Prometheus metrics target port |
 | otel.collector.service.type | string | `"ClusterIP"` | Service type |
+| otel.collector.serviceAccountName | string | `""` | Existing service account name (used when googleCloud.serviceAccount.create is false) |
+| otel.collector.tolerations | list | `[]` | Tolerations for collector pods |
 | otel.enabled | bool | `true` | Enable OpenTelemetry |
 | otel.environment | string | `"development"` | Environment name for telemetry |
 | otel.exporter.otlp.endpoint | string | `"composio-otel-collector:4317"` | gRPC endpoint for OTLP (no protocol prefix needed) |
