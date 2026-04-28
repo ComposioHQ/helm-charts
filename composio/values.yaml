@@ -903,8 +903,16 @@ otel:
       repository: otel/opentelemetry-collector-contrib
       # -- Collector image tag
       tag: "0.91.0"
+      # -- Full image name (overrides repository:tag when set)
+      imageName: ""
       # -- Image pull policy
       pullPolicy: IfNotPresent
+    # -- Existing service account name (used when googleCloud.serviceAccount.create is false)
+    serviceAccountName: ""
+    # -- Node selector for collector pods
+    nodeSelector: {}
+    # -- Tolerations for collector pods
+    tolerations: []
     # Collector service configuration
     service:
       # -- Service type

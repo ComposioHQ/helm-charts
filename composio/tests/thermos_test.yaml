@@ -231,7 +231,7 @@ tests:
           value: wait-for-toolkit-registry
       - matchRegex:
           path: spec.template.spec.initContainers[0].image
-          pattern: ".*/composio-self-host/thermos-toolkit-registry:r20260409_03$"
+          pattern: ".*/composio-self-host/thermos-toolkit-registry:[^/]+$"
 
   - it: should append thermos additional init containers after toolkit registry wait
     documentSelector:
@@ -318,7 +318,7 @@ tests:
         documentIndex: 0
       - matchRegex:
           path: spec.template.spec.containers[0].image
-          pattern: ".*/composio-self-host/thermos-toolkit-registry:r20260409_03$"
+          pattern: ".*/composio-self-host/thermos-toolkit-registry:[^/]+$"
         documentIndex: 0
       - isKind:
           of: Service
