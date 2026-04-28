@@ -9,26 +9,33 @@ metadata:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend-ingress
   annotations:
-    {{- include "composio.frontendIngressAnnotations" . | nindent 4 }}
+    # Common ingress annotations (non-provider-specific)
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 50m
+    nginx.ingress.kubernetes.io/use-regex: "true"
+
+    # Allow users to inject platform-specific or static-IP annotations from values.yaml
+    {{- with .Values.frontend.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
-  {{- $className := include "composio.frontendIngressClass" . }}
-  {{- if $className }}
-  ingressClassName: {{ $className }}
+  {{- if .Values.frontend.ingress.className }}
+  ingressClassName: {{ .Values.frontend.ingress.className }}
   {{- end }}
   rules:
     - host: {{ .Values.frontend.ingress.host | default (printf "app.%s" .Values.global.domain) }}
       http:
         paths:
           - path: {{ .Values.frontend.ingress.path | default "/" }}
-            pathType: {{ include "composio.frontendIngressPathType" . }}
+            pathType: {{ .Values.frontend.ingress.pathType | default "Prefix" }}
             backend:
               service:
                 name: {{ include "composio.fullname" . }}-frontend
                 port:
                   number: {{ .Values.frontend.service.port | default 3000 }}
-  {{- $tls := include "composio.frontendIngressTls" . }}
-  {{- if $tls }}
+  {{- if .Values.frontend.ingress.tls }}
   tls:
-    {{- $tls | nindent 4 }}
+    {{- toYaml .Values.frontend.ingress.tls | nindent 4 }}
   {{- end }}
 {{- end }}

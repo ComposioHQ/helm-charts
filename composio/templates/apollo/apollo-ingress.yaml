@@ -9,26 +9,31 @@ metadata:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: apollo-ingress
   annotations:
-    {{- include "composio.apolloIngressAnnotations" . | nindent 4 }}
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 50m
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Allow users to inject platform-specific or static-IP annotations from values.yaml
+    {{- with .Values.apollo.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
-  {{- $className := include "composio.apolloIngressClass" . }}
-  {{- if $className }}
-  ingressClassName: {{ $className }}
+  {{- if .Values.apollo.ingress.className }}
+  ingressClassName: {{ .Values.apollo.ingress.className }}
   {{- end }}
   rules:
     - host: {{ .Values.apollo.ingress.host | default (printf "apollo.%s" .Values.global.domain) }}
       http:
         paths:
           - path: {{ .Values.apollo.ingress.path | default "/" }}
-            pathType: {{ include "composio.apolloIngressPathType" . }}
+            pathType: {{ .Values.apollo.ingress.pathType | default "Prefix" }}
             backend:
               service:
                 name: {{ include "composio.fullname" . }}-apollo
                 port:
                   number: {{ .Values.apollo.service.port | default 3000 }}
-  {{- $tls := include "composio.apolloIngressTls" . }}
-  {{- if $tls }}
+  {{- if .Values.apollo.ingress.tls }}
   tls:
-    {{- $tls | nindent 4 }}
+    {{- toYaml .Values.apollo.ingress.tls | nindent 4 }}
   {{- end }}
 {{- end }}

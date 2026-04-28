@@ -1,4 +1,4 @@
-{{- if eq (include "composio.weaviateEnabled" .) "true" }}
+{{- if .Values.weaviate.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

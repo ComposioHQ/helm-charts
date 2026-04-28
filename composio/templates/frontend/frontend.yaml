@@ -137,10 +137,9 @@ metadata:
   labels:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
-  {{- $serviceAnnotations := include "composio.frontendServiceAnnotations" . }}
-  {{- if $serviceAnnotations }}
+  {{- with .Values.frontend.service.annotations }}
   annotations:
-    {{- $serviceAnnotations | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   type: {{ .Values.frontend.service.type | default "ClusterIP" }}

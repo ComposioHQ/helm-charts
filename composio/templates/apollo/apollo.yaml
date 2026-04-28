@@ -303,10 +303,9 @@ metadata:
   labels:
     app: apollo
     release: {{ .Release.Name }}
-  {{- $serviceAnnotations := include "composio.apolloServiceAnnotations" . }}
-  {{- if $serviceAnnotations }}
+  {{- with .Values.apollo.service.annotations }}
   annotations:
-    {{- $serviceAnnotations | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   type: {{ .Values.apollo.service.type }}

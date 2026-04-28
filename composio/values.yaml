@@ -518,6 +518,8 @@ temporal:
   fullnameOverride: "temporal-stack"
   # Temporal server configuration
   server:
+    # -- Enable Temporal server
+    enabled: false
     # Liveness probe configuration
     livenessProbe:
       # -- Enable liveness probe
