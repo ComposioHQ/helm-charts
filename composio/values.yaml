@@ -503,6 +503,10 @@ toolkitRegistry:
   initContainers: []
   # -- Additional environment variables for toolkit registry pods
   env: []
+  # -- Node selector for toolkit registry pods
+  nodeSelector: {}
+  # -- Tolerations for toolkit registry pods
+  tolerations: []
   resources:
     requests:
       cpu: "250m"
