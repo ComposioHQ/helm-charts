@@ -73,14 +73,24 @@ spec:
       {{- end }}
       {{- if .Values.otel.collector.googleCloud.serviceAccount.create }}
       serviceAccountName: {{ .Release.Name }}-{{ .Values.otel.collector.googleCloud.serviceAccount.name }}
+      {{- else if .Values.otel.collector.serviceAccountName }}
+      serviceAccountName: {{ .Values.otel.collector.serviceAccountName }}
       {{- end }}
       {{- with .Values.otel.collector.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.otel.collector.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.otel.collector.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: otel-collector
-          image: "{{ .Values.otel.collector.image.repository }}:{{ .Values.otel.collector.image.tag }}"
+          image: "{{ .Values.otel.collector.image.imageName | default (printf "%s:%s" .Values.otel.collector.image.repository .Values.otel.collector.image.tag) }}"
           imagePullPolicy: {{ .Values.otel.collector.image.pullPolicy }}
           {{- with .Values.otel.collector.containerSecurityContext }}
           securityContext:

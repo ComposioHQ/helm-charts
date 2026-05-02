@@ -31,6 +31,14 @@ spec:
       initContainers:
 {{ tpl (toYaml .) $ | nindent 8 }}
       {{- end }}
+      {{- with .Values.toolkitRegistry.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.toolkitRegistry.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: toolkit-registry
           image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}
