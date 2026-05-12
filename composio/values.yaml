@@ -1104,6 +1104,8 @@ mercury:
     imageName: ""
   # -- Directory exposed to Mercury containers via MERCURY_SECRETS_DIR.
   secretsDir: "/etc/secrets/mercury"
+  # -- Mercury file storage backend. Valid values are "s3" or "base64". Renders FILE_BACKEND.
+  fileStorage: "s3"
   # -- Additional init containers for Mercury. Mount `mercury-secrets` to populate `.Values.mercury.secretsDir`.
   additionalInitContainers: []
   serviceAccount:

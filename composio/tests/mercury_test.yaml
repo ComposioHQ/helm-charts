@@ -254,6 +254,30 @@ tests:
           value: mercury-secret
 
 ---
+suite: test mercury configmap
+templates:
+  - mercury/mercury-configmap.yaml
+tests:
+  - it: should set default file backend from mercury fileStorage
+    set:
+      mercury.enabled: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: data.FILE_BACKEND
+          value: s3
+
+  - it: should set file backend to base64 when mercury fileStorage is base64
+    set:
+      mercury.enabled: true
+      mercury.fileStorage: base64
+    asserts:
+      - equal:
+          path: data.FILE_BACKEND
+          value: base64
+
+---
 suite: test mercury service
 templates:
   - mercury/mercury.yaml
@@ -468,3 +492,15 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[0].name
           value: mercury-secret
+
+  - it: should set file backend for knative from mercury fileStorage
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      mercury.fileStorage: base64
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FILE_BACKEND
+            value: base64

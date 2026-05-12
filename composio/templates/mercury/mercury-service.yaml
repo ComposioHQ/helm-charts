@@ -62,6 +62,8 @@ spec:
             {{- $coreSecret := include "composio.coreSecretName" . }}
             - name: SELF_HOSTED
               value: "true"
+            - name: FILE_BACKEND
+              value: {{ .Values.mercury.fileStorage | default "s3" | quote }}
             - name: MERCURY_SECRETS_DIR
               value: {{ .Values.mercury.secretsDir | quote }}
             - name: OPENAI_API_KEY
