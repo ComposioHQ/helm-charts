@@ -125,6 +125,7 @@ A Helm chart for Composio
 | mercury.awsLambda.secretRef.name | string | `"lambda-cred"` | Secret name for Lambda credentials |
 | mercury.containerConcurrency | int | `0` | Container concurrency (0 = unlimited) |
 | mercury.enabled | bool | `true` | Enable Mercury service |
+| mercury.fileStorage | string | `"s3"` | Mercury file storage backend. Valid values are "s3" or "base64". Renders FILE_BACKEND. |
 | mercury.image.pullPolicy | string | `"Always"` | Image pull policy |
 | mercury.image.repository | string | `"composio-self-host/mercury"` | Mercury image repository |
 | mercury.image.tag | string | `"release-20251209_00"` | Mercury image tag |
