@@ -380,6 +380,36 @@ tests:
       - hasDocuments:
           count: 0
 
+  - it: should apply nodeSelector, affinity, and tolerations to toolkit registry pod
+    documentIndex: 0
+    set:
+      toolkitRegistry.nodeSelector:
+        disktype: ssd
+      toolkitRegistry.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+      toolkitRegistry.tolerations:
+        - key: dedicated
+          operator: Equal
+          value: toolkit-registry
+          effect: NoSchedule
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector.disktype
+          value: ssd
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: kubernetes.io/arch
+      - equal:
+          path: spec.template.spec.tolerations[0].key
+          value: dedicated
+
 ---
 suite: test thermos misc workers deployment
 templates:

@@ -35,6 +35,10 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.toolkitRegistry.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.toolkitRegistry.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}

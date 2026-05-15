@@ -505,6 +505,8 @@ toolkitRegistry:
   env: []
   # -- Node selector for toolkit registry pods
   nodeSelector: {}
+  # -- Affinity rules for toolkit registry pods
+  affinity: {}
   # -- Tolerations for toolkit registry pods
   tolerations: []
   resources:
