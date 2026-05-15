@@ -917,6 +917,8 @@ otel:
     serviceAccountName: ""
     # -- Node selector for collector pods
     nodeSelector: {}
+    # -- Affinity rules for collector pods
+    affinity: {}
     # -- Tolerations for collector pods
     tolerations: []
     # Collector service configuration

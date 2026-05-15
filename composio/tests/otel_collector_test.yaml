@@ -110,3 +110,24 @@ tests:
             operator: Equal
             value: telemetry
             effect: NoSchedule
+
+  - it: should apply affinity when configured
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: kubernetes.io/arch
