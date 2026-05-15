@@ -505,6 +505,8 @@ toolkitRegistry:
   env: []
   # -- Node selector for toolkit registry pods
   nodeSelector: {}
+  # -- Affinity rules for toolkit registry pods
+  affinity: {}
   # -- Tolerations for toolkit registry pods
   tolerations: []
   resources:
@@ -915,6 +917,8 @@ otel:
     serviceAccountName: ""
     # -- Node selector for collector pods
     nodeSelector: {}
+    # -- Affinity rules for collector pods
+    affinity: {}
     # -- Tolerations for collector pods
     tolerations: []
     # Collector service configuration

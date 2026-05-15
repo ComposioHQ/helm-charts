@@ -47,6 +47,9 @@ jobs:
           helm dependency update
           helm template . --debug --dry-run
 
+      - name: Lint pod scheduling (affinity + tolerations)
+        run: python3 composio/scripts/lint_pod_scheduling.py
+
       - name: Install helm-unittest plugin
         run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 0.7.2
 
