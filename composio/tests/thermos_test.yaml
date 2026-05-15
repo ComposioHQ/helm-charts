@@ -233,6 +233,30 @@ tests:
           path: spec.template.spec.initContainers[0].image
           pattern: ".*/composio-self-host/thermos-toolkit-registry:[^/]+$"
 
+  - it: should bound the toolkit registry wait and log on success
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: sh
+      - equal:
+          path: spec.template.spec.initContainers[0].command[1]
+          value: -c
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "max_attempts=60"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry not ready after \\$max_attempts attempts, giving up"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "exit 1"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry is ready after \\$i attempt\\(s\\)"
+
   - it: should append thermos additional init containers after toolkit registry wait
     documentSelector:
       path: kind
@@ -390,3 +414,26 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[1].name
           value: custom-misc-init
+
+  - it: should bound the misc worker toolkit registry wait and log on success
+    set:
+      thermosMiscWorkers.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: sh
+      - equal:
+          path: spec.template.spec.initContainers[0].command[1]
+          value: -c
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "max_attempts=60"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry not ready after \\$max_attempts attempts, giving up"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "exit 1"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry is ready after \\$i attempt\\(s\\)"
