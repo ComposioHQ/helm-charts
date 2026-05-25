@@ -1,0 +1,232 @@
+suite: temporal schema hook annotations
+templates:
+  - charts/temporal/templates/server-job.yaml
+  - charts/temporal/templates/server-secret.yaml
+  - charts/temporal/templates/serviceaccount.yaml
+tests:
+  - it: includes Helm hook annotations on the schema job by default
+    template: charts/temporal/templates/server-job.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: false
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "0"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation
+
+  - it: excludes Helm hook annotations on the schema job when useHelmHooks is false
+    template: charts/temporal/templates/server-job.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: false
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+        schema:
+          useHelmHooks: false
+    asserts:
+      - isNull:
+          path: metadata.annotations
+
+  - it: merges Helm hook annotations with custom schema job annotations
+    template: charts/temporal/templates/server-job.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: false
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+        schema:
+          jobAnnotations:
+            custom-job-annotation: abc
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations.custom-job-annotation
+          value: abc
+
+  - it: includes Helm hook annotations on generated persistence secrets by default
+    template: charts/temporal/templates/server-secret.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+          config:
+            persistence:
+              default:
+                sql:
+                  existingSecret: ""
+              visibility:
+                sql:
+                  existingSecret: ""
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: false
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+    documentSelector:
+      path: metadata.name
+      value: temporal-stack-default-store
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-1"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation
+
+  - it: excludes Helm hook annotations on generated persistence secrets when useHelmHooks is false
+    template: charts/temporal/templates/server-secret.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+          config:
+            persistence:
+              default:
+                sql:
+                  existingSecret: ""
+              visibility:
+                sql:
+                  existingSecret: ""
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: false
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+        schema:
+          useHelmHooks: false
+    documentSelector:
+      path: metadata.name
+      value: temporal-stack-default-store
+    asserts:
+      - isNull:
+          path: metadata.annotations
+
+  - it: merges Helm hook annotations with custom generated persistence secret annotations
+    template: charts/temporal/templates/server-secret.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+          secretAnnotations:
+            custom-secret-annotation: abc
+          config:
+            persistence:
+              default:
+                sql:
+                  existingSecret: ""
+              visibility:
+                sql:
+                  existingSecret: ""
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: false
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+    documentSelector:
+      path: metadata.name
+      value: temporal-stack-default-store
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations.custom-secret-annotation
+          value: abc
+
+  - it: excludes Helm hook annotations on service accounts when useHelmHooks is false
+    template: charts/temporal/templates/serviceaccount.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        serviceAccount:
+          create: true
+          extraAnnotations:
+            custom-service-account-annotation: abc
+        schema:
+          useHelmHooks: false
+    asserts:
+      - isNull:
+          path: metadata.annotations["helm.sh/hook"]
+      - equal:
+          path: metadata.annotations.custom-service-account-annotation
+          value: abc

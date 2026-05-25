@@ -686,6 +686,8 @@ temporal:
         httpPort: 7243
   # Temporal database schema setup
   schema:
+    # -- Use Helm hooks to run schema setup before server pods start. Set false for Flux, Rancher, or Terraform.
+    useHelmHooks: true
     # Database creation configuration
     createDatabase:
       # -- Enable database creation
@@ -702,6 +704,8 @@ temporal:
       enabled: true
       # -- Maximum retries for schema updates
       backoffLimit: 100
+    # -- Annotations to add to the Temporal schema setup Job
+    jobAnnotations: {}
   # Temporal Web UI configuration
   web:
     # -- Enable Temporal Web UI

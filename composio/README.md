@@ -282,10 +282,12 @@ A Helm chart for Composio
 | temporal.prometheus.enabled | bool | `false` | Enable Prometheus |
 | temporal.prometheus.nodeExporter.enabled | bool | `false` | Enable node exporter |
 | temporal.schema.createDatabase.enabled | bool | `true` | Enable database creation |
+| temporal.schema.jobAnnotations | object | `{}` | Annotations to add to the Temporal schema setup Job |
 | temporal.schema.setup.backoffLimit | int | `100` | Maximum retries for schema setup |
 | temporal.schema.setup.enabled | bool | `true` | Enable schema setup |
 | temporal.schema.update.backoffLimit | int | `100` | Maximum retries for schema updates |
 | temporal.schema.update.enabled | bool | `true` | Enable schema updates |
+| temporal.schema.useHelmHooks | bool | `true` | Use Helm hooks to run schema setup before server pods start. Set false for Flux, Rancher, or Terraform. |
 | temporal.server.config.logLevel | string | `"info"` | Log level (debug, info, warn, error) |
 | temporal.server.config.namespaces.create | bool | `true` | Enable namespace creation |
 | temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"},{"name":"timer-shards","retention":"10d"}]` | List of namespaces to create |
