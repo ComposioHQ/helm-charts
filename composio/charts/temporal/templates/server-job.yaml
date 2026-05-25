@@ -5,6 +5,17 @@ metadata:
   name: {{ include "temporal.componentname" (list $ (printf "schema-%d" .Release.Revision | replace "." "-")) }}
   labels:
     {{- include "temporal.resourceLabels" (list $ "database" "") | nindent 4 }}
+  {{- if or $.Values.schema.useHelmHooks $.Values.schema.jobAnnotations }}
+  annotations:
+    {{- if $.Values.schema.useHelmHooks }}
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    {{- end }}
+    {{- with $.Values.schema.jobAnnotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
 spec:
   backoffLimit: {{ $.Values.schema.setup.backoffLimit }}
   ttlSecondsAfterFinished: 86400

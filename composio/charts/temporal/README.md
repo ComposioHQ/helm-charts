@@ -125,6 +125,7 @@ Temporal is a distributed, scalable, durable, and highly available orchestration
 | prometheus.nodeExporter.enabled | bool | `false` |  |
 | schema.containerSecurityContext | object | `{}` |  |
 | schema.createDatabase.enabled | bool | `true` |  |
+| schema.jobAnnotations | object | `{}` | Annotations to add to the schema setup Job. |
 | schema.podAnnotations | object | `{}` |  |
 | schema.podLabels | object | `{}` |  |
 | schema.resources | object | `{}` |  |
@@ -133,6 +134,7 @@ Temporal is a distributed, scalable, durable, and highly available orchestration
 | schema.setup.enabled | bool | `true` |  |
 | schema.update.backoffLimit | int | `100` |  |
 | schema.update.enabled | bool | `true` |  |
+| schema.useHelmHooks | bool | `true` | Use Helm hooks to run schema setup before server pods start; set false for Flux, Rancher, or Terraform. |
 | server.additionalEnv | list | `[]` |  |
 | server.additionalInitContainers | list | `[]` |  |
 | server.additionalVolumeMounts | list | `[]` |  |
