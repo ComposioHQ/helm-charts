@@ -50,8 +50,11 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if or .Values.toolkitRegistry.enabled .Values.thermos.additionalInitContainers }}
+      {{- if or (eq (include "composio.temporalEnabled" .) "true") .Values.toolkitRegistry.enabled .Values.thermos.additionalInitContainers }}
       initContainers:
+        {{- if eq (include "composio.temporalEnabled" .) "true" }}
+{{ include "composio.temporalNamespaceWaitInitContainer" . | nindent 8 }}
+        {{- end }}
         {{- if .Values.toolkitRegistry.enabled }}
         - name: wait-for-toolkit-registry
           image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}

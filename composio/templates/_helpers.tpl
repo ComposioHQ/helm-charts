@@ -274,8 +274,49 @@ Create a default fully qualified temporal name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "composio.temporal.fullname" -}}
+{{- if .Values.temporal.fullnameOverride -}}
+{{- .Values.temporal.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
 {{- $name := default "temporal" .Values.temporal.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Return the Temporal frontend address used by Composio services.
+*/}}
+{{- define "composio.temporal.frontendAddress" -}}
+{{- printf "%s-frontend:%v" (include "composio.temporal.fullname" .) (.Values.temporal.server.frontend.service.port | default 7233) -}}
+{{- end }}
+
+{{/*
+Wait until Temporal frontend and configured namespaces are available.
+*/}}
+{{- define "composio.temporalNamespaceWaitInitContainer" -}}
+- name: wait-for-temporal-namespaces
+  image: "{{ .Values.temporal.admintools.image.repository }}:{{ .Values.temporal.admintools.image.tag }}"
+  imagePullPolicy: {{ .Values.temporal.admintools.image.pullPolicy }}
+  command:
+    - /bin/sh
+    - -c
+    - |
+      until temporal operator namespace list >/dev/null 2>&1; do
+        echo "waiting for temporal frontend"
+        sleep 5
+      done
+      {{- range $namespace := .Values.temporal.server.config.namespaces.namespace }}
+      until temporal operator namespace describe -n {{ $namespace.name | quote }} >/dev/null 2>&1; do
+        echo "waiting for temporal namespace {{ $namespace.name }}"
+        sleep 5
+      done
+      {{- end }}
+  env:
+    - name: TEMPORAL_ADDRESS
+      value: {{ include "composio.temporal.frontendAddress" . | quote }}
 {{- end }}
 
 {{/*
