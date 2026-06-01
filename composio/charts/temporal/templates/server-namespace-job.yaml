@@ -5,13 +5,8 @@ metadata:
   name: {{ include "temporal.componentname" (list $ (printf "namespaces-%d" .Release.Revision | replace "." "-")) }}
   labels:
     {{- include "temporal.resourceLabels" (list $ "database" "") | nindent 4 }}
-  {{- if or $.Values.schema.useHelmHooks $.Values.schema.jobAnnotations }}
+  {{- if $.Values.schema.jobAnnotations }}
   annotations:
-    {{- if $.Values.schema.useHelmHooks }}
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-weight": "0"
-    "helm.sh/hook-delete-policy": before-hook-creation
-    {{- end }}
     {{- with $.Values.schema.jobAnnotations }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
