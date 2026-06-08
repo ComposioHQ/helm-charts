@@ -16,5 +16,5 @@ dependencies:
     condition: features.temporal
   - name: replicated
     repository: oci://registry.replicated.com/library
-    version: 1.18.1
+    version: 1.19.5
     condition: replicated.enabled
