@@ -218,6 +218,18 @@ spec:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
                   optional: true
+            - name: APOLLO_ADMIN_TOKEN_THERMOS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
+            - name: APOLLO_ADMIN_TOKEN_MERCURY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
