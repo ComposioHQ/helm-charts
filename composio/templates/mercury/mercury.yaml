@@ -93,6 +93,12 @@ spec:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
                   optional: true
+            - name: APOLLO_ADMIN_TOKEN_MERCURY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
             {{- if .Values.otel.enabled }}
             # OTEL Resource attributes
             - name: OTEL_RESOURCE_ATTRIBUTES
