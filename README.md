@@ -24,6 +24,4 @@ Visit the Composio Enterprise portal to get your Helm chart:
    - **Azure Blob Storage** - Configure Azure Blob Storage for Apollo. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/azure-blob-storage.md)
    - **S3 Storage** - Configure S3-compatible storage (AWS S3, GCP GCS) for Apollo. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/gcs-s3-storage.md#configuring-s3-and-gcs-for-file-storage)
 
-4. **Frontend Configuration**
-   - **Composio Frontend** - Configure the Composio frontend. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/frontend-setup.md)
-   - **SMTP Setup** - Configure SMTP for email functionality. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/smtp-setup.md)
+4. **SMTP Setup** - Configure SMTP for email functionality. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/smtp-setup.md)

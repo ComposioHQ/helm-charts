@@ -8,19 +8,6 @@
 {{- if $apolloPdb }}
 {{ $apolloPdb }}
 {{- end }}
-{{- if .Values.frontend.enabled }}
-{{- $frontendPdb := include "composio.podDisruptionBudget" (dict
-  "root" .
-  "name" (printf "%s-frontend-pdb" (include "composio.fullname" .))
-  "labels" (merge (include "composio.labels" . | fromYaml) (dict "app.kubernetes.io/component" "frontend"))
-  "selectorLabels" (dict "app.kubernetes.io/component" "frontend")
-  "pdb" (.Values.frontend.podDisruptionBudget | default (dict))
-) -}}
-{{- if $frontendPdb }}
----
-{{ $frontendPdb }}
-{{- end }}
-{{- end }}
 {{- if and .Values.mercury.enabled (not .Values.mercury.useKnative) }}
 {{- $mercuryPdb := include "composio.podDisruptionBudget" (dict
   "root" .
