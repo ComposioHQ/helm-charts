@@ -59,15 +59,13 @@ spec:
         - name: wait-for-toolkit-registry
           image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
-          env:
-{{ include "composio.toolkitRegistryDbEnv" . | indent 12 }}
           command:
             - sh
             - -c
             - |
               i=0
               max_attempts=60
-              until pg_isready -h "$TOOLKIT_REGISTRY_DB_HOST" -p "$TOOLKIT_REGISTRY_DB_PORT" -U "$TOOLKIT_REGISTRY_DB_USER" -d "$TOOLKIT_REGISTRY_DB_NAME"; do
+              until pg_isready -h {{ printf "%s-toolkit-registry" .Release.Name | quote }} -p {{ .Values.toolkitRegistry.service.port | quote }} -U {{ include "composio.shellQuote" .Values.toolkitRegistry.auth.username }} -d {{ include "composio.shellQuote" .Values.toolkitRegistry.database.name }}; do
                 i=$((i+1))
                 if [ "$i" -ge "$max_attempts" ]; then
                   echo "toolkit registry not ready after $max_attempts attempts, giving up"
@@ -154,7 +152,8 @@ spec:
                   key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
                   optional: true
             {{- if .Values.toolkitRegistry.enabled }}
-{{ include "composio.toolkitRegistryDbEnv" . | indent 12 }}
+            - name: TOOLKIT_REGISTRY_DB_URL
+              value: {{ include "composio.toolkitRegistryDbUrl" . | quote }}
             {{- end }}
             {{- if .Values.thermos.env }}
             {{- toYaml .Values.thermos.env | nindent 12 }}

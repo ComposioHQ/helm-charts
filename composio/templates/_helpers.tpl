@@ -77,21 +77,18 @@ false
 {{- end -}}
 {{- end -}}
 
-{{- define "composio.toolkitRegistryDbEnv" -}}
-- name: TOOLKIT_REGISTRY_DB_URL
-  value: {{ printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" .Values.toolkitRegistry.auth.username .Release.Name (.Values.toolkitRegistry.service.port | int) .Values.toolkitRegistry.database.name | quote }}
-- name: TOOLKIT_REGISTRY_DB_HOST
-  value: {{ printf "%s-toolkit-registry" .Release.Name | quote }}
-- name: TOOLKIT_REGISTRY_DB_PORT
-  value: {{ .Values.toolkitRegistry.service.port | quote }}
-- name: TOOLKIT_REGISTRY_DB_USER
-  value: {{ .Values.toolkitRegistry.auth.username | quote }}
-- name: TOOLKIT_REGISTRY_DB_PASSWORD
-  value: {{ .Values.toolkitRegistry.auth.password | quote }}
-- name: TOOLKIT_REGISTRY_DB_NAME
-  value: {{ .Values.toolkitRegistry.database.name | quote }}
-- name: TOOLKIT_REGISTRY_DB_SSLMODE
-  value: "disable"
+{{- define "composio.uriComponent" -}}
+{{- . | toString | replace "%" "%25" | replace "\n" "%0A" | replace "\r" "%0D" | replace "\t" "%09" | replace " " "%20" | replace "!" "%21" | replace "\"" "%22" | replace "#" "%23" | replace "$" "%24" | replace "&" "%26" | replace "'" "%27" | replace "(" "%28" | replace ")" "%29" | replace "*" "%2A" | replace "+" "%2B" | replace "," "%2C" | replace "/" "%2F" | replace ":" "%3A" | replace ";" "%3B" | replace "<" "%3C" | replace "=" "%3D" | replace ">" "%3E" | replace "?" "%3F" | replace "@" "%40" | replace "[" "%5B" | replace "\\" "%5C" | replace "]" "%5D" | replace "^" "%5E" | replace "`" "%60" | replace "{" "%7B" | replace "|" "%7C" | replace "}" "%7D" -}}
+{{- end -}}
+
+{{- define "composio.shellQuote" -}}
+{{- printf "'%s'" (replace "'" "'\"'\"'" (. | toString)) -}}
+{{- end -}}
+
+{{- define "composio.toolkitRegistryDbUrl" -}}
+{{- $user := include "composio.uriComponent" .Values.toolkitRegistry.auth.username -}}
+{{- $database := include "composio.uriComponent" .Values.toolkitRegistry.database.name -}}
+{{- printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" $user .Release.Name (.Values.toolkitRegistry.service.port | int) $database -}}
 {{- end -}}
 
 {{- define "temporal-encryption-key" -}}
