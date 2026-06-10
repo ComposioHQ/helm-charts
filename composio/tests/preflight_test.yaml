@@ -30,6 +30,18 @@ tests:
           path: stringData["preflight.yaml"]
           pattern: '(?s)analyzers:\s*\[\]'
 
+  - it: should escape database migration values in postgres preflight messages
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.user: user"name
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'message: "PostgreSQL authentication failed\. Check username \(user\\"name\)'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'message: "PostgreSQL user ''user\\"name'' does not exist on the database server\."'
+
 ---
 suite: test openai preflight secret checks
 templates:

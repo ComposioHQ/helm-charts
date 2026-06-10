@@ -77,6 +77,23 @@ false
 {{- end -}}
 {{- end -}}
 
+{{- define "composio.toolkitRegistryDbEnv" -}}
+- name: TOOLKIT_REGISTRY_DB_URL
+  value: {{ printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" .Values.toolkitRegistry.auth.username .Release.Name (.Values.toolkitRegistry.service.port | int) .Values.toolkitRegistry.database.name | quote }}
+- name: TOOLKIT_REGISTRY_DB_HOST
+  value: {{ printf "%s-toolkit-registry" .Release.Name | quote }}
+- name: TOOLKIT_REGISTRY_DB_PORT
+  value: {{ .Values.toolkitRegistry.service.port | quote }}
+- name: TOOLKIT_REGISTRY_DB_USER
+  value: {{ .Values.toolkitRegistry.auth.username | quote }}
+- name: TOOLKIT_REGISTRY_DB_PASSWORD
+  value: {{ .Values.toolkitRegistry.auth.password | quote }}
+- name: TOOLKIT_REGISTRY_DB_NAME
+  value: {{ .Values.toolkitRegistry.database.name | quote }}
+- name: TOOLKIT_REGISTRY_DB_SSLMODE
+  value: "disable"
+{{- end -}}
+
 {{- define "temporal-encryption-key" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}
 {{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}

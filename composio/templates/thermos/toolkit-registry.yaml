@@ -58,9 +58,15 @@ spec:
           readinessProbe:
             exec:
               command:
-                - sh
-                - -c
-                - pg_isready -h 127.0.0.1 -p 5432 -U {{ .Values.toolkitRegistry.auth.username }} -d {{ .Values.toolkitRegistry.database.name }}
+                - pg_isready
+                - -h
+                - "127.0.0.1"
+                - -p
+                - "5432"
+                - -U
+                - {{ .Values.toolkitRegistry.auth.username | quote }}
+                - -d
+                - {{ .Values.toolkitRegistry.database.name | quote }}
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
@@ -68,9 +74,15 @@ spec:
           livenessProbe:
             exec:
               command:
-                - sh
-                - -c
-                - pg_isready -h 127.0.0.1 -p 5432 -U {{ .Values.toolkitRegistry.auth.username }} -d {{ .Values.toolkitRegistry.database.name }}
+                - pg_isready
+                - -h
+                - "127.0.0.1"
+                - -p
+                - "5432"
+                - -U
+                - {{ .Values.toolkitRegistry.auth.username | quote }}
+                - -d
+                - {{ .Values.toolkitRegistry.database.name | quote }}
             initialDelaySeconds: 15
             periodSeconds: 20
             timeoutSeconds: 5

@@ -226,12 +226,59 @@ tests:
           content:
             name: TOOLKIT_REGISTRY_DB_URL
             value: postgresql://registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_HOST
+            value: RELEASE-NAME-toolkit-registry
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_USER
+            value: registry_reader
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_PASSWORD
+            value: registry_reader
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_NAME
+            value: thermos
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_SSLMODE
+            value: disable
       - equal:
           path: spec.template.spec.initContainers[0].name
           value: wait-for-toolkit-registry
       - matchRegex:
           path: spec.template.spec.initContainers[0].image
           pattern: ".*/composio-self-host/thermos-toolkit-registry:[^/]+$"
+
+  - it: should pass toolkit registry wait configuration through env vars
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      toolkitRegistry.auth.username: user$name
+      toolkitRegistry.database.name: thermos db
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_USER
+            value: user$name
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_NAME
+            value: thermos db
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'pg_isready -h "\$TOOLKIT_REGISTRY_DB_HOST" -p "\$TOOLKIT_REGISTRY_DB_PORT" -U "\$TOOLKIT_REGISTRY_DB_USER" -d "\$TOOLKIT_REGISTRY_DB_NAME"'
 
   - it: should bound the toolkit registry wait and log on success
     documentSelector:
@@ -352,6 +399,31 @@ tests:
           value: 5432
         documentIndex: 1
 
+  - it: should pass toolkit registry probe arguments without shell interpolation
+    documentIndex: 0
+    set:
+      toolkitRegistry.auth.username: user$name
+      toolkitRegistry.database.name: thermos db
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.exec.command[0]
+          value: pg_isready
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.exec.command[6]
+          value: user$name
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.exec.command[8]
+          value: thermos db
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.exec.command[0]
+          value: pg_isready
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.exec.command[6]
+          value: user$name
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.exec.command[8]
+          value: thermos db
+
   - it: should allow toolkit registry init containers and env
     documentIndex: 0
     set:
@@ -426,9 +498,39 @@ tests:
           content:
             name: TOOLKIT_REGISTRY_DB_URL
             value: postgresql://registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_HOST
+            value: RELEASE-NAME-toolkit-registry
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_USER
+            value: registry_reader
       - equal:
           path: spec.template.spec.initContainers[0].name
           value: wait-for-toolkit-registry
+
+  - it: should pass misc worker toolkit registry wait configuration through env vars
+    set:
+      thermosMiscWorkers.enabled: true
+      toolkitRegistry.auth.username: user$name
+      toolkitRegistry.database.name: thermos db
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_USER
+            value: user$name
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_NAME
+            value: thermos db
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'pg_isready -h "\$TOOLKIT_REGISTRY_DB_HOST" -p "\$TOOLKIT_REGISTRY_DB_PORT" -U "\$TOOLKIT_REGISTRY_DB_USER" -d "\$TOOLKIT_REGISTRY_DB_NAME"'
 
   - it: should append misc worker additional init containers after toolkit registry wait
     set:

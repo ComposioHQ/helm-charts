@@ -1,4 +1,5 @@
 {{- if .Values.databaseMigration.enabled }}
+{{- $databaseMigrationUser := printf "\"%s\"" (replace "\"" "\"\"" .Values.databaseMigration.user) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -60,45 +61,45 @@ spec:
           CREATE DATABASE thermosdb;
 
           -- Alter Database
-          ALTER DATABASE composiodb OWNER TO {{ .Values.databaseMigration.user }};
+          ALTER DATABASE composiodb OWNER TO {{ $databaseMigrationUser }};
           {{- if eq (include "composio.temporalEnabled" .) "true" }}
-          ALTER DATABASE temporal OWNER TO {{ .Values.databaseMigration.user }};
-          ALTER DATABASE temporal_visibility OWNER TO {{ .Values.databaseMigration.user }};
+          ALTER DATABASE temporal OWNER TO {{ $databaseMigrationUser }};
+          ALTER DATABASE temporal_visibility OWNER TO {{ $databaseMigrationUser }};
           {{- end }}
-          ALTER DATABASE thermosdb OWNER TO {{ .Values.databaseMigration.user }};
+          ALTER DATABASE thermosdb OWNER TO {{ $databaseMigrationUser }};
 
           -- Grant privileges on thermosdb
           \c thermosdb
-          GRANT ALL PRIVILEGES ON DATABASE thermosdb TO {{ .Values.databaseMigration.user }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON DATABASE thermosdb TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
 
           -- Grant privileges on composiodb
           \c composiodb
-          GRANT ALL PRIVILEGES ON DATABASE composiodb TO {{ .Values.databaseMigration.user }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON DATABASE composiodb TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
 
           {{- if eq (include "composio.temporalEnabled" .) "true" }}
           -- Grant privileges on temporal
           \c temporal
-          GRANT ALL PRIVILEGES ON DATABASE temporal TO {{ .Values.databaseMigration.user }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON DATABASE temporal TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
 
           -- Grant privileges on temporal_visibility
           \c temporal_visibility
-          GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO {{ .Values.databaseMigration.user }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ .Values.databaseMigration.user }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ .Values.databaseMigration.user }};
+          GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
           {{- end }}
 
           -- Grant database creation privilege
