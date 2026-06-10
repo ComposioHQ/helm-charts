@@ -14,6 +14,7 @@ data:
   AWS_S3_CUSTOM_TOOLS_BUCKET: "tools"
   SELF_HOSTED: "true"
   FILE_BACKEND: {{ .Values.mercury.fileStorage | default "s3" | quote }}
+{{ include "composio.mercury.bundleSignatureConfigData" . | indent 2 }}
   BACKEND_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   APOLLO_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   AWS_S3_ENDPOINT: "http://{{ .Release.Name }}-minio:9000"

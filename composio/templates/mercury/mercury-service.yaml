@@ -64,6 +64,7 @@ spec:
               value: "true"
             - name: FILE_BACKEND
               value: {{ .Values.mercury.fileStorage | default "s3" | quote }}
+{{ include "composio.mercury.bundleSignatureEnv" . | indent 12 }}
             - name: MERCURY_SECRETS_DIR
               value: {{ .Values.mercury.secretsDir | quote }}
             - name: OPENAI_API_KEY

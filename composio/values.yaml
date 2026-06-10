@@ -1103,6 +1103,12 @@ mercury:
   secretsDir: "/etc/secrets/mercury"
   # -- Mercury file storage backend. Valid values are "s3" or "base64". Renders FILE_BACKEND.
   fileStorage: "s3"
+  # Mercury module bundle signature verification configuration.
+  bundleSignatureVerification:
+    # -- Enable strict runtime verification of signed module bundles.
+    enabled: true
+    # -- Base64-encoded public verification key for module bundle signatures. This is not a signing key.
+    publicKeyBase64: "/avANrHX/zfDqUOu3U2URZsWy7mJrkbidGs4Wvh8rFA="
   # -- Additional init containers for Mercury. Mount `mercury-secrets` to populate `.Values.mercury.secretsDir`.
   additionalInitContainers: []
   serviceAccount:
