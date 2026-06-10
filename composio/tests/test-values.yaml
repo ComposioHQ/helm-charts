@@ -94,30 +94,6 @@ dbInit:
       name: "test-db-secret"
       key: "url"
 
-frontend:
-  enabled: false
-  replicaCount: 1
-  image:
-    repository: test-frontend
-    tag: "test"
-    pullPolicy: IfNotPresent
-  service:
-    type: ClusterIP
-    port: 3000
-  resources:
-    requests:
-      memory: "1Gi"
-      cpu: "500m"
-    limits:
-      memory: "2Gi"
-      cpu: "1"
-  env:
-    PORT: "3000"
-    NODE_ENV: "production"
-    NEXT_PUBLIC_SELF_HOSTED: "true"
-  ingress:
-    enabled: false
-
 weaviate:
   enabled: true
   replicaCount: 1
