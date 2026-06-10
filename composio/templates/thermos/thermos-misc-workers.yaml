@@ -66,7 +66,7 @@ spec:
             - |
               i=0
               max_attempts=60
-              until pg_isready -h {{ .Release.Name }}-toolkit-registry -p {{ .Values.toolkitRegistry.service.port | int }} -U {{ .Values.toolkitRegistry.auth.username }} -d {{ .Values.toolkitRegistry.database.name }}; do
+              until pg_isready -h {{ printf "%s-toolkit-registry" .Release.Name | quote }} -p {{ .Values.toolkitRegistry.service.port | quote }} -U {{ include "composio.shellQuote" .Values.toolkitRegistry.auth.username }} -d {{ include "composio.shellQuote" .Values.toolkitRegistry.database.name }}; do
                 i=$((i+1))
                 if [ "$i" -ge "$max_attempts" ]; then
                   echo "toolkit registry not ready after $max_attempts attempts, giving up"
@@ -158,7 +158,7 @@ spec:
                   optional: true
             {{- if .Values.toolkitRegistry.enabled }}
             - name: TOOLKIT_REGISTRY_DB_URL
-              value: {{ printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" .Values.toolkitRegistry.auth.username .Release.Name (.Values.toolkitRegistry.service.port | int) .Values.toolkitRegistry.database.name | quote }}
+              value: {{ include "composio.toolkitRegistryDbUrl" . | quote }}
             {{- end }}
             {{- if .Values.thermosMiscWorkers.env }}
             {{- toYaml .Values.thermosMiscWorkers.env | nindent 12 }}

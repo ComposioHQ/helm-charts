@@ -86,9 +86,9 @@ stringData:
             key: "{{ .Values.databaseMigration.password.key }}"
             outcomes:
               - warn:
-                  message: "Missing PostgreSQL password Secret {{ .Values.secret.name }} or key {{ .Values.databaseMigration.password.key }}."
+                  message: {{ printf "Missing PostgreSQL password Secret %s or key %s." .Values.secret.name .Values.databaseMigration.password.key | quote }}
               - pass:
-                  message: "Found PostgreSQL password Secret {{ .Values.secret.name }} (key {{ .Values.databaseMigration.password.key }})."
+                  message: {{ printf "Found PostgreSQL password Secret %s (key %s)." .Values.secret.name .Values.databaseMigration.password.key | quote }}
         - textAnalyze:
             checkName: "PostgreSQL connection is valid"
             fileName: "/validate-postgres-connection.log"
@@ -96,22 +96,22 @@ stringData:
             outcomes:
               - pass:
                   when: "Result == OK"
-                  message: "PostgreSQL connection successful to {{ .Values.databaseMigration.host }}:{{ .Values.databaseMigration.port }}."
+                  message: {{ printf "PostgreSQL connection successful to %s:%s." .Values.databaseMigration.host .Values.databaseMigration.port | quote }}
               - fail:
                   when: "Result == AUTH_FAILED"
-                  message: "PostgreSQL authentication failed. Check username ({{ .Values.databaseMigration.user }}) and password in secret {{ .Values.secret.name }}."
+                  message: {{ printf "PostgreSQL authentication failed. Check username (%s) and password in secret %s." .Values.databaseMigration.user .Values.secret.name | quote }}
               - fail:
                   when: "Result == CONNECTION_FAILED"
-                  message: "Cannot connect to PostgreSQL at {{ .Values.databaseMigration.host }}:{{ .Values.databaseMigration.port }}. Check host, port, and network connectivity."
+                  message: {{ printf "Cannot connect to PostgreSQL at %s:%s. Check host, port, and network connectivity." .Values.databaseMigration.host .Values.databaseMigration.port | quote }}
               - fail:
                   when: "Result == USER_NOT_FOUND"
-                  message: "PostgreSQL user '{{ .Values.databaseMigration.user }}' does not exist on the database server."
+                  message: {{ printf "PostgreSQL user '%s' does not exist on the database server." .Values.databaseMigration.user | quote }}
               - fail:
                   when: "Result == DB_NOT_FOUND"
                   message: "PostgreSQL database 'postgres' does not exist. This is unusual and may indicate server misconfiguration."
               - warn:
                   when: "Result == MISSING_PASSWORD"
-                  message: "PostgreSQL password not found in secret {{ .Values.secret.name }}."
+                  message: {{ printf "PostgreSQL password not found in secret %s." .Values.secret.name | quote }}
               - fail:
                   when: "Result == MISSING_CONFIG"
                   message: "PostgreSQL connection configuration incomplete. Check host, port, and user values."

@@ -573,6 +573,21 @@ tests:
           path: spec.template.spec.containers[0].args[2]
           pattern: 'CREATE DATABASE composiodb;'
 
+  - it: should quote database migration user as a SQL identifier
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.user: user-name
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'ALTER DATABASE composiodb OWNER TO "user-name";'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'GRANT ALL PRIVILEGES ON DATABASE thermosdb TO "user-name";'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO "user-name";'
+
   - it: should run before db-init jobs (lower hook weight)
     set:
       databaseMigration.enabled: true
