@@ -885,6 +885,13 @@ otel:
     serviceVersion: "1.0.0"
     # -- HTTP endpoint for metrics
     metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
+  frontend:
+    # -- Frontend service name
+    serviceName: "frontend"
+    # -- Frontend service version
+    serviceVersion: "1.0.0"
+    # -- HTTP endpoint for metrics
+    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
   # OpenTelemetry Collector configuration
   collector:
     # -- Enable OTEL collector
@@ -1220,6 +1227,89 @@ mercury:
     secretRef:
       # -- Secret name for Lambda credentials
       name: "lambda-cred"
+# Frontend service configuration (web UI)
+frontend:
+  # -- Enable frontend service
+  enabled: false
+  # -- Number of frontend pod replicas
+  replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Frontend.
+    enabled: false
+    # -- Maximum number of Frontend pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
+  # Frontend container image configuration
+  image:
+    # -- Frontend image repository (used when imageName is not set)
+    repository: composio-self-host/frontend
+    # -- Frontend image tag
+    tag: "r20260501_01"
+    # -- Image pull policy
+    pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+  # -- Directory exposed to Frontend containers via FRONTEND_SECRETS_DIR.
+  secretsDir: "/etc/secrets/frontend"
+  # -- Additional init containers for Frontend. Mount `frontend-secrets` to populate `.Values.frontend.secretsDir`.
+  additionalInitContainers: []
+  # -- Additional volume mounts
+  volumeMounts: []
+  # -- Additional volumes
+  volumes: []
+  serviceAccount:
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
+    enabled: false
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
+    name: "composio-frontend"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
+  # Frontend service configuration
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- Service port
+    port: 3000
+  # Resource requests and limits for frontend pods
+  resources:
+    requests:
+      # -- Memory request for frontend
+      memory: "2Gi"
+      # -- CPU request for frontend
+      cpu: "1"
+    limits:
+      # -- Memory limit for frontend
+      memory: "3Gi"
+      # -- CPU limit for frontend
+      cpu: "1"
+  # Frontend environment variables
+  env:
+    # -- Server port
+    PORT: "3000"
+    # -- Node environment
+    NODE_ENV: "production"
+    # -- Override backend URL (defaults to Apollo service URL)
+    OVERRIDE_BACKEND_URL: ""
+    # -- Disable social login for self-hosted deployments
+    NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: "true"
+    # -- Enable self-hosted mode
+    NEXT_PUBLIC_SELF_HOSTED: "true"
+  # Ingress configuration for frontend
+  ingress:
+    # -- Enable ingress
+    enabled: false
+    # -- Ingress class name
+    className: ""
+    # -- Ingress annotations
+    annotations: {}
+    # -- Hostname for frontend ingress
+    host: ""
+    # -- TLS configuration
+    tls: []
 # Weaviate service configuration (vector database for search)
 weaviate:
   # -- Enable Weaviate service

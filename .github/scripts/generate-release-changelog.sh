@@ -408,6 +408,12 @@ extract_images_json() {
         "tag": (.mercury.image.tag // ""),
         "fallback_source_repo": "ComposioHQ/mercury"
       },
+      "frontend": {
+        "registry": (.global.registry.name // ""),
+        "repository": (.frontend.image.repository // ""),
+        "tag": (.frontend.image.tag // ""),
+        "fallback_source_repo": "ComposioHQ/frontend"
+      },
       "weaviate": {
         "registry": (.global.registry.name // ""),
         "repository": (.weaviate.image.repository // ""),

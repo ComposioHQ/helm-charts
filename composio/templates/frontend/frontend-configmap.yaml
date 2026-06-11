@@ -1,0 +1,49 @@
+{{- if .Values.frontend.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-frontend-config
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+data:
+  PORT: {{ .Values.frontend.env.PORT | default "3000" | quote }}
+  NODE_ENV: {{ .Values.frontend.env.NODE_ENV | default "production" | quote }}
+  {{- if .Values.frontend.env.OPENAPI_URL }}
+  OPENAPI_URL: {{ .Values.frontend.env.OPENAPI_URL | quote }}
+  {{- end }}
+  {{- if .Values.apollo.ingress.enabled }}
+  OVERRIDE_BACKEND_URL: {{ printf "https://%s" .Values.apollo.ingress.host }}
+  {{- else }}
+  OVERRIDE_BACKEND_URL: {{ .Values.frontend.env.OVERRIDE_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+  {{- end }}
+  {{- if .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY }}
+  NEXT_PUBLIC_POSTHOG_KEY: {{ .Values.frontend.env.NEXT_PUBLIC_POSTHOG_KEY | quote }}
+  {{- end }}
+  {{- if .Values.apollo.ingress.enabled }}
+  NEXT_PUBLIC_BACKEND_URL: {{ printf "https://%s" .Values.apollo.ingress.host }}
+  {{- else }}
+  NEXT_PUBLIC_BACKEND_URL: {{ .Values.frontend.env.NEXT_PUBLIC_BACKEND_URL | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}
+  {{- end }}
+  {{- if .Values.frontend.env.NEXT_PUBLIC_APP_URL }}
+  NEXT_PUBLIC_APP_URL: {{ .Values.frontend.env.NEXT_PUBLIC_APP_URL | quote }}
+  {{- end }}
+  {{- if .Values.frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN }}
+  NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: {{ .Values.frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN | quote }}
+  {{- end }}
+  NEXT_PUBLIC_SELF_HOSTED: {{ .Values.frontend.env.NEXT_PUBLIC_SELF_HOSTED | default "true" | quote }}
+  {{- if .Values.otel.enabled }}
+  OTEL_ENABLED: {{ .Values.otel.enabled | quote }}
+  OTEL_SERVICE_NAME: {{ .Values.otel.frontend.serviceName | default "frontend" | quote }}
+  OTEL_SERVICE_VERSION: {{ .Values.otel.frontend.serviceVersion | default "1.0.0" | quote }}
+  OTEL_ENVIRONMENT: {{ .Values.otel.environment | default .Values.global.environment | default "development" | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.otel.exporter.otlp.endpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ .Values.otel.exporter.otlp.tracesEndpoint | default (printf "%s-otel-collector:4317" .Release.Name) | quote }}
+  OTEL_EXPORTER_OTLP_INSECURE: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_METRICS_EXPORTER: "otlp"
+  OTEL_LOGS_EXPORTER: "otlp"
+  OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.frontend.serviceName | default "frontend" }},service.version={{ .Values.otel.frontend.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+  {{- end }}
+{{- end }}
