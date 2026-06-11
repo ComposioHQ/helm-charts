@@ -102,6 +102,8 @@ A Helm chart for Composio
 | mercury.autoscaling.target | int | `80` | Target metric value for autoscaling |
 | mercury.awsLambda.enabled | bool | `false` | Enable AWS Lambda deployment |
 | mercury.awsLambda.secretRef.name | string | `"lambda-cred"` | Secret name for Lambda credentials |
+| mercury.bundleSignatureVerification.enabled | bool | `true` | Enable strict runtime verification of signed module bundles. |
+| mercury.bundleSignatureVerification.publicKeyBase64 | string | `"/avANrHX/zfDqUOu3U2URZsWy7mJrkbidGs4Wvh8rFA="` | Base64-encoded public verification key for module bundle signatures. This is not a signing key. |
 | mercury.containerConcurrency | int | `0` | Container concurrency (0 = unlimited) |
 | mercury.enabled | bool | `true` | Enable Mercury service |
 | mercury.fileStorage | string | `"s3"` | Mercury file storage backend. Valid values are "s3" or "base64". Renders FILE_BACKEND. |
