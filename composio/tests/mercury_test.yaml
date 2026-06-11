@@ -299,10 +299,12 @@ tests:
       - equal:
           path: data.DISABLE_BUNDLE_SIGNATURE_VERIFICATION
           value: "true"
-      - isNull:
+      - equal:
           path: data.MODULE_BUNDLE_REQUIRE_SIGNATURE
-      - isNull:
+          value: "false"
+      - equal:
           path: data.MODULE_BUNDLE_VERIFICATION_PUBLIC_KEY_BASE64
+          value: ""
 
 ---
 suite: test mercury service
@@ -376,6 +378,17 @@ tests:
           path: metadata.labels["app.kubernetes.io/component"]
           value: mercury
 
+  - it: should load shared mercury runtime config from configmap for knative
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            configMapRef:
+              name: RELEASE-NAME-mercury-config
+
   - it: should not create knative mercury service when disabled
     set:
       mercury.enabled: false
@@ -429,49 +442,6 @@ tests:
                 name: composio-composio-secrets
                 key: OPENAI_API_KEY
                 optional: true
-
-  - it: should enable strict module bundle signature verification for knative
-    set:
-      mercury.enabled: true
-      mercury.useKnative: true
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: DISABLE_BUNDLE_SIGNATURE_VERIFICATION
-            value: "false"
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: MODULE_BUNDLE_REQUIRE_SIGNATURE
-            value: "true"
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: MODULE_BUNDLE_VERIFICATION_PUBLIC_KEY_BASE64
-            value: "/avANrHX/zfDqUOu3U2URZsWy7mJrkbidGs4Wvh8rFA="
-
-  - it: should allow disabling module bundle signature verification for knative
-    set:
-      mercury.enabled: true
-      mercury.useKnative: true
-      mercury.bundleSignatureVerification.enabled: false
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: DISABLE_BUNDLE_SIGNATURE_VERIFICATION
-            value: "true"
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: MODULE_BUNDLE_REQUIRE_SIGNATURE
-            value: "true"
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: MODULE_BUNDLE_VERIFICATION_PUBLIC_KEY_BASE64
-            value: "/avANrHX/zfDqUOu3U2URZsWy7mJrkbidGs4Wvh8rFA="
 
   - it: should render additional mercury init containers for knative
     set:
@@ -562,15 +532,3 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[0].name
           value: mercury-secret
-
-  - it: should set file backend for knative from mercury fileStorage
-    set:
-      mercury.enabled: true
-      mercury.useKnative: true
-      mercury.fileStorage: base64
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: FILE_BACKEND
-            value: base64

@@ -14,12 +14,15 @@ data:
   AWS_S3_CUSTOM_TOOLS_BUCKET: "tools"
   SELF_HOSTED: "true"
   FILE_BACKEND: {{ .Values.mercury.fileStorage | default "s3" | quote }}
-{{ include "composio.mercury.bundleSignatureConfigData" . | indent 2 }}
+  DISABLE_BUNDLE_SIGNATURE_VERIFICATION: {{ ternary "false" "true" .Values.mercury.bundleSignatureVerification.enabled | quote }}
+  MODULE_BUNDLE_REQUIRE_SIGNATURE: {{ ternary "true" "false" .Values.mercury.bundleSignatureVerification.enabled | quote }}
+  MODULE_BUNDLE_VERIFICATION_PUBLIC_KEY_BASE64: {{ ternary .Values.mercury.bundleSignatureVerification.publicKeyBase64 "" .Values.mercury.bundleSignatureVerification.enabled | quote }}
   BACKEND_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   APOLLO_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   AWS_S3_ENDPOINT: "http://{{ .Release.Name }}-minio:9000"
   AWS_S3_ENDPOINT_URL: "http://{{ .Release.Name }}-minio:9000"
   AWS_S3_FORCE_PATH_STYLE: "true"
+  USE_APOLLO_GET_DOWNLOAD_URL_API: "true"
   {{- if .Values.otel.enabled }}
   OTEL_ENABLED: {{ .Values.otel.enabled | toString | quote }}
   OTEL_SERVICE_NAME: {{ .Values.otel.mercury.serviceName | default "mercury-openapi" | quote }}
@@ -30,7 +33,6 @@ data:
   OTEL_TRACES_ENABLED: {{ .Values.otel.traces.enabled | toString | quote }}
   OTEL_METRICS_ENABLED: {{ .Values.otel.metrics.enabled | toString | quote }}
   OTEL_METRIC_EXPORT_INTERVAL: {{ .Values.otel.metrics.exportInterval | toString | quote }}
-  USE_APOLLO_GET_DOWNLOAD_URL_API: "true"
   OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
   {{- end }}
 {{- end }}

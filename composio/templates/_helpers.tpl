@@ -172,36 +172,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Mercury module bundle signature verification rendered as ConfigMap data.
-*/}}
-{{- define "composio.mercury.bundleSignatureConfigData" -}}
-{{- if .Values.mercury.bundleSignatureVerification.enabled -}}
-DISABLE_BUNDLE_SIGNATURE_VERIFICATION: "false"
-MODULE_BUNDLE_REQUIRE_SIGNATURE: "true"
-MODULE_BUNDLE_VERIFICATION_PUBLIC_KEY_BASE64: {{ .Values.mercury.bundleSignatureVerification.publicKeyBase64 | quote }}
-{{- else -}}
-DISABLE_BUNDLE_SIGNATURE_VERIFICATION: "true"
-{{- end -}}
-{{- end }}
-
-{{/*
-Mercury module bundle signature verification rendered as container env entries.
-*/}}
-{{- define "composio.mercury.bundleSignatureEnv" -}}
-{{- if .Values.mercury.bundleSignatureVerification.enabled -}}
-- name: DISABLE_BUNDLE_SIGNATURE_VERIFICATION
-  value: "false"
-- name: MODULE_BUNDLE_REQUIRE_SIGNATURE
-  value: "true"
-- name: MODULE_BUNDLE_VERIFICATION_PUBLIC_KEY_BASE64
-  value: {{ .Values.mercury.bundleSignatureVerification.publicKeyBase64 | quote }}
-{{- else -}}
-- name: DISABLE_BUNDLE_SIGNATURE_VERIFICATION
-  value: "true"
-{{- end -}}
-{{- end }}
-
-{{/*
 Render a PodDisruptionBudget from a common shape.
 Expected keys:
 - root: chart root context
