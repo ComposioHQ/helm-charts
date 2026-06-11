@@ -2,8 +2,8 @@ apiVersion: v2
 name: composio
 description: A Helm chart for Composio
 type: application
-version: "0.2.13"
-appVersion: "0.2.13"
+version: "0.2.58"
+appVersion: "0.2.58"
 dependencies:
   - name: redis
     version: "17.11.3"
