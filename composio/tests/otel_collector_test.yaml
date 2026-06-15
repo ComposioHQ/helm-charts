@@ -1,0 +1,133 @@
+suite: test otel collector
+templates:
+  - otel-collector.yaml
+tests:
+  - it: should not create resources when otel is disabled
+    set:
+      otel.enabled: false
+      otel.collector.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create resources when collector is disabled
+    set:
+      otel.enabled: true
+      otel.collector.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render deployment with default image
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.image.repository: otel/opentelemetry-collector-contrib
+      otel.collector.image.tag: "0.91.0"
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: otel/opentelemetry-collector-contrib:0.91.0
+
+  - it: should allow overriding collector image with imageName
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.image.repository: ignored/repository
+      otel.collector.image.tag: ignored-tag
+      otel.collector.image.imageName: ghcr.io/example/otel-collector:v1.2.3
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/example/otel-collector:v1.2.3
+
+  - it: should use existing service account when google cloud service account creation is disabled
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.googleCloud.serviceAccount.create: false
+      otel.collector.serviceAccountName: existing-otel-sa
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: existing-otel-sa
+
+  - it: should prefer generated google cloud service account when creation is enabled
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.googleCloud.serviceAccount.create: true
+      otel.collector.googleCloud.serviceAccount.name: otel-collector
+      otel.collector.serviceAccountName: existing-otel-sa
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: RELEASE-NAME-otel-collector
+
+  - it: should apply node selector when configured
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.nodeSelector:
+        cloud.google.com/gke-nodepool: telemetry
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["cloud.google.com/gke-nodepool"]
+          value: telemetry
+
+  - it: should apply tolerations when configured
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.tolerations:
+        - key: dedicated
+          operator: Equal
+          value: telemetry
+          effect: NoSchedule
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: dedicated
+            operator: Equal
+            value: telemetry
+            effect: NoSchedule
+
+  - it: should apply affinity when configured
+    set:
+      otel.enabled: true
+      otel.collector.enabled: true
+      otel.collector.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: kubernetes.io/arch

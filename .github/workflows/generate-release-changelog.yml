@@ -1,0 +1,101 @@
+name: Generate Release Changelog
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_release:
+        description: Older chart version or git ref
+        required: true
+        type: string
+      to_release:
+        description: Newer chart version or git ref
+        required: true
+        type: string
+      chart_oci_ref:
+        description: OCI chart reference used when a version is not available in git history
+        required: true
+        type: string
+      output_file:
+        description: Markdown file to generate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COMPOSIO_INTERNAL_READER_APP_ID }}
+          private-key: ${{ secrets.COMPOSIO_INTERNAL_READER_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
+      - name: Configure AWS credentials for image metadata lookup
+        id: aws
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr
+          aws-region: us-east-1
+
+      - name: Login to chart registry
+        shell: bash
+        env:
+          CHART_OCI_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.chart_oci_ref || 'oci://registry.composio.io/composio-rodent/nightly/composio' }}
+          REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
+          REPLICATED_TOKEN: ${{ secrets.REPLICATED_TOKEN }}
+        run: |
+          set -euo pipefail
+          registry_host="${CHART_OCI_REF#oci://}"
+          registry_host="${registry_host%%/*}"
+          printf '%s' "${REPLICATED_TOKEN}" | helm registry login "${registry_host}" --username "${REPLICATED_USERNAME}" --password-stdin
+
+      - name: Generate changelog
+        id: generate
+        shell: bash
+        env:
+          CHANGELOG_FROM_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.from_release || '0.1.72' }}
+          CHANGELOG_TO_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.to_release || '0.1.84' }}
+          CHANGELOG_OUTPUT_FILE: ${{ github.event_name == 'workflow_dispatch' && inputs.output_file || 'release-changelog.md' }}
+          CHART_OCI_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.chart_oci_ref || 'oci://registry.composio.io/composio-rodent/nightly/composio' }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          CHANGELOG_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          ENABLE_IMAGE_LABEL_LOOKUP: "1"
+        run: |
+          bash ./.github/scripts/generate-release-changelog.sh \
+            "${CHANGELOG_FROM_RELEASE}" \
+            "${CHANGELOG_TO_RELEASE}" \
+            "${CHANGELOG_OUTPUT_FILE}"
+
+      - name: Publish step summary
+        shell: bash
+        run: |
+          cat "${{ steps.generate.outputs.output_file }}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload changelog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-changelog
+          path: ${{ steps.generate.outputs.output_file }}
+          if-no-files-found: error

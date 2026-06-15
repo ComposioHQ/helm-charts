@@ -3,7 +3,9 @@ templates:
   - thermos/thermos.yaml
 tests:
   - it: should create thermos deployment
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - isKind:
           of: Deployment
@@ -17,8 +19,32 @@ tests:
           path: metadata.labels.release
           value: RELEASE-NAME
 
+  - it: should not set serviceAccountName when SA is disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.serviceAccount.enabled: false
+    asserts:
+      - isNull:
+          path: spec.template.spec.serviceAccountName
+
+  - it: should set serviceAccountName when SA is enabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.serviceAccount.enabled: true
+      thermos.serviceAccount.name: thermos-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: thermos-sa
+
   - it: should have correct replica count
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       thermos.replicaCount: 2
     asserts:
@@ -27,28 +53,35 @@ tests:
           value: 2
 
   - it: should use correct image
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
+      replicated.enabled: false
       thermos.image.repository: test-thermos
       thermos.image.tag: latest
       thermos.image.pullPolicy: Always
     asserts:
-      - equal:
+      - matchRegex:
           path: spec.template.spec.containers[0].image
-          value: test-thermos:latest
+          pattern: ".*/test-thermos:latest$"
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: Always
 
   - it: should have correct port configuration
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - equal:
           path: spec.template.spec.containers[0].ports[0].containerPort
           value: 8180
 
   - it: should have correct resource configuration
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
       thermos.resources:
         requests:
@@ -66,8 +99,11 @@ tests:
           value: "1"
 
   - it: should include image pull secrets when configured
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     set:
+      replicated.enabled: false
       global.imagePullSecrets:
         - name: thermos-secret
     asserts:
@@ -75,8 +111,100 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
           value: thermos-secret
 
+  - it: should mount thermos secrets under /etc/secrets/thermos
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_SECRET_DIR
+            value: /etc/secrets/thermos
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: thermos-secrets
+            mountPath: /etc/secrets/thermos
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: thermos-secrets
+            emptyDir: {}
+
+  - it: should render additional thermos init containers
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.additionalInitContainers:
+        - name: populate-thermos-secrets
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - echo init >/etc/secrets/thermos/seed
+          volumeMounts:
+            - name: thermos-secrets
+              mountPath: /etc/secrets/thermos
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: populate-thermos-secrets
+      - equal:
+          path: spec.template.spec.initContainers[1].image
+          value: busybox:1.36
+      - equal:
+          path: spec.template.spec.initContainers[1].volumeMounts[0].name
+          value: thermos-secrets
+      - equal:
+          path: spec.template.spec.initContainers[1].volumeMounts[0].mountPath
+          value: /etc/secrets/thermos
+
+  - it: should allow overriding thermos secrets dir
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.secretsDir: /var/run/thermos-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_SECRET_DIR
+            value: /var/run/thermos-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: thermos-secrets
+            mountPath: /var/run/thermos-secrets
+            readOnly: true
+
+  - it: should rely on the image entrypoint for Thermos secret loading
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].command
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: /usr/local/bin/thermos
+      - equal:
+          path: spec.template.spec.containers[0].args[1]
+          value: --cache-dir
+      - equal:
+          path: spec.template.spec.containers[0].args[2]
+          value: /tmp/.lookup
+
   - it: should have rolling update strategy
-    documentIndex: 1
+    documentSelector:
+      path: kind
+      value: Deployment
     asserts:
       - equal:
           path: spec.strategy.type
@@ -88,13 +216,104 @@ tests:
           path: spec.strategy.rollingUpdate.maxSurge
           value: 1
 
+  - it: should wire toolkit registry db url by default
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+            value: postgresql://registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].image
+          pattern: ".*/composio-self-host/thermos-toolkit-registry:[^/]+$"
+
+  - it: should percent-encode toolkit registry db url and shell-quote wait configuration
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      toolkitRegistry.auth.username: user$name@example.com
+      toolkitRegistry.database.name: thermos db/prod
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+            value: postgresql://user%24name%40example.com@RELEASE-NAME-toolkit-registry:5432/thermos%20db%2Fprod?sslmode=disable
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'pg_isready -h "RELEASE-NAME-toolkit-registry" -p "5432" -U ''user\$name@example\.com'' -d ''thermos db/prod'''
+
+  - it: should bound the toolkit registry wait and log on success
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: sh
+      - equal:
+          path: spec.template.spec.initContainers[0].command[1]
+          value: -c
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "max_attempts=60"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry not ready after \\$max_attempts attempts, giving up"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "exit 1"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry is ready after \\$i attempt\\(s\\)"
+
+  - it: should append thermos additional init containers after toolkit registry wait
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.additionalInitContainers:
+        - name: custom-init
+          image: busybox
+          command: ['sh', '-c', 'echo custom']
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: custom-init
+
+  - it: should skip toolkit registry wiring when explicitly disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      toolkitRegistry.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+      - isNull:
+          path: spec.template.spec.initContainers
+
 ---
 suite: test thermos service
 templates:
   - thermos/thermos.yaml
 tests:
   - it: should create thermos service
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Service
     asserts:
       - isKind:
           of: Service
@@ -106,7 +325,9 @@ tests:
           value: thermos
 
   - it: should have correct service configuration
-    documentIndex: 0
+    documentSelector:
+      path: kind
+      value: Service
     set:
       thermos.service.type: ClusterIP
       thermos.service.port: 8180
@@ -119,4 +340,187 @@ tests:
           value: 8180
       - equal:
           path: spec.ports[0].targetPort
-          value: 8180 
+          value: 8180
+---
+suite: test toolkit registry resources
+templates:
+  - thermos/toolkit-registry.yaml
+tests:
+  - it: should render toolkit registry deployment and service by default
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-toolkit-registry
+        documentIndex: 0
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ".*/composio-self-host/thermos-toolkit-registry:[^/]+$"
+        documentIndex: 0
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 5432
+        documentIndex: 1
+
+  - it: should pass toolkit registry probe arguments without shell interpolation
+    documentIndex: 0
+    set:
+      toolkitRegistry.auth.username: user$name
+      toolkitRegistry.database.name: thermos db
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.exec.command[0]
+          value: pg_isready
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.exec.command[6]
+          value: user$name
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.exec.command[8]
+          value: thermos db
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.exec.command[0]
+          value: pg_isready
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.exec.command[6]
+          value: user$name
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.exec.command[8]
+          value: thermos db
+
+  - it: should allow toolkit registry init containers and env
+    documentIndex: 0
+    set:
+      toolkitRegistry.initContainers:
+        - name: prep
+          image: busybox
+          command: ['sh', '-c', 'echo prep']
+      toolkitRegistry.env:
+        - name: PGAPPNAME
+          value: toolkit-registry
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prep
+      - equal:
+          path: spec.template.spec.containers[0].env[0].name
+          value: PGAPPNAME
+      - equal:
+          path: spec.template.spec.containers[0].env[0].value
+          value: toolkit-registry
+
+  - it: should not render toolkit registry when disabled
+    set:
+      toolkitRegistry.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should apply nodeSelector, affinity, and tolerations to toolkit registry pod
+    documentIndex: 0
+    set:
+      toolkitRegistry.nodeSelector:
+        disktype: ssd
+      toolkitRegistry.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+      toolkitRegistry.tolerations:
+        - key: dedicated
+          operator: Equal
+          value: toolkit-registry
+          effect: NoSchedule
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector.disktype
+          value: ssd
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: kubernetes.io/arch
+      - equal:
+          path: spec.template.spec.tolerations[0].key
+          value: dedicated
+
+---
+suite: test thermos misc workers deployment
+templates:
+  - thermos/thermos-misc-workers.yaml
+tests:
+  - it: should wire toolkit registry db url for misc workers when enabled
+    set:
+      thermosMiscWorkers.enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+            value: postgresql://registry_reader@RELEASE-NAME-toolkit-registry:5432/thermos?sslmode=disable
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+
+  - it: should percent-encode misc worker toolkit registry db url and shell-quote wait configuration
+    set:
+      thermosMiscWorkers.enabled: true
+      toolkitRegistry.auth.username: user$name@example.com
+      toolkitRegistry.database.name: thermos db/prod
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TOOLKIT_REGISTRY_DB_URL
+            value: postgresql://user%24name%40example.com@RELEASE-NAME-toolkit-registry:5432/thermos%20db%2Fprod?sslmode=disable
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'pg_isready -h "RELEASE-NAME-toolkit-registry" -p "5432" -U ''user\$name@example\.com'' -d ''thermos db/prod'''
+
+  - it: should append misc worker additional init containers after toolkit registry wait
+    set:
+      thermosMiscWorkers.enabled: true
+      thermosMiscWorkers.additionalInitContainers:
+        - name: custom-misc-init
+          image: busybox
+          command: ['sh', '-c', 'echo misc']
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-toolkit-registry
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: custom-misc-init
+
+  - it: should bound the misc worker toolkit registry wait and log on success
+    set:
+      thermosMiscWorkers.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: sh
+      - equal:
+          path: spec.template.spec.initContainers[0].command[1]
+          value: -c
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "max_attempts=60"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry not ready after \\$max_attempts attempts, giving up"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "exit 1"
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "toolkit registry is ready after \\$i attempt\\(s\\)"

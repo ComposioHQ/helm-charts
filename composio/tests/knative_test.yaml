@@ -1,11 +1,12 @@
 suite: test knative serving
 templates:
-  - knative/knative-serving.yaml
+  - mercury/mercury-service.yaml
 tests:
   - it: should create knative serving when mercury uses knative
     set:
       mercury.enabled: true
       mercury.useKnative: true
+      replicated.enabled: false
       mercury.image.repository: test-mercury
       mercury.image.tag: knative-test
     asserts:
@@ -16,7 +17,7 @@ tests:
           value: serving.knative.dev/v1
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-mercury
+          value: RELEASE-NAME-composio-mercury
       - equal:
           path: metadata.labels["app.kubernetes.io/component"]
           value: mercury
@@ -41,19 +42,20 @@ tests:
     set:
       mercury.enabled: true
       mercury.useKnative: true
+      replicated.enabled: false
       mercury.image.repository: test-mercury-knative
       mercury.image.tag: v2.0.0
     asserts:
-      - equal:
+      - matchRegex:
           path: spec.template.spec.containers[0].image
-          value: test-mercury-knative:v2.0.0
+          pattern: ".*/test-mercury-knative:v2.0.0$"
 
   - it: should have correct scaling configuration
     set:
       mercury.enabled: true
       mercury.useKnative: true
-      mercury.knative.minReplicas: 2
-      mercury.knative.maxReplicas: 10
+      mercury.autoscaling.minScale: 2
+      mercury.autoscaling.maxScale: 10
     asserts:
       - equal:
           path: spec.template.metadata.annotations["autoscaling.knative.dev/minScale"]
@@ -70,8 +72,8 @@ tests:
       mercury.containerConcurrency: 10
     asserts:
       - equal:
-          path: spec.template.metadata.annotations["run.googleapis.com/timeout"]
-          value: "600s"
+          path: spec.template.spec.timeoutSeconds
+          value: 600
       - equal:
           path: spec.template.spec.containerConcurrency
           value: 10
@@ -96,50 +98,42 @@ suite: test knative crds
 templates:
   - knative/knative-crds.yaml
 tests:
-  - it: should create service custom resource definition
+  - it: should create cluster role for knative setup
     documentIndex: 0
+    set:
+      mercury.useKnative: true
     asserts:
       - isKind:
-          of: CustomResourceDefinition
+          of: ClusterRole
       - equal:
           path: metadata.name
-          value: services.serving.knative.dev
-      - equal:
-          path: spec.group
-          value: serving.knative.dev
+          value: knative-setup-RELEASE-NAME
 
-  - it: should create configuration custom resource definition
+  - it: should create cluster role binding for knative setup
     documentIndex: 1
+    set:
+      mercury.useKnative: true
     asserts:
       - isKind:
-          of: CustomResourceDefinition
+          of: ClusterRoleBinding
       - equal:
           path: metadata.name
-          value: configurations.serving.knative.dev
-      - equal:
-          path: spec.group
-          value: serving.knative.dev
+          value: knative-setup-RELEASE-NAME
 
-  - it: should create revision custom resource definition
+  - it: should create knative setup job
     documentIndex: 2
+    set:
+      mercury.useKnative: true
     asserts:
       - isKind:
-          of: CustomResourceDefinition
+          of: Job
       - equal:
-          path: metadata.name
-          value: revisions.serving.knative.dev
-      - equal:
-          path: spec.group
-          value: serving.knative.dev
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: knative-setup
 
-  - it: should create route custom resource definition
-    documentIndex: 3
+  - it: should not create resources when knative is disabled
+    set:
+      mercury.useKnative: false
     asserts:
-      - isKind:
-          of: CustomResourceDefinition
-      - equal:
-          path: metadata.name
-          value: routes.serving.knative.dev
-      - equal:
-          path: spec.group
-          value: serving.knative.dev 
+      - hasDocuments:
+          count: 0

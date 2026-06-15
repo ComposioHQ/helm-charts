@@ -77,6 +77,20 @@ false
 {{- end -}}
 {{- end -}}
 
+{{- define "composio.uriComponent" -}}
+{{- . | toString | replace "%" "%25" | replace "\n" "%0A" | replace "\r" "%0D" | replace "\t" "%09" | replace " " "%20" | replace "!" "%21" | replace "\"" "%22" | replace "#" "%23" | replace "$" "%24" | replace "&" "%26" | replace "'" "%27" | replace "(" "%28" | replace ")" "%29" | replace "*" "%2A" | replace "+" "%2B" | replace "," "%2C" | replace "/" "%2F" | replace ":" "%3A" | replace ";" "%3B" | replace "<" "%3C" | replace "=" "%3D" | replace ">" "%3E" | replace "?" "%3F" | replace "@" "%40" | replace "[" "%5B" | replace "\\" "%5C" | replace "]" "%5D" | replace "^" "%5E" | replace "`" "%60" | replace "{" "%7B" | replace "|" "%7C" | replace "}" "%7D" -}}
+{{- end -}}
+
+{{- define "composio.shellQuote" -}}
+{{- printf "'%s'" (replace "'" "'\"'\"'" (. | toString)) -}}
+{{- end -}}
+
+{{- define "composio.toolkitRegistryDbUrl" -}}
+{{- $user := include "composio.uriComponent" .Values.toolkitRegistry.auth.username -}}
+{{- $database := include "composio.uriComponent" .Values.toolkitRegistry.database.name -}}
+{{- printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" $user .Release.Name (.Values.toolkitRegistry.service.port | int) $database -}}
+{{- end -}}
+
 {{- define "temporal-encryption-key" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}
 {{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
@@ -155,6 +169,40 @@ Selector labels
 {{- define "composio.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "composio.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Render a PodDisruptionBudget from a common shape.
+Expected keys:
+- root: chart root context
+- name: resource name
+- labels: metadata labels map
+- selectorLabels: selector labels map
+- pdb: pod disruption budget values
+*/}}
+{{- define "composio.podDisruptionBudget" -}}
+{{- $root := .root -}}
+{{- $pdb := .pdb | default (dict) -}}
+{{- if $pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .name }}
+  namespace: {{ $root.Release.Namespace }}
+  labels:
+    {{- toYaml .labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- toYaml .selectorLabels | nindent 6 }}
+  {{- if hasKey $pdb "minAvailable" }}
+  minAvailable: {{ get $pdb "minAvailable" }}
+  {{- else if hasKey $pdb "maxUnavailable" }}
+  maxUnavailable: {{ get $pdb "maxUnavailable" }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -240,8 +288,49 @@ Create a default fully qualified temporal name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "composio.temporal.fullname" -}}
+{{- if .Values.temporal.fullnameOverride -}}
+{{- .Values.temporal.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
 {{- $name := default "temporal" .Values.temporal.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Return the Temporal frontend address used by Composio services.
+*/}}
+{{- define "composio.temporal.frontendAddress" -}}
+{{- printf "%s-frontend:%v" (include "composio.temporal.fullname" .) (.Values.temporal.server.frontend.service.port | default 7233) -}}
+{{- end }}
+
+{{/*
+Wait until Temporal frontend and configured namespaces are available.
+*/}}
+{{- define "composio.temporalNamespaceWaitInitContainer" -}}
+- name: wait-for-temporal-namespaces
+  image: "{{ .Values.temporal.admintools.image.repository }}:{{ .Values.temporal.admintools.image.tag }}"
+  imagePullPolicy: {{ .Values.temporal.admintools.image.pullPolicy }}
+  command:
+    - /bin/sh
+    - -c
+    - |
+      until temporal operator namespace list >/dev/null 2>&1; do
+        echo "waiting for temporal frontend"
+        sleep 5
+      done
+      {{- range $namespace := .Values.temporal.server.config.namespaces.namespace }}
+      until temporal operator namespace describe -n {{ $namespace.name | quote }} >/dev/null 2>&1; do
+        echo "waiting for temporal namespace {{ $namespace.name }}"
+        sleep 5
+      done
+      {{- end }}
+  env:
+    - name: TEMPORAL_ADDRESS
+      value: {{ include "composio.temporal.frontendAddress" . | quote }}
 {{- end }}
 
 {{/*
@@ -313,7 +402,7 @@ composio: redis
     You cannot enable both external Redis and built-in Redis.
     Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
-{{- end -}} 
+{{- end -}}
 
 
 {{/*
@@ -324,6 +413,21 @@ Replicated configuration
 {{- printf "%s/proxy/%s/%s" .Values.replicated.registry .Values.replicated.app  .Values.global.registry.name -}}
 {{- else -}}
 {{- .Values.global.registry.name -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Flexible image reference supporting both imageName and repository:tag patterns
+Supports both fork pattern (pre-built imageName) and upstream pattern (composable registry/repository:tag)
+Usage: {{ include "composio.imageReference" (dict "image" .Values.apollo.image "context" .) }}
+Example 1 (imageName): .image.imageName = "us-central1-docker.pkg.dev/project/apollo:v1.0.0"
+Example 2 (composable): .image.repository = "composio-self-host/apollo", .image.tag = "r20260302_00"
+*/}}
+{{- define "composio.imageReference" -}}
+{{- if .image.imageName -}}
+  {{- .image.imageName -}}
+{{- else -}}
+  {{- printf "%s/%s:%s" (include "chart.registry" .context) .image.repository .image.tag -}}
 {{- end -}}
 {{- end -}}
 
@@ -373,7 +477,7 @@ imagePullSecrets:
 Parse SMTP connection string from secret
 Expects format: smtp://{username}:{password}@{host}:{port}
 Returns a map with keys: username, password, host, port
-Usage: 
+Usage:
   {{- $smtp := include "apollo.parseSmtpUrl" (dict "secretRef" .Values.apollo.smtp.secretRef "key" .Values.apollo.smtp.key "namespace" .Release.Namespace) | fromJson }}
   {{- $smtp.host }}
   {{- $smtp.port }}

@@ -1,0 +1,108 @@
+name: Nightly Onprem Trigger Tests
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-onprem-trigger-tests-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Automated nightly-release PRs call the harness from nighty-release.yml after PR creation.
+# This workflow remains for manually labeled nightly PRs.
+jobs:
+  resolve-version:
+    name: Resolve Replicated Release Version
+    if: >
+      github.event.pull_request.state == 'open' &&
+      (
+        (
+          github.event.action == 'labeled' &&
+          github.event.label.name == 'nightly-release'
+        ) ||
+        (
+          github.event.action != 'labeled' &&
+          contains(github.event.pull_request.labels.*.name, 'nightly-release')
+        )
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      helm_chart_version: ${{ steps.version.outputs.helm_chart_version }}
+    steps:
+      - name: Checkout PR manifest only
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            manifests/k8s-app.yaml
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve replicated release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(
+            awk '
+              /^  descriptor:/ { in_descriptor=1; next }
+              in_descriptor && /^    version:/ {
+                gsub(/"/, "", $2)
+                print $2
+                exit
+              }
+            ' manifests/k8s-app.yaml
+          )"
+
+          if [[ -z "${version}" ]]; then
+            echo "Unable to resolve .spec.descriptor.version from manifests/k8s-app.yaml" >&2
+            exit 1
+          fi
+
+          echo "helm_chart_version=${version}" >> "${GITHUB_OUTPUT}"
+
+  onprem-trigger-tests:
+    name: Onprem Trigger Tests
+    if: >
+      github.event.pull_request.state == 'open' &&
+      (
+        (
+          github.event.action == 'labeled' &&
+          github.event.label.name == 'nightly'
+        ) ||
+        (
+          github.event.action != 'labeled' &&
+          contains(github.event.pull_request.labels.*.name, 'nightly')
+        )
+      )
+    needs:
+      - resolve-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout harness trigger script
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts/run-onprem-test-harness.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Run onprem test harness
+        shell: bash
+        timeout-minutes: 360
+        env:
+          GH_TOKEN: ${{ secrets.ONPREM_TESTBED_WORKFLOW_DISPATCH_TOKEN }}
+          HELM_CHART_VERSION: ${{ needs.resolve-version.outputs.helm_chart_version }}
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1"}'
+        run: bash .github/scripts/run-onprem-test-harness.sh

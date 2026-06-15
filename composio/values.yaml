@@ -7,7 +7,6 @@ features:
   # -- Enable Temporal, auth token refresh, and triggers
   # When true, deploys Temporal and enables auth refresh + trigger workers in thermos
   temporal: false
-
 # Composio Application Secrets
 secret:
   name: "composio-composio-secrets"
@@ -17,36 +16,37 @@ namespace:
   create: false
   # -- Name of the namespace where Composio services will be deployed (defaults to "composio" if not specified)
   name: "composio"
-
 # replicated based installation. This requires user to authenticate with replicated to download our helm chart. More info on replicated dashboard
-replicated: 
+replicated:
   enabled: true
   registry: artifacts.composio.io # Change for custom domain
   app: "composio-rodent"
-
 # Global configuration applied across all services
 global:
   # -- Environment name (e.g., development, staging, production)
   environment: development
   # -- Domain name for the deployment
   domain: localhost
+  # -- Disable preflight checks that depend on Kubernetes Secrets.
+  disableK8SecretCheck: false
   # Container registry configuration
-  registry: 
+  registry:
     # -- ECR registry URL
     name: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
   # -- Image pull secrets for private registries
   imagePullSecrets:
     - name: ecr-secret
-
-databaseMigration: 
+databaseMigration:
   image: "postgres:15-alpine"
-  enabled: true
+  enabled: false
   host: "<DATABASE_HOST>"
   port: "<DATABASE_PORT>"
   user: "postgres"
+  secretsDir: "/etc/secrets/postgres-init"
+  # -- Additional init containers for the postgres init job. Mount `postgres-init-secrets` to populate `.Values.databaseMigration.secretsDir`.
+  additionalInitContainers: []
   password:
     key: "password"
-
 # External secrets configuration. Pass these during helm install using --set flags
 externalSecrets:
   # ECR authentication credentials
@@ -56,8 +56,7 @@ externalSecrets:
     # -- ECR server URL
     server: "008971668139.dkr.ecr.us-east-1.amazonaws.com"
     # -- ECR username (typically "AWS")
-    username: "AWS" 
-
+    username: "AWS"
 # External Redis configuration (recommended for production)
 externalRedis:
   # -- Enable external Redis. Set to true to use an external Redis instance
@@ -66,23 +65,57 @@ externalRedis:
   secretRef: "composio-composio-secrets"
   # -- Key name in the secret containing the Redis URL
   key: "REDIS_URL"
-    
+  # Redis Sentinel configuration for external HA Redis deployments
+  sentinel:
+    # -- Enable Apollo Redis Sentinel mode for external Redis
+    enabled: false
+    # -- Comma-separated Sentinel host[:port] entries
+    hosts: ""
+    # -- Sentinel master set name
+    masterName: ""
+    # -- Enable TLS for Sentinel discovery + Redis master connections
+    tlsEnabled: false
+    # -- Optional Redis DB index to use in Sentinel mode
+    db: ""
+    # -- Optional Secret containing Sentinel auth keys (defaults to externalRedis.secretRef)
+    secretRef: ""
+    # -- Optional secret key for REDIS_USERNAME
+    usernameKey: ""
+    # -- Optional secret key for REDIS_PASSWORD
+    passwordKey: ""
+    # -- Optional secret key for REDIS_SENTINEL_PASSWORD
+    sentinelPasswordKey: ""
 # Internal Redis configuration (embedded Redis instance)
 redis:
   image:
     registry: docker.io
     repository: redis
-    tag: latest 
+    tag: latest
   # -- Enable internal Redis. Set to false when using externalRedis
   enabled: true
   # Redis authentication configuration
   auth:
     # -- Enable Redis authentication
     enabled: true
+    # -- Enable password authentication on bundled Redis Sentinels too
+    sentinel: true
     # -- Redis password
     password: ""
   # -- Redis architecture (standalone or replication)
   architecture: standalone
+  # Optional Bitnami Redis Sentinel settings for HA failover support in Apollo.
+  sentinel:
+    # -- Enable bundled Redis Sentinel and switch Apollo to Sentinel mode
+    enabled: false
+    # -- Redis Sentinel master set name
+    masterSet: "mymaster"
+    service:
+      ports:
+        # -- Redis Sentinel service port
+        sentinel: 26379
+  tls:
+    # -- Enable TLS for bundled Redis connections
+    enabled: false
   # Redis master node configuration
   master:
     # Persistence configuration
@@ -110,41 +143,54 @@ redis:
     sysctl:
       # -- Disable sysctl for GKE Autopilot
       enabled: false
-
 # OpenAI API configuration (required for Frontend, Mercury and Apollo)
 openAI:
   # -- Enable OpenAI integration
   enabled: false
   # -- Secret name containing OpenAI API key
-  secretRef: "composio-composio-secrets" 
+  secretRef: "composio-composio-secrets"
   # -- Key name in the secret (optional when OPENAI key is not required)
   key: "OPENAI_API_KEY"
   # -- Base URL for OpenAI-compatible API endpoints
   baseUrl: "https://api.openai.com/v1"
-
 # Apollo service configuration (main API service)
 apollo:
   # -- Number of Apollo pod replicas
   replicaCount: 2
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Apollo.
+    enabled: false
+    # -- Maximum number of Apollo pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Apollo container image configuration
   image:
-    # -- Apollo image repository
+    # -- Apollo image repository (used when imageName is not set)
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260310_00"
+    tag: "r20260501_01"
     # -- Image pull policy
     pullPolicy: Always
-
+    imageName: ""
+  # -- Directory exposed to Apollo containers via APOLLO_SECRET_DIR.
+  secretsDir: "/etc/secrets/apollo"
+  # -- Additional init containers for Apollo. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
+  additionalInitContainers: []
+  # -- Additional volume mounts for the main container
+  volumeMounts: []
+  # -- Additional volumes for the pod
+  volumes: []
   serviceAccount:
-    # -- Enable service account creation
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
     enabled: true
-    # -- Name of the service account to create or use
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
     name: "composio-apollo"
     # -- Annotations to add to the service account
     annotations: {}
     # -- Labels to add to the service account
     labels: {}
-
   # Ingress configuration for Apollo
   ingress:
     # -- Enable ingress
@@ -157,20 +203,22 @@ apollo:
     host: "abc.example.com"
     # -- TLS configuration
     tls: []
-
   # Apollo database initialization container
   dbInit:
     # -- Enable database initialization
     enabled: true
     # Database init container image configuration
     image:
-      # -- Database init image repository
+      # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260310_00"
+      tag: "r20260501_01"
       # -- Image pull policy
       pullPolicy: Always
-  
+      # -- Full image name (optional, overrides repository:tag if set)
+      imageName: ""
+    # -- Additional init containers for Apollo DB init. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.
+    additionalInitContainers: []
   # Apollo service configuration
   service:
     # -- Service type (ClusterIP, NodePort, LoadBalancer)
@@ -179,7 +227,6 @@ apollo:
     port: 9900
     # -- NodePort for external access (only applicable when type is NodePort)
     nodePort: 30900
-  
   # Resource requests and limits for Apollo pods
   resources:
     requests:
@@ -192,14 +239,12 @@ apollo:
       memory: "6Gi"
       # -- CPU limit for Apollo
       cpu: "1"
-  
   # Signup configuration
   signup:
     # -- Enable invite-only signup mode (requires invitation to register)
     inviteOnly: false
     # -- Comma-separated list of allowed email domains for signup (e.g., "composio.dev,usefulagents.com")
     allowedDomains: ""
-
   # Authentication configuration
   auth:
     # -- Disable specific Apollo auth modes. Supported values: jwt, api_key, admin_token, cookie, org_api_key
@@ -216,7 +261,6 @@ apollo:
         - RS256
       # -- Allowed clock skew in seconds for JWT validation
       clockSkewSeconds: 60
-
   # SMTP configuration for email notifications
   smtp:
     # -- Enable SMTP
@@ -226,26 +270,25 @@ apollo:
     # -- Secret reference containing SMTP connection string
     secretRef: "composio-composio-secrets"
     # -- Key name in the secret
-    key: "SMTP_CONNECTION_STRING"   
-  
+    key: "SMTP_CONNECTION_STRING"
   # Object storage configuration (S3 or Azure Blob Storage)
   objectStorage:
     # -- Storage backend type (s3 or azure_blob_storage)
     backend: ""
     # S3 access key configuration
-    accessKey: 
+    accessKey:
       # -- Secret name containing S3 access key
       secretName: "s3-cred"
       # -- Key name in the secret
       key: "S3_ACCESS_KEY_ID"
     # S3 secret key configuration
-    secretKey: 
+    secretKey:
       # -- Secret name containing S3 secret key
       secretName: "s3-cred"
       # -- Key name in the secret
       key: "S3_SECRET_ACCESS_KEY"
     # Azure Blob Storage connection string configuration
-    azureConnectionString: 
+    azureConnectionString:
       # -- Secret name containing Azure connection string
       secretName: "azure-cred"
       # -- Key name in the secret
@@ -256,7 +299,6 @@ apollo:
       temp: "composio-temp"
       # -- Bucket/container for permanent files
       permanent: "composio-permanent"
-  
   # Horizontal Pod Autoscaler configuration
   autoscaling:
     # -- Enable HPA
@@ -283,19 +325,18 @@ apollo:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
-
   # Search System Configuration
   search:
     # -- Enable search system
     enabled: false
     # Vector Store Provider (when unified disabled)
-    vectorStoreProvider: "weaviate"  # Options: "turbopuffer", "weaviate"
+    vectorStoreProvider: "weaviate" # Options: "turbopuffer", "weaviate"
     # Embeddings Configuration
     embeddings:
       # -- Embeddings provider (openai, cohere, voyage)
       provider: "openai"
       # -- Embeddings model name
-      model: "text-embedding-3-large"  # Default OpenAI model
+      model: "text-embedding-3-large" # Default OpenAI model
       # -- Embedding vector dimensions
       dimensions: 1024
     # Unified Search Configuration
@@ -303,13 +344,13 @@ apollo:
       # -- Enable unified search
       enabled: true
       # -- Vector store provider for unified search
-      vectorStoreProvider: "weaviate"  # Options: "turbopuffer", "weaviate"
+      vectorStoreProvider: "weaviate" # Options: "turbopuffer", "weaviate"
       # Unified embeddings configuration
       embeddings:
         # -- Embeddings provider for unified search
-        provider: "openai"  # Options: "openai", "cohere", "voyage"
+        provider: "openai" # Options: "openai", "cohere", "voyage"
         # -- Embeddings model for unified search
-        model: "text-embedding-3-large"  # Default OpenAI model
+        model: "text-embedding-3-large" # Default OpenAI model
         # -- Embedding dimensions for unified search
         dimensions: 1024
       # -- Index/collection name for tool search
@@ -325,56 +366,84 @@ apollo:
     # Reranker Configuration
     reranker:
       # -- Reranker model (format: "provider:model" or just "gemini")
-      model: "openai:gpt-5.2"  # Format: "provider:model" (e.g., "groq:openai/gpt-oss-120b", "openai:gpt-5.2", "gemini:gemini-3-flash-preview")
+      model: "openai:gpt-5.2" # Format: "provider:model" (e.g., "groq:openai/gpt-oss-120b", "openai:gpt-5.2", "gemini:gemini-3-flash-preview")
       # -- Custom base URL for OpenAI-compatible reranker APIs (optional)
       openaiCompatBaseUrl: "https://api.openai.com/v1"
-
 # Thermos service configuration (workflow execution service)
 thermos:
   # -- Number of Thermos pod replicas
-  replicaCount: 2
+  replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Thermos.
+    enabled: false
+    # -- Maximum number of Thermos pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Thermos container image configuration
   image:
-    # -- Thermos image repository
+    # -- Thermos image repository (used when imageName is not set)
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260310_00"
+    tag: "r20260501_01"
     # -- Image pull policy
     pullPolicy: Always
-
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+  # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
+  secretsDir: "/etc/secrets/thermos"
+  # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
+  additionalInitContainers: []
+  # -- Additional volume mounts for the main container
+  volumeMounts: []
+  # -- Additional volumes for the pod
+  volumes: []
+  serviceAccount:
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
+    enabled: false
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
+    name: "composio-thermos"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
   # Thermos database initialization container
   dbInit:
     # -- Enable database initialization
     enabled: true
     # Database init container image configuration
     image:
-      # -- Database init image repository
+      # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260310_00"
+      tag: "r20260501_01"
       # -- Image pull policy
       pullPolicy: Always
-  
+      # -- Full image name (optional, overrides repository:tag if set)
+      imageName: ""
+    # -- Additional init containers for Thermos DB init. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
+    additionalInitContainers: []
+    # -- Additional environment variables for db init
+    env: []
   # Thermos service configuration
   service:
     # -- Service type
     type: ClusterIP
     # -- Service port
     port: 8180
-  
   # Resource requests and limits for Thermos pods
   resources:
     requests:
       # -- Memory request for Thermos
-      memory: "4Gi"
+      memory: "2Gi"
       # -- CPU request for Thermos
-      cpu: "2"
+      cpu: "1500m"
     limits:
       # -- Memory limit for Thermos
-      memory: "5Gi"
+      memory: "4Gi"
       # -- CPU limit for Thermos
-      cpu: "2"
-  
+      cpu: "3"
   # Horizontal Pod Autoscaler configuration for Thermos
   autoscaling:
     # -- Enable HPA
@@ -401,7 +470,90 @@ thermos:
     scaleUpPeriodSeconds: 15
     # -- Number of pods to scale up at once
     scaleUpPods: 4
-
+# Toolkit registry configuration (read-only Postgres with toolkit/tool/trigger data)
+toolkitRegistry:
+  # -- Enable the standalone toolkit registry Postgres deployment used by Thermos for toolkit/tool/trigger reads.
+  # Enabled by default for on-prem installs; disable only if you explicitly want Thermos to fall back to the primary registry DB.
+  enabled: true
+  # -- Number of toolkit registry pod replicas
+  replicaCount: 2
+  image:
+    # -- Toolkit registry image repository (used when imageName is not set)
+    repository: composio-self-host/thermos-toolkit-registry
+    # -- Toolkit registry image tag
+    tag: "r20260501_01"
+    # -- Image pull policy
+    pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+  service:
+    # -- Toolkit registry service type
+    type: ClusterIP
+    # -- Toolkit registry service port
+    port: 5432
+  database:
+    # -- Toolkit registry database name
+    name: thermos
+  auth:
+    # -- Read-only toolkit registry username baked into the image
+    username: registry_reader
+    # -- Read-only toolkit registry password baked into the image
+    password: registry_reader
+  # -- Additional init containers for toolkit registry pods
+  initContainers: []
+  # -- Additional environment variables for toolkit registry pods
+  env: []
+  # -- Node selector for toolkit registry pods
+  nodeSelector: {}
+  # -- Affinity rules for toolkit registry pods
+  affinity: {}
+  # -- Tolerations for toolkit registry pods
+  tolerations: []
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+# Thermos misc-workers configuration (runs only THERMOS_MODE=miscellaneous_worker).
+# Disabled by default.
+thermosMiscWorkers:
+  enabled: false
+  replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Thermos misc workers.
+    enabled: false
+    # -- Maximum number of Thermos misc worker pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
+  # -- Toggle Temporal auto-recovery logic in misc workers.
+  # Controls ENABLE_TEMPORAL_AUTO_RECOVERY env var.
+  temporalAutoRecoveryEnabled: true
+  image:
+    # Same image as Thermos; behavior is controlled by THERMOS_MODE env var.
+    repository: composio-self-host/thermos
+    tag: "r20260501_01"
+    pullPolicy: Always
+    imageName: ""
+  # Reuse Thermos secrets dir by default.
+  secretsDir: "/etc/secrets/thermos"
+  additionalInitContainers: []
+  volumeMounts: []
+  volumes: []
+  podSecurityContext: {}
+  containerSecurityContext: {}
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  # Extra env vars appended to the container's env list (same shape as thermos.env).
+  env: []
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "200m"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
 # Database initialization job configuration
 dbInit:
   # -- Admin email for initial setup
@@ -414,12 +566,10 @@ dbInit:
     activeDeadlineSeconds: 2400
     # -- Job restart policy
     restartPolicy: OnFailure
-
 # Temporal workflow engine configuration
 temporal:
   # -- Override the full name of Temporal resources
   fullnameOverride: "temporal-stack"
-
   # Temporal server configuration
   server:
     # -- Enable Temporal server
@@ -428,12 +578,10 @@ temporal:
     livenessProbe:
       # -- Enable liveness probe
       enabled: false
-
     # Readiness probe configuration
     readinessProbe:
       # -- Enable readiness probe
       enabled: false
-
     # -- Number of Temporal server replicas
     replicaCount: 2
     # Temporal server image configuration
@@ -444,19 +592,16 @@ temporal:
       tag: 1.28.0
       # -- Image pull policy
       pullPolicy: IfNotPresent
-    
     # Temporal server configuration
     config:
       # -- Log level (debug, info, warn, error)
       logLevel: "info"
       # -- Number of history shards (affects scalability)
       numHistoryShards: 512
-      
       # Persistence configuration for Temporal data
       persistence:
         # -- Default persistence store
         defaultStore: default
-        
         # Main Temporal database configuration
         default:
           # -- Database driver
@@ -481,11 +626,10 @@ temporal:
             maxIdleConns: 20
             # -- Maximum connection lifetime
             maxConnLifetime: "1h"
-        
         # Visibility database configuration (for advanced queries)
         visibility:
           # -- Database driver
-          driver: "sql" 
+          driver: "sql"
           # SQL database configuration
           sql:
             # -- SQL driver name
@@ -506,7 +650,6 @@ temporal:
             maxIdleConns: 20
             # -- Maximum connection lifetime
             maxConnLifetime: "1h"
-      
       # Temporal namespace configuration
       namespaces:
         # -- Enable namespace creation
@@ -515,23 +658,18 @@ temporal:
         namespace:
           - name: default
             retention: 7d
-          - name: batched-polling
+          - name: timer-shards
             retention: 10d
-          - name: webhook
-            retention: 10d
-
     # Temporal frontend service configuration
     frontend:
       # Liveness probe configuration
       livenessProbe:
         # -- Enable liveness probe
         enabled: false
-
       # Readiness probe configuration
       readinessProbe:
         # -- Enable readiness probe
         enabled: false
-      
       # Frontend service configuration
       service:
         # -- Service type
@@ -542,9 +680,10 @@ temporal:
         membershipPort: 6933
         # -- HTTP port
         httpPort: 7243
-
   # Temporal database schema setup
   schema:
+    # -- Use Helm hooks to run schema setup before server pods start. Set false for Flux, Rancher, or Terraform.
+    useHelmHooks: true
     # Database creation configuration
     createDatabase:
       # -- Enable database creation
@@ -561,7 +700,8 @@ temporal:
       enabled: true
       # -- Maximum retries for schema updates
       backoffLimit: 100
-
+    # -- Annotations to add to the Temporal schema setup Job
+    jobAnnotations: {}
   # Temporal Web UI configuration
   web:
     # -- Enable Temporal Web UI
@@ -580,31 +720,26 @@ temporal:
     livenessProbe:
       # -- Enable liveness probe
       enabled: false
-
     # Readiness probe configuration
     readinessProbe:
       # -- Enable readiness probe
       enabled: false
-    
     # Web UI service configuration
     service:
       # -- Service type
       type: ClusterIP
       # -- Web UI HTTP port
       port: 8080
-
   # Temporal admin tools configuration
   admintools:
     # Liveness probe configuration
     livenessProbe:
       # -- Enable liveness probe
       enabled: false
-
     # Readiness probe configuration
     readinessProbe:
       # -- Enable readiness probe
       enabled: false
-
     # -- Enable admin tools
     enabled: false
     # Admin tools image configuration
@@ -615,7 +750,6 @@ temporal:
       tag: 1.28.0-tctl-1.18.2-cli-1.3.0
       # -- Image pull policy
       pullPolicy: IfNotPresent
-
   # Cassandra configuration (disabled - using PostgreSQL)
   cassandra:
     # -- Enable Cassandra
@@ -624,18 +758,15 @@ temporal:
       repo: cassandra
       tag: 3.11.3
       pullPolicy: IfNotPresent
-  
   # MySQL configuration (disabled - using PostgreSQL)
   mysql:
     # -- Enable MySQL
     enabled: false
-  
   # Elasticsearch configuration (disabled)
   elasticsearch:
     # -- Enable Elasticsearch
     enabled: false
     imageTag: 7.17.3
-    
   # Prometheus configuration (disabled)
   prometheus:
     # -- Enable Prometheus
@@ -643,12 +774,10 @@ temporal:
     nodeExporter:
       # -- Enable node exporter
       enabled: false
-  
   # Grafana configuration (disabled)
   grafana:
     # -- Enable Grafana
     enabled: false
-
 # Prometheus monitoring configuration
 prometheus:
   # -- Enable Prometheus
@@ -659,19 +788,16 @@ prometheus:
     enabled: false
   # -- Image pull secrets
   imagePullSecrets: []
-
 # Grafana dashboard configuration
 grafana:
   # -- Enable Grafana
   enabled: false
   # -- Number of Grafana replicas
   replicas: 1
-
 # Test framework configuration
 testFramework:
   # -- Enable test framework
   enabled: false
-
 # RBAC configuration
 rbac:
   # -- Create RBAC resources
@@ -680,22 +806,18 @@ rbac:
   pspEnabled: false
   # -- Use namespaced RBAC
   namespaced: true
-
 # Elasticsearch configuration (disabled)
 elasticsearch:
   # -- Enable Elasticsearch
   enabled: false
-
 # Cassandra configuration (disabled)
 cassandra:
   # -- Enable Cassandra
   enabled: false
-
 # Global ingress configuration
 ingress:
   # -- Enable ingress
   enabled: false
-
 # Service account configuration
 serviceAccount:
   # -- Create service account
@@ -704,7 +826,6 @@ serviceAccount:
   annotations: {}
   # -- Service account name (generated if not specified)
   name: ""
-
 # OpenTelemetry observability configuration
 otel:
   # -- Enable OpenTelemetry
@@ -742,7 +863,6 @@ otel:
     enabled: false
   # -- Environment name for telemetry
   environment: "development"
-  
   # Service-specific OpenTelemetry configurations
   apollo:
     # -- Apollo service name
@@ -765,29 +885,35 @@ otel:
     serviceVersion: "1.0.0"
     # -- HTTP endpoint for metrics
     metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
-  frontend:
-    # -- Frontend service name
-    serviceName: "frontend"
-    # -- Frontend service version
-    serviceVersion: "1.0.0"
-    # -- HTTP endpoint for metrics
-    metricsEndpoint: "http://composio-otel-collector:4318/v1/metrics"
-  
   # OpenTelemetry Collector configuration
   collector:
     # -- Enable OTEL collector
     enabled: true
     # -- Number of collector replicas
     replicaCount: 1
+    podDisruptionBudget:
+      # -- Enable a PodDisruptionBudget for the OTEL collector.
+      enabled: false
+      # -- Maximum number of collector pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+      maxUnavailable: 1
     # Collector image configuration
     image:
       # -- Collector image repository
       repository: otel/opentelemetry-collector-contrib
       # -- Collector image tag
       tag: "0.91.0"
+      # -- Full image name (overrides repository:tag when set)
+      imageName: ""
       # -- Image pull policy
       pullPolicy: IfNotPresent
-    
+    # -- Existing service account name (used when googleCloud.serviceAccount.create is false)
+    serviceAccountName: ""
+    # -- Node selector for collector pods
+    nodeSelector: {}
+    # -- Affinity rules for collector pods
+    affinity: {}
+    # -- Tolerations for collector pods
+    tolerations: []
     # Collector service configuration
     service:
       # -- Service type
@@ -822,7 +948,6 @@ otel:
           targetPort: 8889
           # -- Prometheus protocol
           protocol: TCP
-    
     # Resource requests and limits for collector
     resources:
       requests:
@@ -835,7 +960,6 @@ otel:
         memory: "1Gi"
         # -- CPU limit for collector
         cpu: "1000m"
-    
     # Google Cloud configuration for OTEL collector
     googleCloud:
       # -- Enable Google Cloud integration
@@ -851,7 +975,6 @@ otel:
         # -- Service account annotations (for Workload Identity)
         annotations:
           iam.gke.io/gcp-service-account: "otel-collector@self-host-kubernetes.iam.gserviceaccount.com"
-    
     # Collector pipeline configuration
     config:
       # Exporters configuration
@@ -872,7 +995,6 @@ otel:
             # -- Custom metrics prefix
             prefix: "custom.googleapis.com/composio/"
           trace: {}
-      
       # Processors for data transformation
       processors:
         # Batch processor configuration
@@ -887,7 +1009,6 @@ otel:
           limit_mib: 512
           # -- Check interval
           check_interval: 1s
-      
       # Receivers to collect telemetry data
       receivers:
         # OTLP receiver configuration
@@ -905,7 +1026,6 @@ otel:
             grpc:
               # -- Jaeger gRPC endpoint
               endpoint: "0.0.0.0:14250"
-      
       # Extensions for additional functionality
       extensions:
         health_check:
@@ -917,7 +1037,6 @@ otel:
         zpages:
           # -- Zpages endpoint
           endpoint: "0.0.0.0:55679"
-      
       # Service pipelines configuration
       service:
         # -- Extensions to enable
@@ -938,7 +1057,6 @@ otel:
             processors: [memory_limiter, batch]
             # -- Metrics exporters
             exporters: [debug, prometheus]
-
 # AWS configuration
 aws:
   # -- AWS region
@@ -958,7 +1076,6 @@ aws:
     endpoint: "https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1"
     # -- AWS Bedrock secret name
     secretName: ""
-    
 # Mercury service configuration (OpenAPI tool execution service)
 mercury:
   # -- Enable Mercury service
@@ -967,32 +1084,59 @@ mercury:
   useKnative: false
   # -- Number of Mercury pod replicas (when not using Knative)
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Mercury deployment mode.
+    enabled: false
+    # -- Maximum number of Mercury pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Mercury container image configuration
   image:
-    # -- Mercury image repository
+    # -- Mercury image repository (used when imageName is not set)
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260310_00"
+    tag: "r20260501_01"
     # -- Image pull policy
     pullPolicy: Always
-
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+  # -- Directory exposed to Mercury containers via MERCURY_SECRETS_DIR.
+  secretsDir: "/etc/secrets/mercury"
+  # -- Mercury file storage backend. Valid values are "s3" or "base64". Renders FILE_BACKEND.
+  fileStorage: "s3"
+  # Mercury module bundle signature verification configuration.
+  bundleSignatureVerification:
+    # -- Enable strict runtime verification of signed module bundles.
+    enabled: true
+    # -- Base64-encoded public verification key for module bundle signatures. This is not a signing key.
+    publicKeyBase64: "/avANrHX/zfDqUOu3U2URZsWy7mJrkbidGs4Wvh8rFA="
+  # -- Additional init containers for Mercury. Mount `mercury-secrets` to populate `.Values.mercury.secretsDir`.
+  additionalInitContainers: []
+  serviceAccount:
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
+    enabled: false
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
+    name: "composio-mercury"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
   # Liveness probe configuration
   livenessProbe:
     # -- Enable liveness probe
     enabled: false
-
   # Readiness probe configuration
   readinessProbe:
     # -- Enable readiness probe
     enabled: false
-
   # Mercury service configuration
   service:
     # -- Service type
     type: ClusterIP
     # -- Service port
     port: 8080
-  
   # Knative autoscaling configuration
   autoscaling:
     # -- Minimum number of replicas
@@ -1001,12 +1145,10 @@ mercury:
     maxScale: 10
     # -- Target metric value for autoscaling
     target: 80
-  
   # -- Container concurrency (0 = unlimited)
   containerConcurrency: 0
   # -- Request timeout in seconds
   timeoutSeconds: 300
-  
   # Resource requests and limits for Mercury pods
   resources:
     requests:
@@ -1019,7 +1161,6 @@ mercury:
       memory: "4Gi"
       # -- CPU limit for Mercury
       cpu: "2"
-      
   # Knative-specific configuration
   knative:
     # -- Minimum number of replicas for Knative
@@ -1028,7 +1169,6 @@ mercury:
     replicas: 2
     # -- Maximum number of replicas for Knative
     maxReplicas: 5
-
   # Security context for Mercury container
   securityContext:
     # -- Allow privilege escalation
@@ -1041,12 +1181,11 @@ mercury:
     capabilities:
       # -- Drop all capabilities
       drop:
-      - ALL
+        - ALL
     # Seccomp profile
     seccompProfile:
       # -- Seccomp profile type
       type: RuntimeDefault
-  
   # Ingress configuration for Mercury
   ingress:
     # -- Enable ingress
@@ -1059,93 +1198,61 @@ mercury:
     host: ""
     # -- TLS configuration
     tls: []
-  
+  # -- Node selector for Mercury pods
+  nodeSelector: {}
+  # -- Tolerations for Mercury pods
+  tolerations: []
+  # -- Additional environment variables for Mercury (Knative service)
+  env: []
+  # -- Custom command override
+  command: []
+  # -- Custom args override
+  args: []
   # -- Additional volume mounts
   volumeMounts: []
   # -- Additional volumes
   volumes: []
-  
   # AWS Lambda configuration (alternative to Kubernetes deployment)
   awsLambda:
     # -- Enable AWS Lambda deployment
     enabled: false
     # Secret reference for Lambda credentials
-    secretRef: 
+    secretRef:
       # -- Secret name for Lambda credentials
       name: "lambda-cred"
-
-# Frontend service configuration (web UI)
-frontend:
-  # -- Enable frontend service
-  enabled: false
-  # -- Number of frontend pod replicas
-  replicaCount: 1
-  # Frontend container image configuration
-  image:
-    # -- Frontend image repository
-    repository: composio-self-host/frontend
-    # -- Frontend image tag
-    tag: "r20260310_00"
-    # -- Image pull policy
-    pullPolicy: Always
-  # Frontend service configuration
-  service:
-    # -- Service type
-    type: ClusterIP
-    # -- Service port
-    port: 3000
-  # Resource requests and limits for frontend pods
-  resources:
-    requests:
-      # -- Memory request for frontend
-      memory: "2Gi"
-      # -- CPU request for frontend
-      cpu: "1"
-    limits:
-      # -- Memory limit for frontend
-      memory: "3Gi"
-      # -- CPU limit for frontend
-      cpu: "1"
-  # Frontend environment variables
-  env:
-    # -- Server port
-    PORT: "3000"
-    # -- Node environment
-    NODE_ENV: "production"
-    # -- Override backend URL (defaults to Apollo service URL)
-    OVERRIDE_BACKEND_URL: ""
-    # -- Disable social login for self-hosted deployments
-    NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: "true"
-    # -- Enable self-hosted mode
-    NEXT_PUBLIC_SELF_HOSTED: "true"
-  
-  # Ingress configuration for frontend
-  ingress:
-    # -- Enable ingress
-    enabled: false
-    # -- Ingress class name
-    className: ""
-    # -- Ingress annotations
-    annotations: {}
-    # -- Hostname for frontend ingress
-    host: ""
-    # -- TLS configuration
-    tls: []
-
 # Weaviate service configuration (vector database for search)
 weaviate:
   # -- Enable Weaviate service
   enabled: true
   # -- Number of Weaviate pod replicas
   replicaCount: 1
+  podDisruptionBudget:
+    # -- Enable a PodDisruptionBudget for Weaviate.
+    enabled: false
+    # -- Maximum number of Weaviate pods that can be unavailable during voluntary disruptions. Only applied when enabled is true.
+    maxUnavailable: 1
   # Weaviate container image configuration
   image:
-    # -- Weaviate image repository
+    # -- Weaviate image repository (used when imageName is not set)
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260226_01"
+    tag: "r20260501_01"
     # -- Image pull policy
     pullPolicy: Always
+    # -- Full image name (optional, overrides repository:tag if set)
+    imageName: ""
+  serviceAccount:
+    # -- Whether the deployment should use a service account. When false, no serviceAccountName is set on the pod.
+    enabled: false
+    # -- Whether the chart should create the service account. Set to false if the service account already exists
+    # -- (e.g. managed externally via IAM or another chart). Requires enabled: true to take effect.
+    create: true
+    # -- Name of the service account. Used for both creation (when create: true) and reference in the pod spec.
+    name: "composio-weaviate"
+    # -- Annotations to add to the service account
+    annotations: {}
+    # -- Labels to add to the service account
+    labels: {}
   # Weaviate service configuration
   service:
     # -- Service type
@@ -1212,3 +1319,8 @@ weaviate:
   # securityContext: {}
   # -- Additional environment variables
   # env: []
+
+  # -- Additional volume mounts
+  volumeMounts: []
+  # -- Additional volumes
+  volumes: []

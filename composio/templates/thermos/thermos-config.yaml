@@ -5,6 +5,7 @@ metadata:
 data:
   PORT: "8180"
   HOST: "0.0.0.0"
+  THERMOS_MODE: "all"
   APOLLO_ENDPOINT: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   COMPOSIO_ENV: "production"
   LOG_ENCODING: "json"
@@ -14,10 +15,11 @@ data:
   REGISTRY_LOOKUP_CACHE_DIR: "/tmp/.lookup"
   SELF_HOSTED: "true"
   {{- if eq (include "composio.temporalEnabled" .) "true" }}
-  TEMPORAL_CLOUD_HOST_PORT: "temporal-stack-frontend:7233"
+  TEMPORAL_CLOUD_HOST_PORT: {{ printf "%s-frontend:7233" (.Values.temporal.fullnameOverride | default "temporal-stack") | quote }}
   TEMPORAL_CLOUD_NAMESPACE: "default"
   TEMPORAL_WEBHOOK_NAMESPACE: "webhook"
   TEMPORAL_BATCHED_POLLING_NAMESPACE: "batched-polling"
+  TEMPORAL_TIMER_SHARDS_NAMESPACE: "timer-shards"
   DISABLE_TEMPORAL_TLS: "true"
   {{- else }}
   DISABLE_TEMPORAL: "true"

@@ -74,24 +74,3 @@ stringData:
                   message: "Cluster does not have enough allocatable memory for Apollo service (requires {{ .Values.mercury.resources.requests.memory | default "2Gi" }})."
               - pass:
                   message: "Cluster has sufficient memory for Mercury service."
-        {{- if .Values.frontend.enabled }} 
-        # --- Frontend Service Resource Checks ---
-        - nodeResources:
-            checkName: "Frontend CPU Request - Cluster Capacity"
-            outcomes:
-              - fail:
-                  when: "sum(cpuAllocatable) < {{ .Values.frontend.resources.requests.cpu | default "1" }}"
-                  message: "Cluster does not have enough allocatable CPU for Frontend service (requires {{ .Values.frontend.resources.requests.cpu | default "1VCPU" }})."
-              - pass:
-                  message: "Cluster has sufficient CPU for Frontend service."
-
-        - nodeResources:
-            checkName: "Frontend Memory Request - Cluster Capacity"
-            outcomes:
-              - fail:
-                  when: "sum(memoryAllocatable) < {{ .Values.frontend.resources.requests.memory | default "2Gi" }}"
-                  message: "Cluster does not have enough allocatable memory for Frontend service (requires {{ .Values.frontend.resources.requests.memory | default "2Gi" }})."
-              - pass:
-                  message: "Cluster has sufficient memory for Frontend service."
-        {{- end }}
-

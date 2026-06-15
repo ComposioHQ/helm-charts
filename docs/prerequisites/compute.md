@@ -172,31 +172,6 @@ mercury:
       cpu: "2"
 ```
 
----
-
-### Frontend Application
-
-The user-facing frontend application.
-
-**Resource Configuration:**
-- **CPU Request**: 1 core
-- **CPU Limit**: 1 core
-- **Memory Request**: 2 GiB
-- **Memory Limit**: 3 GiB
-
-```yaml
-frontend:
-  resources:
-    requests:
-      memory: "2Gi"
-      cpu: "1"
-    limits:
-      memory: "3Gi"
-      cpu: "1"
-```
-
----
-
 ### Weaviate
 
 **Resource Configuration:**

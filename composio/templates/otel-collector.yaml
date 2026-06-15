@@ -27,16 +27,16 @@ data:
   otel-collector-config.yaml: |
     receivers:
       {{- toYaml .Values.otel.collector.config.receivers | nindent 6 }}
-    
+
     processors:
       {{- toYaml .Values.otel.collector.config.processors | nindent 6 }}
-    
+
     exporters:
       {{- toYaml .Values.otel.collector.config.exporters | nindent 6 }}
-    
+
     extensions:
       {{- toYaml .Values.otel.collector.config.extensions | nindent 6 }}
-    
+
     service:
       {{- toYaml .Values.otel.collector.config.service | nindent 6 }}
 ---
@@ -73,14 +73,28 @@ spec:
       {{- end }}
       {{- if .Values.otel.collector.googleCloud.serviceAccount.create }}
       serviceAccountName: {{ .Release.Name }}-{{ .Values.otel.collector.googleCloud.serviceAccount.name }}
+      {{- else if .Values.otel.collector.serviceAccountName }}
+      serviceAccountName: {{ .Values.otel.collector.serviceAccountName }}
       {{- end }}
       {{- with .Values.otel.collector.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.otel.collector.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.otel.collector.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.otel.collector.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: otel-collector
-          image: "{{ .Values.otel.collector.image.repository }}:{{ .Values.otel.collector.image.tag }}"
+          image: "{{ .Values.otel.collector.image.imageName | default (printf "%s:%s" .Values.otel.collector.image.repository .Values.otel.collector.image.tag) }}"
           imagePullPolicy: {{ .Values.otel.collector.image.pullPolicy }}
           {{- with .Values.otel.collector.containerSecurityContext }}
           securityContext:

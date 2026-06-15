@@ -75,33 +75,21 @@ A Helm chart for Composio
 | dbInit.job.backoffLimit | int | `3` | Maximum number of retries for failed jobs |
 | dbInit.job.restartPolicy | string | `"OnFailure"` | Job restart policy |
 | elasticsearch.enabled | bool | `false` | Enable Elasticsearch |
-| externalRedis.enabled | bool | `true` | Enable external Redis. Set to true to use an external Redis instance |
-| externalRedis.key | string | `"url"` | Key name in the secret containing the Redis URL |
-| externalRedis.secretRef | string | `"redis-cred"` | Secret name containing Redis connection URL |
+| externalRedis.enabled | bool | `false` | Enable external Redis. Set to true to use an external Redis instance |
+| externalRedis.key | string | `"REDIS_URL"` | Key name in the secret containing the Redis URL |
+| externalRedis.secretRef | string | `"composio-composio-secrets"` | Secret name containing Redis connection URL |
+| externalRedis.sentinel.db | string | `""` | Optional Redis DB index to use in Sentinel mode |
+| externalRedis.sentinel.enabled | bool | `false` | Enable Apollo Redis Sentinel mode for external Redis |
+| externalRedis.sentinel.hosts | string | `""` | Comma-separated Sentinel host[:port] entries |
+| externalRedis.sentinel.masterName | string | `""` | Sentinel master set name |
+| externalRedis.sentinel.passwordKey | string | `""` | Optional secret key for `REDIS_PASSWORD` |
+| externalRedis.sentinel.secretRef | string | `""` | Optional Secret containing Sentinel auth keys (defaults to `externalRedis.secretRef`) |
+| externalRedis.sentinel.sentinelPasswordKey | string | `""` | Optional secret key for `REDIS_SENTINEL_PASSWORD` |
+| externalRedis.sentinel.tlsEnabled | bool | `false` | Enable TLS for Sentinel discovery and Redis master connections |
+| externalRedis.sentinel.usernameKey | string | `""` | Optional secret key for `REDIS_USERNAME` |
 | externalSecrets.ecr.server | string | `"008971668139.dkr.ecr.us-east-1.amazonaws.com"` | ECR server URL |
 | externalSecrets.ecr.token | string | `""` |  |
 | externalSecrets.ecr.username | string | `"AWS"` | ECR username (typically "AWS") |
-| frontend.enabled | bool | `false` | Enable frontend service |
-| frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN | string | `"true"` | Disable social login for self-hosted deployments |
-| frontend.env.NEXT_PUBLIC_SELF_HOSTED | string | `"true"` | Enable self-hosted mode |
-| frontend.env.NODE_ENV | string | `"production"` | Node environment |
-| frontend.env.OVERRIDE_BACKEND_URL | string | `""` | Override backend URL (defaults to Apollo service URL) |
-| frontend.env.PORT | string | `"3000"` | Server port |
-| frontend.image.pullPolicy | string | `"Always"` | Image pull policy |
-| frontend.image.repository | string | `"composio-self-host/frontend"` | Frontend image repository |
-| frontend.image.tag | string | `"latest"` | Frontend image tag |
-| frontend.ingress.annotations | object | `{}` | Ingress annotations |
-| frontend.ingress.className | string | `""` | Ingress class name |
-| frontend.ingress.enabled | bool | `false` | Enable ingress |
-| frontend.ingress.host | string | `""` | Hostname for frontend ingress |
-| frontend.ingress.tls | list | `[]` | TLS configuration |
-| frontend.replicaCount | int | `1` | Number of frontend pod replicas |
-| frontend.resources.limits.cpu | string | `"1"` | CPU limit for frontend |
-| frontend.resources.limits.memory | string | `"3Gi"` | Memory limit for frontend |
-| frontend.resources.requests.cpu | string | `"1"` | CPU request for frontend |
-| frontend.resources.requests.memory | string | `"2Gi"` | Memory request for frontend |
-| frontend.service.port | int | `3000` | Service port |
-| frontend.service.type | string | `"ClusterIP"` | Service type |
 | global.domain | string | `"localhost"` | Domain name for the deployment |
 | global.environment | string | `"development"` | Environment name (e.g., development, staging, production) |
 | global.imagePullSecrets | list | `[{"name":"ecr-secret"}]` | Image pull secrets for private registries |
@@ -114,8 +102,11 @@ A Helm chart for Composio
 | mercury.autoscaling.target | int | `80` | Target metric value for autoscaling |
 | mercury.awsLambda.enabled | bool | `false` | Enable AWS Lambda deployment |
 | mercury.awsLambda.secretRef.name | string | `"lambda-cred"` | Secret name for Lambda credentials |
+| mercury.bundleSignatureVerification.enabled | bool | `true` | Enable strict runtime verification of signed module bundles. |
+| mercury.bundleSignatureVerification.publicKeyBase64 | string | `"/avANrHX/zfDqUOu3U2URZsWy7mJrkbidGs4Wvh8rFA="` | Base64-encoded public verification key for module bundle signatures. This is not a signing key. |
 | mercury.containerConcurrency | int | `0` | Container concurrency (0 = unlimited) |
 | mercury.enabled | bool | `true` | Enable Mercury service |
+| mercury.fileStorage | string | `"s3"` | Mercury file storage backend. Valid values are "s3" or "base64". Renders FILE_BACKEND. |
 | mercury.image.pullPolicy | string | `"Always"` | Image pull policy |
 | mercury.image.repository | string | `"composio-self-host/mercury"` | Mercury image repository |
 | mercury.image.tag | string | `"release-20251209_00"` | Mercury image tag |
@@ -181,9 +172,11 @@ A Helm chart for Composio
 | otel.collector.googleCloud.serviceAccount.annotations | object | `{"iam.gke.io/gcp-service-account":"otel-collector@self-host-kubernetes.iam.gserviceaccount.com"}` | Service account annotations (for Workload Identity) |
 | otel.collector.googleCloud.serviceAccount.create | bool | `false` | Create service account |
 | otel.collector.googleCloud.serviceAccount.name | string | `"otel-collector"` | Service account name |
+| otel.collector.image.imageName | string | `""` | Full image name (overrides repository:tag when set) |
 | otel.collector.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | otel.collector.image.repository | string | `"otel/opentelemetry-collector-contrib"` | Collector image repository |
 | otel.collector.image.tag | string | `"0.91.0"` | Collector image tag |
+| otel.collector.nodeSelector | object | `{}` | Node selector for collector pods |
 | otel.collector.replicaCount | int | `1` | Number of collector replicas |
 | otel.collector.resources.limits.cpu | string | `"1000m"` | CPU limit for collector |
 | otel.collector.resources.limits.memory | string | `"1Gi"` | Memory limit for collector |
@@ -202,6 +195,8 @@ A Helm chart for Composio
 | otel.collector.service.ports.prometheus.protocol | string | `"TCP"` | Prometheus protocol |
 | otel.collector.service.ports.prometheus.targetPort | int | `8889` | Prometheus metrics target port |
 | otel.collector.service.type | string | `"ClusterIP"` | Service type |
+| otel.collector.serviceAccountName | string | `""` | Existing service account name (used when googleCloud.serviceAccount.create is false) |
+| otel.collector.tolerations | list | `[]` | Tolerations for collector pods |
 | otel.enabled | bool | `true` | Enable OpenTelemetry |
 | otel.environment | string | `"development"` | Environment name for telemetry |
 | otel.exporter.otlp.endpoint | string | `"composio-otel-collector:4317"` | gRPC endpoint for OTLP (no protocol prefix needed) |
@@ -209,9 +204,6 @@ A Helm chart for Composio
 | otel.exporter.otlp.insecure | bool | `true` | Use insecure connection |
 | otel.exporter.otlp.metricsEndpoint | string | `"composio-otel-collector:4317"` | Metrics endpoint for gRPC (optional, defaults to endpoint) |
 | otel.exporter.otlp.tracesEndpoint | string | `"http://composio-otel-collector:4318/v1/traces"` | Trace endpoint (optional, defaults to endpoint) |
-| otel.frontend.metricsEndpoint | string | `"http://composio-otel-collector:4318/v1/metrics"` | HTTP endpoint for metrics |
-| otel.frontend.serviceName | string | `"frontend"` | Frontend service name |
-| otel.frontend.serviceVersion | string | `"1.0.0"` | Frontend service version |
 | otel.logs.enabled | bool | `false` | Enable log collection via OTEL |
 | otel.mercury.metricsEndpoint | string | `"http://composio-otel-collector:4318/v1/metrics"` | HTTP endpoint for metrics |
 | otel.mercury.serviceName | string | `"mercury-openapi"` | Mercury service name |
@@ -232,14 +224,19 @@ A Helm chart for Composio
 | rbac.pspEnabled | bool | `false` | Enable Pod Security Policies |
 | redis.architecture | string | `"standalone"` | Redis architecture (standalone or replication) |
 | redis.auth.enabled | bool | `true` | Enable Redis authentication |
-| redis.auth.password | string | `"redis123"` | Redis password |
-| redis.enabled | bool | `false` | Enable internal Redis. Set to false when using externalRedis |
+| redis.auth.password | string | `""` | Redis password |
+| redis.auth.sentinel | bool | `true` | Enable password authentication on bundled Redis Sentinels too |
+| redis.enabled | bool | `true` | Enable internal Redis. Set to false when using externalRedis |
 | redis.master.persistence.enabled | bool | `true` | Enable persistent storage |
 | redis.master.persistence.size | string | `"8Gi"` | Size of persistent volume |
 | redis.master.resources.limits.cpu | string | `"2"` | CPU limit for Redis master |
 | redis.master.resources.limits.memory | string | `"4Gi"` | Memory limit for Redis master |
 | redis.master.resources.requests.cpu | string | `"2"` | CPU request for Redis master |
 | redis.master.resources.requests.memory | string | `"4Gi"` | Memory request for Redis master |
+| redis.sentinel.enabled | bool | `false` | Enable bundled Redis Sentinel and switch Apollo to Sentinel mode |
+| redis.sentinel.masterSet | string | `"mymaster"` | Redis Sentinel master set name |
+| redis.sentinel.service.ports.sentinel | int | `26379` | Redis Sentinel service port |
+| redis.tls.enabled | bool | `false` | Enable TLS for bundled Redis connections |
 | redis.master.sysctl.enabled | bool | `false` | Disable sysctl for GKE Autopilot |
 | redis.master.sysctlImage.enabled | bool | `false` | Disable sysctl image for GKE Autopilot |
 | serviceAccount.annotations | object | `{}` | Service account annotations |
@@ -263,13 +260,15 @@ A Helm chart for Composio
 | temporal.prometheus.enabled | bool | `false` | Enable Prometheus |
 | temporal.prometheus.nodeExporter.enabled | bool | `false` | Enable node exporter |
 | temporal.schema.createDatabase.enabled | bool | `true` | Enable database creation |
+| temporal.schema.jobAnnotations | object | `{}` | Annotations to add to the Temporal schema setup Job |
 | temporal.schema.setup.backoffLimit | int | `100` | Maximum retries for schema setup |
 | temporal.schema.setup.enabled | bool | `true` | Enable schema setup |
 | temporal.schema.update.backoffLimit | int | `100` | Maximum retries for schema updates |
 | temporal.schema.update.enabled | bool | `true` | Enable schema updates |
+| temporal.schema.useHelmHooks | bool | `true` | Use Helm hooks to run schema setup before server pods start. Set false for Flux, Rancher, or Terraform. |
 | temporal.server.config.logLevel | string | `"info"` | Log level (debug, info, warn, error) |
 | temporal.server.config.namespaces.create | bool | `true` | Enable namespace creation |
-| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"}]` | List of namespaces to create |
+| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"},{"name":"timer-shards","retention":"10d"}]` | List of namespaces to create |
 | temporal.server.config.numHistoryShards | int | `512` | Number of history shards (affects scalability) |
 | temporal.server.config.persistence.default.driver | string | `"sql"` | Database driver |
 | temporal.server.config.persistence.default.sql.database | string | `"temporal"` | Database name |
@@ -387,6 +386,121 @@ The Bitnami Redis subchart persists the Redis password in a Kubernetes Secret (`
    You should see `PONG`. If you see `NOAUTH Authentication required`, repeat steps 1-3.
 
 This applies **any time** you change `redis.auth.password` while using the chart's internal Redis. It does not apply if you are using an external Redis (`externalRedis.enabled: true`).
+
+### Redis Sentinel support
+
+For a standalone step-by-step guide, see [docs/redis-sentinel.md](../docs/redis-sentinel.md).
+
+Apollo now supports Redis Sentinel mode. In Sentinel mode the chart does **not** set `REDIS_URL`; instead it passes the Sentinel-specific env vars Hermes expects:
+
+- `REDIS_SENTINEL_HOSTS`
+- `REDIS_SENTINEL_MASTER_NAME`
+- `REDIS_SENTINEL_PASSWORD` (optional)
+- `REDIS_USERNAME` (optional)
+- `REDIS_PASSWORD` (optional)
+- `REDIS_DB` (optional)
+- `REDIS_TLS_ENABLED`
+
+Use one of the following patterns.
+
+#### External Redis with direct URL
+
+Use this when your provider gives you a single Redis endpoint and you do **not** want Sentinel failover:
+
+```yaml
+externalRedis:
+  enabled: true
+  secretRef: composio-composio-secrets
+  key: REDIS_URL
+
+redis:
+  enabled: false
+```
+
+Your secret must contain:
+
+```yaml
+stringData:
+  REDIS_URL: redis://:password@redis.example.com:6379
+```
+
+#### External Redis with Sentinel
+
+Use this when your provider exposes Sentinel nodes and a master set name:
+
+```yaml
+externalRedis:
+  enabled: true
+  secretRef: composio-composio-secrets
+  sentinel:
+    enabled: true
+    hosts: "sentinel-0.redis.example.com:26379,sentinel-1.redis.example.com:26379,sentinel-2.redis.example.com:26379"
+    masterName: "mymaster"
+    tlsEnabled: true
+    db: "0"
+    secretRef: redis-sentinel-credentials
+    usernameKey: REDIS_USERNAME
+    passwordKey: REDIS_PASSWORD
+    sentinelPasswordKey: REDIS_SENTINEL_PASSWORD
+
+redis:
+  enabled: false
+```
+
+The Sentinel auth secret can contain any subset you need:
+
+```yaml
+stringData:
+  REDIS_USERNAME: default
+  REDIS_PASSWORD: your-master-password
+  REDIS_SENTINEL_PASSWORD: your-sentinel-password
+```
+
+Notes:
+
+- `externalRedis.sentinel.secretRef` defaults to `externalRedis.secretRef` if omitted.
+- `externalRedis.sentinel.hosts` and `externalRedis.sentinel.masterName` are required when Sentinel mode is enabled.
+- `externalRedis.key` / `REDIS_URL` is ignored in Sentinel mode.
+- Preflight checks validate whichever Sentinel secret keys you configure.
+
+#### Bundled Bitnami Redis with Sentinel
+
+Use this when you want the chart-managed Redis dependency to run in replication mode with Sentinel:
+
+```yaml
+redis:
+  enabled: true
+  architecture: replication
+  sentinel:
+    enabled: true
+    masterSet: mymaster
+  auth:
+    enabled: true
+    sentinel: true
+    password: "replace-me"
+
+externalRedis:
+  enabled: false
+```
+
+Notes:
+
+- `redis.architecture` must be `replication` when `redis.sentinel.enabled=true`.
+- Apollo will automatically use the bundled Sentinel service at `<release-name>-redis:26379`.
+- If you enable TLS in the Redis subchart, also set `redis.tls.enabled: true` so Apollo advertises `REDIS_TLS_ENABLED=true`.
+- If you change `redis.auth.password`, follow the password-rotation steps in the section above before or during upgrade.
+
+#### Example upgrade
+
+```bash
+helm upgrade <release-name> composio/ -f your-values.yaml -n <namespace>
+```
+
+After the upgrade, verify Apollo has the Sentinel env vars:
+
+```bash
+kubectl exec deploy/<release-name>-apollo -n <namespace> -- printenv | grep '^REDIS'
+```
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

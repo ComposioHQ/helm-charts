@@ -36,6 +36,10 @@ spec:
       {{- end }}
       containerConcurrency: {{ .Values.mercury.containerConcurrency | default 0 }}
       timeoutSeconds: {{ .Values.mercury.timeoutSeconds | default 300 }}
+      {{- with .Values.mercury.additionalInitContainers }}
+      initContainers:
+{{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
       containers:
         - name: mercury
           image: "{{ include "chart.registry" . }}/{{ .Values.mercury.image.repository }}:{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
@@ -54,38 +58,47 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-mercury-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
-            - name: SELF_HOSTED
-              value: "true"
-            {{- if .Values.openAI.enabled }}
+            - name: MERCURY_SECRETS_DIR
+              value: {{ .Values.mercury.secretsDir | quote }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
                   optional: true
-            {{- end }}
-            - name: BACKEND_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            - name: APOLLO_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
-            - name: USE_APOLLO_GET_DOWNLOAD_URL_API
-              value: "true"
+                  optional: true
+            - name: APOLLO_ADMIN_TOKEN_MERCURY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $coreSecret }}
+                  key: COMPOSIO_ADMIN_TOKEN
+                  optional: true
+            {{- with .Values.mercury.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
-          {{- with .Values.mercury.volumeMounts }}
           volumeMounts:
+            - name: mercury-secrets
+              mountPath: {{ .Values.mercury.secretsDir | quote }}
+              readOnly: true
+            {{- with .Values.mercury.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.mercury.volumes }}
+            {{- end }}
       volumes:
+        - name: mercury-secrets
+          emptyDir: {}
+        {{- with .Values.mercury.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
 {{- end }}
- 

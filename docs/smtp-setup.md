@@ -1,7 +1,6 @@
 ## Configure SMTP for Outbound Email
 
 This guide explains how to enable SMTP for Apollo to send emails.
-SMTP is also required for magic link login to work from the frontend.
 
 ### Prerequisites
 - An SMTP provider (e.g., Resend, SendGrid, Mailgun, SES SMTP, etc.)
@@ -48,6 +47,4 @@ You should see `SMTP_CONNECTION_STRING` present when `apollo.smtp.enabled` is tr
 ### Tips
 - Ensure your SMTP provider allows the configured `smtpAuthorEmail` (some require sender/domain verification).
 - For TLS/STARTTLS options, consult your provider’s connection string format or additional parameters.
- - Magic link login: ensure `apollo.overwrite_fe_url` matches the externally reachable frontend URL so links in emails open correctly.
-
 

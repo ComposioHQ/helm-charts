@@ -1,0 +1,627 @@
+name: nighty-release
+
+on:
+  schedule:
+    # 00:00 IST is 18:30 UTC (previous day)
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+    inputs:
+      apollo_image_tag:
+        description: "ECR source tag for apollo (default latest). Resolved image is retagged to the nightly release tag."
+        required: false
+        type: string
+        default: "latest"
+      apollo_db_init_image_tag:
+        description: "ECR source tag for apollo-db-init (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      thermos_image_tag:
+        description: "ECR source tag for thermos (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      thermos_db_init_image_tag:
+        description: "ECR source tag for thermos-db-init (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      mercury_image_tag:
+        description: "ECR source tag for mercury (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      weaviate_image_tag:
+        description: "ECR source tag for weaviate (default latest)."
+        required: false
+        type: string
+        default: "latest"
+      thermos_toolkit_registry_image_tag:
+        description: "ECR source tag for thermos-toolkit-registry (default latest)."
+        required: false
+        type: string
+        default: "latest"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  retag-latest-images:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.retag.outputs.release_tag }}
+      retagged_images: ${{ steps.retag.outputs.retagged_images }}
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      IMAGE_REPOS: "apollo apollo-db-init thermos thermos-db-init mercury weaviate thermos-toolkit-registry"
+      # Per-repo ECR source tags (manual runs only; empty on schedule). Empty = use "latest".
+      SOURCE_TAG_APOLLO: ${{ github.event.inputs.apollo_image_tag || '' }}
+      SOURCE_TAG_APOLLO_DB_INIT: ${{ github.event.inputs.apollo_db_init_image_tag || '' }}
+      SOURCE_TAG_THERMOS: ${{ github.event.inputs.thermos_image_tag || '' }}
+      SOURCE_TAG_THERMOS_DB_INIT: ${{ github.event.inputs.thermos_db_init_image_tag || '' }}
+      SOURCE_TAG_MERCURY: ${{ github.event.inputs.mercury_image_tag || '' }}
+      SOURCE_TAG_WEAVIATE: ${{ github.event.inputs.weaviate_image_tag || '' }}
+      SOURCE_TAG_THERMOS_TOOLKIT_REGISTRY: ${{ github.event.inputs.thermos_toolkit_registry_image_tag || '' }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Calculate release tag from latest GitHub release
+        id: calculate_release_tag
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          date_ist="$(TZ=Asia/Kolkata date +%Y%m%d)"
+          api_root="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+
+          releases_json="$(curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${api_root}/releases?per_page=20")"
+
+          latest_release="$(echo "${releases_json}" | jq -c '[.[] | select(.draft == false)] | sort_by(.published_at // .created_at) | last // empty')"
+
+          base_tag=""
+          source_release_tag=""
+          source_release_id=""
+          source_manifest_tag=""
+
+          if [[ -n "${latest_release}" ]]; then
+            source_release_tag="$(echo "${latest_release}" | jq -r '.tag_name // empty')"
+            source_release_id="$(echo "${latest_release}" | jq -r '.id // empty')"
+
+            manifest_asset_url="$(echo "${latest_release}" | jq -r '.assets[]? | select(.name=="release-manifest.json") | .url' | head -n1)"
+            if [[ -n "${manifest_asset_url}" ]]; then
+              manifest_json="$(curl -fsSL \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "Accept: application/octet-stream" \
+                "${manifest_asset_url}")"
+              source_manifest_tag="$(echo "${manifest_json}" | jq -r '.release_tag // empty')"
+            fi
+
+            if [[ "${source_manifest_tag}" =~ ^r[0-9]{8}_[0-9]{2}$ ]]; then
+              base_tag="${source_manifest_tag}"
+            elif [[ "${source_release_tag}" =~ ^r[0-9]{8}_[0-9]{2}$ ]]; then
+              base_tag="${source_release_tag}"
+            fi
+          fi
+
+          if [[ "${base_tag}" =~ ^r([0-9]{8})_([0-9]{2})$ ]]; then
+            current_date="${BASH_REMATCH[1]}"
+            current_nn="${BASH_REMATCH[2]}"
+
+            if [[ "${current_date}" == "${date_ist}" ]]; then
+              next_nn="$(printf '%02d' "$((10#${current_nn} + 1))")"
+            else
+              next_nn="01"
+            fi
+          else
+            next_nn="01"
+          fi
+
+          new_tag="r${date_ist}_${next_nn}"
+          echo "Latest release id: ${source_release_id:-none}"
+          echo "Latest release tag: ${source_release_tag:-none}"
+          echo "Source manifest tag: ${source_manifest_tag:-none}"
+          echo "Base tag used for increment: ${base_tag:-none}"
+          echo "Calculated release tag: ${new_tag}"
+
+          echo "source_release_id=${source_release_id}" >> "${GITHUB_OUTPUT}"
+          echo "source_release_tag=${source_release_tag}" >> "${GITHUB_OUTPUT}"
+          echo "source_manifest_tag=${source_manifest_tag}" >> "${GITHUB_OUTPUT}"
+          echo "base_tag=${base_tag}" >> "${GITHUB_OUTPUT}"
+          echo "release_tag=${new_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Determine AWS Assume Role ARN
+        id: env
+        run: |
+            echo "AWS_ROLE_ARN=arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ steps.env.outputs.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Resolve latest digest and retag
+        id: retag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${AWS_REGION:-}" ]]; then
+            echo "AWS_REGION secret is required."
+            exit 1
+          fi
+
+          NEW_TAG="${{ steps.calculate_release_tag.outputs.release_tag }}"
+          echo "Using release tag from latest GitHub release calculation: ${NEW_TAG}"
+          echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
+
+          resolve_source_tag() {
+            local r="$1"
+            local v=""
+            case "${r}" in
+              apollo) v="${SOURCE_TAG_APOLLO:-}" ;;
+              apollo-db-init) v="${SOURCE_TAG_APOLLO_DB_INIT:-}" ;;
+              thermos) v="${SOURCE_TAG_THERMOS:-}" ;;
+              thermos-db-init) v="${SOURCE_TAG_THERMOS_DB_INIT:-}" ;;
+              mercury) v="${SOURCE_TAG_MERCURY:-}" ;;
+              weaviate) v="${SOURCE_TAG_WEAVIATE:-}" ;;
+              thermos-toolkit-registry) v="${SOURCE_TAG_THERMOS_TOOLKIT_REGISTRY:-}" ;;
+              *) v="" ;;
+            esac
+            if [[ -n "${v}" ]]; then
+              printf '%s' "${v}"
+            else
+              printf '%s' "latest"
+            fi
+          }
+
+          results='[]'
+
+          for repo in ${IMAGE_REPOS}; do
+            SOURCE_TAG="$(resolve_source_tag "${repo}")"
+            echo "Resolving composio-self-host/${repo} from tag: ${SOURCE_TAG} → will publish tag: ${NEW_TAG}"
+
+            image_json="$(aws ecr batch-get-image \
+              --repository-name composio-self-host/"${repo}" \
+              --image-ids imageTag="${SOURCE_TAG}" \
+              --accepted-media-types \
+                application/vnd.oci.image.manifest.v1+json \
+                application/vnd.oci.image.index.v1+json \
+                application/vnd.docker.distribution.manifest.v2+json \
+                application/vnd.docker.distribution.manifest.list.v2+json \
+              --output json)"
+
+            digest="$(echo "${image_json}" | jq -r '.images[0].imageId.imageDigest // empty')"
+            manifest="$(echo "${image_json}" | jq -r '.images[0].imageManifest // empty')"
+            media_type="$(echo "${image_json}" | jq -r '.images[0].imageManifestMediaType // empty')"
+
+            if [[ -z "${digest}" || -z "${manifest}" ]]; then
+              echo "Failed to resolve latest image for repo: ${repo}"
+              exit 1
+            fi
+
+            metadata_json="$(aws ecr describe-images \
+              --repository-name composio-self-host/"${repo}" \
+              --image-ids imageDigest="${digest}" \
+              --output json)"
+
+            pushed_at="$(echo "${metadata_json}" | jq -r '.imageDetails[0].imagePushedAt // empty')"
+            size_bytes="$(echo "${metadata_json}" | jq -r '.imageDetails[0].imageSizeInBytes // empty')"
+
+            if [[ -n "${media_type}" ]]; then
+              aws ecr put-image \
+                --repository-name composio-self-host/"${repo}" \
+                --image-tag "${NEW_TAG}" \
+                --image-manifest-media-type "${media_type}" \
+                --image-manifest "${manifest}" \
+                >/dev/null
+            else
+              aws ecr put-image \
+                --repository-name composio-self-host/"${repo}" \
+                --image-tag "${NEW_TAG}" \
+                --image-manifest "${manifest}" \
+                >/dev/null
+            fi
+
+            echo "repo=${repo} latest_digest=${digest} new_tag=${NEW_TAG} pushed_at=${pushed_at} size_bytes=${size_bytes}"
+
+            row="$(jq -n \
+              --arg repo composio-self-host/"${repo}" \
+              --arg latest_digest "${digest}" \
+              --arg new_tag "${NEW_TAG}" \
+              --arg pushed_at "${pushed_at}" \
+              --arg size_bytes "${size_bytes}" \
+              '{repo: $repo, latest_digest: $latest_digest, new_tag: $new_tag, pushed_at: $pushed_at, size_bytes: $size_bytes}')"
+            results="$(echo "${results}" | jq -c --argjson row "${row}" '. + [$row]')"
+          done
+
+          echo "retagged_images<<EOF" >> "${GITHUB_OUTPUT}"
+          echo "${results}" >> "${GITHUB_OUTPUT}"
+          echo "EOF" >> "${GITHUB_OUTPUT}"
+
+      - name: Print outputs
+        run: |
+          echo "release_tag: ${{ steps.retag.outputs.release_tag }}"
+          echo "retagged_images: ${{ steps.retag.outputs.retagged_images }}"
+
+  replicated-release:
+    runs-on: ubuntu-latest
+    needs: retag-latest-images
+    permissions:
+      contents: write
+      id-token: write
+    outputs:
+      branch_name: ${{ steps.branch.outputs.branch_name }}
+      version: ${{ steps.version.outputs.new }}
+      slack_message_id: ${{ steps.slack.outputs.message_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          ref: release-stable
+
+      - name: Set branch name
+        id: branch
+        run: |
+          echo "branch_name=nightly-${{ needs.retag-latest-images.outputs.release_tag }}" >> "$GITHUB_OUTPUT"
+
+      - name: Create nightly branch
+        run: |
+          git checkout -B "${{ steps.branch.outputs.branch_name }}"
+
+      - name: Install yq
+        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
+
+      - name: Install Replicated CLI
+        run: |
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          echo "Downloading Replicated CLI..."
+          curl -Ls \
+            "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
+            -o replicated.tar.gz
+          echo "Extracting Replciated CLI..."
+          tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+          echo "Installing Replicated CLI in /usr/local/bin/"
+          sudo install replicated /usr/local/bin/replicated
+
+      - name: Check replicated
+        run: |
+          set -e
+          replicated app ls &> /dev/null || exit 1
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+        with:
+          version: 'latest'
+
+      - name: Run Helm template
+        run: |
+          helm template composio ./composio
+
+      - name: Get and bump version
+        id: version
+        env:
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          app_id="$(
+            curl -fsSL "https://api.replicated.com/vendor/v3/apps" \
+              --header "Accept: application/json" \
+              --header "Authorization: ${REPLICATED_API_TOKEN}" \
+              | jq -r --arg app "${REPLICATED_APP}" '
+                  .apps[]
+                  | select(.id == $app or .slug == $app or .name == $app)
+                  | .id
+                ' \
+              | head -n1
+          )"
+
+          if [[ -z "${app_id}" || "${app_id}" == "null" ]]; then
+            echo "Unable to resolve Replicated app ID for ${REPLICATED_APP}" >&2
+            exit 1
+          fi
+
+          channels_json="$(
+            curl -fsSLG "https://api.replicated.com/vendor/v3/app/${app_id}/channels" \
+              --data-urlencode "channelName=Nightly" \
+              --header "Accept: application/json" \
+              --header "Authorization: ${REPLICATED_API_TOKEN}"
+          )"
+
+          if [[ "$(echo "${channels_json}" | jq -r '.totalCount')" != "1" ]]; then
+            echo "Nightly channel was not found in Replicated channels API response" >&2
+            exit 1
+          fi
+
+          CURRENT_APPVERSION="$(
+            echo "${channels_json}" | jq -r '.channels[0].currentVersion // empty'
+          )"
+
+          if [[ -z "${CURRENT_APPVERSION}" || "${CURRENT_APPVERSION}" == "null" ]]; then
+            echo "Nightly channel response did not include currentVersion" >&2
+            exit 1
+          fi
+
+          NEW_APPVERSION="$(echo "${CURRENT_APPVERSION}" | awk -F. '{$NF = $NF + 1} 1' OFS=.)"
+          echo "current=${CURRENT_APPVERSION}" >> "${GITHUB_OUTPUT}"
+          echo "new=${NEW_APPVERSION}" >> "${GITHUB_OUTPUT}"
+          echo "Current version: ${CURRENT_APPVERSION}"
+          echo "New version: ${NEW_APPVERSION}"
+
+      # - name: Notify Slack - Started
+      #   id: slack
+      #   uses: ./.github/actions/slack-notify
+      #   with:
+      #     status: STARTED
+      #     slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     channel: C093CVARNKC
+      #     title: "New Nightly Release"
+      #     summary: |
+      #       *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
+      #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
+      #       *Branch:* `${{ steps.branch.outputs.branch_name }}`
+
+      - name: Update Chart.yaml versions
+        run: |
+          cd ./composio
+          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          yq eval -i '.appVersion = strenv(NEW_VERSION)' ./Chart.yaml
+          yq eval -i '.version = strenv(NEW_VERSION)' ./Chart.yaml
+          echo "Updated Chart.yaml"
+
+      - name: Update manifest versions
+        run: |
+          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          export RELEASE_TAG="${{ needs.retag-latest-images.outputs.release_tag }}"
+
+          cd ./composio
+          yq eval -i '.apollo.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.apollo.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.thermos.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.thermos.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.thermosMiscWorkers.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.mercury.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.weaviate.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.toolkitRegistry.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          cd -
+
+          cd ./manifests
+          yq eval -i '.metadata.labels."app.kubernetes.io/version" = strenv(NEW_VERSION)' ./k8s-app.yaml
+          yq eval -i '.spec.descriptor.version = strenv(NEW_VERSION)' ./k8s-app.yaml
+          yq eval -i '.spec.chart.chartVersion = strenv(NEW_VERSION)' ./composio.yaml
+          echo "Updated manifest files and composio values"
+
+      - name: Commit nightly release updates
+        run: |
+          set -euo pipefail
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add composio/Chart.yaml composio/values.yaml manifests/k8s-app.yaml manifests/composio.yaml
+          git commit --signoff -m "chore: nightly release ${{ steps.branch.outputs.branch_name }}"
+
+      - name: Clean old packages
+        run: |
+          echo "Removing old tgz files"
+          rm -f ./manifests/*.tgz
+
+      - name: Package and create Replicated release
+        run: |
+          set -euo pipefail
+          echo "Packaging Helm chart..."
+          helm package ./composio --destination manifests
+          echo "Creating Replicated release..."
+          replicated release create \
+          --yaml-dir manifests \
+          --promote "Nightly" \
+          --version "${{ steps.version.outputs.new }}"
+        env:
+          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+
+      - name: Push nightly branch
+        if: success()
+        run: |
+          set -euo pipefail
+          git push --force-with-lease origin "${{ steps.branch.outputs.branch_name }}"
+
+      - name: Notify Slack - Replicated Release Ready
+        if: success()
+        uses: ./.github/actions/slack-notify
+        with:
+          status: SUCCESS
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: C093CVARNKC
+          message_id: ${{ steps.slack.outputs.message_id }}
+          title: "Nightly Release Prepared"
+          summary: |
+            *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
+            *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
+            *Branch:* `${{ steps.branch.outputs.branch_name }}`
+            *State:* Replicated release completed, branch pushed.
+
+      - name: Notify Slack - Failure
+        if: failure() && steps.slack.outputs.message_id
+        uses: ./.github/actions/slack-notify
+        with:
+          status: FAILURE
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: C093CVARNKC
+          message_id: ${{ steps.slack.outputs.message_id }}
+          title: "Nightly Release Failed"
+          summary: |
+            *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
+            *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
+            *Branch:* `${{ steps.branch.outputs.branch_name }}`
+            *State:* Replicated release failed before PR creation.
+
+
+  create-nightly-release-pr:
+    runs-on: ubuntu-latest
+    needs:
+      - retag-latest-images
+      - replicated-release
+    steps:
+      - name: Pull latest nightly branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.replicated-release.outputs.branch_name }}
+
+      - name: Record nightly branch HEAD
+        id: nightly_head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create nightly release PR
+        id: create_pr
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const base = context.payload.repository.default_branch;
+            const head = "${{ needs.replicated-release.outputs.branch_name }}";
+            const releaseTag = "${{ needs.retag-latest-images.outputs.release_tag }}";
+            const version = "${{ needs.replicated-release.outputs.version }}";
+            const title = `Nightly release ${releaseTag}`;
+            const body = `## Summary
+
+            - Bump Helm chart version to ${version}
+            - Update nightly image tags to ${releaseTag}
+            - Refresh replicated manifest versions`;
+
+            const { data: pulls } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: "open",
+              head: `${owner}:${head}`,
+              base,
+            });
+
+            let pr;
+            if (pulls.length > 0) {
+              pr = pulls[0];
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pr.number,
+                title,
+                body,
+              });
+            } else {
+              const response = await github.rest.pulls.create({
+                owner,
+                repo,
+                base,
+                head,
+                title,
+                body,
+              });
+              pr = response.data;
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: pr.number,
+              labels: ["nightly-release"],
+            });
+
+            core.setOutput("pr_url", pr.html_url);
+            core.setOutput("pr_number", String(pr.number));
+
+      - name: Ensure GitHub nightly release exists
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag_name = "${{ needs.retag-latest-images.outputs.release_tag }}";
+            const target_commitish = "${{ steps.nightly_head.outputs.sha }}";
+            const version = "${{ needs.replicated-release.outputs.version }}";
+            const prUrl = "${{ steps.create_pr.outputs.pr_url }}";
+            const body = [
+              `Nightly image tag **\`${tag_name}\`** (Helm / Replicated appVersion **${version}**).`,
+              "",
+              prUrl ? `Tracking PR: ${prUrl}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n");
+
+            try {
+              const { data: existingRelease } = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag: tag_name,
+              });
+
+              await github.rest.repos.updateRelease({
+                owner,
+                repo,
+                release_id: existingRelease.id,
+                tag_name,
+                target_commitish,
+                name: version,
+                body,
+                draft: existingRelease.draft,
+                prerelease: true,
+              });
+              core.info(`Updated GitHub release for tag ${tag_name}.`);
+            } catch (e) {
+              const status = e.status ?? e.response?.status;
+              if (status !== 404) {
+                throw e;
+              }
+
+              await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name,
+                target_commitish,
+                name: version,
+                body,
+                draft: false,
+                prerelease: true,
+              });
+              core.info(`Created GitHub release ${tag_name} at ${target_commitish}`);
+            }
+
+      # - name: Notify Slack - Success
+      #   if: success()
+      #   uses: ./.github/actions/slack-notify
+      #   with:
+      #     status: SUCCESS
+      #     slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     channel: C093CVARNKC
+      #     message_id: ${{ needs.replicated-release.outputs.slack_message_id }}
+      #     title: "Nightly Release PR Created"
+      #     summary: |
+      #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
+      #       *Branch:* `${{ needs.replicated-release.outputs.branch_name }}`
+      #       *PR:* ${{ steps.create_pr.outputs.pr_url }}
+
+      # - name: Notify Slack - Failure
+      #   if: failure() && needs.replicated-release.outputs.slack_message_id
+      #   uses: ./.github/actions/slack-notify
+      #   with:
+      #     status: FAILURE
+      #     slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     channel: C093CVARNKC
+      #     message_id: ${{ needs.replicated-release.outputs.slack_message_id }}
+      #     title: "Nightly Release PR Failed"
+      #     summary: |
+      #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
+      #       *Branch:* `${{ needs.replicated-release.outputs.branch_name }}`
+      #       *State:* PR creation failed after pushing the nightly branch.
