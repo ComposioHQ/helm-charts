@@ -1,0 +1,137 @@
+suite: test frontend ingress
+templates:
+  - frontend/frontend-ingress.yaml
+tests:
+  - it: should not create ingress when frontend is disabled
+    set:
+      frontend.enabled: false
+      frontend.ingress.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create ingress when ingress is disabled
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create ingress when frontend and ingress are enabled
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.host: app.example.com
+    asserts:
+      - isKind:
+          of: Ingress
+      - matchRegex:
+          path: metadata.name
+          pattern: ".*-frontend-ingress$"
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: frontend-ingress
+
+  - it: should have default nginx annotations
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/ssl-redirect"]
+          value: "true"
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/proxy-body-size"]
+          value: 50m
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/use-regex"]
+          value: "true"
+
+  - it: should merge custom annotations
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.annotations:
+        kubernetes.io/ingress.class: nginx
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+    asserts:
+      - equal:
+          path: metadata.annotations["kubernetes.io/ingress.class"]
+          value: nginx
+      - equal:
+          path: metadata.annotations["cert-manager.io/cluster-issuer"]
+          value: letsencrypt-prod
+
+  - it: should set ingress class name when configured
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.className: nginx
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+
+  - it: should use configured host
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.host: app.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: app.example.com
+
+  - it: should use default host from global domain when host not configured
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      global.domain: mycompany.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: app.mycompany.com
+
+  - it: should have correct path configuration
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.host: app.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+
+  - it: should route to frontend service
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.service.port: 3000
+    asserts:
+      - matchRegex:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          pattern: ".*-frontend$"
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 3000
+
+  - it: should configure TLS when provided
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.host: app.example.com
+      frontend.ingress.tls:
+        - secretName: frontend-tls-secret
+          hosts:
+            - app.example.com
+    asserts:
+      - equal:
+          path: spec.tls[0].secretName
+          value: frontend-tls-secret
+      - contains:
+          path: spec.tls[0].hosts
+          content: app.example.com
