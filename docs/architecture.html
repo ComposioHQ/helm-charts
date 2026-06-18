@@ -43,61 +43,39 @@
         <section class="section">
             <div class="container">
                 <h1><i class="fas fa-sitemap"></i> Architecture Overview</h1>
-                <p class="subtitle">Understanding the Composio Helm Charts deployment architecture</p>
+                <p class="subtitle">Current defaults and optional components for the Composio Helm chart</p>
 
                 <div class="architecture-diagram">
                     <h2><i class="fas fa-diagram-project"></i> System Components</h2>
                     <div class="architecture-overview">
                         <pre class="diagram">
-┌─────────────────────────────────────────────────────────────────┐
-│                         Kubernetes Cluster                       │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                  Composio Namespace                      │   │
-│  │                                                           │   │
-│  │  ┌──────────────┐         ┌──────────────┐              │   │
-│  │  │   Apollo     │◄────────┤  PostgreSQL  │              │   │
-│  │  │   (API)      │         │  (External)  │              │   │
-│  │  │  Port: 9900  │         └──────────────┘              │   │
-│  │  └───────┬──────┘                                        │   │
-│  │          │                                               │   │
-│  │          │  ┌──────────────┐         ┌──────────────┐  │   │
-│  │          ├──┤   Thermos    │◄────────┤    Redis     │  │   │
-│  │          │  │ (Background) │         │ (Optional)   │  │   │
-│  │          │  │  Port: 8180  │         └──────────────┘  │   │
-│  │          │  └──────────────┘                            │   │
-│  │          │                                               │   │
-│  │          │  ┌──────────────┐                            │   │
-│  │          └──┤   Mercury    │  (Knative Service)        │   │
-│  │             │    (MCP)     │  Auto-scaling: 1-10       │   │
-│  │             │  Port: 8080  │                            │   │
-│  │             └──────────────┘                            │   │
-│  │                                                           │   │
-│  │  ┌──────────────┐         ┌──────────────┐              │   │
-│  │  │    Minio     │         │   Temporal   │              │   │
-│  │  │  (Storage)   │         │  (Workflow)  │              │   │
-│  │  │  Port: 9000  │         │  Port: 7233  │              │   │
-│  │  └──────────────┘         └──────────────┘              │   │
-│  │                                                           │   │
-│  │  ┌──────────────────────────────────────────────────┐  │   │
-│  │  │      OpenTelemetry Collector (Observability)     │  │   │
-│  │  │      Exports: Google Cloud Monitoring/Trace      │  │   │
-│  │  └──────────────────────────────────────────────────┘  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              Knative Serving Namespace                   │   │
-│  │  ┌──────────────────────────────────────────────────┐  │   │
-│  │  │  Knative Controller, Webhook, Activator, HPA     │  │   │
-│  │  │  Kourier Ingress Controller                       │  │   │
-│  │  └──────────────────────────────────────────────────┘  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                        Kubernetes Cluster                            │
+│  ┌────────────────────── Composio Namespace ──────────────────────┐  │
+│  │ Optional entry points                                          │  │
+│  │ Internet -> Frontend Ingress -> Frontend -> Apollo             │  │
+│  │ Internet -> Apollo Ingress ---------------------> Apollo        │  │
+│  │                                                                │  │
+│  │ Default workloads                                              │  │
+│  │  Apollo (Deployment, svc 9900, replicas 2)                     │  │
+│  │    |--> PostgreSQL (external, secret-managed)                  │  │
+│  │    |--> Redis (bundled by default, external optional)          │  │
+│  │    |--> Weaviate (optional, enabled by default)                │  │
+│  │    '--> Thermos (Deployment, svc 8180, replicas 2)             │  │
+│  │             '--> Mercury (Deployment default, svc 80 -> 8080)  │  │
+│  │                       '--> External tools / LLM APIs           │  │
+│  │                                                                │  │
+│  │ Optional add-ons                                               │  │
+│  │  Frontend, Weaviate, Temporal, OTEL Collector, Knative Mercury │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
+External dependencies: PostgreSQL, registry auth / pull secrets, provider secrets
                         </pre>
                     </div>
                 </div>
 
                 <div class="components-grid">
-                    <h2><i class="fas fa-cubes"></i> Core Services</h2>
+                    <h2><i class="fas fa-cubes"></i> Services And Dependencies</h2>
 
                     <table class="services-table">
                         <thead>
@@ -115,109 +93,145 @@
                         <tbody>
                             <tr>
                                 <td><strong>Apollo</strong></td>
-                                <td>API Service</td>
-                                <td>Main API server for Composio platform</td>
-                                <td>9900 (NodePort: 30900)</td>
-                                <td>2 (default)</td>
-                                <td>5Gi memory, 1 CPU</td>
-                                <td><code>composio/templates/apollo.yaml:1</code></td>
+                                <td>Deployment + Service</td>
+                                <td>Primary API, auth, and business logic</td>
+                                <td>9900 (NodePort by default)</td>
+                                <td>2</td>
+                                <td>5Gi / 1 CPU request, 6Gi / 1 CPU limit</td>
+                                <td><code>composio/templates/apollo/apollo.yaml:1</code></td>
                                 <td>
                                     <ul>
-                                        <li>RESTful API endpoints</li>
-                                        <li>PostgreSQL database integration</li>
-                                        <li>Auto-generated admin tokens</li>
-                                        <li>Health checks and readiness probes</li>
-                                        <li>Optional HPA for auto-scaling</li>
+                                        <li>Uses PostgreSQL via <code>POSTGRES_URL</code></li>
+                                        <li>Uses bundled or external Redis</li>
+                                        <li>Calls Thermos for orchestration</li>
+                                        <li>Uses Weaviate for search when enabled; current defaults turn it on</li>
+                                        <li>Supports optional ingress, frontend URL, and object storage</li>
                                     </ul>
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Thermos</strong></td>
-                                <td>Background Service</td>
-                                <td>Background processing and task execution</td>
-                                <td>8180 (ClusterIP)</td>
-                                <td>2 (default)</td>
-                                <td>4Gi memory, 2 CPU</td>
-                                <td><code>composio/templates/thermos.yaml:1</code></td>
+                                <td>Optional Deployment + Service</td>
+                                <td>Background orchestration and task execution</td>
+                                <td>8180</td>
+                                <td>2</td>
+                                <td>4Gi / 2 CPU request, 5Gi / 2 CPU limit</td>
+                                <td><code>composio/templates/thermos/thermos.yaml:1</code></td>
                                 <td>
                                     <ul>
-                                        <li>Asynchronous task processing</li>
-                                        <li>Temporal workflow integration</li>
-                                        <li>Redis queue management</li>
-                                        <li>Database initialization jobs</li>
-                                        <li>Configurable scaling policies</li>
+                                        <li>Uses <code>THERMOS_DATABASE_URL</code></li>
+                                        <li>Calls Mercury over cluster DNS</li>
+                                        <li>Temporal integration is enabled only with <code>features.temporal=true</code></li>
+                                        <li>Includes a DB init job</li>
+                                        <li>Optional HPA support</li>
                                     </ul>
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Mercury</strong></td>
-                                <td>Knative Service</td>
-                                <td>Model Context Protocol (MCP) endpoint</td>
-                                <td>8080 (ClusterIP)</td>
-                                <td>Auto-scaling (1-10)</td>
-                                <td>2Gi memory, 1 CPU</td>
-                                <td><code>composio/templates/mercury.yaml:1</code></td>
+                                <td>Deployment by default, Knative optional</td>
+                                <td>Outbound tool execution and external API calls</td>
+                                <td>Service 80 -> container 8080</td>
+                                <td>1 by default, optional Knative autoscaling 1-10</td>
+                                <td>2Gi / 1 CPU request, 4Gi / 2 CPU limit</td>
+                                <td><code>composio/templates/mercury/mercury.yaml:1</code><br><code>composio/templates/mercury/mercury-service.yaml:1</code></td>
                                 <td>
                                     <ul>
-                                        <li>Knative-based serverless scaling</li>
-                                        <li>Scale-to-zero capabilities</li>
-                                        <li>Request-based auto-scaling</li>
-                                        <li>Configurable concurrency limits</li>
-                                        <li>300-second request timeout</li>
+                                        <li>Deployment path is the default chart behavior</li>
+                                        <li>Knative path is used only when <code>mercury.useKnative=true</code></li>
+                                        <li>Uses Apollo URLs and admin token</li>
+                                        <li>Executes outbound tool and model API calls</li>
+                                        <li>Supports extra volumes and hardened security context</li>
                                     </ul>
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>Minio</strong></td>
-                                <td>Storage Service</td>
-                                <td>S3-compatible object storage</td>
-                                <td>9000 (ClusterIP)</td>
+                                <td><strong>Weaviate</strong></td>
+                                <td>Deployment + Service</td>
+                                <td>Search / vector store</td>
+                                <td>8080 HTTP, 50051 gRPC</td>
                                 <td>1</td>
-                                <td>4Gi memory, 2 CPU</td>
-                                <td><code>composio/templates/minio.yaml:1</code></td>
+                                <td>2Gi / 1 CPU request, 4Gi / 2 CPU limit</td>
+                                <td><code>composio/templates/weaviate/weaviate.yaml:1</code></td>
                                 <td>
                                     <ul>
-                                        <li>S3-compatible API</li>
-                                        <li>Persistent volume storage (8Gi)</li>
-                                        <li>Tool and function storage</li>
-                                        <li>Health and readiness probes</li>
-                                        <li>Admin credentials management</li>
+                                        <li>Enabled by default in <code>values.yaml</code> but can be disabled</li>
+                                        <li>Apollo is wired through <code>WEAVIATE_*</code> env vars</li>
+                                        <li>Supports optional persistence</li>
+                                        <li>Exposes both HTTP and gRPC ports</li>
+                                        <li>Backs the current search configuration</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Redis</strong></td>
+                                <td>Bundled dependency or external service</td>
+                                <td>Cache / state store for Apollo</td>
+                                <td>6379</td>
+                                <td>1 internal master by default</td>
+                                <td>4Gi / 2 CPU request and limit</td>
+                                <td><code>composio/charts/redis</code></td>
+                                <td>
+                                    <ul>
+                                        <li>Bundled Bitnami Redis is enabled by default</li>
+                                        <li><code>externalRedis</code> can replace the bundled chart</li>
+                                        <li>Redis auth is enabled by default</li>
+                                        <li>Rendered as a StatefulSet when bundled</li>
+                                        <li>Apollo receives <code>REDIS_URL</code></li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Frontend</strong></td>
+                                <td>Optional Deployment + Service</td>
+                                <td>Web UI for self-hosted deployments</td>
+                                <td>3000</td>
+                                <td>1 when enabled</td>
+                                <td>2Gi / 1 CPU request, 3Gi / 1 CPU limit</td>
+                                <td><code>composio/templates/frontend/frontend.yaml:1</code></td>
+                                <td>
+                                    <ul>
+                                        <li>Disabled by default</li>
+                                        <li>Routes browser traffic to Apollo</li>
+                                        <li>Has separate optional ingress</li>
+                                        <li>Supports optional HPA and extra env vars</li>
+                                        <li>Exports OTEL only when enabled globally</li>
                                     </ul>
                                 </td>
                             </tr>
                             <tr>
                                 <td><strong>Temporal</strong></td>
-                                <td>Workflow Engine (Optional)</td>
-                                <td>Distributed workflow orchestration — only required if auth refresh and/or triggers are enabled</td>
-                                <td>7233 (Frontend), 8080 (Web UI)</td>
-                                <td>2 (server)</td>
-                                <td>Default Temporal settings</td>
-                                <td>Dependency (temporal-0.64.0)</td>
+                                <td>Optional dependency</td>
+                                <td>Workflow engine for auth refresh and triggers</td>
+                                <td>7233 frontend, 8080 web UI optional</td>
+                                <td>Managed by subchart</td>
+                                <td>Subchart-configurable</td>
+                                <td><code>composio/charts/temporal</code></td>
                                 <td>
                                     <ul>
-                                        <li>Workflow and activity orchestration</li>
-                                        <li>PostgreSQL persistence</li>
-                                        <li>Web UI for monitoring</li>
-                                        <li>Admin tools included</li>
-                                        <li>Namespace management</li>
+                                        <li>Enabled by <code>features.temporal=true</code></li>
+                                        <li>Thermos targets <code>temporal-stack-frontend:7233</code></li>
+                                        <li>DB init job creates Temporal databases when enabled</li>
+                                        <li>Web UI is separately configurable</li>
+                                        <li>Not part of the default render</li>
                                     </ul>
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>OpenTelemetry Collector</strong></td>
-                                <td>Observability</td>
-                                <td>Metrics and trace collection</td>
-                                <td>4317 (gRPC), 4318 (HTTP)</td>
-                                <td>1</td>
-                                <td>512Mi memory, 500m CPU</td>
+                                <td><strong>OTEL Collector</strong></td>
+                                <td>Optional Deployment + Service</td>
+                                <td>Telemetry collection for traces and metrics</td>
+                                <td>4317, 4318, 14250, 8889</td>
+                                <td>1 when enabled</td>
+                                <td>512Mi / 500m request, 1Gi / 1 CPU limit</td>
                                 <td><code>composio/templates/otel-collector.yaml:1</code></td>
                                 <td>
                                     <ul>
-                                        <li>OTLP, Jaeger protocol support</li>
-                                        <li>Google Cloud Monitoring export</li>
-                                        <li>Google Cloud Trace export</li>
-                                        <li>Prometheus metrics endpoint</li>
-                                        <li>Batch processing and memory limits</li>
+                                        <li>Rendered only when <code>otel.enabled=true</code></li>
+                                        <li>Apollo, Thermos, Mercury, and Frontend can export OTLP</li>
+                                        <li>Supports OTLP, Jaeger, and Prometheus endpoints</li>
+                                        <li>Collector pipeline is values-driven</li>
+                                        <li>Not part of the default render</li>
                                     </ul>
                                 </td>
                             </tr>
@@ -232,34 +246,37 @@
                         <h3><i class="fas fa-arrow-right"></i> Service-to-Service Communication</h3>
                         <ul>
                             <li><strong>Apollo → PostgreSQL:</strong> Direct database connection via secret-managed credentials</li>
-                            <li><strong>Apollo → Redis:</strong> Optional external or internal Redis for caching</li>
-                            <li><strong>Apollo → Minio:</strong> Object storage for tools and Lambda functions</li>
-                            <li><strong>Thermos → Temporal:</strong> Workflow execution and task management</li>
-                            <li><strong>Mercury → Apollo:</strong> API calls for MCP functionality</li>
-                            <li><strong>All Services → OTEL Collector:</strong> Telemetry data export</li>
+                            <li><strong>Apollo → Redis:</strong> Uses bundled Redis by default or <code>externalRedis</code> when configured</li>
+                            <li><strong>Apollo → Thermos:</strong> Internal orchestration path for background work</li>
+                            <li><strong>Apollo → Weaviate:</strong> Search / vector lookups when Weaviate is enabled; current defaults enable it</li>
+                            <li><strong>Thermos → Mercury:</strong> HTTP execution path via the in-cluster Mercury service</li>
+                            <li><strong>Thermos → Temporal:</strong> Optional workflow path enabled only by <code>features.temporal=true</code></li>
+                            <li><strong>Mercury → Apollo / External APIs:</strong> Uses Apollo for control flow and external providers for tool execution</li>
+                            <li><strong>Frontend → Apollo:</strong> Optional browser-facing path when <code>frontend.enabled=true</code></li>
                         </ul>
                     </div>
 
                     <div class="pattern-card">
                         <h3><i class="fas fa-shield-alt"></i> Security Architecture</h3>
                         <ul>
-                            <li><strong>Secrets Management:</strong> Kubernetes Secrets with auto-generated values</li>
-                            <li><strong>Non-root Containers:</strong> All services run as non-root users</li>
-                            <li><strong>Security Contexts:</strong> Drop all capabilities, read-only root filesystem where possible</li>
-                            <li><strong>Network Policies:</strong> Can be configured per environment</li>
-                            <li><strong>RBAC:</strong> Service accounts with minimal required permissions</li>
-                            <li><strong>Image Pull Secrets:</strong> AWS ECR authentication for private registries</li>
+                            <li><strong>Secrets Management:</strong> Kubernetes Secrets provide admin, encryption, JWT, database, Redis, and provider credentials</li>
+                            <li><strong>Service Accounts:</strong> Apollo has a dedicated service account by default; other workloads expose configurable security settings</li>
+                            <li><strong>Container Hardening:</strong> Mercury defaults to a non-root security context with dropped capabilities</li>
+                            <li><strong>Registry Access:</strong> Images are pulled through Replicated or user-provided <code>global.imagePullSecrets</code></li>
+                            <li><strong>Ingress / TLS:</strong> Apollo, Frontend, and Mercury expose separate optional ingress blocks</li>
                         </ul>
                     </div>
 
                     <div class="pattern-card">
                         <h3><i class="fas fa-sync-alt"></i> Data Flow</h3>
                         <ul>
-                            <li><strong>Request Flow:</strong> User → Apollo API → PostgreSQL → Response</li>
-                            <li><strong>Background Tasks:</strong> Apollo → Temporal → Thermos → Task Execution</li>
-                            <li><strong>MCP Requests:</strong> Client → Mercury (via Knative) → Apollo → Response</li>
-                            <li><strong>File Storage:</strong> Service → Minio → S3-compatible storage</li>
-                            <li><strong>Observability:</strong> All Services → OTEL Collector → Google Cloud</li>
+                            <li><strong>API Flow:</strong> Client → Apollo → PostgreSQL / Redis → Response</li>
+                            <li><strong>Search Flow:</strong> Apollo → Weaviate → optional reranker / model provider → Response when Weaviate-backed search is enabled</li>
+                            <li><strong>Tool Execution Flow:</strong> Apollo → Thermos → Mercury → external API → Apollo / Response</li>
+                            <li><strong>Frontend Flow:</strong> Browser → optional Frontend / ingress → Apollo</li>
+                            <li><strong>Workflow Flow:</strong> Thermos → Temporal only when Temporal is enabled</li>
+                            <li><strong>Observability Flow:</strong> Services → OTEL Collector only when OTEL is enabled</li>
+                            <li><strong>Object Storage:</strong> Apollo supports optional S3 or Azure Blob Storage configuration</li>
                         </ul>
                     </div>
                 </div>
@@ -271,20 +288,20 @@
                         <div class="dependency-card required">
                             <h3><i class="fas fa-check-circle"></i> Required</h3>
                             <ul>
-                                <li><strong>PostgreSQL:</strong> External database for all services</li>
-                                <li><strong>AWS ECR:</strong> Container registry authentication</li>
-                                <li><strong>Kubernetes 1.28+:</strong> Container orchestration platform</li>
-                                <li><strong>Knative Serving:</strong> Serverless runtime for Mercury</li>
+                                <li><strong>Kubernetes:</strong> Cluster capable of running the chart and bundled dependencies</li>
+                                <li><strong>PostgreSQL:</strong> External database plus credentials secret</li>
+                                <li><strong>Chart Secrets:</strong> Core secret values for admin token, encryption, JWT, and database URLs</li>
+                                <li><strong>Registry Authentication:</strong> Replicated pull secret or equivalent image pull credentials</li>
                             </ul>
                         </div>
 
                         <div class="dependency-card optional">
                             <h3><i class="fas fa-info-circle"></i> Optional</h3>
                             <ul>
-                                <li><strong>Redis:</strong> Can use external or bundled Redis (Bitnami)</li>
-                                <li><strong>OpenAI API:</strong> For AI-powered features</li>
-                                <li><strong>Google Cloud:</strong> For observability exports</li>
-                                <li><strong>Load Balancer:</strong> For production ingress</li>
+                                <li><strong>External Redis:</strong> Replaces the bundled Redis chart</li>
+                                <li><strong>Frontend / Ingress:</strong> Browser UI and external routing</li>
+                                <li><strong>Temporal / OTEL / Knative:</strong> Feature-specific add-ons</li>
+                                <li><strong>OpenAI / Bedrock / Object Storage Credentials:</strong> Required only for enabled integrations</li>
                             </ul>
                         </div>
                     </div>
@@ -305,38 +322,44 @@
                         <tbody>
                             <tr>
                                 <td>Apollo</td>
-                                <td>HPA (Optional)</td>
+                                <td>Fixed replicas by default, optional HPA</td>
                                 <td>2 / 10</td>
-                                <td>CPU: 70%, Memory: 80%</td>
+                                <td>CPU and memory when HPA is enabled</td>
                             </tr>
                             <tr>
                                 <td>Thermos</td>
-                                <td>HPA (Optional)</td>
+                                <td>Fixed replicas by default, optional HPA</td>
                                 <td>2 / 10</td>
-                                <td>CPU: 70%, Memory: 80%</td>
+                                <td>CPU and memory when HPA is enabled</td>
                             </tr>
                             <tr>
                                 <td>Mercury</td>
-                                <td>Knative Auto-scaling</td>
-                                <td>1 / 10</td>
-                                <td>CPU: 80%, Concurrency</td>
+                                <td>Fixed replicaCount by default, optional Knative autoscaling</td>
+                                <td>1 default, 1 / 10 in Knative mode</td>
+                                <td>Knative target and concurrency when enabled</td>
                             </tr>
                             <tr>
-                                <td>Minio</td>
-                                <td>Manual</td>
-                                <td>1</td>
-                                <td>N/A (StatefulSet)</td>
+                                <td>Weaviate</td>
+                                <td>Manual replica count</td>
+                                <td>1 by default</td>
+                                <td>N/A</td>
                             </tr>
                             <tr>
-                                <td>Temporal</td>
-                                <td>Manual</td>
-                                <td>2</td>
+                                <td>Frontend</td>
+                                <td>Manual by default, optional HPA</td>
+                                <td>1 / configurable</td>
+                                <td>CPU and memory when HPA is enabled</td>
+                            </tr>
+                            <tr>
+                                <td>Redis</td>
+                                <td>StatefulSet / external service</td>
+                                <td>1 internal master by default</td>
                                 <td>N/A</td>
                             </tr>
                             <tr>
                                 <td>OTEL Collector</td>
                                 <td>Manual</td>
-                                <td>1</td>
+                                <td>1 when enabled</td>
                                 <td>N/A</td>
                             </tr>
                         </tbody>
@@ -347,25 +370,24 @@
                     <h2><i class="fas fa-layer-group"></i> Deployment Modes</h2>
 
                     <div class="mode-card">
-                        <h3><i class="fas fa-laptop-code"></i> Development Mode</h3>
+                        <h3><i class="fas fa-laptop-code"></i> Default Chart Render</h3>
                         <ul>
-                            <li>Uses values.yaml defaults</li>
-                            <li>Minimal resource requests</li>
-                            <li>Single replica for most services</li>
-                            <li>Includes debug utilities</li>
-                            <li>Local port-forwarding for access</li>
+                            <li><code>features.temporal=false</code></li>
+                            <li><code>otel.enabled=false</code></li>
+                            <li><code>frontend.enabled=false</code></li>
+                            <li><code>mercury.useKnative=false</code></li>
+                            <li><code>redis.enabled=true</code> and <code>weaviate.enabled=true</code></li>
                         </ul>
                     </div>
 
                     <div class="mode-card">
-                        <h3><i class="fas fa-server"></i> Production Mode</h3>
+                        <h3><i class="fas fa-server"></i> Extended / Production-Oriented Render</h3>
                         <ul>
-                            <li>Uses values-override.yaml</li>
-                            <li>High-availability configuration</li>
-                            <li>Multiple replicas with HPA</li>
-                            <li>External PostgreSQL and Redis</li>
-                            <li>Load balancer ingress</li>
-                            <li>Enhanced monitoring and alerting</li>
+                            <li>Enable frontend and ingress for browser access</li>
+                            <li>Use external Redis when a managed cache is preferred</li>
+                            <li>Enable Temporal for auth refresh and trigger workflows</li>
+                            <li>Enable OTEL for traces and metrics export</li>
+                            <li>Switch Mercury to Knative only when serverless scaling is required</li>
                         </ul>
                     </div>
                 </div>
