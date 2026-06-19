@@ -18,6 +18,24 @@ Expand the name of the chart.
 {{- printf "%s" .Values.secret.name -}}
 {{- end -}}
 
+{{/* Secret name containing THERMOS_WORKER_DB. Defaults to the primary Thermos DB secret. */}}
+{{- define "composio.thermosWorkerDbSecretName" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- default (include "composio.coreSecretName" .) $workerDb.secretName -}}
+{{- end -}}
+
+{{/* Secret key containing THERMOS_WORKER_DB. Defaults to THERMOS_DATABASE_URL. */}}
+{{- define "composio.thermosWorkerDbSecretKey" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- default "THERMOS_DATABASE_URL" $workerDb.secretKey -}}
+{{- end -}}
+
+{{/* Schema used when THERMOS_WORKER_DB points at the primary Thermos DB. */}}
+{{- define "composio.thermosWorkerDbSchema" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- default "thermos_worker" $workerDb.schema -}}
+{{- end -}}
+
 
 {{- define "composio-admin-token" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}

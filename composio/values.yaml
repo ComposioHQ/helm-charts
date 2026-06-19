@@ -390,6 +390,17 @@ thermos:
     imageName: ""
   # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
   secretsDir: "/etc/secrets/thermos"
+  # Worker DB connection configuration. Defaults to the primary Thermos DB
+  # secret/key so worker tables share the primary database unless a separate DB
+  # is supplied. When the worker URL equals the primary URL, worker tables live
+  # in the dedicated schema below to avoid colliding with legacy public tables.
+  workerDb:
+    # -- Secret containing the worker DB connection URL. Empty uses `secret.name`.
+    secretName: ""
+    # -- Secret key containing the worker DB connection URL. Empty uses THERMOS_DATABASE_URL.
+    secretKey: ""
+    # -- PostgreSQL schema used when worker DB defaults to the primary database.
+    schema: "thermos_worker"
   # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
   additionalInitContainers: []
   # -- Additional volume mounts for the main container
@@ -658,6 +669,10 @@ temporal:
         namespace:
           - name: default
             retention: 7d
+          - name: batched-polling
+            retention: 10d
+          - name: webhook
+            retention: 10d
           - name: timer-shards
             retention: 10d
     # Temporal frontend service configuration
