@@ -84,7 +84,7 @@ spec:
                   name: {{ include "composio.thermosWorkerDbSecretName" . }}
                   key: {{ include "composio.thermosWorkerDbSecretKey" . }}
                   optional: true
-            - name: THERMOS_WORKER_DB_SCHEMA
+            - name: THERMOS_WORKER_DB_REWRITE_MIGRATION_SCHEMA
               value: {{ include "composio.thermosWorkerDbSchema" . | quote }}
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}

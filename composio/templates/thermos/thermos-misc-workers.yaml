@@ -150,7 +150,7 @@ spec:
                   name: {{ include "composio.thermosWorkerDbSecretName" . }}
                   key: {{ include "composio.thermosWorkerDbSecretKey" . }}
                   optional: true
-            - name: THERMOS_WORKER_DB_SCHEMA
+            - name: THERMOS_WORKER_DB_SEARCH_PATH_SCHEMA
               value: {{ include "composio.thermosWorkerDbSchema" . | quote }}
             - name: POLLING_TRIGGER_ENCRYPTION_KEY
               valueFrom:

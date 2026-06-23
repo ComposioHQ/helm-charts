@@ -392,14 +392,14 @@ thermos:
   secretsDir: "/etc/secrets/thermos"
   # Worker DB connection configuration. Defaults to the primary Thermos DB
   # secret/key so worker tables share the primary database unless a separate DB
-  # is supplied. When the worker URL equals the primary URL, worker tables live
-  # in the dedicated schema below to avoid colliding with legacy public tables.
+  # is supplied. The schema is passed to Thermos runtime as a search_path hint
+  # and to thermos-db-init for Atlas migration rewrites.
   workerDb:
     # -- Secret containing the worker DB connection URL. Empty uses `secret.name`.
     secretName: ""
     # -- Secret key containing the worker DB connection URL. Empty uses THERMOS_DATABASE_URL.
     secretKey: ""
-    # -- PostgreSQL schema used when worker DB defaults to the primary database.
+    # -- PostgreSQL schema used for worker DB runtime search_path and migration rewrites.
     schema: "thermos_worker"
   # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
   additionalInitContainers: []

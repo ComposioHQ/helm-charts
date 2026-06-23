@@ -30,7 +30,7 @@ Expand the name of the chart.
 {{- default "THERMOS_DATABASE_URL" $workerDb.secretKey -}}
 {{- end -}}
 
-{{/* Schema used when THERMOS_WORKER_DB points at the primary Thermos DB. */}}
+{{/* Schema used for Thermos worker DB search_path and migration rewrites. */}}
 {{- define "composio.thermosWorkerDbSchema" -}}
 {{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
 {{- default "thermos_worker" $workerDb.schema -}}
