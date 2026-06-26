@@ -24,20 +24,16 @@ Expand the name of the chart.
 {{- default (include "composio.coreSecretName" .) $workerDb.secretName -}}
 {{- end -}}
 
-{{/* Secret key containing THERMOS_WORKER_DB. Defaults to THERMOS_DATABASE_URL. */}}
+{{/* Secret key containing THERMOS_WORKER_DB. */}}
 {{- define "composio.thermosWorkerDbSecretKey" -}}
 {{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
-{{- default "THERMOS_DATABASE_URL" $workerDb.secretKey -}}
+{{- default "THERMOS_WORKER_DB" $workerDb.secretKey -}}
 {{- end -}}
 
-{{/* Schema used for Thermos worker DB search_path and migration rewrites. */}}
-{{- define "composio.thermosWorkerDbSchema" -}}
+{{/* Database created for Thermos worker DB when databaseMigration.enabled is true. */}}
+{{- define "composio.thermosWorkerDbDatabaseName" -}}
 {{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
-{{- if hasKey $workerDb "schema" -}}
-{{- $workerDb.schema -}}
-{{- else -}}
-thermos_worker
-{{- end -}}
+{{- default "thermos_workerdb" $workerDb.databaseName -}}
 {{- end -}}
 
 {{/* Whether Thermos should use the worker DB. Defaults enabled for trigger-capable installs. */}}

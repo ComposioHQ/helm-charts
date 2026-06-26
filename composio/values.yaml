@@ -391,17 +391,17 @@ thermos:
   # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
   secretsDir: "/etc/secrets/thermos"
   # Worker DB connection configuration. When enabled, Thermos runtime receives
-  # THERMOS_WORKER_DB and thermos-db-init runs worker DB migrations. By default
-  # the worker DB uses the primary Thermos DB URL with a separate schema.
+  # THERMOS_WORKER_DB and thermos-db-init runs worker DB migrations against the
+  # worker database's public schema.
   workerDb:
-    # -- Enable Thermos worker DB runtime wiring, schema provisioning, and worker DB migrations.
+    # -- Enable Thermos worker DB runtime wiring, worker DB creation, and worker DB migrations.
     enabled: true
     # -- Secret containing the worker DB connection URL. Empty uses `secret.name`.
     secretName: ""
-    # -- Secret key containing the worker DB connection URL. Empty uses THERMOS_DATABASE_URL.
-    secretKey: ""
-    # -- PostgreSQL schema used for worker DB runtime search_path and migration rewrites.
-    schema: "thermos_worker"
+    # -- Secret key containing the worker DB connection URL.
+    secretKey: "THERMOS_WORKER_DB"
+    # -- Worker database created by postgres-init-job when databaseMigration.enabled=true.
+    databaseName: "thermos_workerdb"
   # -- Additional init containers for Thermos. Mount `thermos-secrets` to populate `.Values.thermos.secretsDir`.
   additionalInitContainers: []
   # -- Additional volume mounts for the main container
