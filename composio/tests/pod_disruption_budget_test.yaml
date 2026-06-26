@@ -28,6 +28,28 @@ tests:
           path: spec.selector.matchLabels.release
           value: RELEASE-NAME
 
+  - it: should render frontend pod disruption budget when enabled
+    set:
+      frontend.enabled: true
+      frontend.podDisruptionBudget.enabled: true
+      frontend.podDisruptionBudget.minAvailable: 1
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-composio-frontend-pdb
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.minAvailable
+          value: 1
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: frontend
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+      - notExists:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
+
   - it: should render mercury pod disruption budget when enabled
     set:
       mercury.enabled: true

@@ -1,0 +1,171 @@
+suite: test frontend configmap
+templates:
+  - frontend/frontend-configmap.yaml
+tests:
+  - it: should not create configmap when frontend is disabled
+    set:
+      frontend.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create frontend configmap when enabled
+    set:
+      frontend.enabled: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-frontend-config
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: frontend
+
+  - it: should have default PORT value
+    set:
+      frontend.enabled: true
+    asserts:
+      - equal:
+          path: data.PORT
+          value: "3000"
+
+  - it: should use custom PORT value when configured
+    set:
+      frontend.enabled: true
+      frontend.env:
+        PORT: "8080"
+    asserts:
+      - equal:
+          path: data.PORT
+          value: "8080"
+
+  - it: should have default NODE_ENV value
+    set:
+      frontend.enabled: true
+    asserts:
+      - equal:
+          path: data.NODE_ENV
+          value: "production"
+
+  - it: should use custom NODE_ENV when configured
+    set:
+      frontend.enabled: true
+      frontend.env:
+        NODE_ENV: "development"
+    asserts:
+      - equal:
+          path: data.NODE_ENV
+          value: "development"
+
+  - it: should have default NEXT_PUBLIC_SELF_HOSTED value
+    set:
+      frontend.enabled: true
+    asserts:
+      - equal:
+          path: data.NEXT_PUBLIC_SELF_HOSTED
+          value: "true"
+
+  - it: should use Apollo ingress host for OVERRIDE_BACKEND_URL when Apollo ingress is enabled
+    set:
+      frontend.enabled: true
+      apollo.ingress.enabled: true
+      apollo.ingress.host: api.example.com
+    asserts:
+      - equal:
+          path: data.OVERRIDE_BACKEND_URL
+          value: "https://api.example.com"
+
+  - it: should use default backend URL when Apollo ingress is disabled
+    set:
+      frontend.enabled: true
+      apollo.ingress.enabled: false
+    asserts:
+      - equal:
+          path: data.OVERRIDE_BACKEND_URL
+          value: "http://RELEASE-NAME-apollo:9900"
+
+  - it: should use Apollo ingress host for NEXT_PUBLIC_BACKEND_URL when Apollo ingress is enabled
+    set:
+      frontend.enabled: true
+      apollo.ingress.enabled: true
+      apollo.ingress.host: api.example.com
+    asserts:
+      - equal:
+          path: data.NEXT_PUBLIC_BACKEND_URL
+          value: "https://api.example.com"
+
+  - it: should include OPENAPI_URL when configured
+    set:
+      frontend.enabled: true
+      frontend.env:
+        OPENAPI_URL: "https://api.example.com/openapi.json"
+    asserts:
+      - equal:
+          path: data.OPENAPI_URL
+          value: "https://api.example.com/openapi.json"
+
+  - it: should include NEXT_PUBLIC_POSTHOG_KEY when configured
+    set:
+      frontend.enabled: true
+      frontend.env:
+        NEXT_PUBLIC_POSTHOG_KEY: "phc_test_key"
+    asserts:
+      - equal:
+          path: data.NEXT_PUBLIC_POSTHOG_KEY
+          value: "phc_test_key"
+
+  - it: should include NEXT_PUBLIC_APP_URL when configured
+    set:
+      frontend.enabled: true
+      frontend.env:
+        NEXT_PUBLIC_APP_URL: "https://app.example.com"
+    asserts:
+      - equal:
+          path: data.NEXT_PUBLIC_APP_URL
+          value: "https://app.example.com"
+
+  - it: should include NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN when configured
+    set:
+      frontend.enabled: true
+      frontend.env:
+        NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: "true"
+    asserts:
+      - equal:
+          path: data.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN
+          value: "true"
+
+  - it: should include OTEL configuration when otel is enabled
+    set:
+      frontend.enabled: true
+      otel.enabled: true
+      otel.frontend:
+        serviceName: "my-frontend"
+        serviceVersion: "2.0.0"
+      otel.environment: "staging"
+      otel.exporter.otlp:
+        endpoint: "otel-collector:4317"
+        tracesEndpoint: "otel-collector:4317"
+        insecure: "true"
+    asserts:
+      - equal:
+          path: data.OTEL_ENABLED
+          value: "true"
+      - equal:
+          path: data.OTEL_SERVICE_NAME
+          value: "my-frontend"
+      - equal:
+          path: data.OTEL_SERVICE_VERSION
+          value: "2.0.0"
+      - equal:
+          path: data.OTEL_ENVIRONMENT
+          value: "staging"
+      - equal:
+          path: data.OTEL_TRACES_EXPORTER
+          value: "otlp"
+      - equal:
+          path: data.OTEL_METRICS_EXPORTER
+          value: "otlp"
+      - equal:
+          path: data.OTEL_LOGS_EXPORTER
+          value: "otlp"

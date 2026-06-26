@@ -90,6 +90,27 @@ A Helm chart for Composio
 | externalSecrets.ecr.server | string | `"008971668139.dkr.ecr.us-east-1.amazonaws.com"` | ECR server URL |
 | externalSecrets.ecr.token | string | `""` |  |
 | externalSecrets.ecr.username | string | `"AWS"` | ECR username (typically "AWS") |
+| frontend.enabled | bool | `false` | Enable frontend service |
+| frontend.env.NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN | string | `"true"` | Disable social login for self-hosted deployments |
+| frontend.env.NEXT_PUBLIC_SELF_HOSTED | string | `"true"` | Enable self-hosted mode |
+| frontend.env.NODE_ENV | string | `"production"` | Node environment |
+| frontend.env.OVERRIDE_BACKEND_URL | string | `""` | Override backend URL (defaults to Apollo service URL) |
+| frontend.env.PORT | string | `"3000"` | Server port |
+| frontend.image.pullPolicy | string | `"Always"` | Image pull policy |
+| frontend.image.repository | string | `"composio-self-host/frontend"` | Frontend image repository |
+| frontend.image.tag | string | `"latest"` | Frontend image tag |
+| frontend.ingress.annotations | object | `{}` | Ingress annotations |
+| frontend.ingress.className | string | `""` | Ingress class name |
+| frontend.ingress.enabled | bool | `false` | Enable ingress |
+| frontend.ingress.host | string | `""` | Hostname for frontend ingress |
+| frontend.ingress.tls | list | `[]` | TLS configuration |
+| frontend.replicaCount | int | `1` | Number of frontend pod replicas |
+| frontend.resources.limits.cpu | string | `"1"` | CPU limit for frontend |
+| frontend.resources.limits.memory | string | `"3Gi"` | Memory limit for frontend |
+| frontend.resources.requests.cpu | string | `"1"` | CPU request for frontend |
+| frontend.resources.requests.memory | string | `"2Gi"` | Memory request for frontend |
+| frontend.service.port | int | `3000` | Service port |
+| frontend.service.type | string | `"ClusterIP"` | Service type |
 | global.domain | string | `"localhost"` | Domain name for the deployment |
 | global.environment | string | `"development"` | Environment name (e.g., development, staging, production) |
 | global.imagePullSecrets | list | `[{"name":"ecr-secret"}]` | Image pull secrets for private registries |
@@ -102,6 +123,8 @@ A Helm chart for Composio
 | mercury.autoscaling.target | int | `80` | Target metric value for autoscaling |
 | mercury.awsLambda.enabled | bool | `false` | Enable AWS Lambda deployment |
 | mercury.awsLambda.secretRef.name | string | `"lambda-cred"` | Secret name for Lambda credentials |
+| mercury.bundleSignatureVerification.enabled | bool | `true` | Enable strict runtime verification of signed module bundles. |
+| mercury.bundleSignatureVerification.publicKeyBase64 | string | `"/avANrHX/zfDqUOu3U2URZsWy7mJrkbidGs4Wvh8rFA="` | Base64-encoded public verification key for module bundle signatures. This is not a signing key. |
 | mercury.containerConcurrency | int | `0` | Container concurrency (0 = unlimited) |
 | mercury.enabled | bool | `true` | Enable Mercury service |
 | mercury.fileStorage | string | `"s3"` | Mercury file storage backend. Valid values are "s3" or "base64". Renders FILE_BACKEND. |
@@ -202,6 +225,9 @@ A Helm chart for Composio
 | otel.exporter.otlp.insecure | bool | `true` | Use insecure connection |
 | otel.exporter.otlp.metricsEndpoint | string | `"composio-otel-collector:4317"` | Metrics endpoint for gRPC (optional, defaults to endpoint) |
 | otel.exporter.otlp.tracesEndpoint | string | `"http://composio-otel-collector:4318/v1/traces"` | Trace endpoint (optional, defaults to endpoint) |
+| otel.frontend.metricsEndpoint | string | `"http://composio-otel-collector:4318/v1/metrics"` | HTTP endpoint for metrics |
+| otel.frontend.serviceName | string | `"frontend"` | Frontend service name |
+| otel.frontend.serviceVersion | string | `"1.0.0"` | Frontend service version |
 | otel.logs.enabled | bool | `false` | Enable log collection via OTEL |
 | otel.mercury.metricsEndpoint | string | `"http://composio-otel-collector:4318/v1/metrics"` | HTTP endpoint for metrics |
 | otel.mercury.serviceName | string | `"mercury-openapi"` | Mercury service name |

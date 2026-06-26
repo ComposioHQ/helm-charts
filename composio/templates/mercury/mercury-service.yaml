@@ -58,12 +58,11 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-mercury-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
-            - name: SELF_HOSTED
-              value: "true"
-            - name: FILE_BACKEND
-              value: {{ .Values.mercury.fileStorage | default "s3" | quote }}
             - name: MERCURY_SECRETS_DIR
               value: {{ .Values.mercury.secretsDir | quote }}
             - name: OPENAI_API_KEY
@@ -72,10 +71,6 @@ spec:
                   name: {{ .Values.openAI.secretRef }}
                   key: {{ .Values.openAI.key }}
                   optional: true
-            - name: BACKEND_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
-            - name: APOLLO_URL
-              value: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
             - name: APOLLO_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -88,8 +83,6 @@ spec:
                   name: {{ $coreSecret }}
                   key: COMPOSIO_ADMIN_TOKEN
                   optional: true
-            - name: USE_APOLLO_GET_DOWNLOAD_URL_API
-              value: "true"
             {{- with .Values.mercury.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
