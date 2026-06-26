@@ -33,7 +33,21 @@ Expand the name of the chart.
 {{/* Schema used for Thermos worker DB search_path and migration rewrites. */}}
 {{- define "composio.thermosWorkerDbSchema" -}}
 {{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
-{{- default "thermos_worker" $workerDb.schema -}}
+{{- if hasKey $workerDb "schema" -}}
+{{- $workerDb.schema -}}
+{{- else -}}
+thermos_worker
+{{- end -}}
+{{- end -}}
+
+{{/* Whether Thermos should use the worker DB. Defaults enabled for trigger-capable installs. */}}
+{{- define "composio.thermosWorkerDbEnabled" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- if hasKey $workerDb "enabled" -}}
+{{- ternary "true" "false" $workerDb.enabled -}}
+{{- else -}}
+true
+{{- end -}}
 {{- end -}}
 
 

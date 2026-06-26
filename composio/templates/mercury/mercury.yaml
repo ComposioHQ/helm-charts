@@ -104,6 +104,9 @@ spec:
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
             {{- end }}
+            {{- with .Values.mercury.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
           volumeMounts:

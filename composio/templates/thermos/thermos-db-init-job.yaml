@@ -78,14 +78,18 @@ spec:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
                   optional: true
+            {{- if eq (include "composio.thermosWorkerDbEnabled" .) "true" }}
             - name: THERMOS_WORKER_DB
               valueFrom:
                 secretKeyRef:
                   name: {{ include "composio.thermosWorkerDbSecretName" . }}
                   key: {{ include "composio.thermosWorkerDbSecretKey" . }}
                   optional: true
+            {{- if include "composio.thermosWorkerDbSchema" . }}
             - name: THERMOS_WORKER_DB_REWRITE_MIGRATION_SCHEMA
               value: {{ include "composio.thermosWorkerDbSchema" . | quote }}
+            {{- end }}
+            {{- end }}
             - name: ADMIN_EMAIL
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
             # When toolkit-registry sidecar is enabled (default), the

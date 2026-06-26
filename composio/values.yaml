@@ -390,11 +390,12 @@ thermos:
     imageName: ""
   # -- Directory exposed to Thermos containers via THERMOS_SECRET_DIR.
   secretsDir: "/etc/secrets/thermos"
-  # Worker DB connection configuration. Defaults to the primary Thermos DB
-  # secret/key so worker tables share the primary database unless a separate DB
-  # is supplied. The schema is passed to Thermos runtime as a search_path hint
-  # and to thermos-db-init for Atlas migration rewrites.
+  # Worker DB connection configuration. When enabled, Thermos runtime receives
+  # THERMOS_WORKER_DB and thermos-db-init runs worker DB migrations. By default
+  # the worker DB uses the primary Thermos DB URL with a separate schema.
   workerDb:
+    # -- Enable Thermos worker DB runtime wiring, schema provisioning, and worker DB migrations.
+    enabled: true
     # -- Secret containing the worker DB connection URL. Empty uses `secret.name`.
     secretName: ""
     # -- Secret key containing the worker DB connection URL. Empty uses THERMOS_DATABASE_URL.
