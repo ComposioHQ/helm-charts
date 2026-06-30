@@ -46,19 +46,64 @@ on:
         required: false
         type: string
         default: "latest"
+      skip_cve_acknowledgement:
+        description: "Leave blank. To skip the Grype HIGH/CRITICAL gate, type DANGEROUSLY ACKNOWLEDGE exactly."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write
   pull-requests: write
 
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 008971668139.dkr.ecr.us-east-1.amazonaws.com
+  GRYPE_VERSION: v0.115.0
+  OPRA_CI_DOPPLER_IDENTITY_ID: fc94b8db-1149-4b8a-8ba7-1fd4833bb870
+  SLACK_IMPLEMENTATIONS_USERGROUP_ID: S092C0T771V
+
 jobs:
+  nightly-secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Fetch nightly secrets from Doppler
+        id: doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ env.OPRA_CI_DOPPLER_IDENTITY_ID }}
+          doppler-project: opra-ci
+          doppler-config: prd
+          inject-env-vars: true
+
+      - name: Validate required nightly secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in NIGHTLY_GITHUB_APP_CLIENT_ID NIGHTLY_GITHUB_APP_PRIVATE_KEY REPLICATED_API_TOKEN REPLICATED_APP; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("${name}")
+            fi
+          done
+
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required Doppler secret(s): %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
   retag-latest-images:
     runs-on: ubuntu-latest
+    needs:
+      - nightly-secrets
     outputs:
       release_tag: ${{ steps.retag.outputs.release_tag }}
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
       IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate thermos-toolkit-registry"
       # Per-repo ECR source tags (manual runs only; empty on schedule). Empty = use "latest".
       SOURCE_TAG_APOLLO: ${{ github.event.inputs.apollo_image_tag || '' }}
@@ -71,6 +116,7 @@ jobs:
       SOURCE_TAG_THERMOS_TOOLKIT_REGISTRY: ${{ github.event.inputs.thermos_toolkit_registry_image_tag || '' }}
     permissions:
       id-token: write
+      contents: read
     steps:
       - name: Calculate release tag from latest GitHub release
         id: calculate_release_tag
@@ -135,11 +181,13 @@ jobs:
           echo "Base tag used for increment: ${base_tag:-none}"
           echo "Calculated release tag: ${new_tag}"
 
-          echo "source_release_id=${source_release_id}" >> "${GITHUB_OUTPUT}"
-          echo "source_release_tag=${source_release_tag}" >> "${GITHUB_OUTPUT}"
-          echo "source_manifest_tag=${source_manifest_tag}" >> "${GITHUB_OUTPUT}"
-          echo "base_tag=${base_tag}" >> "${GITHUB_OUTPUT}"
-          echo "release_tag=${new_tag}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "source_release_id=${source_release_id}"
+            echo "source_release_tag=${source_release_tag}"
+            echo "source_manifest_tag=${source_manifest_tag}"
+            echo "base_tag=${base_tag}"
+            echo "release_tag=${new_tag}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Determine AWS Assume Role ARN
         id: env
@@ -150,7 +198,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ steps.env.outputs.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Resolve latest digest and retag
         id: retag
@@ -159,13 +207,12 @@ jobs:
           set -euo pipefail
 
           if [[ -z "${AWS_REGION:-}" ]]; then
-            echo "AWS_REGION secret is required."
+            echo "AWS_REGION is required."
             exit 1
           fi
 
           NEW_TAG="${{ steps.calculate_release_tag.outputs.release_tag }}"
           echo "Using release tag from latest GitHub release calculation: ${NEW_TAG}"
-          echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
 
           resolve_source_tag() {
             local r="$1"
@@ -221,20 +268,44 @@ jobs:
             pushed_at="$(echo "${metadata_json}" | jq -r '.imageDetails[0].imagePushedAt // empty')"
             size_bytes="$(echo "${metadata_json}" | jq -r '.imageDetails[0].imageSizeInBytes // empty')"
 
-            if [[ -n "${media_type}" ]]; then
-              aws ecr put-image \
-                --repository-name composio-self-host/"${repo}" \
-                --image-tag "${NEW_TAG}" \
-                --image-manifest-media-type "${media_type}" \
-                --image-manifest "${manifest}" \
-                >/dev/null
+            existing_tag_json=""
+            existing_tag_error="$(mktemp)"
+            set +e
+            existing_tag_json="$(aws ecr describe-images \
+              --repository-name composio-self-host/"${repo}" \
+              --image-ids imageTag="${NEW_TAG}" \
+              --output json 2>"${existing_tag_error}")"
+            existing_tag_rc=$?
+            set -e
+
+            if (( existing_tag_rc == 0 )); then
+              existing_digest="$(echo "${existing_tag_json}" | jq -r '.imageDetails[0].imageDigest // empty')"
+              if [[ "${existing_digest}" == "${digest}" ]]; then
+                echo "Tag ${NEW_TAG} already exists for ${repo} with the expected digest; leaving it in place."
+              else
+                echo "Tag ${NEW_TAG} already exists for ${repo} with digest ${existing_digest}, expected ${digest}" >&2
+                exit 1
+              fi
+            elif grep -q 'ImageNotFoundException' "${existing_tag_error}"; then
+              if [[ -n "${media_type}" ]]; then
+                aws ecr put-image \
+                  --repository-name composio-self-host/"${repo}" \
+                  --image-tag "${NEW_TAG}" \
+                  --image-manifest-media-type "${media_type}" \
+                  --image-manifest "${manifest}" \
+                  >/dev/null
+              else
+                aws ecr put-image \
+                  --repository-name composio-self-host/"${repo}" \
+                  --image-tag "${NEW_TAG}" \
+                  --image-manifest "${manifest}" \
+                  >/dev/null
+              fi
             else
-              aws ecr put-image \
-                --repository-name composio-self-host/"${repo}" \
-                --image-tag "${NEW_TAG}" \
-                --image-manifest "${manifest}" \
-                >/dev/null
+              cat "${existing_tag_error}" >&2
+              exit "${existing_tag_rc}"
             fi
+            rm -f "${existing_tag_error}"
 
             echo "repo=${repo} latest_digest=${digest} new_tag=${NEW_TAG} pushed_at=${pushed_at} size_bytes=${size_bytes}"
 
@@ -248,25 +319,189 @@ jobs:
             results="$(echo "${results}" | jq -c --argjson row "${row}" '. + [$row]')"
           done
 
-          echo "retagged_images<<EOF" >> "${GITHUB_OUTPUT}"
-          echo "${results}" >> "${GITHUB_OUTPUT}"
-          echo "EOF" >> "${GITHUB_OUTPUT}"
+          {
+            echo "release_tag=${NEW_TAG}"
+            echo "retagged_images<<EOF"
+            echo "${results}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Print outputs
         run: |
           echo "release_tag: ${{ steps.retag.outputs.release_tag }}"
           echo "retagged_images: ${{ steps.retag.outputs.retagged_images }}"
 
+  cve-scan:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement == 'DANGEROUSLY ACKNOWLEDGE') }}
+    runs-on: ubuntu-latest
+    needs:
+      - retag-latest-images
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      scan_result: ${{ steps.scan.outputs.scan_result }}
+      summary: ${{ steps.scan.outputs.summary }}
+    steps:
+      - name: Reject invalid CVE override acknowledgement
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement != '' && inputs.skip_cve_acknowledgement != 'DANGEROUSLY ACKNOWLEDGE' }}
+        shell: bash
+        run: |
+          echo "The CVE gate can only be skipped by typing DANGEROUSLY ACKNOWLEDGE exactly." >&2
+          exit 1
+
+      - name: Determine AWS Assume Role ARN
+        id: env
+        shell: bash
+        run: |
+          echo "AWS_ROLE_ARN=arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ steps.env.outputs.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR for Grype registry scans
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr get-login-password --region "${AWS_REGION}" \
+            | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+
+      - name: Install Grype
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL https://get.anchore.io/grype -o /tmp/install-grype.sh
+          sudo sh /tmp/install-grype.sh -b /usr/local/bin "${GRYPE_VERSION}"
+          grype version
+
+      - name: Scan retagged images with Grype
+        id: scan
+        shell: bash
+        env:
+          RETAGGED_IMAGES_JSON: ${{ needs.retag-latest-images.outputs.retagged_images }}
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p cve-reports
+          summary_file="cve-reports/summary.md"
+          {
+            echo "## Grype CVE Scan"
+            echo
+            echo "- Release tag: \`${RELEASE_TAG}\`"
+            echo "- Policy: fail on any HIGH or CRITICAL finding"
+            echo
+          } > "${summary_file}"
+
+          if [[ -z "${RETAGGED_IMAGES_JSON}" || "${RETAGGED_IMAGES_JSON}" == "[]" ]]; then
+            echo "No retagged images were provided to the CVE scan." >> "${summary_file}"
+            {
+              echo "scan_result=failed"
+              echo "summary<<__CVE_SUMMARY__"
+              cat "${summary_file}"
+              echo "__CVE_SUMMARY__"
+            } >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          scan_result="success"
+          failure_summary=""
+          mapfile -t image_rows < <(jq -c '.[]' <<<"${RETAGGED_IMAGES_JSON}")
+
+          for row in "${image_rows[@]}"; do
+            repo="$(jq -r '.repo' <<<"${row}")"
+            tag="$(jq -r '.new_tag' <<<"${row}")"
+            image="${ECR_REGISTRY}/${repo}:${tag}"
+            safe_name="${repo//\//_}"
+            report_json="cve-reports/${safe_name}.json"
+
+            echo "Scanning ${image}"
+            set +e
+            grype "registry:${image}" \
+              --fail-on high \
+              --output json \
+              --file "${report_json}"
+            grype_rc=$?
+            set -e
+
+            high_count="0"
+            critical_count="0"
+            if [[ -s "${report_json}" ]]; then
+              high_count="$(
+                jq '[.matches[]? | select(((.vulnerability.severity // "") | ascii_downcase) == "high")] | length' "${report_json}"
+              )"
+              critical_count="$(
+                jq '[.matches[]? | select(((.vulnerability.severity // "") | ascii_downcase) == "critical")] | length' "${report_json}"
+              )"
+            fi
+
+            {
+              echo "### ${repo}"
+              echo
+              echo "- Image: \`${image}\`"
+              echo "- HIGH: ${high_count}"
+              echo "- CRITICAL: ${critical_count}"
+              echo
+            } >> "${summary_file}"
+
+            if (( grype_rc == 2 || high_count > 0 || critical_count > 0 )); then
+              scan_result="failed"
+              failure_summary="${repo} has ${high_count} HIGH and ${critical_count} CRITICAL findings"
+              break
+            fi
+
+            if (( grype_rc != 0 )); then
+              scan_result="failed"
+              failure_summary="Grype failed while scanning ${repo} with exit code ${grype_rc}"
+              break
+            fi
+          done
+
+          if [[ -n "${failure_summary}" ]]; then
+            {
+              echo "### Failure"
+              echo
+              echo "${failure_summary}"
+            } >> "${summary_file}"
+          fi
+
+          {
+            echo "scan_result=${scan_result}"
+            echo "summary<<__CVE_SUMMARY__"
+            cat "${summary_file}"
+            echo "__CVE_SUMMARY__"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Upload Grype reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nightly-grype-cve-reports-${{ needs.retag-latest-images.outputs.release_tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          path: cve-reports
+
+      - name: Fail on HIGH or CRITICAL CVEs
+        if: ${{ steps.scan.outputs.scan_result != 'success' }}
+        shell: bash
+        run: |
+          echo "Grype reported HIGH or CRITICAL vulnerabilities. Blocking nightly release." >&2
+          exit 1
+
   replicated-release:
     runs-on: ubuntu-latest
-    needs: retag-latest-images
+    if: ${{ needs.retag-latest-images.result == 'success' && (needs.cve-scan.result == 'success' || needs.cve-scan.result == 'skipped') }}
+    needs:
+      - retag-latest-images
+      - cve-scan
     permissions:
       contents: write
       id-token: write
     outputs:
       branch_name: ${{ steps.branch.outputs.branch_name }}
+      previous_version: ${{ steps.version.outputs.current }}
       version: ${{ steps.version.outputs.new }}
-      slack_message_id: ${{ steps.slack.outputs.message_id }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -299,12 +534,19 @@ jobs:
           echo "Installing Replicated CLI in /usr/local/bin/"
           sudo install replicated /usr/local/bin/replicated
 
+      - name: Fetch replicated release secrets from Doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ env.OPRA_CI_DOPPLER_IDENTITY_ID }}
+          doppler-project: opra-ci
+          doppler-config: prd
+          inject-env-vars: true
+
       - name: Check replicated
         run: |
-          set -e
+          set -euo pipefail
           replicated app ls &> /dev/null || exit 1
-        env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
 
       - name: Install Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
@@ -317,9 +559,6 @@ jobs:
 
       - name: Get and bump version
         id: version
-        env:
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
         run: |
           set -euo pipefail
           app_id="$(
@@ -365,19 +604,6 @@ jobs:
           echo "new=${NEW_APPVERSION}" >> "${GITHUB_OUTPUT}"
           echo "Current version: ${CURRENT_APPVERSION}"
           echo "New version: ${NEW_APPVERSION}"
-
-      # - name: Notify Slack - Started
-      #   id: slack
-      #   uses: ./.github/actions/slack-notify
-      #   with:
-      #     status: STARTED
-      #     slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
-      #     channel: C093CVARNKC
-      #     title: "New Nightly Release"
-      #     summary: |
-      #       *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
-      #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
-      #       *Branch:* `${{ steps.branch.outputs.branch_name }}`
 
       - name: Update Chart.yaml versions
         run: |
@@ -433,9 +659,6 @@ jobs:
           --yaml-dir manifests \
           --promote "Nightly" \
           --version "${{ steps.version.outputs.new }}"
-        env:
-          REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-          REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
 
       - name: Push nightly branch
         if: success()
@@ -443,42 +666,20 @@ jobs:
           set -euo pipefail
           git push --force-with-lease origin "${{ steps.branch.outputs.branch_name }}"
 
-      - name: Notify Slack - Replicated Release Ready
-        if: success()
-        uses: ./.github/actions/slack-notify
-        with:
-          status: SUCCESS
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          channel: C093CVARNKC
-          message_id: ${{ steps.slack.outputs.message_id }}
-          title: "Nightly Release Prepared"
-          summary: |
-            *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
-            *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
-            *Branch:* `${{ steps.branch.outputs.branch_name }}`
-            *State:* Replicated release completed, branch pushed.
-
-      - name: Notify Slack - Failure
-        if: failure() && steps.slack.outputs.message_id
-        uses: ./.github/actions/slack-notify
-        with:
-          status: FAILURE
-          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          channel: C093CVARNKC
-          message_id: ${{ steps.slack.outputs.message_id }}
-          title: "Nightly Release Failed"
-          summary: |
-            *Version:* `${{ steps.version.outputs.current }}` → `${{ steps.version.outputs.new }}`
-            *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
-            *Branch:* `${{ steps.branch.outputs.branch_name }}`
-            *State:* Replicated release failed before PR creation.
-
-
   create-nightly-release-pr:
+    if: ${{ needs.replicated-release.result == 'success' && (needs.cve-scan.result == 'success' || needs.cve-scan.result == 'skipped') }}
     runs-on: ubuntu-latest
     needs:
+      - cve-scan
       - retag-latest-images
       - replicated-release
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      pr_number: ${{ steps.create_pr.outputs.pr_number }}
+      pr_url: ${{ steps.create_pr.outputs.pr_url }}
+      release_url: ${{ steps.github_release.outputs.release_url }}
     steps:
       - name: Pull latest nightly branch
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -490,11 +691,42 @@ jobs:
         id: nightly_head
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Fetch nightly secrets from Doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ env.OPRA_CI_DOPPLER_IDENTITY_ID }}
+          doppler-project: opra-ci
+          doppler-config: prd
+          inject-env-vars: true
+
+      - name: Mint GitHub App token
+        id: app_token
+        shell: bash
+        env:
+          GITHUB_APP_OWNER: ${{ github.repository_owner }}
+          GITHUB_APP_REPOSITORIES: helm-charts,onprem-testbed
+          GITHUB_APP_PERMISSIONS_JSON: '{"actions":"write","contents":"write","issues":"write","pull_requests":"write"}'
+        run: |
+          set -euo pipefail
+          export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
+          export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
+          token_json="$(node .github/scripts/github-app-token.mjs)"
+          token="$(jq -r '.token' <<<"${token_json}")"
+          expires_at="$(jq -r '.expires_at' <<<"${token_json}")"
+          if [[ -z "${token}" || "${token}" == "null" ]]; then
+            echo "Unable to mint GitHub App token" >&2
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+          echo "token=${token}" >> "${GITHUB_OUTPUT}"
+          echo "expires_at=${expires_at}" >> "${GITHUB_OUTPUT}"
+
       - name: Create nightly release PR
         id: create_pr
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ steps.app_token.outputs.token }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -502,12 +734,18 @@ jobs:
             const head = "${{ needs.replicated-release.outputs.branch_name }}";
             const releaseTag = "${{ needs.retag-latest-images.outputs.release_tag }}";
             const version = "${{ needs.replicated-release.outputs.version }}";
+            const cveStatus = "${{ needs.cve-scan.result }}";
+            const cveLine = cveStatus === "skipped"
+              ? "Grype CVE gate skipped via manual `DANGEROUSLY ACKNOWLEDGE` override"
+              : "Grype CVE gate passed before release creation";
             const title = `Nightly release ${releaseTag}`;
             const body = `## Summary
 
             - Bump Helm chart version to ${version}
             - Update nightly image tags to ${releaseTag}
-            - Refresh replicated manifest versions`;
+            - Refresh replicated manifest versions
+            - ${cveLine}
+            - Nightly workflow dispatches onprem-testbed fresh-install and upgrade validation`;
 
             const { data: pulls } = await github.rest.pulls.list({
               owner,
@@ -550,9 +788,10 @@ jobs:
             core.setOutput("pr_number", String(pr.number));
 
       - name: Ensure GitHub nightly release exists
+        id: github_release
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ steps.app_token.outputs.token }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -587,13 +826,14 @@ jobs:
                 prerelease: true,
               });
               core.info(`Updated GitHub release for tag ${tag_name}.`);
+              core.setOutput("release_url", existingRelease.html_url);
             } catch (e) {
               const status = e.status ?? e.response?.status;
               if (status !== 404) {
                 throw e;
               }
 
-              await github.rest.repos.createRelease({
+              const { data: release } = await github.rest.repos.createRelease({
                 owner,
                 repo,
                 tag_name,
@@ -604,32 +844,238 @@ jobs:
                 prerelease: true,
               });
               core.info(`Created GitHub release ${tag_name} at ${target_commitish}`);
+              core.setOutput("release_url", release.html_url);
             }
 
-      # - name: Notify Slack - Success
-      #   if: success()
-      #   uses: ./.github/actions/slack-notify
-      #   with:
-      #     status: SUCCESS
-      #     slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
-      #     channel: C093CVARNKC
-      #     message_id: ${{ needs.replicated-release.outputs.slack_message_id }}
-      #     title: "Nightly Release PR Created"
-      #     summary: |
-      #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
-      #       *Branch:* `${{ needs.replicated-release.outputs.branch_name }}`
-      #       *PR:* ${{ steps.create_pr.outputs.pr_url }}
+  onprem-testbed:
+    if: ${{ needs.replicated-release.result == 'success' }}
+    runs-on: ubuntu-latest
+    needs:
+      - replicated-release
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 720
+    steps:
+      - name: Checkout harness dispatch scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          sparse-checkout: |
+            .github/scripts/run-onprem-test-harness.sh
+            .github/scripts/github-app-token.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
 
-      # - name: Notify Slack - Failure
-      #   if: failure() && needs.replicated-release.outputs.slack_message_id
-      #   uses: ./.github/actions/slack-notify
-      #   with:
-      #     status: FAILURE
-      #     slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
-      #     channel: C093CVARNKC
-      #     message_id: ${{ needs.replicated-release.outputs.slack_message_id }}
-      #     title: "Nightly Release PR Failed"
-      #     summary: |
-      #       *Release Tag:* `${{ needs.retag-latest-images.outputs.release_tag }}`
-      #       *Branch:* `${{ needs.replicated-release.outputs.branch_name }}`
-      #       *State:* PR creation failed after pushing the nightly branch.
+      - name: Fetch nightly secrets from Doppler
+        id: doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ env.OPRA_CI_DOPPLER_IDENTITY_ID }}
+          doppler-project: opra-ci
+          doppler-config: prd
+          inject-env-vars: true
+
+      - name: Run onprem-testbed fresh-install harness
+        id: fresh
+        continue-on-error: true
+        shell: bash
+        env:
+          HARNESS_NAME: Nightly onprem-testbed fresh install
+          HELM_CHART_VERSION: ${{ needs.replicated-release.outputs.version }}
+          MIGRATION_DIRECTION: upgrade
+          CLUSTER_SIZE: xlarge
+          INCLUDE_OPTIONAL_SCENARIOS: "false"
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1"}'
+          ONPREM_REF: main
+        run: |
+          export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
+          export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
+          bash .github/scripts/run-onprem-test-harness.sh
+
+      - name: Run onprem-testbed upgrade harness
+        id: upgrade
+        continue-on-error: true
+        shell: bash
+        env:
+          HARNESS_NAME: Nightly onprem-testbed upgrade
+          HELM_CHART_VERSION: ${{ needs.replicated-release.outputs.version }}
+          UPGRADE_FROM_VERSIONS: ${{ needs.replicated-release.outputs.previous_version }}
+          MIGRATION_DIRECTION: upgrade
+          CLUSTER_SIZE: xlarge
+          INCLUDE_OPTIONAL_SCENARIOS: "false"
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1"}'
+          ONPREM_REF: main
+        run: |
+          export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
+          export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
+          bash .github/scripts/run-onprem-test-harness.sh
+
+      - name: Fail if any onprem-testbed harness failed
+        if: ${{ steps.fresh.outcome != 'success' || steps.upgrade.outcome != 'success' }}
+        shell: bash
+        run: |
+          echo "Fresh-install harness outcome: ${{ steps.fresh.outcome }}" >&2
+          echo "Upgrade harness outcome: ${{ steps.upgrade.outcome }}" >&2
+          exit 1
+
+  notify-nightly-report:
+    if: always()
+    runs-on: ubuntu-latest
+    needs:
+      - nightly-secrets
+      - retag-latest-images
+      - cve-scan
+      - replicated-release
+      - create-nightly-release-pr
+      - onprem-testbed
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Slack action
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          sparse-checkout: |
+            .github/actions/slack-notify
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Fetch nightly secrets from Doppler
+        id: doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ env.OPRA_CI_DOPPLER_IDENTITY_ID }}
+          doppler-project: opra-ci
+          doppler-config: prd
+          inject-env-vars: true
+
+      - name: Validate Slack webhook URL
+        shell: bash
+        env:
+          NIGHTLY_SLACK_WEBHOOK_URL: ${{ steps.doppler.outputs.NIGHTLY_SLACK_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${NIGHTLY_SLACK_WEBHOOK_URL:-}" ]]; then
+            echo "Missing required Doppler secret: NIGHTLY_SLACK_WEBHOOK_URL" >&2
+            exit 1
+          fi
+
+      - name: Build Slack summary
+        id: summary
+        shell: bash
+        env:
+          NIGHTLY_SECRETS_RESULT: ${{ needs.nightly-secrets.result }}
+          RETAG_RESULT: ${{ needs.retag-latest-images.result }}
+          CVE_RESULT: ${{ needs.cve-scan.result }}
+          REPLICATED_RESULT: ${{ needs.replicated-release.result }}
+          PR_RESULT: ${{ needs.create-nightly-release-pr.result }}
+          ONPREM_RESULT: ${{ needs.onprem-testbed.result }}
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
+          PREVIOUS_VERSION: ${{ needs.replicated-release.outputs.previous_version }}
+          NEW_VERSION: ${{ needs.replicated-release.outputs.version }}
+          PR_URL: ${{ needs.create-nightly-release-pr.outputs.pr_url }}
+          RELEASE_URL: ${{ needs.create-nightly-release-pr.outputs.release_url }}
+          CVE_OVERRIDE_ACKNOWLEDGED: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement == 'DANGEROUSLY ACKNOWLEDGE' && '1' || '0' }}
+          CVE_OVERRIDE_INVALID: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement != '' && inputs.skip_cve_acknowledgement != 'DANGEROUSLY ACKNOWLEDGE' && '1' || '0' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_IMPLEMENTATIONS_USERGROUP_ID: ${{ env.SLACK_IMPLEMENTATIONS_USERGROUP_ID }}
+        run: |
+          set -euo pipefail
+
+          good_to_go="true"
+          blocker=""
+          status="SUCCESS"
+
+          mark_not_good() {
+            good_to_go="false"
+            status="FAILURE"
+            if [[ -z "${blocker}" ]]; then
+              blocker="$1"
+            fi
+          }
+
+          require_success() {
+            local label="$1"
+            local result="$2"
+            if [[ "${result}" != "success" ]]; then
+              mark_not_good "${label} result was ${result}"
+            fi
+          }
+
+          require_success "Secret preflight" "${NIGHTLY_SECRETS_RESULT}"
+          require_success "Image retag" "${RETAG_RESULT}"
+
+          cve_status="${CVE_RESULT}"
+          if [[ "${CVE_OVERRIDE_ACKNOWLEDGED}" == "1" ]]; then
+            cve_status="skipped (manual DANGEROUSLY ACKNOWLEDGE override)"
+            mark_not_good "Grype CVE gate was skipped by manual override"
+          elif [[ "${CVE_OVERRIDE_INVALID}" == "1" ]]; then
+            cve_status="failure (invalid CVE override acknowledgement)"
+            mark_not_good "CVE override acknowledgement was invalid"
+          elif [[ "${CVE_RESULT}" == "failure" ]]; then
+            cve_status="failure (HIGH/CRITICAL findings blocked release)"
+            mark_not_good "Grype found HIGH or CRITICAL vulnerabilities"
+          elif [[ "${CVE_RESULT}" != "success" ]]; then
+            mark_not_good "Grype CVE gate result was ${CVE_RESULT}"
+          fi
+
+          require_success "Replicated release" "${REPLICATED_RESULT}"
+          require_success "GitHub PR/release" "${PR_RESULT}"
+          require_success "onprem-testbed validation" "${ONPREM_RESULT}"
+
+          if [[ "${good_to_go}" == "true" ]]; then
+            title=":white_check_mark: Nightly release: GOOD TO GO"
+            verdict_line="*Good to go:* YES"
+          else
+            title=":rotating_light: Nightly release: NOT GOOD TO GO"
+            verdict_line="*Good to go:* NO - ${blocker}"
+          fi
+
+          {
+            if [[ "${good_to_go}" != "true" ]]; then
+              echo "<!subteam^${SLACK_IMPLEMENTATIONS_USERGROUP_ID}|@implementations>"
+            fi
+            echo "${verdict_line}"
+            echo "*Release:* \`${RELEASE_TAG:-unknown}\` / \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
+            echo "*Stages:*"
+            echo "- Secret preflight: \`${NIGHTLY_SECRETS_RESULT}\`"
+            echo "- Image retag: \`${RETAG_RESULT}\`"
+            echo "- Grype CVE gate: \`${cve_status}\`"
+            echo "- Replicated release: \`${REPLICATED_RESULT}\`"
+            echo "- GitHub PR/release: \`${PR_RESULT}\`"
+            echo "- onprem-testbed validation (fresh + upgrade + triggers): \`${ONPREM_RESULT}\`"
+            links=()
+            if [[ -n "${PR_URL:-}" ]]; then
+              links+=("<${PR_URL}|PR>")
+            fi
+            if [[ -n "${RELEASE_URL:-}" ]]; then
+              links+=("<${RELEASE_URL}|GitHub release>")
+            fi
+            links+=("<${RUN_URL}|Workflow>")
+            printf '*Links:* '
+            for index in "${!links[@]}"; do
+              if (( index > 0 )); then
+                printf ' | '
+              fi
+              printf '%s' "${links[index]}"
+            done
+            printf '\n'
+          } > slack-summary.txt
+
+          {
+            echo "status=${status}"
+            echo "title=${title}"
+            echo "summary<<__SLACK_SUMMARY__"
+            cat slack-summary.txt
+            echo "__SLACK_SUMMARY__"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Announce nightly report in Slack
+        uses: ./.github/actions/slack-notify
+        with:
+          status: ${{ steps.summary.outputs.status }}
+          slack_webhook_url: ${{ steps.doppler.outputs.NIGHTLY_SLACK_WEBHOOK_URL }}
+          title: ${{ steps.summary.outputs.title }}
+          summary: ${{ steps.summary.outputs.summary }}
