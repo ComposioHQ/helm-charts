@@ -47,7 +47,7 @@ on:
         type: string
         default: "latest"
       skip_cve_acknowledgement:
-        description: "Leave blank. To skip the Grype HIGH/CRITICAL gate, type DANGEROUSLY ACKNOWLEDGE exactly."
+        description: "Leave blank. To allow release despite Grype HIGH/CRITICAL findings, type DANGEROUSLY ACKNOWLEDGE exactly. The scan still runs and reports."
         required: false
         type: string
         default: ""
@@ -332,7 +332,6 @@ jobs:
           echo "retagged_images: ${{ steps.retag.outputs.retagged_images }}"
 
   cve-scan:
-    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement == 'DANGEROUSLY ACKNOWLEDGE') }}
     runs-on: ubuntu-latest
     needs:
       - retag-latest-images
@@ -550,7 +549,7 @@ jobs:
           path: cve-reports
 
       - name: Fail on HIGH or CRITICAL CVEs
-        if: ${{ steps.scan.outputs.scan_result != 'success' }}
+        if: ${{ steps.scan.outputs.scan_result != 'success' && !(github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement == 'DANGEROUSLY ACKNOWLEDGE') }}
         shell: bash
         run: |
           echo "Grype reported HIGH or CRITICAL vulnerabilities. Blocking nightly release." >&2
@@ -558,7 +557,7 @@ jobs:
 
   replicated-release:
     runs-on: ubuntu-latest
-    if: ${{ needs.retag-latest-images.result == 'success' && (needs.cve-scan.result == 'success' || needs.cve-scan.result == 'skipped') }}
+    if: ${{ needs.retag-latest-images.result == 'success' && needs.cve-scan.result == 'success' }}
     needs:
       - retag-latest-images
       - cve-scan
@@ -734,7 +733,7 @@ jobs:
           git push --force-with-lease origin "${{ steps.branch.outputs.branch_name }}"
 
   create-nightly-release-pr:
-    if: ${{ needs.replicated-release.result == 'success' && (needs.cve-scan.result == 'success' || needs.cve-scan.result == 'skipped') }}
+    if: ${{ needs.replicated-release.result == 'success' && needs.cve-scan.result == 'success' }}
     runs-on: ubuntu-latest
     needs:
       - cve-scan
@@ -801,9 +800,10 @@ jobs:
             const head = "${{ needs.replicated-release.outputs.branch_name }}";
             const releaseTag = "${{ needs.retag-latest-images.outputs.release_tag }}";
             const version = "${{ needs.replicated-release.outputs.version }}";
-            const cveStatus = "${{ needs.cve-scan.result }}";
-            const cveLine = cveStatus === "skipped"
-              ? "Grype CVE gate skipped via manual `DANGEROUSLY ACKNOWLEDGE` override"
+            const cveScanResult = "${{ needs.cve-scan.outputs.scan_result }}";
+            const cveOverrideAcknowledged = "${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement == 'DANGEROUSLY ACKNOWLEDGE' && 'true' || 'false' }}" === "true";
+            const cveLine = cveOverrideAcknowledged
+              ? `Grype CVE scan result was \`${cveScanResult}\`; release was manually allowed with \`DANGEROUSLY ACKNOWLEDGE\``
               : "Grype CVE gate passed before release creation";
             const title = `Nightly release ${releaseTag}`;
             const body = `## Summary
@@ -1036,10 +1036,12 @@ jobs:
           NIGHTLY_SECRETS_RESULT: ${{ needs.nightly-secrets.result }}
           RETAG_RESULT: ${{ needs.retag-latest-images.result }}
           CVE_RESULT: ${{ needs.cve-scan.result }}
+          CVE_SCAN_RESULT: ${{ needs.cve-scan.outputs.scan_result }}
           REPLICATED_RESULT: ${{ needs.replicated-release.result }}
           PR_RESULT: ${{ needs.create-nightly-release-pr.result }}
           ONPREM_RESULT: ${{ needs.onprem-testbed.result }}
           RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
+          RELEASE_BRANCH: ${{ needs.replicated-release.outputs.branch_name }}
           PREVIOUS_VERSION: ${{ needs.replicated-release.outputs.previous_version }}
           NEW_VERSION: ${{ needs.replicated-release.outputs.version }}
           PR_URL: ${{ needs.create-nightly-release-pr.outputs.pr_url }}
@@ -1079,8 +1081,8 @@ jobs:
 
           cve_status="${CVE_RESULT}"
           if [[ "${CVE_OVERRIDE_ACKNOWLEDGED}" == "1" ]]; then
-            cve_status="skipped (manual DANGEROUSLY ACKNOWLEDGE override)"
-            mark_not_good "Grype CVE gate was skipped by manual override"
+            cve_status="${CVE_SCAN_RESULT:-unknown} (manual DANGEROUSLY ACKNOWLEDGE override allowed release)"
+            mark_not_good "Release proceeded with DANGEROUSLY ACKNOWLEDGE CVE override"
           elif [[ "${CVE_OVERRIDE_INVALID}" == "1" ]]; then
             cve_status="failure (invalid CVE override acknowledgement)"
             mark_not_good "CVE override acknowledgement was invalid"
@@ -1089,6 +1091,11 @@ jobs:
             mark_not_good "Grype found HIGH or CRITICAL vulnerabilities"
           elif [[ "${CVE_RESULT}" != "success" ]]; then
             mark_not_good "Grype CVE gate result was ${CVE_RESULT}"
+          elif [[ "${CVE_SCAN_RESULT:-success}" != "success" ]]; then
+            cve_status="${CVE_SCAN_RESULT} (unexpected successful job result)"
+            mark_not_good "Grype CVE scan result was ${CVE_SCAN_RESULT}"
+          else
+            cve_status="success"
           fi
 
           require_success "Replicated release" "${REPLICATED_RESULT}"
@@ -1108,7 +1115,19 @@ jobs:
               echo "<!subteam^${SLACK_IMPLEMENTATIONS_USERGROUP_ID}|@implementations>"
             fi
             echo "${verdict_line}"
-            echo "*Release:* \`${RELEASE_TAG:-unknown}\` / \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
+            if [[ "${CVE_OVERRIDE_ACKNOWLEDGED}" == "1" ]]; then
+              echo "*DANGEROUSLY ACKNOWLEDGE used:* YES - release was allowed even though the CVE gate did not pass normally."
+            fi
+            if [[ "${REPLICATED_RESULT}" == "success" ]]; then
+              echo "*Release created:* YES"
+              echo "- Image release tag: \`${RELEASE_TAG:-unknown}\`"
+              echo "- Replicated Nightly version: \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
+              echo "- Nightly branch: \`${RELEASE_BRANCH:-unknown}\`"
+            else
+              echo "*Release created:* NO"
+              echo "- Intended image release tag: \`${RELEASE_TAG:-unknown}\`"
+              echo "- Intended Replicated version: \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
+            fi
             echo "*Stages:*"
             echo "- Secret preflight: \`${NIGHTLY_SECRETS_RESULT}\`"
             echo "- Image retag: \`${RETAG_RESULT}\`"
