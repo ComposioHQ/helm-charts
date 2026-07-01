@@ -342,6 +342,9 @@ jobs:
     outputs:
       scan_result: ${{ steps.scan.outputs.scan_result }}
       summary: ${{ steps.scan.outputs.summary }}
+      stats: ${{ steps.scan.outputs.stats }}
+      artifact_name: ${{ steps.scan.outputs.artifact_name }}
+      artifact_download_command: ${{ steps.scan.outputs.artifact_download_command }}
     steps:
       - name: Reject invalid CVE override acknowledgement
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement != '' && inputs.skip_cve_acknowledgement != 'DANGEROUSLY ACKNOWLEDGE' }}
@@ -387,18 +390,41 @@ jobs:
           set -euo pipefail
           mkdir -p cve-reports
           summary_file="cve-reports/summary.md"
+          stats_tsv_file="cve-reports/image-stats.tsv"
+          stats_json_file="cve-reports/image-stats.json"
+          slack_stats_file="cve-reports/slack-stats.md"
+          artifact_name="nightly-grype-cve-reports-${RELEASE_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          artifact_download_command="gh run download ${GITHUB_RUN_ID} --repo ${GITHUB_REPOSITORY} --name ${artifact_name} --dir ./nightly-grype-reports"
+
+          printf 'repo\timage\thigh\tcritical\tgrype_exit\treport\n' > "${stats_tsv_file}"
+          echo '[]' > "${stats_json_file}"
+          : > "${slack_stats_file}"
+
           {
             echo "## Grype CVE Scan"
             echo
             echo "- Release tag: \`${RELEASE_TAG}\`"
             echo "- Policy: fail on any HIGH or CRITICAL finding"
+            echo "- Artifact: \`${artifact_name}\`"
+            echo
+            echo "Download full reports:"
+            echo
+            echo "\`\`\`bash"
+            echo "${artifact_download_command}"
+            echo "\`\`\`"
             echo
           } > "${summary_file}"
 
           if [[ -z "${RETAGGED_IMAGES_JSON}" || "${RETAGGED_IMAGES_JSON}" == "[]" ]]; then
             echo "No retagged images were provided to the CVE scan." >> "${summary_file}"
+            echo "No image-level Grype stats were produced." > "${slack_stats_file}"
             {
               echo "scan_result=failed"
+              echo "artifact_name=${artifact_name}"
+              echo "artifact_download_command=${artifact_download_command}"
+              echo "stats<<__CVE_STATS__"
+              cat "${slack_stats_file}"
+              echo "__CVE_STATS__"
               echo "summary<<__CVE_SUMMARY__"
               cat "${summary_file}"
               echo "__CVE_SUMMARY__"
@@ -407,8 +433,17 @@ jobs:
           fi
 
           scan_result="success"
-          failure_summary=""
+          total_high=0
+          total_critical=0
+          scan_error_summary=""
           mapfile -t image_rows < <(jq -c '.[]' <<<"${RETAGGED_IMAGES_JSON}")
+
+          {
+            echo "### Image findings"
+            echo
+            echo "| Image | HIGH | CRITICAL | Grype exit | Report |"
+            echo "| --- | ---: | ---: | ---: | --- |"
+          } >> "${summary_file}"
 
           for row in "${image_rows[@]}"; do
             repo="$(jq -r '.repo' <<<"${row}")"
@@ -437,38 +472,70 @@ jobs:
               )"
             fi
 
+            total_high="$((total_high + high_count))"
+            total_critical="$((total_critical + critical_count))"
+            report_name="${safe_name}.json"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' "${repo}" "${image}" "${high_count}" "${critical_count}" "${grype_rc}" "${report_name}" >> "${stats_tsv_file}"
+            stats_row="$(jq -n \
+              --arg repo "${repo}" \
+              --arg image "${image}" \
+              --arg report "${report_name}" \
+              --argjson high "${high_count}" \
+              --argjson critical "${critical_count}" \
+              --argjson grype_exit "${grype_rc}" \
+              '{repo: $repo, image: $image, high: $high, critical: $critical, grype_exit: $grype_exit, report: $report}')"
+            jq -c --argjson row "${stats_row}" '. + [$row]' "${stats_json_file}" > "${stats_json_file}.tmp"
+            mv "${stats_json_file}.tmp" "${stats_json_file}"
+
             {
-              echo "### ${repo}"
-              echo
-              echo "- Image: \`${image}\`"
-              echo "- HIGH: ${high_count}"
-              echo "- CRITICAL: ${critical_count}"
-              echo
+              echo "| \`${repo}\` | ${high_count} | ${critical_count} | ${grype_rc} | \`${report_name}\` |"
             } >> "${summary_file}"
 
             if (( grype_rc == 2 || high_count > 0 || critical_count > 0 )); then
               scan_result="failed"
-              failure_summary="${repo} has ${high_count} HIGH and ${critical_count} CRITICAL findings"
-              break
             fi
 
-            if (( grype_rc != 0 )); then
+            if (( grype_rc != 0 && grype_rc != 2 && high_count == 0 && critical_count == 0 )); then
               scan_result="failed"
-              failure_summary="Grype failed while scanning ${repo} with exit code ${grype_rc}"
-              break
+              if [[ -z "${scan_error_summary}" ]]; then
+                scan_error_summary="Grype failed while scanning ${repo} with exit code ${grype_rc}"
+              fi
             fi
           done
 
-          if [[ -n "${failure_summary}" ]]; then
+          jq -r '.[] | "- `" + .repo + "`: " + (.high | tostring) + " HIGH / " + (.critical | tostring) + " CRITICAL"' "${stats_json_file}" > "${slack_stats_file}"
+
+          {
+            echo
+            echo "### Totals"
+            echo
+            echo "- HIGH: ${total_high}"
+            echo "- CRITICAL: ${total_critical}"
+          } >> "${summary_file}"
+
+          if (( total_high > 0 || total_critical > 0 )); then
             {
               echo "### Failure"
               echo
-              echo "${failure_summary}"
+              echo "Grype found ${total_high} HIGH and ${total_critical} CRITICAL findings across scanned images."
+            } >> "${summary_file}"
+          elif [[ -n "${scan_error_summary}" ]]; then
+            {
+              echo "### Failure"
+              echo
+              echo "${scan_error_summary}"
             } >> "${summary_file}"
           fi
 
+          cat "${summary_file}" >> "${GITHUB_STEP_SUMMARY}"
+
           {
             echo "scan_result=${scan_result}"
+            echo "artifact_name=${artifact_name}"
+            echo "artifact_download_command=${artifact_download_command}"
+            echo "stats<<__CVE_STATS__"
+            cat "${slack_stats_file}"
+            echo "__CVE_STATS__"
             echo "summary<<__CVE_SUMMARY__"
             cat "${summary_file}"
             echo "__CVE_SUMMARY__"
@@ -478,7 +545,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: nightly-grype-cve-reports-${{ needs.retag-latest-images.outputs.release_tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.scan.outputs.artifact_name || format('nightly-grype-cve-reports-{0}-{1}-{2}', needs.retag-latest-images.outputs.release_tag, github.run_id, github.run_attempt) }}
           if-no-files-found: warn
           path: cve-reports
 
@@ -977,6 +1044,9 @@ jobs:
           NEW_VERSION: ${{ needs.replicated-release.outputs.version }}
           PR_URL: ${{ needs.create-nightly-release-pr.outputs.pr_url }}
           RELEASE_URL: ${{ needs.create-nightly-release-pr.outputs.release_url }}
+          CVE_STATS: ${{ needs.cve-scan.outputs.stats }}
+          CVE_ARTIFACT_NAME: ${{ needs.cve-scan.outputs.artifact_name }}
+          CVE_ARTIFACT_DOWNLOAD_COMMAND: ${{ needs.cve-scan.outputs.artifact_download_command }}
           CVE_OVERRIDE_ACKNOWLEDGED: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement == 'DANGEROUSLY ACKNOWLEDGE' && '1' || '0' }}
           CVE_OVERRIDE_INVALID: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement != '' && inputs.skip_cve_acknowledgement != 'DANGEROUSLY ACKNOWLEDGE' && '1' || '0' }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -1046,6 +1116,19 @@ jobs:
             echo "- Replicated release: \`${REPLICATED_RESULT}\`"
             echo "- GitHub PR/release: \`${PR_RESULT}\`"
             echo "- onprem-testbed validation (fresh + upgrade + triggers): \`${ONPREM_RESULT}\`"
+            if [[ -n "${CVE_STATS:-}" ]]; then
+              echo "*Grype findings:*"
+              printf '%s\n' "${CVE_STATS}"
+            fi
+            if [[ -n "${CVE_ARTIFACT_NAME:-}" ]]; then
+              echo "*Grype artifact:* \`${CVE_ARTIFACT_NAME}\`"
+            fi
+            if [[ -n "${CVE_ARTIFACT_DOWNLOAD_COMMAND:-}" ]]; then
+              echo "*Download Grype reports:*"
+              echo "\`\`\`"
+              echo "${CVE_ARTIFACT_DOWNLOAD_COMMAND}"
+              echo "\`\`\`"
+            fi
             links=()
             if [[ -n "${PR_URL:-}" ]]; then
               links+=("<${PR_URL}|PR>")
