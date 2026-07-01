@@ -352,6 +352,21 @@ jobs:
           echo "The CVE gate can only be skipped by typing DANGEROUSLY ACKNOWLEDGE exactly." >&2
           exit 1
 
+      - name: Checkout release chart
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          ref: release-stable
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+        with:
+          version: 'latest'
+
+      - name: Install yq
+        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
+
       - name: Determine AWS Assume Role ARN
         id: env
         shell: bash
@@ -392,11 +407,14 @@ jobs:
           stats_tsv_file="cve-reports/image-stats.tsv"
           stats_json_file="cve-reports/image-stats.json"
           slack_stats_file="cve-reports/slack-stats.md"
+          rendered_images_file="cve-reports/rendered-images.txt"
+          scan_targets_file="cve-reports/scan-targets.json"
           artifact_name="nightly-grype-cve-reports-${RELEASE_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           artifact_download_command="gh run download ${GITHUB_RUN_ID} --repo ${GITHUB_REPOSITORY} --name ${artifact_name} --dir ./nightly-grype-reports"
 
-          printf 'repo\timage\thigh\tcritical\tgrype_exit\treport\n' > "${stats_tsv_file}"
+          printf 'image\tscan_image\tsource\thigh\tcritical\tgrype_exit\treport\n' > "${stats_tsv_file}"
           echo '[]' > "${stats_json_file}"
+          echo '[]' > "${scan_targets_file}"
           : > "${slack_stats_file}"
 
           {
@@ -404,6 +422,7 @@ jobs:
             echo
             echo "- Release tag: \`${RELEASE_TAG}\`"
             echo "- Policy: fail on any HIGH or CRITICAL finding"
+            echo "- Source: rendered Helm images, including Replicated/subchart images"
             echo "- Artifact: \`${artifact_name}\`"
             echo
             echo "Download full reports:"
@@ -431,29 +450,93 @@ jobs:
             exit 0
           fi
 
+          cd ./composio
+          yq eval -i '.apollo.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.apollo.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.thermos.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.thermos.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.thermosMiscWorkers.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.mercury.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.frontend.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.weaviate.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          yq eval -i '.toolkitRegistry.image.tag = strenv(RELEASE_TAG)' ./values.yaml
+          cd -
+
+          collect_rendered_images() {
+            helm template composio ./composio "$@" \
+              | yq -r '.. | select(tag == "!!map" and has("image")) | .image' \
+              | grep -Ev '^(---|null)?$'
+          }
+
+          {
+            collect_rendered_images
+            collect_rendered_images --set features.temporal=true
+          } | sort -u > "${rendered_images_file}"
+
+          if [[ ! -s "${rendered_images_file}" ]]; then
+            echo "No images were found in the rendered Helm manifests." >> "${summary_file}"
+            echo "No image-level Grype stats were produced." > "${slack_stats_file}"
+            {
+              echo "scan_result=failed"
+              echo "artifact_name=${artifact_name}"
+              echo "artifact_download_command=${artifact_download_command}"
+              echo "stats<<__CVE_STATS__"
+              cat "${slack_stats_file}"
+              echo "__CVE_STATS__"
+              echo "summary<<__CVE_SUMMARY__"
+              cat "${summary_file}"
+              echo "__CVE_SUMMARY__"
+            } >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          replicated_registry="$(yq -r '.replicated.registry' ./composio/values.yaml)"
+          replicated_app="$(yq -r '.replicated.app' ./composio/values.yaml)"
+          replicated_proxy_prefix="${replicated_registry}/proxy/${replicated_app}/${ECR_REGISTRY}"
+          while IFS= read -r rendered_image; do
+            scan_image="${rendered_image}"
+            source="rendered"
+            if [[ "${rendered_image}" == "${replicated_proxy_prefix}/"* ]]; then
+              scan_image="${ECR_REGISTRY}/${rendered_image#"${replicated_proxy_prefix}/"}"
+              source="replicated-proxy"
+            fi
+
+            target_row="$(jq -n \
+              --arg image "${rendered_image}" \
+              --arg scan_image "${scan_image}" \
+              --arg source "${source}" \
+              '{image: $image, scan_image: $scan_image, source: $source}')"
+            jq -c --argjson row "${target_row}" '. + [$row]' "${scan_targets_file}" > "${scan_targets_file}.tmp"
+            mv "${scan_targets_file}.tmp" "${scan_targets_file}"
+          done < "${rendered_images_file}"
+
           scan_result="success"
           total_high=0
           total_critical=0
           scan_error_summary=""
-          mapfile -t image_rows < <(jq -c '.[]' <<<"${RETAGGED_IMAGES_JSON}")
+          mapfile -t image_rows < <(jq -c '.[]' "${scan_targets_file}")
 
           {
+            echo "### Rendered images"
+            echo
+            sed 's/^/- `/' "${rendered_images_file}" | sed 's/$/`/'
+            echo
             echo "### Image findings"
             echo
-            echo "| Image | HIGH | CRITICAL | Grype exit | Report |"
-            echo "| --- | ---: | ---: | ---: | --- |"
+            echo "| Rendered image | Scanned image | Source | HIGH | CRITICAL | Grype exit | Report |"
+            echo "| --- | --- | --- | ---: | ---: | ---: | --- |"
           } >> "${summary_file}"
 
           for row in "${image_rows[@]}"; do
-            repo="$(jq -r '.repo' <<<"${row}")"
-            tag="$(jq -r '.new_tag' <<<"${row}")"
-            image="${ECR_REGISTRY}/${repo}:${tag}"
-            safe_name="${repo//\//_}"
+            image="$(jq -r '.image' <<<"${row}")"
+            scan_image="$(jq -r '.scan_image' <<<"${row}")"
+            source="$(jq -r '.source' <<<"${row}")"
+            safe_name="$(printf '%s' "${scan_image}" | tr -c 'A-Za-z0-9_.-' '_')"
             report_json="cve-reports/${safe_name}.json"
 
-            echo "Scanning ${image}"
+            echo "Scanning ${scan_image} (rendered as ${image})"
             set +e
-            grype "registry:${image}" \
+            grype "registry:${scan_image}" \
               --fail-on high \
               --output json \
               --file "${report_json}"
@@ -474,20 +557,21 @@ jobs:
             total_high="$((total_high + high_count))"
             total_critical="$((total_critical + critical_count))"
             report_name="${safe_name}.json"
-            printf '%s\t%s\t%s\t%s\t%s\t%s\n' "${repo}" "${image}" "${high_count}" "${critical_count}" "${grype_rc}" "${report_name}" >> "${stats_tsv_file}"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "${image}" "${scan_image}" "${source}" "${high_count}" "${critical_count}" "${grype_rc}" "${report_name}" >> "${stats_tsv_file}"
             stats_row="$(jq -n \
-              --arg repo "${repo}" \
               --arg image "${image}" \
+              --arg scan_image "${scan_image}" \
+              --arg source "${source}" \
               --arg report "${report_name}" \
               --argjson high "${high_count}" \
               --argjson critical "${critical_count}" \
               --argjson grype_exit "${grype_rc}" \
-              '{repo: $repo, image: $image, high: $high, critical: $critical, grype_exit: $grype_exit, report: $report}')"
+              '{image: $image, scan_image: $scan_image, source: $source, high: $high, critical: $critical, grype_exit: $grype_exit, report: $report}')"
             jq -c --argjson row "${stats_row}" '. + [$row]' "${stats_json_file}" > "${stats_json_file}.tmp"
             mv "${stats_json_file}.tmp" "${stats_json_file}"
 
             {
-              echo "| \`${repo}\` | ${high_count} | ${critical_count} | ${grype_rc} | \`${report_name}\` |"
+              echo "| \`${image}\` | \`${scan_image}\` | ${source} | ${high_count} | ${critical_count} | ${grype_rc} | \`${report_name}\` |"
             } >> "${summary_file}"
 
             if (( grype_rc == 2 || high_count > 0 || critical_count > 0 )); then
@@ -497,12 +581,12 @@ jobs:
             if (( grype_rc != 0 && grype_rc != 2 && high_count == 0 && critical_count == 0 )); then
               scan_result="failed"
               if [[ -z "${scan_error_summary}" ]]; then
-                scan_error_summary="Grype failed while scanning ${repo} with exit code ${grype_rc}"
+                scan_error_summary="Grype failed while scanning ${scan_image} with exit code ${grype_rc}"
               fi
             fi
           done
 
-          jq -r '.[] | "- `" + .repo + "`: " + (.high | tostring) + " HIGH / " + (.critical | tostring) + " CRITICAL"' "${stats_json_file}" > "${slack_stats_file}"
+          jq -r '.[] | "- `" + .image + "`: " + (.high | tostring) + " HIGH / " + (.critical | tostring) + " CRITICAL" + (if .image != .scan_image then " (scanned `" + .scan_image + "`)" else "" end)' "${stats_json_file}" > "${slack_stats_file}"
 
           {
             echo
