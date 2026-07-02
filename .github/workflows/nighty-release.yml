@@ -332,312 +332,20 @@ jobs:
           echo "retagged_images: ${{ steps.retag.outputs.retagged_images }}"
 
   cve-scan:
-    runs-on: ubuntu-latest
     needs:
       - retag-latest-images
     permissions:
       id-token: write
       contents: read
-    outputs:
-      scan_result: ${{ steps.scan.outputs.scan_result }}
-      summary: ${{ steps.scan.outputs.summary }}
-      stats: ${{ steps.scan.outputs.stats }}
-      artifact_name: ${{ steps.scan.outputs.artifact_name }}
-      artifact_download_command: ${{ steps.scan.outputs.artifact_download_command }}
-    steps:
-      - name: Reject invalid CVE override acknowledgement
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement != '' && inputs.skip_cve_acknowledgement != 'DANGEROUSLY ACKNOWLEDGE' }}
-        shell: bash
-        run: |
-          echo "The CVE gate can only be skipped by typing DANGEROUSLY ACKNOWLEDGE exactly." >&2
-          exit 1
-
-      - name: Checkout release chart
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          fetch-depth: 0
-          ref: release-stable
-          persist-credentials: false
-
-      - name: Install Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: 'latest'
-
-      - name: Install yq
-        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
-
-      - name: Determine AWS Assume Role ARN
-        id: env
-        shell: bash
-        run: |
-          echo "AWS_ROLE_ARN=arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr" >> "$GITHUB_OUTPUT"
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
-        with:
-          role-to-assume: ${{ steps.env.outputs.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR for Grype registry scans
-        shell: bash
-        run: |
-          set -euo pipefail
-          aws ecr get-login-password --region "${AWS_REGION}" \
-            | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
-
-      - name: Install Grype
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -sSfL https://get.anchore.io/grype -o /tmp/install-grype.sh
-          sudo sh /tmp/install-grype.sh -b /usr/local/bin "${GRYPE_VERSION}"
-          grype version
-
-      - name: Scan retagged images with Grype
-        id: scan
-        shell: bash
-        env:
-          RETAGGED_IMAGES_JSON: ${{ needs.retag-latest-images.outputs.retagged_images }}
-          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
-        run: |
-          set -euo pipefail
-          mkdir -p cve-reports
-          summary_file="cve-reports/summary.md"
-          stats_tsv_file="cve-reports/image-stats.tsv"
-          stats_json_file="cve-reports/image-stats.json"
-          slack_stats_file="cve-reports/slack-stats.md"
-          rendered_images_file="cve-reports/rendered-images.txt"
-          scan_targets_file="cve-reports/scan-targets.json"
-          artifact_name="nightly-grype-cve-reports-${RELEASE_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          artifact_download_command="gh run download ${GITHUB_RUN_ID} --repo ${GITHUB_REPOSITORY} --name ${artifact_name} --dir ./nightly-grype-reports"
-
-          printf 'image\tscan_image\tsource\thigh\tcritical\tgrype_exit\treport\n' > "${stats_tsv_file}"
-          echo '[]' > "${stats_json_file}"
-          echo '[]' > "${scan_targets_file}"
-          : > "${slack_stats_file}"
-
-          {
-            echo "## Grype CVE Scan"
-            echo
-            echo "- Release tag: \`${RELEASE_TAG}\`"
-            echo "- Policy: fail on any HIGH or CRITICAL finding"
-            echo "- Source: rendered Helm images, including Replicated/subchart images"
-            echo "- Artifact: \`${artifact_name}\`"
-            echo
-            echo "Download full reports:"
-            echo
-            echo "\`\`\`bash"
-            echo "${artifact_download_command}"
-            echo "\`\`\`"
-            echo
-          } > "${summary_file}"
-
-          if [[ -z "${RETAGGED_IMAGES_JSON}" || "${RETAGGED_IMAGES_JSON}" == "[]" ]]; then
-            echo "No retagged images were provided to the CVE scan." >> "${summary_file}"
-            echo "No image-level Grype stats were produced." > "${slack_stats_file}"
-            {
-              echo "scan_result=failed"
-              echo "artifact_name=${artifact_name}"
-              echo "artifact_download_command=${artifact_download_command}"
-              echo "stats<<__CVE_STATS__"
-              cat "${slack_stats_file}"
-              echo "__CVE_STATS__"
-              echo "summary<<__CVE_SUMMARY__"
-              cat "${summary_file}"
-              echo "__CVE_SUMMARY__"
-            } >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
-
-          cd ./composio
-          yq eval -i '.apollo.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.apollo.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.thermos.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.thermos.dbInit.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.thermosMiscWorkers.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.mercury.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.frontend.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.weaviate.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          yq eval -i '.toolkitRegistry.image.tag = strenv(RELEASE_TAG)' ./values.yaml
-          cd -
-
-          collect_rendered_images() {
-            helm template composio ./composio "$@" \
-              | yq -r '.. | select(tag == "!!map" and has("image")) | .image' \
-              | grep -Ev '^(---|null)?$'
-          }
-
-          {
-            collect_rendered_images
-            collect_rendered_images --set features.temporal=true
-          } | sort -u > "${rendered_images_file}"
-
-          if [[ ! -s "${rendered_images_file}" ]]; then
-            echo "No images were found in the rendered Helm manifests." >> "${summary_file}"
-            echo "No image-level Grype stats were produced." > "${slack_stats_file}"
-            {
-              echo "scan_result=failed"
-              echo "artifact_name=${artifact_name}"
-              echo "artifact_download_command=${artifact_download_command}"
-              echo "stats<<__CVE_STATS__"
-              cat "${slack_stats_file}"
-              echo "__CVE_STATS__"
-              echo "summary<<__CVE_SUMMARY__"
-              cat "${summary_file}"
-              echo "__CVE_SUMMARY__"
-            } >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
-
-          replicated_registry="$(yq -r '.replicated.registry' ./composio/values.yaml)"
-          replicated_app="$(yq -r '.replicated.app' ./composio/values.yaml)"
-          replicated_proxy_prefix="${replicated_registry}/proxy/${replicated_app}/${ECR_REGISTRY}"
-          while IFS= read -r rendered_image; do
-            scan_image="${rendered_image}"
-            source="rendered"
-            if [[ "${rendered_image}" == "${replicated_proxy_prefix}/"* ]]; then
-              scan_image="${ECR_REGISTRY}/${rendered_image#"${replicated_proxy_prefix}/"}"
-              source="replicated-proxy"
-            fi
-
-            target_row="$(jq -n \
-              --arg image "${rendered_image}" \
-              --arg scan_image "${scan_image}" \
-              --arg source "${source}" \
-              '{image: $image, scan_image: $scan_image, source: $source}')"
-            jq -c --argjson row "${target_row}" '. + [$row]' "${scan_targets_file}" > "${scan_targets_file}.tmp"
-            mv "${scan_targets_file}.tmp" "${scan_targets_file}"
-          done < "${rendered_images_file}"
-
-          scan_result="success"
-          total_high=0
-          total_critical=0
-          scan_error_summary=""
-          mapfile -t image_rows < <(jq -c '.[]' "${scan_targets_file}")
-
-          {
-            echo "### Rendered images"
-            echo
-            sed 's/^/- `/' "${rendered_images_file}" | sed 's/$/`/'
-            echo
-            echo "### Image findings"
-            echo
-            echo "| Rendered image | Scanned image | Source | HIGH | CRITICAL | Grype exit | Report |"
-            echo "| --- | --- | --- | ---: | ---: | ---: | --- |"
-          } >> "${summary_file}"
-
-          for row in "${image_rows[@]}"; do
-            image="$(jq -r '.image' <<<"${row}")"
-            scan_image="$(jq -r '.scan_image' <<<"${row}")"
-            source="$(jq -r '.source' <<<"${row}")"
-            safe_name="$(printf '%s' "${scan_image}" | tr -c 'A-Za-z0-9_.-' '_')"
-            report_json="cve-reports/${safe_name}.json"
-
-            echo "Scanning ${scan_image} (rendered as ${image})"
-            set +e
-            grype "registry:${scan_image}" \
-              --fail-on high \
-              --output json \
-              --file "${report_json}"
-            grype_rc=$?
-            set -e
-
-            high_count="0"
-            critical_count="0"
-            if [[ -s "${report_json}" ]]; then
-              high_count="$(
-                jq '[.matches[]? | select(((.vulnerability.severity // "") | ascii_downcase) == "high")] | length' "${report_json}"
-              )"
-              critical_count="$(
-                jq '[.matches[]? | select(((.vulnerability.severity // "") | ascii_downcase) == "critical")] | length' "${report_json}"
-              )"
-            fi
-
-            total_high="$((total_high + high_count))"
-            total_critical="$((total_critical + critical_count))"
-            report_name="${safe_name}.json"
-            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "${image}" "${scan_image}" "${source}" "${high_count}" "${critical_count}" "${grype_rc}" "${report_name}" >> "${stats_tsv_file}"
-            stats_row="$(jq -n \
-              --arg image "${image}" \
-              --arg scan_image "${scan_image}" \
-              --arg source "${source}" \
-              --arg report "${report_name}" \
-              --argjson high "${high_count}" \
-              --argjson critical "${critical_count}" \
-              --argjson grype_exit "${grype_rc}" \
-              '{image: $image, scan_image: $scan_image, source: $source, high: $high, critical: $critical, grype_exit: $grype_exit, report: $report}')"
-            jq -c --argjson row "${stats_row}" '. + [$row]' "${stats_json_file}" > "${stats_json_file}.tmp"
-            mv "${stats_json_file}.tmp" "${stats_json_file}"
-
-            {
-              echo "| \`${image}\` | \`${scan_image}\` | ${source} | ${high_count} | ${critical_count} | ${grype_rc} | \`${report_name}\` |"
-            } >> "${summary_file}"
-
-            if (( grype_rc == 2 || high_count > 0 || critical_count > 0 )); then
-              scan_result="failed"
-            fi
-
-            if (( grype_rc != 0 && grype_rc != 2 && high_count == 0 && critical_count == 0 )); then
-              scan_result="failed"
-              if [[ -z "${scan_error_summary}" ]]; then
-                scan_error_summary="Grype failed while scanning ${scan_image} with exit code ${grype_rc}"
-              fi
-            fi
-          done
-
-          jq -r '.[] | "- `" + .image + "`: " + (.high | tostring) + " HIGH / " + (.critical | tostring) + " CRITICAL" + (if .image != .scan_image then " (scanned `" + .scan_image + "`)" else "" end)' "${stats_json_file}" > "${slack_stats_file}"
-
-          {
-            echo
-            echo "### Totals"
-            echo
-            echo "- HIGH: ${total_high}"
-            echo "- CRITICAL: ${total_critical}"
-          } >> "${summary_file}"
-
-          if (( total_high > 0 || total_critical > 0 )); then
-            {
-              echo "### Failure"
-              echo
-              echo "Grype found ${total_high} HIGH and ${total_critical} CRITICAL findings across scanned images."
-            } >> "${summary_file}"
-          elif [[ -n "${scan_error_summary}" ]]; then
-            {
-              echo "### Failure"
-              echo
-              echo "${scan_error_summary}"
-            } >> "${summary_file}"
-          fi
-
-          cat "${summary_file}" >> "${GITHUB_STEP_SUMMARY}"
-
-          {
-            echo "scan_result=${scan_result}"
-            echo "artifact_name=${artifact_name}"
-            echo "artifact_download_command=${artifact_download_command}"
-            echo "stats<<__CVE_STATS__"
-            cat "${slack_stats_file}"
-            echo "__CVE_STATS__"
-            echo "summary<<__CVE_SUMMARY__"
-            cat "${summary_file}"
-            echo "__CVE_SUMMARY__"
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Upload Grype reports
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: ${{ steps.scan.outputs.artifact_name || format('nightly-grype-cve-reports-{0}-{1}-{2}', needs.retag-latest-images.outputs.release_tag, github.run_id, github.run_attempt) }}
-          if-no-files-found: warn
-          path: cve-reports
-
-      - name: Fail on HIGH or CRITICAL CVEs
-        if: ${{ steps.scan.outputs.scan_result != 'success' && !(github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement == 'DANGEROUSLY ACKNOWLEDGE') }}
-        shell: bash
-        run: |
-          echo "Grype reported HIGH or CRITICAL vulnerabilities. Blocking nightly release." >&2
-          exit 1
+    uses: ./.github/workflows/grype-cve-scan.yml
+    with:
+      release_tag: ${{ needs.retag-latest-images.outputs.release_tag }}
+      chart_ref: release-stable
+      scan_name: nightly
+      artifact_prefix: nightly-grype-cve-reports
+      fail_on_high_critical: true
+      allow_high_critical_ack: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_cve_acknowledgement || '' }}
+      render_temporal: true
 
   replicated-release:
     runs-on: ubuntu-latest
@@ -977,6 +685,7 @@ jobs:
                 prerelease: true,
               });
               core.info(`Updated GitHub release for tag ${tag_name}.`);
+              core.setOutput("release_id", String(existingRelease.id));
               core.setOutput("release_url", existingRelease.html_url);
             } catch (e) {
               const status = e.status ?? e.response?.status;
@@ -995,8 +704,56 @@ jobs:
                 prerelease: true,
               });
               core.info(`Created GitHub release ${tag_name} at ${target_commitish}`);
+              core.setOutput("release_id", String(release.id));
               core.setOutput("release_url", release.html_url);
             }
+
+      - name: Download Grype finding baseline
+        if: ${{ needs.cve-scan.outputs.artifact_name != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ${{ needs.cve-scan.outputs.artifact_name }}
+          path: downloaded-cve-reports
+
+      - name: Attach CVE baseline to GitHub release
+        if: ${{ steps.github_release.outputs.release_id != '' && hashFiles('downloaded-cve-reports/finding-details.json') != '' }}
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          github-token: ${{ steps.app_token.outputs.token }}
+          script: |
+            const fs = require("fs");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const release_id = Number("${{ steps.github_release.outputs.release_id }}");
+            const name = "release-cve-baseline.json";
+            const data = fs.readFileSync("downloaded-cve-reports/finding-details.json");
+
+            const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner,
+              repo,
+              release_id,
+              per_page: 100,
+            });
+
+            for (const asset of assets.filter((item) => item.name === name)) {
+              await github.rest.repos.deleteReleaseAsset({
+                owner,
+                repo,
+                asset_id: asset.id,
+              });
+            }
+
+            await github.rest.repos.uploadReleaseAsset({
+              owner,
+              repo,
+              release_id,
+              name,
+              data,
+              headers: {
+                "content-type": "application/json",
+                "content-length": data.length,
+              },
+            });
 
   onprem-testbed:
     if: ${{ needs.replicated-release.result == 'success' }}
