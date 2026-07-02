@@ -218,7 +218,7 @@ A Helm chart for Composio
 | otel.collector.service.type | string | `"ClusterIP"` | Service type |
 | otel.collector.serviceAccountName | string | `""` | Existing service account name (used when googleCloud.serviceAccount.create is false) |
 | otel.collector.tolerations | list | `[]` | Tolerations for collector pods |
-| otel.enabled | bool | `true` | Enable OpenTelemetry |
+| otel.enabled | bool | `false` | Enable OpenTelemetry |
 | otel.environment | string | `"development"` | Environment name for telemetry |
 | otel.exporter.otlp.endpoint | string | `"composio-otel-collector:4317"` | gRPC endpoint for OTLP (no protocol prefix needed) |
 | otel.exporter.otlp.headers | string | `""` | Optional headers for authentication |
