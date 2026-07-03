@@ -113,6 +113,12 @@ spec:
                 name: {{ .Release.Name }}-thermos-config
           env:
             {{- $coreSecret := include "composio.coreSecretName" . }}
+            {{- if .Values.otel.enabled }}
+            # OTEL Resource attributes
+            {{- include "composio.otelKubernetesEnv" . | nindent 12 }}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: {{ include "composio.otelResourceAttributes" (dict "root" . "serviceName" (.Values.otel.thermos.serviceName | default "thermos") "serviceVersion" (.Values.otel.thermos.serviceVersion | default "1.0.0")) | quote }}
+            {{- end }}
             - name: THERMOS_SECRET_DIR
               value: {{ .Values.thermos.secretsDir | quote }}
             - name: APOLLO_ADMIN_TOKEN

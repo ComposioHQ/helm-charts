@@ -863,6 +863,9 @@ otel:
     enabled: false
   # -- Environment name for telemetry
   environment: "development"
+  # -- Optional Kubernetes cluster name added to OTEL resource attributes.
+  # Set this when exporting to backends such as Google Cloud Monitoring.
+  clusterName: ""
   # Service-specific OpenTelemetry configurations
   apollo:
     # -- Apollo service name
