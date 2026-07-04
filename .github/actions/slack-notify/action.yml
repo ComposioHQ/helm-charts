@@ -38,20 +38,24 @@ runs:
           --arg color    "$COLOR" \
           --arg title    "$INPUT_TITLE" \
           --arg summary  "$INPUT_SUMMARY" \
-          '{
-            text: ($title + "\n" + $summary),
+          '
+          def chunks($text; $size):
+            [range(0; ($text | length); $size) as $start | $text[$start:($start + $size)]]
+            | map(select(length > 0));
+
+          {
+            text: ($title + "\n" + $summary[0:3000]),
             attachments: [{
               color: $color,
-              blocks: [
+              blocks: ([
                 {
                   type: "section",
                   text: { type: "mrkdwn", text: ("*" + $title + "*") }
-                },
-                {
-                  type: "section",
-                  text: { type: "mrkdwn", text: $summary }
                 }
-              ]
+              ] + (chunks($summary; 2900) | .[:49] | map({
+                  type: "section",
+                  text: { type: "mrkdwn", text: . }
+                })))
             }],
             unfurl_links: false,
             unfurl_media: false
