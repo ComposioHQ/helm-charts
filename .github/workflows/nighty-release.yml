@@ -878,6 +878,8 @@ jobs:
           RETAG_RESULT: ${{ needs.retag-latest-images.result }}
           CVE_RESULT: ${{ needs.cve-scan.result }}
           CVE_SCAN_RESULT: ${{ needs.cve-scan.outputs.scan_result }}
+          CVE_FAILURE_REASON: ${{ needs.cve-scan.outputs.failure_reason }}
+          CVE_FAILURE_SUMMARY: ${{ needs.cve-scan.outputs.failure_summary }}
           REPLICATED_RESULT: ${{ needs.replicated-release.result }}
           PR_RESULT: ${{ needs.create-nightly-release-pr.result }}
           ONPREM_RESULT: ${{ needs.onprem-testbed.result }}
@@ -928,8 +930,24 @@ jobs:
             cve_status="failure (invalid CVE override acknowledgement)"
             mark_not_good "CVE override acknowledgement was invalid"
           elif [[ "${CVE_RESULT}" == "failure" ]]; then
-            cve_status="failure (HIGH/CRITICAL findings blocked release)"
-            mark_not_good "Grype found HIGH or CRITICAL vulnerabilities"
+            case "${CVE_FAILURE_REASON:-unknown}" in
+              high-critical-findings)
+                cve_status="failure (HIGH/CRITICAL findings blocked release)"
+                mark_not_good "Grype found HIGH or CRITICAL vulnerabilities"
+                ;;
+              report-build-failed)
+                cve_status="failure (Build Grype report failed; findings unknown)"
+                mark_not_good "${CVE_FAILURE_SUMMARY:-Build Grype report failed; Grype may or may not have found HIGH/CRITICAL vulnerabilities.}"
+                ;;
+              render-failed|scan-execution-failed|report-publish-failed|missing-scan-result)
+                cve_status="failure (${CVE_FAILURE_SUMMARY:-Grype CVE workflow failed; findings may be incomplete or unavailable.})"
+                mark_not_good "${CVE_FAILURE_SUMMARY:-Grype CVE workflow failed; findings may be incomplete or unavailable.}"
+                ;;
+              *)
+                cve_status="failure (CVE workflow failed before a definitive gate result)"
+                mark_not_good "Grype CVE workflow failed; scan findings may be incomplete or unavailable"
+                ;;
+            esac
           elif [[ "${CVE_RESULT}" != "success" ]]; then
             mark_not_good "Grype CVE gate result was ${CVE_RESULT}"
           elif [[ "${CVE_SCAN_RESULT:-success}" != "success" ]]; then
