@@ -52,7 +52,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: knative-setup
-        image: bitnami/kubectl:latest
+        image: {{ .Values.mercury.knative.kubectlImage | quote }}
         command:
         - /bin/bash
         - -c

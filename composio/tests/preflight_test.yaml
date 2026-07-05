@@ -59,6 +59,17 @@ tests:
           path: stringData["preflight.yaml"]
           pattern: '(?s)analyzers:\s*\[\]'
 
+  - it: should use a digest-pinned curl image for openai preflight checks
+    set:
+      openAI.enabled: true
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'image: curlimages/curl:8\.13\.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd'
+      - notMatchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'curlimages/curl:latest'
+
 ---
 suite: test s3 preflight secret checks
 templates:

@@ -24,7 +24,7 @@ stringData:
               restartPolicy: Never
               containers:
                 - name: check
-                  image: curlimages/curl:latest
+                  image: {{ .Values.preflight.openAI.image }}
                   env:
                     - name: OPENAI_API_KEY
                       valueFrom:

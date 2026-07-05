@@ -98,7 +98,7 @@ A Helm chart for Composio
 | frontend.env.PORT | string | `"3000"` | Server port |
 | frontend.image.pullPolicy | string | `"Always"` | Image pull policy |
 | frontend.image.repository | string | `"composio-self-host/frontend"` | Frontend image repository |
-| frontend.image.tag | string | `"latest"` | Frontend image tag |
+| frontend.image.tag | string | `"r20260501_01"` | Frontend image tag |
 | frontend.ingress.annotations | object | `{}` | Ingress annotations |
 | frontend.ingress.className | string | `""` | Ingress class name |
 | frontend.ingress.enabled | bool | `false` | Enable ingress |
@@ -139,6 +139,7 @@ A Helm chart for Composio
 | mercury.knative.maxReplicas | int | `5` | Maximum number of replicas for Knative |
 | mercury.knative.minReplicas | int | `1` | Minimum number of replicas for Knative |
 | mercury.knative.replicas | int | `2` | Initial number of replicas |
+| mercury.knative.kubectlImage | string | `"registry.k8s.io/kubectl:v1.30.14@sha256:3f2cf26d036505664c9d636d1545898f7a060f6008c21cb6982cf31fe469b0fa"` | Image used by Knative setup/config hook jobs |
 | mercury.livenessProbe.enabled | bool | `false` | Enable liveness probe |
 | mercury.readinessProbe.enabled | bool | `false` | Enable readiness probe |
 | mercury.replicaCount | int | `1` | Number of Mercury pod replicas (when not using Knative) |
@@ -162,6 +163,7 @@ A Helm chart for Composio
 | openAI.enabled | bool | `true` | Enable OpenAI integration |
 | openAI.key | string | `"API_KEY"` | Key name in the secret |
 | openAI.secretRef | string | `"composio-composio-secrets"` | Secret name containing OpenAI API key |
+| preflight.openAI.image | string | `"curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd"` | Image used by the OpenAI API preflight check pod |
 | otel.apollo.metricsEndpoint | string | `"http://composio-otel-collector:4318/v1/metrics"` | HTTP endpoint for metrics |
 | otel.apollo.serviceName | string | `"apollo"` | Apollo service name |
 | otel.apollo.serviceVersion | string | `"1.0.0"` | Apollo service version |
@@ -251,6 +253,10 @@ A Helm chart for Composio
 | redis.auth.password | string | `""` | Redis password |
 | redis.auth.sentinel | bool | `true` | Enable password authentication on bundled Redis Sentinels too |
 | redis.enabled | bool | `true` | Enable internal Redis. Set to false when using externalRedis |
+| redis.image.digest | string | `"sha256:7b55af740324cc23a1b528d628d45eb233c36e6520cf6f480b1be525d4635dde"` | Redis image digest |
+| redis.image.registry | string | `"docker.io"` | Redis image registry |
+| redis.image.repository | string | `"bitnami/redis"` | Redis image repository |
+| redis.image.tag | string | `"sha256:7b55af740324cc23a1b528d628d45eb233c36e6520cf6f480b1be525d4635dde"` | Redis image tag, ignored when `redis.image.digest` is set |
 | redis.master.persistence.enabled | bool | `true` | Enable persistent storage |
 | redis.master.persistence.size | string | `"8Gi"` | Size of persistent volume |
 | redis.master.resources.limits.cpu | string | `"2"` | CPU limit for Redis master |
@@ -280,6 +286,8 @@ A Helm chart for Composio
 | temporal.elasticsearch.imageTag | string | `"7.17.3"` |  |
 | temporal.fullnameOverride | string | `"temporal-stack"` | Override the full name of Temporal resources |
 | temporal.grafana.enabled | bool | `false` | Enable Grafana |
+| temporal.grafana.imageRenderer.image.sha | string | `"c13f98282c7f82a8bb0d75048d483045159d7ce04d1d02f5e06b21b26b4e5a0b"` | Optional Grafana image renderer image digest |
+| temporal.grafana.imageRenderer.image.tag | string | `"3.11.0"` | Optional Grafana image renderer image tag |
 | temporal.mysql.enabled | bool | `false` | Enable MySQL |
 | temporal.prometheus.enabled | bool | `false` | Enable Prometheus |
 | temporal.prometheus.nodeExporter.enabled | bool | `false` | Enable node exporter |
