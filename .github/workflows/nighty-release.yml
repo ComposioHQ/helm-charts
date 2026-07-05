@@ -381,13 +381,15 @@ jobs:
 
       - name: Install Replicated CLI
         run: |
-          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
-            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          set -euo pipefail
+          curl -fsSL https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            -o replicated-release.json
+          version="$(jq -r '.tag_name | sub("^v"; "")' replicated-release.json)"
           echo "Downloading Replicated CLI..."
-          curl -Ls \
+          curl -fsSL \
             "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
             -o replicated.tar.gz
-          echo "Extracting Replciated CLI..."
+          echo "Extracting Replicated CLI..."
           tar xf replicated.tar.gz replicated && rm replicated.tar.gz
           echo "Installing Replicated CLI in /usr/local/bin/"
           sudo install replicated /usr/local/bin/replicated
