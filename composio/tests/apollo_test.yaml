@@ -178,6 +178,17 @@ tests:
             name: apollo-secrets
             emptyDir: {}
 
+  - it: should expose advanced auth params beta
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: EXPOSE_ADVANCED_AUTH_PARAMS_BETA
+            value: "true"
+
   - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
     documentSelector:
       path: kind
