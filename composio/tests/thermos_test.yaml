@@ -291,20 +291,6 @@ tests:
           path: spec.template.spec.initContainers[1].name
           value: custom-init
 
-  - it: should skip toolkit registry wiring when explicitly disabled
-    documentSelector:
-      path: kind
-      value: Deployment
-    set:
-      toolkitRegistry.enabled: false
-    asserts:
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: TOOLKIT_REGISTRY_DB_URL
-      - isNull:
-          path: spec.template.spec.initContainers
-
 ---
 suite: test thermos service
 templates:
@@ -414,13 +400,6 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].env[0].value
           value: toolkit-registry
-
-  - it: should not render toolkit registry when disabled
-    set:
-      toolkitRegistry.enabled: false
-    asserts:
-      - hasDocuments:
-          count: 0
 
   - it: should apply nodeSelector, affinity, and tolerations to toolkit registry pod
     documentIndex: 0

@@ -482,9 +482,6 @@ thermos:
     scaleUpPods: 4
 # Toolkit registry configuration (read-only Postgres with toolkit/tool/trigger data)
 toolkitRegistry:
-  # -- Enable the standalone toolkit registry Postgres deployment used by Thermos for toolkit/tool/trigger reads.
-  # Enabled by default for on-prem installs; disable only if you explicitly want Thermos to fall back to the primary registry DB.
-  enabled: true
   # -- Number of toolkit registry pod replicas
   replicaCount: 2
   image:
