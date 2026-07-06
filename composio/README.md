@@ -98,7 +98,7 @@ A Helm chart for Composio
 | frontend.env.PORT | string | `"3000"` | Server port |
 | frontend.image.pullPolicy | string | `"Always"` | Image pull policy |
 | frontend.image.repository | string | `"composio-self-host/frontend"` | Frontend image repository |
-| frontend.image.tag | string | `"r20260501_01"` | Frontend image tag |
+| frontend.image.tag | string | `"latest"` | Frontend image tag |
 | frontend.ingress.annotations | object | `{}` | Ingress annotations |
 | frontend.ingress.className | string | `""` | Ingress class name |
 | frontend.ingress.enabled | bool | `false` | Enable ingress |
