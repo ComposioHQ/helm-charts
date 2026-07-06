@@ -39,7 +39,7 @@ frontend:
 
   image:
     repository: composio-self-host/frontend
-    tag: "r20260501_01"
+    tag: "latest"
     pullPolicy: Always
 
   service:
@@ -137,4 +137,5 @@ spec:
               value: "true"
           {{ end }}
 ```
+
 
