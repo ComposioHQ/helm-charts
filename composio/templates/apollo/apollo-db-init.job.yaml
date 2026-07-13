@@ -87,6 +87,8 @@ spec:
               value: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
             - name: SHOULD_REWRITE_COMPOSIO_SERVICE_KEY_NAME
               value: "true"
+            - name: SELF_HOSTED
+              value: "true"
           volumeMounts:
             - name: apollo-secrets
               mountPath: {{ .Values.apollo.secretsDir | quote }}
