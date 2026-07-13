@@ -1,0 +1,121 @@
+suite: project auth reassignment job
+templates:
+  - project-auth-reassignment/job.yaml
+tests:
+  - it: does not render unless explicitly enabled
+    set:
+      projectAuthReassignment.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders a dry-run Job with explicit selection and core database secret
+    set:
+      projectAuthReassignment.enabled: true
+      projectAuthReassignment.sourceAdminEmail: newer-admin@example.invalid
+      projectAuthReassignment.destinationAdminEmail: older-admin@example.invalid
+      projectAuthReassignment.sourceCreatedAtFrom: "2026-07-10T00:00:00Z"
+      projectAuthReassignment.sourceCreatedAtTo: "2026-07-13T00:00:00Z"
+      secret.name: composio-core
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-project-auth-reassignment
+      - equal:
+          path: spec.backoffLimit
+          value: 0
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 900
+      - notExists:
+          path: spec.ttlSecondsAfterFinished
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: Never
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - notExists:
+          path: spec.template.metadata.labels["helm.sh/chart"]
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: postgres:15-alpine
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: composio-core
+                key: POSTGRES_URL
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SOURCE_ADMIN_EMAIL
+            value: newer-admin@example.invalid
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DESTINATION_ADMIN_EMAIL
+            value: older-admin@example.invalid
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SOURCE_CREATED_AT_FROM
+            value: "2026-07-10T00:00:00Z"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SOURCE_CREATED_AT_TO
+            value: "2026-07-13T00:00:00Z"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DRY_RUN
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALLOW_WRITE
+            value: "false"
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[0]
+          pattern: 'source_user_id text;'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[0]
+          pattern: 'source_org_id text;'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[0]
+          pattern: 'source_project_id text;'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[0]
+          pattern: 'psql --quiet --tuples-only --no-align --no-psqlrc'
+
+  - it: requires two explicit write controls before updating records
+    set:
+      projectAuthReassignment.enabled: true
+      projectAuthReassignment.sourceAdminEmail: newer-admin@example.invalid
+      projectAuthReassignment.destinationAdminEmail: older-admin@example.invalid
+      projectAuthReassignment.sourceCreatedAtFrom: "2026-07-10T00:00:00Z"
+      projectAuthReassignment.sourceCreatedAtTo: "2026-07-13T00:00:00Z"
+      projectAuthReassignment.dryRun: false
+      projectAuthReassignment.allowWrite: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DRY_RUN
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALLOW_WRITE
+            value: "true"

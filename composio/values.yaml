@@ -47,6 +47,39 @@ databaseMigration:
   additionalInitContainers: []
   password:
     key: "password"
+# One-shot reassignment of auth configs from a newer project into an older project.
+# This is disabled by default and requires both dryRun=false and allowWrite=true
+# before it changes data.
+projectAuthReassignment:
+  # -- Render the one-shot auth-config project reassignment Job.
+  enabled: false
+  # -- PostgreSQL client image. `postgres:15-alpine` is multi-architecture, including linux/amd64.
+  image: "postgres:15-alpine"
+  # -- Image pull policy for the reassignment Job.
+  imagePullPolicy: IfNotPresent
+  # -- Admin email belonging to the newer source project. Required when enabled.
+  sourceAdminEmail: ""
+  # -- Admin email belonging to the older destination project. Required when enabled.
+  destinationAdminEmail: ""
+  # -- Inclusive UTC ISO-8601 lower bound used to select the source project. Required when enabled.
+  sourceCreatedAtFrom: ""
+  # -- Exclusive UTC ISO-8601 upper bound used to select the source project. Required when enabled.
+  sourceCreatedAtTo: ""
+  # -- Core secret key containing the Apollo PostgreSQL connection URL.
+  databaseUrlSecretKey: POSTGRES_URL
+  # -- Simulate the migration without updating any row.
+  dryRun: true
+  # -- Explicit second control required with dryRun=false before updates are allowed.
+  allowWrite: false
+  # -- Maximum Job runtime in seconds.
+  activeDeadlineSeconds: 900
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 # External secrets configuration. Pass these during helm install using --set flags
 externalSecrets:
   # ECR authentication credentials
