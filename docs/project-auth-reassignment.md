@@ -28,8 +28,8 @@ values are supplied. It remains a dry run unless both controls below are set.
 ```yaml
 projectAuthReassignment:
   enabled: true
-  sourceAdminEmail: admin@glean.com_workspace
-  destinationAdminEmail: admin@localhost
+  sourceAdminEmail: newer-admin@example.invalid
+  destinationAdminEmail: older-admin@example.invalid
   sourceCreatedAtFrom: "2026-07-10T00:00:00Z"
   sourceCreatedAtTo: "2026-07-13T00:00:00Z"
   dryRun: false
