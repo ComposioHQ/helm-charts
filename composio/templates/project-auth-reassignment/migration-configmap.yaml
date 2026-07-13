@@ -1,0 +1,12 @@
+{{- if .Values.projectAuthReassignment.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-project-auth-reassignment-script
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: project-auth-reassignment
+data:
+  migration.sql: |-
+{{ .Files.Get "files/project-auth-reassignment/migration.sql" | nindent 4 }}
+{{- end }}

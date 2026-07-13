@@ -65,8 +65,6 @@ projectAuthReassignment:
   sourceCreatedAtFrom: ""
   # -- Exclusive UTC ISO-8601 upper bound used to select the source project. Required when enabled.
   sourceCreatedAtTo: ""
-  # -- Core secret key containing the Apollo PostgreSQL connection URL.
-  databaseUrlSecretKey: POSTGRES_URL
   # -- Simulate the migration without updating any row.
   dryRun: true
   # -- Explicit second control required with dryRun=false before updates are allowed.

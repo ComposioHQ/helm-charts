@@ -9,7 +9,7 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: renders a dry-run Job with explicit selection and core database secret
+  - it: renders a dry-run Job with explicit selection and the core secret environment
     set:
       projectAuthReassignment.enabled: true
       projectAuthReassignment.sourceAdminEmail: newer-admin@example.invalid
@@ -43,13 +43,16 @@ tests:
           path: spec.template.spec.containers[0].image
           value: postgres:15-alpine
       - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: composio-core
+              optional: true
+      - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: DATABASE_URL
-            valueFrom:
-              secretKeyRef:
-                name: composio-core
-                key: POSTGRES_URL
+            name: CORE_SECRET_NAME
+            value: composio-core
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -88,16 +91,24 @@ tests:
           value: false
       - matchRegex:
           path: spec.template.spec.containers[0].args[0]
-          pattern: 'source_user_id text;'
+          pattern: '(?s)psql --quiet --tuples-only --no-align --no-psqlrc.*--file=/scripts/migration.sql'
       - matchRegex:
           path: spec.template.spec.containers[0].args[0]
-          pattern: 'source_org_id text;'
-      - matchRegex:
-          path: spec.template.spec.containers[0].args[0]
-          pattern: 'source_project_id text;'
-      - matchRegex:
-          path: spec.template.spec.containers[0].args[0]
-          pattern: 'psql --quiet --tuples-only --no-align --no-psqlrc'
+          pattern: 'POSTGRES_URL is missing; expected from core Secret'
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: project-auth-reassignment-script
+            mountPath: /scripts
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: project-auth-reassignment-script
+            configMap:
+              name: RELEASE-NAME-project-auth-reassignment-script
+              defaultMode: 292
+
 
   - it: requires two explicit write controls before updating records
     set:

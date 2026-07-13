@@ -2,7 +2,9 @@
 
 `projectAuthReassignment` renders a one-shot Kubernetes Job that moves auth
 configs from exactly one newer source project to exactly one older destination
-project. It does not move connected accounts.
+project. It does not move connected accounts. The migration SQL is kept as a
+literal chart file and mounted from a ConfigMap; the Job itself is a small,
+ordinary Kubernetes Job manifest.
 
 Connected accounts that still reference a moved auth config remain associated
 with the source project. Review or migrate those separately before relying on
@@ -13,6 +15,12 @@ project's creation timestamp to be within the supplied half-open UTC interval,
 and requires the destination project to predate the source. It runs a
 serializable transaction and verifies that only these auth-config fields change:
 `projectId`, `orgMemberId`, and non-null legacy `clientId` / `memberId`.
+
+The Job imports the release's usual core Secret with `envFrom`; it therefore
+uses the existing `POSTGRES_URL` and needs no separate database-secret setting.
+This deliberately makes every core-Secret key available to the short-lived Job,
+not just `POSTGRES_URL`. If that Secret or its `POSTGRES_URL` key is missing,
+the Job exits with a precise error instead of waiting for a Pod startup failure.
 
 It is disabled by default. The chart renders it only when all four selection
 values are supplied. It remains a dry run unless both controls below are set.
