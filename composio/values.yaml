@@ -167,6 +167,11 @@ preflight:
 apollo:
   # -- Number of Apollo pod replicas
   replicaCount: 2
+  singleTenant:
+    # -- Optional cap for active organizations. Apollo only enforces this when SELF_HOSTED=true.
+    maxOrgCount: null
+    # -- Optional cap for active projects. Apollo only enforces this when SELF_HOSTED=true.
+    maxProjectCount: null
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Apollo.
     enabled: false
