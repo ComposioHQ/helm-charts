@@ -37,6 +37,14 @@ tests:
           path: data.SELF_HOSTED
           value: "true"
 
+  - it: should expose the configured admin email
+    set:
+      dbInit.adminEmail: test@example.com
+    asserts:
+      - equal:
+          path: data.ADMIN_EMAIL
+          value: "test@example.com"
+
   - it: should omit single tenant caps by default
     asserts:
       - isNull:
