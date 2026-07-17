@@ -59,12 +59,12 @@ tests:
     set:
       replicated.enabled: false
       thermos.image.repository: test-thermos
-      thermos.image.tag: latest
+      thermos.image.tag: test-tag
       thermos.image.pullPolicy: Always
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
-          pattern: ".*/test-thermos:latest$"
+          pattern: ".*/test-thermos:test-tag$"
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: Always

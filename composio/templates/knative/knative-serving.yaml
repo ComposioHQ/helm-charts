@@ -6,7 +6,6 @@ metadata:
   name: knative-serving
   labels:
     {{- include "composio.labels" . | nindent 4 }}
-    app.kubernetes.io/managed-by: Helm
   annotations:
     meta.helm.sh/release-name: {{ .Release.Name }}
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
@@ -34,7 +33,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: knative-config
-        image: bitnami/kubectl:latest
+        image: {{ .Values.mercury.knative.kubectlImage | quote }}
         command:
         - /bin/bash
         - -c
