@@ -16,6 +16,7 @@ data:
   COMPOSIO_ENV: "production"
   USE_CLICKHOUSE_FOR_LOGS: "false"
   SELF_HOSTED: "true"
+  ADMIN_EMAIL: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
   {{- if ne .Values.apollo.singleTenant.maxOrgCount nil }}
   MAX_ORG_COUNT: {{ .Values.apollo.singleTenant.maxOrgCount | toString | quote }}
   {{- end }}
