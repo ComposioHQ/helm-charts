@@ -68,7 +68,7 @@ The chart deploys a microservices stack. Service-to-service ports below are the 
 | Mercury   | Python (Lambda-style) | 8080 | Executes tool code against third-party APIs                 |
 | Frontend  | TS (Next.js)     | 3000 | Web UI                                                      |
 | Temporal  | (subchart)       | 7233 | Workflow engine for trigger processing & auth-token refresh |
-| Redis     | (Bitnami subchart) | 6379 | Caching layer                                               |
+| Redis     | (in-chart Valkey)   | 6379 | Redis-compatible caching layer                             |
 | Weaviate  | (in-chart)       | —    | Optional vector DB; usually disabled in prod                |
 
 `docs/architecture/composio_architecture.png` shows the full picture. Source code for each service lives in separate repos (hermes for Apollo+Thermos, mercury, etc.) — this repo only ships the K8s packaging.
@@ -126,7 +126,7 @@ templates/
 - `databaseMigration.*` — one-shot Postgres init job (creates `apollo`, `thermos`, `mercury`, `temporal` databases).
 - `externalSecrets.ecr.*` — values used to render the ECR auth Secret at install time (`--set externalSecrets.ecr.token=...`).
 - `externalRedis.*` — production Redis (incl. Sentinel options); set `externalRedis.enabled: true` and `redis.enabled: false` for prod.
-- `redis.*` — embedded Bitnami Redis (dev only).
+- `redis.*` — embedded single-node Valkey cache (dev only).
 - `apollo.*`, `thermos.*`, `mercury.*`, `frontend.*`, `weaviate.*` — per-service config (image, replicas, resources, ingress, service account, env, probes, PDB).
 - `temporal.*` — passthrough to the Temporal subchart when `features.temporal: true`.
 - `otel.*` — OpenTelemetry collector config.
@@ -245,7 +245,7 @@ Key invariants enforced by CI:
 
 - Templates must render with `helm template --debug --dry-run` against default values.
 - `helm-unittest` suite must pass.
-- Subchart deps (`bitnami`, `temporal`) are added before lint.
+- Subchart deps (`temporal`) are added before lint.
 - `--check-version-increment=false` is passed to `ct lint`, so the chart version is **not** auto-bumped — bump `composio/Chart.yaml` explicitly when a release is intended.
 
 ## Release & distribution
@@ -290,7 +290,7 @@ helm dependency update
 git add Chart.yaml Chart.lock charts/
 ```
 
-`composio/charts/` already contains pre-fetched `redis-17.11.3.tgz`, `temporal-0.68.1.tgz`, and `replicated-1.18.1.tgz` — re-vendor them when bumping versions.
+`composio/charts/` already contains pre-fetched `temporal-0.68.1.tgz` and `replicated-1.18.1.tgz` — re-vendor them when bumping versions.
 
 ### Touching secrets
 

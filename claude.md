@@ -48,7 +48,7 @@ helm-charts/
 | **Mercury** | 8080 | Function orchestration (Knative-capable) |
 | **Frontend** | 3000 | Next.js web UI |
 | **Temporal** | 7233 | Workflow engine (subchart) |
-| **Redis** | 6379 | Caching layer (Bitnami subchart) |
+| **Redis** | 6379 | Redis-compatible caching layer (in-chart Valkey) |
 
 ## Development Commands
 

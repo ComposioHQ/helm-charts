@@ -18,8 +18,11 @@
 {{- if and $externalRedisSentinelEnabled (or (empty $externalRedisSentinel.hosts) (empty $externalRedisSentinel.masterName)) }}
 {{- fail "Error: externalRedis.sentinel.hosts and externalRedis.sentinel.masterName are required when externalRedis.sentinel.enabled is true" }}
 {{- end }}
-{{- if and $internalRedisSentinelEnabled (ne ($redisValues.architecture | default "standalone") "replication") }}
-{{- fail "Error: redis.architecture must be \"replication\" when redis.sentinel.enabled is true" }}
+{{- if $internalRedisSentinelEnabled }}
+{{- fail "Error: bundled Redis Sentinel is no longer supported; use externalRedis.sentinel instead" }}
+{{- end }}
+{{- if and $redisValues.enabled $redisTls.enabled }}
+{{- fail "Error: bundled Redis TLS is no longer supported; use a TLS-capable externalRedis deployment instead" }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
@@ -195,9 +198,9 @@ spec:
             {{- else if $redisValues.enabled }}
             - name: REDIS_URL
             {{- if $redisAuth.password }}
-              value: "redis://:{{ $redisAuth.password }}@{{ .Values.redis.fullnameOverride | default (printf "%s-redis" .Release.Name) }}-master:6379"
+              value: "redis://:{{ $redisAuth.password }}@{{ include "composio.redis.fullname" . }}-master:6379"
             {{- else }}
-              value: "redis://{{ .Values.redis.fullnameOverride | default (printf "%s-redis" .Release.Name) }}-master:6379"
+              value: "redis://{{ include "composio.redis.fullname" . }}-master:6379"
             {{- end }}
             {{- end }}
             - name: ENCRYPTION_KEY

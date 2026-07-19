@@ -1,0 +1,79 @@
+{{- if .Values.redis.enabled }}
+{{- $redisAuth := .Values.redis.auth | default (dict) }}
+{{- $redisPersistence := .Values.redis.master.persistence | default (dict) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "composio.redis.fullname" . }}-master
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "composio.redis.fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: master
+spec:
+  serviceName: {{ include "composio.redis.fullname" . }}-master
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "composio.redis.fullname" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "composio.redis.fullname" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: master
+    spec:
+      containers:
+        - name: redis
+          image: {{ include "composio.image" (dict "imageRoot" .Values.redis.image) | quote }}
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy | default "IfNotPresent" }}
+          {{- if and $redisAuth.enabled $redisAuth.password }}
+          command:
+            - valkey-server
+          args:
+            - --requirepass
+            - $(REDIS_PASSWORD)
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "composio.redis.fullname" . }}
+                  key: password
+          {{- end }}
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.redis.master.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- if not $redisPersistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if $redisPersistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ $redisPersistence.size | default "8Gi" }}
+  {{- end }}
+{{- end }}

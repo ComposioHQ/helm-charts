@@ -378,10 +378,7 @@ tests:
             name: REDIS_URL
           any: true
 
-  - it: should configure bundled Redis Sentinel envs without REDIS_URL
-    documentSelector:
-      path: kind
-      value: Deployment
+  - it: should fail when bundled Redis Sentinel is enabled
     set:
       redis.enabled: true
       externalRedis.enabled: false
@@ -393,36 +390,8 @@ tests:
       redis.auth.sentinel: true
       redis.tls.enabled: true
     asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_SENTINEL_HOSTS
-            value: RELEASE-NAME-redis:26379
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_SENTINEL_MASTER_NAME
-            value: ha-master
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_TLS_ENABLED
-            value: "true"
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_PASSWORD
-            value: supersecret
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_SENTINEL_PASSWORD
-            value: supersecret
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_URL
-          any: true
+      - failedTemplate:
+          errorMessage: "Error: bundled Redis Sentinel is no longer supported; use externalRedis.sentinel instead"
 
 ---
 suite: test apollo service

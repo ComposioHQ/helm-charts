@@ -9,7 +9,6 @@ A Helm chart for Composio
 | Repository | Name | Version |
 |------------|------|---------|
 | file://./charts/temporal | temporal(temporal) | 0.68.1 |
-| https://charts.bitnami.com/bitnami | redis | 17.11.3 |
 
 ## Values
 
@@ -247,25 +246,24 @@ A Helm chart for Composio
 | rbac.create | bool | `false` | Create RBAC resources |
 | rbac.namespaced | bool | `true` | Use namespaced RBAC |
 | rbac.pspEnabled | bool | `false` | Enable Pod Security Policies |
-| redis.architecture | string | `"standalone"` | Redis architecture (standalone or replication) |
+| redis.architecture | string | `"standalone"` | Cache architecture. Only standalone is supported for the embedded cache. |
 | redis.auth.enabled | bool | `true` | Enable Redis authentication |
 | redis.auth.password | string | `""` | Redis password |
-| redis.auth.sentinel | bool | `true` | Enable password authentication on bundled Redis Sentinels too |
-| redis.enabled | bool | `true` | Enable internal Redis. Set to false when using externalRedis |
-| redis.image.digest | string | `"sha256:7b55af740324cc23a1b528d628d45eb233c36e6520cf6f480b1be525d4635dde"` | Redis image digest |
+| redis.auth.sentinel | bool | `true` | Legacy value retained for compatibility; bundled Sentinel is unsupported. |
+| redis.enabled | bool | `true` | Enable internal Redis-compatible cache. Set to false when using externalRedis |
 | redis.image.registry | string | `"docker.io"` | Redis image registry |
-| redis.image.repository | string | `"bitnami/redis"` | Redis image repository |
-| redis.image.tag | string | `"sha256:7b55af740324cc23a1b528d628d45eb233c36e6520cf6f480b1be525d4635dde"` | Redis image tag, ignored when `redis.image.digest` is set |
-| redis.master.persistence.enabled | bool | `true` | Enable persistent storage |
+| redis.image.repository | string | `"valkey/valkey"` | Redis-compatible cache image repository |
+| redis.image.tag | string | `"8-alpine"` | Redis-compatible cache image tag |
+| redis.master.persistence.enabled | bool | `false` | Enable persistent storage |
 | redis.master.persistence.size | string | `"8Gi"` | Size of persistent volume |
 | redis.master.resources.limits.cpu | string | `"2"` | CPU limit for Redis master |
 | redis.master.resources.limits.memory | string | `"4Gi"` | Memory limit for Redis master |
 | redis.master.resources.requests.cpu | string | `"2"` | CPU request for Redis master |
 | redis.master.resources.requests.memory | string | `"4Gi"` | Memory request for Redis master |
-| redis.sentinel.enabled | bool | `false` | Enable bundled Redis Sentinel and switch Apollo to Sentinel mode |
+| redis.sentinel.enabled | bool | `false` | Unsupported for the embedded cache. Use externalRedis.sentinel instead. |
 | redis.sentinel.masterSet | string | `"mymaster"` | Redis Sentinel master set name |
 | redis.sentinel.service.ports.sentinel | int | `26379` | Redis Sentinel service port |
-| redis.tls.enabled | bool | `false` | Enable TLS for bundled Redis connections |
+| redis.tls.enabled | bool | `false` | Unsupported for the embedded cache. Use externalRedis.sentinel.tlsEnabled or a TLS-capable external Redis URL instead. |
 | redis.master.sysctl.enabled | bool | `false` | Disable sysctl for GKE Autopilot |
 | redis.master.sysctlImage.enabled | bool | `false` | Disable sysctl image for GKE Autopilot |
 | serviceAccount.annotations | object | `{}` | Service account annotations |
@@ -386,23 +384,17 @@ Starting from this version, the default value of `redis.auth.password` has been 
 
 ### Changing the internal Redis password
 
-The Bitnami Redis subchart persists the Redis password in a Kubernetes Secret (`<release-name>-redis`). This secret is **not updated** by `helm upgrade`. This means that any change to `redis.auth.password` in your values — whether setting, changing, or removing it — requires manual intervention. Without these steps, the Redis server will continue using the old password while Apollo attempts to connect with the new one, resulting in `NOAUTH Authentication required` or `ERR AUTH` errors.
+The bundled Redis-compatible cache stores the explicit `redis.auth.password` value in a Kubernetes Secret (`<release-name>-redis`) and reads it when the cache pod starts. If you change `redis.auth.password`, restart the cache pod after the Helm upgrade so the server process reads the new value.
 
 **Steps** (replace `<release-name>` and `<namespace>` with your values):
 
-1. Delete the Redis secret so it gets recreated with the new password on upgrade:
-
-   ```bash
-   kubectl delete secret <release-name>-redis -n <namespace>
-   ```
-
-2. Run the helm upgrade:
+1. Run the helm upgrade:
 
    ```bash
    helm upgrade <release-name> composio/ -f your-values.yaml -n <namespace>
    ```
 
-3. Delete the Redis pod so it restarts with the updated password:
+2. Delete the cache pod so it restarts with the updated password:
 
    ```bash
    kubectl delete pod <release-name>-redis-master-0 -n <namespace>
@@ -414,7 +406,7 @@ The Bitnami Redis subchart persists the Redis password in a Kubernetes Secret (`
    kubectl exec <release-name>-redis-master-0 -n <namespace> -- redis-cli ping
    ```
 
-   You should see `PONG`. If you see `NOAUTH Authentication required`, repeat steps 1-3.
+   You should see `PONG`. If you configured a password, pass `-a <password>` to `redis-cli`.
 
 This applies **any time** you change `redis.auth.password` while using the chart's internal Redis. It does not apply if you are using an external Redis (`externalRedis.enabled: true`).
 
@@ -494,32 +486,9 @@ Notes:
 - `externalRedis.key` / `REDIS_URL` is ignored in Sentinel mode.
 - Preflight checks validate whichever Sentinel secret keys you configure.
 
-#### Bundled Bitnami Redis with Sentinel
+#### Bundled cache
 
-Use this when you want the chart-managed Redis dependency to run in replication mode with Sentinel:
-
-```yaml
-redis:
-  enabled: true
-  architecture: replication
-  sentinel:
-    enabled: true
-    masterSet: mymaster
-  auth:
-    enabled: true
-    sentinel: true
-    password: "replace-me"
-
-externalRedis:
-  enabled: false
-```
-
-Notes:
-
-- `redis.architecture` must be `replication` when `redis.sentinel.enabled=true`.
-- Apollo will automatically use the bundled Sentinel service at `<release-name>-redis:26379`.
-- If you enable TLS in the Redis subchart, also set `redis.tls.enabled: true` so Apollo advertises `REDIS_TLS_ENABLED=true`.
-- If you change `redis.auth.password`, follow the password-rotation steps in the section above before or during upgrade.
+The bundled cache is a single-node Valkey deployment that speaks the Redis protocol and keeps the legacy `<release-name>-redis-master:6379` service name. It is meant for development and lightweight self-hosted evaluation. For production HA, failover, TLS, or Sentinel, use `externalRedis` with infrastructure you manage outside this chart.
 
 #### Example upgrade
 
