@@ -16,12 +16,14 @@ data:
   COMPOSIO_ENV: "production"
   USE_CLICKHOUSE_FOR_LOGS: "false"
   SELF_HOSTED: "true"
-  ADMIN_EMAIL: {{ .Values.dbInit.adminEmail | default "hello@composio.dev" | quote }}
   {{- if ne .Values.apollo.singleTenant.maxOrgCount nil }}
   MAX_ORG_COUNT: {{ .Values.apollo.singleTenant.maxOrgCount | toString | quote }}
   {{- end }}
   {{- if ne .Values.apollo.singleTenant.maxProjectCount nil }}
   MAX_PROJECT_COUNT: {{ .Values.apollo.singleTenant.maxProjectCount | toString | quote }}
+  {{- end }}
+  {{- if .Values.apollo.singleTenant.logDiagnostics }}
+  LOG_TENANCY_DIAGNOSTICS: "true"
   {{- end }}
   NODE_OPTIONS: "--max-old-space-size=4096"
   THERMOS_URL: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}

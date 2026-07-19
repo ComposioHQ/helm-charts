@@ -172,6 +172,8 @@ apollo:
     maxOrgCount: null
     # -- Optional cap for active projects. Apollo only enforces this when SELF_HOSTED=true.
     maxProjectCount: null
+    # -- Print tenant structure diagnostics on Apollo startup without requiring caps. Apollo only uses this when SELF_HOSTED=true.
+    logDiagnostics: false
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Apollo.
     enabled: false
@@ -566,10 +568,7 @@ thermosMiscWorkers:
     limits:
       memory: "2Gi"
       cpu: "1"
-# Database initialization job configuration
 dbInit:
-  # -- Admin email for initial setup
-  adminEmail: "hello@composio.dev"
   # Kubernetes job configuration
   job:
     # -- Maximum number of retries for failed jobs

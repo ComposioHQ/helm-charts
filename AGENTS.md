@@ -140,9 +140,11 @@ Always-true conventions:
 - Conditional rendering: optional services and feature blocks are gated by `{{- if .Values.<thing>.enabled }}` (e.g. `weaviate.enabled`, `redis.enabled`, `mercury.enabled`, `frontend.enabled`, `thermosMiscWorkers.enabled`, `databaseMigration.enabled`). The core services `apollo` and `thermos` do **not** have a top-level `enabled` field — their main templates render unconditionally and there is no supported way to disable them via values.
 - Single-tenant caps are Apollo config, not chart-global config. When adding or
   changing self-hosted tenant limit behavior, wire it through
-  `apollo.singleTenant.*` values and render only Apollo env vars. Apollo itself
-  decides whether `MAX_ORG_COUNT` and `MAX_PROJECT_COUNT` are effective, and
-  only enforces them when `SELF_HOSTED=true`.
+  `apollo.singleTenant.*` values and render only Apollo env vars.
+  `LOG_TENANCY_DIAGNOSTICS` belongs with these values because it prints the same
+  tenant structure without requiring caps. Apollo itself decides whether
+  `MAX_ORG_COUNT`, `MAX_PROJECT_COUNT`, and `LOG_TENANCY_DIAGNOSTICS` are
+  effective, and only uses them when `SELF_HOSTED=true`.
 
 `overwrite-values.yaml` at the repo root is an annotated example of the most common production tweaks (external DB, disabling Weaviate, Temporal config, etc.). Consult it before adding new config knobs.
 

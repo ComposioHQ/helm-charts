@@ -70,7 +70,6 @@ A Helm chart for Composio
 | aws.region | string | `"us-east-1"` | AWS region |
 | aws.s3.lambdaBucketName | string | `"tools"` | S3 bucket name for Lambda functions |
 | cassandra.enabled | bool | `false` | Enable Cassandra |
-| dbInit.adminEmail | string | `"hello@composio.dev"` | Admin email for initial setup |
 | dbInit.job.activeDeadlineSeconds | int | `2400` | Maximum time for job execution (seconds) |
 | dbInit.job.backoffLimit | int | `3` | Maximum number of retries for failed jobs |
 | dbInit.job.restartPolicy | string | `"OnFailure"` | Job restart policy |

@@ -37,20 +37,14 @@ tests:
           path: data.SELF_HOSTED
           value: "true"
 
-  - it: should expose the configured admin email
-    set:
-      dbInit.adminEmail: test@example.com
-    asserts:
-      - equal:
-          path: data.ADMIN_EMAIL
-          value: "test@example.com"
-
   - it: should omit single tenant caps by default
     asserts:
       - isNull:
           path: data.MAX_ORG_COUNT
       - isNull:
           path: data.MAX_PROJECT_COUNT
+      - isNull:
+          path: data.LOG_TENANCY_DIAGNOSTICS
 
   - it: should configure single tenant caps when set
     set:
@@ -63,6 +57,14 @@ tests:
       - equal:
           path: data.MAX_PROJECT_COUNT
           value: "1"
+
+  - it: should enable tenancy diagnostics when set
+    set:
+      apollo.singleTenant.logDiagnostics: true
+    asserts:
+      - equal:
+          path: data.LOG_TENANCY_DIAGNOSTICS
+          value: "true"
 
   - it: should have correct COMPOSIO_ENV
     asserts:
