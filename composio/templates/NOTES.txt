@@ -87,5 +87,5 @@ kubectl get secret \
 
 ---
 {{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
-INFO: Redis password will be auto-managed by the chart for security.
+INFO: The bundled Redis-compatible cache is running without a password because redis.auth.password is empty.
 {{- end }}

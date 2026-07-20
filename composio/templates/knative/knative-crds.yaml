@@ -54,7 +54,7 @@ spec:
       - name: knative-setup
         image: {{ .Values.mercury.knative.kubectlImage | quote }}
         command:
-        - /bin/bash
+        - /bin/sh
         - -c
         - |
           echo "🚀 Setting up Knative using direct manifests (bypassing operator rate limiting)..."

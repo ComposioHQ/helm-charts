@@ -16,6 +16,15 @@ data:
   COMPOSIO_ENV: "production"
   USE_CLICKHOUSE_FOR_LOGS: "false"
   SELF_HOSTED: "true"
+  {{- if ne .Values.apollo.singleTenant.maxOrgCount nil }}
+  MAX_ORG_COUNT: {{ .Values.apollo.singleTenant.maxOrgCount | toString | quote }}
+  {{- end }}
+  {{- if ne .Values.apollo.singleTenant.maxProjectCount nil }}
+  MAX_PROJECT_COUNT: {{ .Values.apollo.singleTenant.maxProjectCount | toString | quote }}
+  {{- end }}
+  {{- if .Values.apollo.singleTenant.logDiagnostics }}
+  LOG_TENANCY_DIAGNOSTICS: "true"
+  {{- end }}
   NODE_OPTIONS: "--max-old-space-size=4096"
   THERMOS_URL: {{ printf "http://%s-thermos:8180" .Release.Name | quote }}
   BACKEND_URL: {{ .Values.apollo.overwrite_apollo_url | default (printf "http://%s-apollo:9900" .Release.Name) | quote }}

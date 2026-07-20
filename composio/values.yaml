@@ -85,18 +85,16 @@ externalRedis:
     passwordKey: ""
     # -- Optional secret key for REDIS_SENTINEL_PASSWORD
     sentinelPasswordKey: ""
-# Internal Redis configuration (embedded Redis instance)
+# Internal Redis-compatible cache configuration (embedded single-node Valkey instance)
 redis:
   image:
     # -- Redis image registry.
     registry: docker.io
-    # -- Redis image repository.
-    repository: bitnami/redis
-    # -- Redis image tag. Ignored when digest is set.
-    tag: "sha256:7b55af740324cc23a1b528d628d45eb233c36e6520cf6f480b1be525d4635dde"
-    # -- Redis image digest.
-    digest: "sha256:7b55af740324cc23a1b528d628d45eb233c36e6520cf6f480b1be525d4635dde"
-  # -- Enable internal Redis. Set to false when using externalRedis
+    # -- Redis-compatible cache image repository.
+    repository: valkey/valkey
+    # -- Redis-compatible cache image tag.
+    tag: 8-alpine
+  # -- Enable internal Redis-compatible cache. Set to false when using externalRedis
   enabled: true
   # Redis authentication configuration
   auth:
@@ -106,11 +104,11 @@ redis:
     sentinel: true
     # -- Redis password
     password: ""
-  # -- Redis architecture (standalone or replication)
+  # -- Cache architecture. Only standalone is supported for the embedded cache.
   architecture: standalone
-  # Optional Bitnami Redis Sentinel settings for HA failover support in Apollo.
+  # Sentinel is only supported through externalRedis.sentinel for production HA deployments.
   sentinel:
-    # -- Enable bundled Redis Sentinel and switch Apollo to Sentinel mode
+    # -- Unsupported for the embedded cache. Use externalRedis.sentinel instead.
     enabled: false
     # -- Redis Sentinel master set name
     masterSet: "mymaster"
@@ -119,7 +117,7 @@ redis:
         # -- Redis Sentinel service port
         sentinel: 26379
   tls:
-    # -- Enable TLS for bundled Redis connections
+    # -- Unsupported for the embedded cache. Use externalRedis.sentinel.tlsEnabled or a TLS-capable external Redis URL instead.
     enabled: false
   # Redis master node configuration
   master:
@@ -167,6 +165,13 @@ preflight:
 apollo:
   # -- Number of Apollo pod replicas
   replicaCount: 2
+  singleTenant:
+    # -- Optional cap for active organizations. Apollo only enforces this when SELF_HOSTED=true.
+    maxOrgCount: null
+    # -- Optional cap for active projects. Apollo only enforces this when SELF_HOSTED=true.
+    maxProjectCount: null
+    # -- Print tenant structure diagnostics on Apollo startup without requiring caps. Apollo only uses this when SELF_HOSTED=true.
+    logDiagnostics: false
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Apollo.
     enabled: false
@@ -561,10 +566,7 @@ thermosMiscWorkers:
     limits:
       memory: "2Gi"
       cpu: "1"
-# Database initialization job configuration
 dbInit:
-  # -- Admin email for initial setup
-  adminEmail: "hello@composio.dev"
   # Kubernetes job configuration
   job:
     # -- Maximum number of retries for failed jobs

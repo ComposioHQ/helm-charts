@@ -1,12 +1,9 @@
 dependencies:
-- name: redis
-  repository: https://charts.bitnami.com/bitnami
-  version: 17.11.3
 - name: temporal
   repository: file://./charts/temporal
   version: 0.68.1
 - name: replicated
   repository: oci://registry.replicated.com/library
   version: 1.19.6
-digest: sha256:b4792cbd364adae5557bc1ad2a094a7b5143b87ff1519953997cdca014c28189
-generated: "2026-07-06T22:09:07.96633+05:30"
+digest: sha256:2303d15e7ed54a3b95b8221e87d038576f1d3a2a1af2ffb83aea9daed8f80e52
+generated: "2026-07-19T19:33:27.93569+05:30"
