@@ -73,7 +73,7 @@ A Helm chart for Composio
 | dbInit.job.backoffLimit | int | `3` | Maximum number of retries for failed jobs |
 | dbInit.job.restartPolicy | string | `"OnFailure"` | Job restart policy |
 | elasticsearch.enabled | bool | `false` | Enable Elasticsearch |
-| externalRedis.enabled | bool | `false` | Enable external Redis. Set to true to use an external Redis instance |
+| externalRedis.enabled | bool | `false` | Inject external Redis configuration when enabled |
 | externalRedis.key | string | `"REDIS_URL"` | Key name in the secret containing the Redis URL |
 | externalRedis.secretRef | string | `"composio-composio-secrets"` | Secret name containing Redis connection URL |
 | externalRedis.sentinel.db | string | `""` | Optional Redis DB index to use in Sentinel mode |
@@ -246,26 +246,6 @@ A Helm chart for Composio
 | rbac.create | bool | `false` | Create RBAC resources |
 | rbac.namespaced | bool | `true` | Use namespaced RBAC |
 | rbac.pspEnabled | bool | `false` | Enable Pod Security Policies |
-| redis.architecture | string | `"standalone"` | Cache architecture. Only standalone is supported for the embedded cache. |
-| redis.auth.enabled | bool | `true` | Enable Redis authentication |
-| redis.auth.password | string | `""` | Redis password |
-| redis.auth.sentinel | bool | `true` | Legacy value retained for compatibility; bundled Sentinel is unsupported. |
-| redis.enabled | bool | `true` | Enable internal Redis-compatible cache. Set to false when using externalRedis |
-| redis.image.registry | string | `"docker.io"` | Redis image registry |
-| redis.image.repository | string | `"valkey/valkey"` | Redis-compatible cache image repository |
-| redis.image.tag | string | `"8-alpine"` | Redis-compatible cache image tag |
-| redis.master.persistence.enabled | bool | `false` | Enable persistent storage |
-| redis.master.persistence.size | string | `"8Gi"` | Size of persistent volume |
-| redis.master.resources.limits.cpu | string | `"2"` | CPU limit for Redis master |
-| redis.master.resources.limits.memory | string | `"4Gi"` | Memory limit for Redis master |
-| redis.master.resources.requests.cpu | string | `"2"` | CPU request for Redis master |
-| redis.master.resources.requests.memory | string | `"4Gi"` | Memory request for Redis master |
-| redis.sentinel.enabled | bool | `false` | Unsupported for the embedded cache. Use externalRedis.sentinel instead. |
-| redis.sentinel.masterSet | string | `"mymaster"` | Redis Sentinel master set name |
-| redis.sentinel.service.ports.sentinel | int | `26379` | Redis Sentinel service port |
-| redis.tls.enabled | bool | `false` | Unsupported for the embedded cache. Use externalRedis.sentinel.tlsEnabled or a TLS-capable external Redis URL instead. |
-| redis.master.sysctl.enabled | bool | `false` | Disable sysctl for GKE Autopilot |
-| redis.master.sysctlImage.enabled | bool | `false` | Disable sysctl image for GKE Autopilot |
 | serviceAccount.annotations | object | `{}` | Service account annotations |
 | serviceAccount.create | bool | `true` | Create service account |
 | serviceAccount.name | string | `""` | Service account name (generated if not specified) |
@@ -374,42 +354,6 @@ A Helm chart for Composio
 
 ## Upgrading
 
-### From version 1.47 and below
-
-Starting from this version, the default value of `redis.auth.password` has been changed to `""` (empty). If you are upgrading from version 1.47 or earlier and your deployment uses the **internal Redis** (`redis.enabled: true`), this affects you in one of two ways:
-
-- **If you were not explicitly setting `redis.auth.password` in your values file**, the default has changed from `"redis123"` to `""`. After upgrading, Redis will still enforce the old password (persisted in the `<release-name>-redis` Kubernetes Secret), while Apollo will attempt to connect without one. You must delete the Redis secret and restart the Redis pod as described in the section below.
-
-- **If you want to keep using a Redis password**, you must now explicitly set `redis.auth.password` in your values file, since the default is no longer populated.
-
-### Changing the internal Redis password
-
-The bundled Redis-compatible cache stores the explicit `redis.auth.password` value in a Kubernetes Secret (`<release-name>-redis`) and reads it when the cache pod starts. If you change `redis.auth.password`, restart the cache pod after the Helm upgrade so the server process reads the new value.
-
-**Steps** (replace `<release-name>` and `<namespace>` with your values):
-
-1. Run the helm upgrade:
-
-   ```bash
-   helm upgrade <release-name> composio/ -f your-values.yaml -n <namespace>
-   ```
-
-2. Delete the cache pod so it restarts with the updated password:
-
-   ```bash
-   kubectl delete pod <release-name>-redis-master-0 -n <namespace>
-   ```
-
-4. Verify Redis is accepting connections:
-
-   ```bash
-   kubectl exec <release-name>-redis-master-0 -n <namespace> -- redis-cli ping
-   ```
-
-   You should see `PONG`. If you configured a password, pass `-a <password>` to `redis-cli`.
-
-This applies **any time** you change `redis.auth.password` while using the chart's internal Redis. It does not apply if you are using an external Redis (`externalRedis.enabled: true`).
-
 ### Redis Sentinel support
 
 For a standalone step-by-step guide, see [docs/redis-sentinel.md](../docs/redis-sentinel.md).
@@ -435,9 +379,6 @@ externalRedis:
   enabled: true
   secretRef: composio-composio-secrets
   key: REDIS_URL
-
-redis:
-  enabled: false
 ```
 
 Your secret must contain:
@@ -465,9 +406,6 @@ externalRedis:
     usernameKey: REDIS_USERNAME
     passwordKey: REDIS_PASSWORD
     sentinelPasswordKey: REDIS_SENTINEL_PASSWORD
-
-redis:
-  enabled: false
 ```
 
 The Sentinel auth secret can contain any subset you need:
@@ -485,10 +423,6 @@ Notes:
 - `externalRedis.sentinel.hosts` and `externalRedis.sentinel.masterName` are required when Sentinel mode is enabled.
 - `externalRedis.key` / `REDIS_URL` is ignored in Sentinel mode.
 - Preflight checks validate whichever Sentinel secret keys you configure.
-
-#### Bundled cache
-
-The bundled cache is a single-node Valkey deployment that speaks the Redis protocol and keeps the legacy `<release-name>-redis-master:6379` service name. It is meant for development and lightweight self-hosted evaluation. For production HA, failover, TLS, or Sentinel, use `externalRedis` with infrastructure you manage outside this chart.
 
 #### Example upgrade
 

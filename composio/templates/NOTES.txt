@@ -86,6 +86,3 @@ kubectl get secret \
 * Losing them = **irreversible data loss**
 
 ---
-{{- if and .Values.redis.enabled .Values.redis.auth.enabled (not .Values.redis.auth.password) }}
-INFO: The bundled Redis-compatible cache is running without a password because redis.auth.password is empty.
-{{- end }}

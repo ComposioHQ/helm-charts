@@ -52,9 +52,6 @@ externalRedis:
   enabled: true
   secretRef: composio-composio-secrets
   key: REDIS_URL
-
-redis:
-  enabled: false
 ```
 
 ### 3. Upgrade the release
@@ -116,9 +113,6 @@ externalRedis:
     usernameKey: REDIS_USERNAME
     passwordKey: REDIS_PASSWORD
     sentinelPasswordKey: REDIS_SENTINEL_PASSWORD
-
-redis:
-  enabled: false
 ```
 
 ### 4. Important rules
@@ -143,10 +137,6 @@ kubectl exec deploy/<release-name>-apollo -n <namespace> -- printenv | grep '^RE
 
 You should see the Sentinel env vars and should **not** see `REDIS_URL`.
 
-## Bundled cache limitation
-
-The Composio chart includes a single-node Valkey cache for development and lightweight self-hosted evaluation. It does not support Sentinel, replication, or TLS. If you need those capabilities, keep `redis.enabled=false` and configure `externalRedis.sentinel`.
-
 ## Validation and troubleshooting
 
 ### Check rendered manifests before upgrade
@@ -169,7 +159,5 @@ kubectl logs deploy/<release-name>-apollo -n <namespace> --tail=200
 
 ### Common mistakes
 
-- Enabling both `redis.enabled` and `externalRedis.enabled`
 - Enabling Sentinel mode without setting both `hosts` and `masterName`
-- Enabling `redis.sentinel.enabled`; bundled Sentinel is no longer supported
 - Expecting `REDIS_URL` to be used in Sentinel mode

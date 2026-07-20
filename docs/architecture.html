@@ -232,7 +232,7 @@
                         <h3><i class="fas fa-arrow-right"></i> Service-to-Service Communication</h3>
                         <ul>
                             <li><strong>Apollo → PostgreSQL:</strong> Direct database connection via secret-managed credentials</li>
-                            <li><strong>Apollo → Redis:</strong> Optional external or internal Redis for caching</li>
+                            <li><strong>Apollo → Redis:</strong> Optional external Redis for caching</li>
                             <li><strong>Apollo → Minio:</strong> Object storage for tools and Lambda functions</li>
                             <li><strong>Thermos → Temporal:</strong> Workflow execution and task management</li>
                             <li><strong>Mercury → Apollo:</strong> API calls for MCP functionality</li>
@@ -281,7 +281,7 @@
                         <div class="dependency-card optional">
                             <h3><i class="fas fa-info-circle"></i> Optional</h3>
                             <ul>
-                                <li><strong>Redis:</strong> Can use external Redis or the bundled single-node Valkey cache</li>
+                                <li><strong>Redis:</strong> External Redis for caching when enabled</li>
                                 <li><strong>OpenAI API:</strong> For AI-powered features</li>
                                 <li><strong>Google Cloud:</strong> For observability exports</li>
                                 <li><strong>Load Balancer:</strong> For production ingress</li>

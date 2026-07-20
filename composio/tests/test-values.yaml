@@ -163,8 +163,5 @@ replicated:
 openAI:
   enabled: false
 
-redis:
-  enabled: true
-
 externalRedis:
   enabled: false 

@@ -85,67 +85,6 @@ externalRedis:
     passwordKey: ""
     # -- Optional secret key for REDIS_SENTINEL_PASSWORD
     sentinelPasswordKey: ""
-# Internal Redis-compatible cache configuration (embedded single-node Valkey instance)
-redis:
-  image:
-    # -- Redis image registry.
-    registry: docker.io
-    # -- Redis-compatible cache image repository.
-    repository: valkey/valkey
-    # -- Redis-compatible cache image tag.
-    tag: 8-alpine
-  # -- Enable internal Redis-compatible cache. Set to false when using externalRedis
-  enabled: true
-  # Redis authentication configuration
-  auth:
-    # -- Enable Redis authentication
-    enabled: true
-    # -- Enable password authentication on bundled Redis Sentinels too
-    sentinel: true
-    # -- Redis password
-    password: ""
-  # -- Cache architecture. Only standalone is supported for the embedded cache.
-  architecture: standalone
-  # Sentinel is only supported through externalRedis.sentinel for production HA deployments.
-  sentinel:
-    # -- Unsupported for the embedded cache. Use externalRedis.sentinel instead.
-    enabled: false
-    # -- Redis Sentinel master set name
-    masterSet: "mymaster"
-    service:
-      ports:
-        # -- Redis Sentinel service port
-        sentinel: 26379
-  tls:
-    # -- Unsupported for the embedded cache. Use externalRedis.sentinel.tlsEnabled or a TLS-capable external Redis URL instead.
-    enabled: false
-  # Redis master node configuration
-  master:
-    # Persistence configuration
-    persistence:
-      # -- Enable persistent storage
-      enabled: false
-      # -- Size of persistent volume
-      size: 8Gi
-    # Resource requests and limits for Redis master
-    resources:
-      requests:
-        # -- Memory request for Redis master
-        memory: "4Gi"
-        # -- CPU request for Redis master
-        cpu: "2"
-      limits:
-        # -- Memory limit for Redis master
-        memory: "4Gi"
-        # -- CPU limit for Redis master
-        cpu: "2"
-    # Disable privileged sysctls for GKE Autopilot compatibility
-    sysctlImage:
-      # -- Disable sysctl image for GKE Autopilot
-      enabled: false
-    sysctl:
-      # -- Disable sysctl for GKE Autopilot
-      enabled: false
 # OpenAI API configuration (required for Frontend, Mercury and Apollo)
 openAI:
   # -- Enable OpenAI integration

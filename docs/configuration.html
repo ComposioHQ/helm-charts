@@ -186,11 +186,6 @@ export OPENAI_API_KEY="sk-1234567890..."
                                 <td>Use external Redis</td>
                                 <td><code>true</code></td>
                             </tr>
-                            <tr>
-                                <td><code>redis.enabled</code></td>
-                                <td>Deploy bundled single-node Valkey cache</td>
-                                <td><code>false</code></td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -569,7 +564,7 @@ export OPENAI_API_KEY="sk-1234567890..."
                 </div>
 
                 <div id="redis" class="config-section">
-                    <h2><i class="fas fa-server"></i> Redis Configuration</h2>
+                    <h2><i class="fas fa-server"></i> External Redis Configuration</h2>
 
                     <table class="config-table">
                         <thead>
@@ -581,48 +576,20 @@ export OPENAI_API_KEY="sk-1234567890..."
                         </thead>
                         <tbody>
                             <tr>
-                                <td><code>redis.enabled</code></td>
-                                <td>Deploy bundled single-node Valkey cache</td>
-                                <td><code>false</code></td>
-                            </tr>
-                            <tr>
                                 <td><code>externalRedis.enabled</code></td>
-                                <td>Use external Redis</td>
-                                <td><code>true</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>redis.auth.enabled</code></td>
-                                <td>Enable Redis authentication</td>
-                                <td><code>true</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>redis.auth.password</code></td>
-                                <td>Redis password (if bundled)</td>
-                                <td><code>"redis123"</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>redis.master.persistence.size</code></td>
-                                <td>Redis storage size (if bundled)</td>
-                                <td><code>8Gi</code></td>
+                                <td>Inject external Redis configuration</td>
+                                <td><code>false</code></td>
                             </tr>
                         </tbody>
                     </table>
 
                     <div class="code-example">
-                        <h4>Example: Use Bundled Redis:</h4>
+                        <h4>Example: Use External Redis:</h4>
                         <div class="code-block">
                             <pre><code class="language-yaml">externalRedis:
-  enabled: false
-
-redis:
   enabled: true
-  auth:
-    enabled: true
-    password: "securepassword"
-  master:
-    persistence:
-      enabled: true
-      size: 16Gi</code></pre>
+  secretRef: composio-composio-secrets
+  key: REDIS_URL</code></pre>
                         </div>
                     </div>
                 </div>
