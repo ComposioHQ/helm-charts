@@ -10,7 +10,7 @@ databaseMigration:
   user: "composio"
 
 # Redis Configuration
-# NOTE: Our internal Redis doesn't come with production support. We recommend using external Redis for production environments.
+# Redis is supplied by external infrastructure when enabled below.
 externalRedis:
   # -- Enable external Redis. Set to true to use an external Redis instance
   enabled: true
@@ -18,9 +18,6 @@ externalRedis:
   secretRef: "composio-composio-secrets"
   # -- Key name in the secret containing the Redis URL
   key: "REDIS_URL"
-
-redis:
-  enabled: false
 
 # Disable Temporal installation
 features:

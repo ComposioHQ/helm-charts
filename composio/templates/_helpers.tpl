@@ -275,19 +275,6 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end }}
 
 {{/*
-Create a default fully qualified redis name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-*/}}
-{{- define "composio.redis.fullname" -}}
-{{- if .Values.redis.fullnameOverride -}}
-{{- .Values.redis.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default "redis" .Values.redis.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end }}
-{{- end }}
-
-{{/*
 Create a default fully qualified temporal name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
@@ -374,7 +361,6 @@ Compile all warnings into a single message, and call fail.
 {{- define "composio.validateValues" -}}
 {{- $messages := list -}}
 {{- $messages := append $messages (include "composio.validateValues.database" .) -}}
-{{- $messages := append $messages (include "composio.validateValues.redis" .) -}}
 
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
@@ -391,28 +377,6 @@ Validate database configuration
 composio: database
     You must provide database URL when PostgreSQL is disabled.
     Please set apollo.secrets.databaseUrl
-{{- end -}}
-{{- end -}}
-
-{{/*
-Validate Redis configuration
-*/}}
-{{/*
-Validate Redis configuration
-*/}}
-{{- define "composio.validateValues.redis" -}}
-{{- if and .Values.externalRedis.enabled .Values.redis.enabled -}}
-composio: redis
-    You cannot enable both external Redis and built-in Redis.
-    Please set redis.enabled to false when externalRedis.enabled is true
-{{- else if and .Values.redis.enabled .Values.redis.sentinel.enabled -}}
-composio: redis
-    Bundled Redis Sentinel is no longer supported by this chart.
-    Please use externalRedis.sentinel with a production Redis/Valkey deployment instead.
-{{- else if and .Values.redis.enabled .Values.redis.tls.enabled -}}
-composio: redis
-    TLS is no longer supported for the bundled Redis-compatible cache.
-    Please use a TLS-capable externalRedis deployment instead.
 {{- end -}}
 {{- end -}}
 

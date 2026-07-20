@@ -36,26 +36,11 @@ These are the guaranteed resources that Kubernetes will reserve for your deploym
 
 ## Detailed Resource Specifications
 
-### Internal Redis
+### External Redis
 
-Redis is used for caching and session management.
-
-**Resource Configuration:**
-- **CPU Request**: 2 cores
-- **CPU Limit**: 2 cores
-- **Memory Request**: 4 GiB
-- **Memory Limit**: 4 GiB
-
-```yaml
-redis:
-  resources:
-    requests:
-      memory: "4Gi"
-      cpu: "2"
-    limits:
-      memory: "4Gi"
-      cpu: "2"
-```
+Redis is supplied by infrastructure outside this chart. Size its CPU, memory,
+storage, availability, and TLS settings for the expected caching and session
+workload before enabling `externalRedis`.
 
 ---
 

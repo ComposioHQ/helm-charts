@@ -5,8 +5,6 @@ tests:
   - it: should generate correct name with release name
     documentIndex: 0
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - equal:
           path: metadata.name
@@ -15,8 +13,6 @@ tests:
   - it: should generate labels correctly
     documentIndex: 0
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - equal:
           path: metadata.labels.app
