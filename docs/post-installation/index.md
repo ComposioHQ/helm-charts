@@ -6,7 +6,7 @@ The chart includes built-in OpenTelemetry support for collecting metrics and tra
 
 ```yaml
 otel:
-  enabled: true  # Set to false to disable OTEL completely
+  enabled: false  # Set to true to enable OTEL completely
   
   traces:
     enabled: true  # Enable trace collection
@@ -17,6 +17,10 @@ otel:
     enabled: true  # Enable metrics collection
     exportInterval: 60000  # Export interval in milliseconds
 ```
+
+By default, OTEL is disabled and services do not emit telemetry. This lets the
+chart run without a collector. Enable OTEL only when the collector endpoint is
+available, or leave `otel.enabled: false` to drop service telemetry at startup.
 
 #### OTEL Collector Configuration
 
@@ -58,6 +62,49 @@ otel:
             receivers: [otlp]
             processors: [memory_limiter, batch]
             exporters: [debug, prometheus, googlecloud]
+```
+
+The chart default collector metrics pipeline uses `exporters: [debug, prometheus]`.
+Add `googlecloud` to the metrics and traces exporters only after Google Cloud
+authentication is configured.
+
+#### Mercury Metrics
+
+When `otel.enabled=true`, Mercury initializes OpenTelemetry during self-hosted
+startup and exports metrics through OTLP. With the default collector prefix,
+Google Cloud Monitoring receives them under `custom.googleapis.com/composio/`.
+
+| Metric | Type | Description |
+| ------ | ---- | ----------- |
+| `mercury.tool_call` | Counter | Number of tool/action executions. |
+| `mercury.tool_call.execution_time` | Histogram | Tool execution duration in milliseconds. |
+| `mercury.tool_call.status_code` | Histogram | HTTP status code distribution for tool executions. |
+| `mercury.key_normalization.count` | Counter | Number of request key alias normalizations. |
+
+Common Mercury metric attributes include `toolkit_name`, `tool_name`,
+`toolkit_version`, `status_code`, `error`, `env`, and
+`module_loading_mechanism`. Latest-version requests can also include
+`response_validation_status`.
+
+In the collector Prometheus exporter, metric names are normalized for
+Prometheus conventions. For example:
+
+```text
+mercury_tool_call_total
+mercury_tool_call_execution_time_bucket
+mercury_tool_call_execution_time_sum
+mercury_tool_call_execution_time_count
+mercury_tool_call_status_code_bucket
+mercury_key_normalization_count_total
+```
+
+In Google Cloud Monitoring, with the default prefix, look for:
+
+```text
+custom.googleapis.com/composio/mercury.tool_call
+custom.googleapis.com/composio/mercury.tool_call.execution_time
+custom.googleapis.com/composio/mercury.tool_call.status_code
+custom.googleapis.com/composio/mercury.key_normalization.count
 ```
 
 #### Service Endpoint Configuration
