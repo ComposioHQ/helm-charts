@@ -40,7 +40,7 @@ test("render-scan-targets excludes images introduced by the Temporal dependency 
     assert.equal(
       scanTargets.some((target) => target.image.includes("temporalio/")),
       false,
-      "Temporal dependency images should not be scanned or counted in the CVE gate",
+      "Temporal dependency images should not be scanned or counted in the CVE scan",
     );
     assert.ok(
       ignoredTargets.some((target) => target.image.includes("temporalio/admin-tools")),

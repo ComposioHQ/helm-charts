@@ -18,7 +18,7 @@ test("classifies report build failures without claiming vulnerabilities were fou
   assert.doesNotMatch(result.failureSummary, /^Grype found HIGH or CRITICAL vulnerabilities/);
 });
 
-test("classifies completed failed reports as blocking HIGH or CRITICAL findings", () => {
+test("classifies completed failed reports as reported HIGH or CRITICAL findings", () => {
   const result = classifyGrypeWorkflowResult({
     renderOutcome: "success",
     scanOutcome: "success",

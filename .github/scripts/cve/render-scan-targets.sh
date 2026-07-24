@@ -134,7 +134,7 @@ if [[ -s "${ignored_images_file}" ]]; then
   while IFS= read -r rendered_image; do
     row="$(target_for_image \
       "${rendered_image}" \
-      "Temporal dependency chart image; excluded from Composio-managed CVE gate")"
+      "Temporal dependency chart image; excluded from Composio-managed CVE scan")"
     append_json_row "${ignored_scan_targets_file}" "${row}"
   done < "${ignored_images_file}"
 fi
