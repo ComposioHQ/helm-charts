@@ -27,6 +27,8 @@ fi
 mkdir -p "${OUTPUT_DIR}"
 rendered_images_file="${OUTPUT_DIR}/rendered-images.txt"
 scan_targets_file="${OUTPUT_DIR}/scan-targets.json"
+ignored_images_file="${OUTPUT_DIR}/ignored-images.txt"
+ignored_scan_targets_file="${OUTPUT_DIR}/ignored-scan-targets.json"
 
 work_dir="$(mktemp -d)"
 trap 'rm -rf "${work_dir}"' EXIT
@@ -54,17 +56,30 @@ collect_rendered_images() {
 }
 
 if [[ "${RENDER_TEMPORAL}" == "1" ]]; then
-  {
-    collect_rendered_images
-    collect_rendered_images --set features.temporal=true
-  } | sort -u > "${rendered_images_file}"
+  base_images_file="${work_dir}/base-images.txt"
+  temporal_enabled_images_file="${work_dir}/temporal-enabled-images.txt"
+  all_images_file="${work_dir}/all-images.txt"
+
+  collect_rendered_images | sort -u > "${base_images_file}"
+  collect_rendered_images --set features.temporal=true | sort -u > "${temporal_enabled_images_file}"
+
+  comm -13 "${base_images_file}" "${temporal_enabled_images_file}" > "${ignored_images_file}"
+  cat "${base_images_file}" "${temporal_enabled_images_file}" | sort -u > "${all_images_file}"
+
+  if [[ -s "${ignored_images_file}" ]]; then
+    grep -Fvx -f "${ignored_images_file}" "${all_images_file}" > "${rendered_images_file}" || true
+  else
+    cp "${all_images_file}" "${rendered_images_file}"
+  fi
 else
   collect_rendered_images | sort -u > "${rendered_images_file}"
+  : > "${ignored_images_file}"
 fi
 
 if [[ ! -s "${rendered_images_file}" ]]; then
   echo "No images were found in rendered Helm manifests." >&2
   echo '[]' > "${scan_targets_file}"
+  echo '[]' > "${ignored_scan_targets_file}"
   exit 0
 fi
 
@@ -72,8 +87,12 @@ replicated_registry="$(yq -r '.replicated.registry' "${work_chart_dir}/values.ya
 replicated_app="$(yq -r '.replicated.app' "${work_chart_dir}/values.yaml")"
 replicated_proxy_prefix="${replicated_registry}/proxy/${replicated_app}/${ECR_REGISTRY}"
 
-echo '[]' > "${scan_targets_file}"
-while IFS= read -r rendered_image; do
+target_for_image() {
+  local rendered_image="$1"
+  local reason="${2:-}"
+  local scan_image
+  local source
+
   scan_image="${rendered_image}"
   source="rendered"
   if [[ "${rendered_image}" == "${replicated_proxy_prefix}/"* ]]; then
@@ -81,14 +100,46 @@ while IFS= read -r rendered_image; do
     source="replicated-proxy"
   fi
 
-  row="$(jq -n \
-    --arg image "${rendered_image}" \
-    --arg scan_image "${scan_image}" \
-    --arg source "${source}" \
-    '{image: $image, scan_image: $scan_image, source: $source}')"
-  jq -c --argjson row "${row}" '. + [$row]' "${scan_targets_file}" > "${scan_targets_file}.tmp"
-  mv "${scan_targets_file}.tmp" "${scan_targets_file}"
+  if [[ -n "${reason}" ]]; then
+    jq -n \
+      --arg image "${rendered_image}" \
+      --arg scan_image "${scan_image}" \
+      --arg source "${source}" \
+      --arg reason "${reason}" \
+      '{image: $image, scan_image: $scan_image, source: $source, reason: $reason}'
+  else
+    jq -n \
+      --arg image "${rendered_image}" \
+      --arg scan_image "${scan_image}" \
+      --arg source "${source}" \
+      '{image: $image, scan_image: $scan_image, source: $source}'
+  fi
+}
+
+append_json_row() {
+  local file="$1"
+  local row="$2"
+  jq -c --argjson row "${row}" '. + [$row]' "${file}" > "${file}.tmp"
+  mv "${file}.tmp" "${file}"
+}
+
+echo '[]' > "${scan_targets_file}"
+while IFS= read -r rendered_image; do
+  row="$(target_for_image "${rendered_image}")"
+  append_json_row "${scan_targets_file}" "${row}"
 done < "${rendered_images_file}"
 
+echo '[]' > "${ignored_scan_targets_file}"
+if [[ -s "${ignored_images_file}" ]]; then
+  while IFS= read -r rendered_image; do
+    row="$(target_for_image \
+      "${rendered_image}" \
+      "Temporal dependency chart image; excluded from Composio-managed CVE gate")"
+    append_json_row "${ignored_scan_targets_file}" "${row}"
+  done < "${ignored_images_file}"
+fi
+
 echo "Rendered image list: ${rendered_images_file}"
+echo "Ignored image list: ${ignored_images_file}"
+echo "Ignored scan targets: ${ignored_scan_targets_file}"
 echo "Scan targets: ${scan_targets_file}"
