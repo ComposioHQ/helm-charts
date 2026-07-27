@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=()
-          for name in NIGHTLY_GITHUB_APP_CLIENT_ID NIGHTLY_GITHUB_APP_PRIVATE_KEY REPLICATED_API_TOKEN REPLICATED_APP; do
+          for name in NIGHTLY_GITHUB_APP_CLIENT_ID NIGHTLY_GITHUB_APP_PRIVATE_KEY REPLICATED_API_TOKEN REPLICATED_APP REPLICATED_USERNAME; do
             if [[ -z "${!name:-}" ]]; then
               missing+=("${name}")
             fi
@@ -140,11 +140,11 @@ jobs:
           set -euo pipefail
           registry_host="${CHART_OCI_REF#oci://}"
           registry_host="${registry_host%%/*}"
-          registry_username="${REPLICATED_USERNAME:-${REPLICATED_APP:-}}"
+          registry_username="${REPLICATED_USERNAME:-}"
           registry_password="${REPLICATED_TOKEN:-${REPLICATED_API_TOKEN:-}}"
 
           if [[ -z "${registry_username}" || -z "${registry_password}" ]]; then
-            echo "Replicated chart registry credentials are required." >&2
+            echo "Replicated chart registry credentials are required. Set REPLICATED_USERNAME to the token owner email and use REPLICATED_TOKEN or REPLICATED_API_TOKEN as the password." >&2
             exit 1
           fi
 
