@@ -6,7 +6,6 @@ Use this guide if you want one of these setups:
 
 1. External Redis with a single direct `REDIS_URL`
 2. External Redis with Sentinel-managed failover
-3. Bundled Bitnami Redis in replication mode with Sentinel
 
 ## How Apollo behaves
 
@@ -30,7 +29,7 @@ In Sentinel mode, Hermes expects these env vars:
 - A Kubernetes cluster with access to the namespace where Composio is installed
 - `helm` and `kubectl`
 - A Helm values override file
-- A decision on whether you are using external Redis or the bundled Redis subchart
+- A Redis/Valkey deployment managed outside the Composio chart when you need Sentinel
 
 ## Option 1: External Redis with a direct URL
 
@@ -53,9 +52,6 @@ externalRedis:
   enabled: true
   secretRef: composio-composio-secrets
   key: REDIS_URL
-
-redis:
-  enabled: false
 ```
 
 ### 3. Upgrade the release
@@ -117,9 +113,6 @@ externalRedis:
     usernameKey: REDIS_USERNAME
     passwordKey: REDIS_PASSWORD
     sentinelPasswordKey: REDIS_SENTINEL_PASSWORD
-
-redis:
-  enabled: false
 ```
 
 ### 4. Important rules
@@ -144,59 +137,6 @@ kubectl exec deploy/<release-name>-apollo -n <namespace> -- printenv | grep '^RE
 
 You should see the Sentinel env vars and should **not** see `REDIS_URL`.
 
-## Option 3: Bundled Bitnami Redis with Sentinel
-
-Use this when you want the Helm chart to manage Redis for you, but still want Sentinel-based failover.
-
-### 1. Set Helm values
-
-```yaml
-redis:
-  enabled: true
-  architecture: replication
-  sentinel:
-    enabled: true
-    masterSet: mymaster
-  auth:
-    enabled: true
-    sentinel: true
-    password: "replace-me"
-  tls:
-    enabled: false
-
-externalRedis:
-  enabled: false
-```
-
-### 2. Important rules
-
-- `redis.architecture` must be `replication` when `redis.sentinel.enabled=true`
-- Apollo will automatically use the bundled Sentinel service at `<release-name>-redis:26379`
-- If you enable TLS in the Redis subchart, also set `redis.tls.enabled: true`
-- If you want Sentinel auth on the bundled Redis deployment, keep `redis.auth.sentinel: true`
-- If `redis.auth.password` changes, you must rotate the bundled Redis secret/pod during upgrade
-
-### 3. Upgrade the release
-
-```bash
-helm upgrade <release-name> ./composio -n <namespace> -f values-override.yaml
-```
-
-### 4. Verify Apollo
-
-```bash
-kubectl exec deploy/<release-name>-apollo -n <namespace> -- printenv | grep '^REDIS'
-```
-
-You should see:
-
-- `REDIS_SENTINEL_HOSTS`
-- `REDIS_SENTINEL_MASTER_NAME`
-- `REDIS_PASSWORD` if auth is enabled
-- `REDIS_SENTINEL_PASSWORD` if Sentinel auth is enabled
-
-You should not see `REDIS_URL`.
-
 ## Validation and troubleshooting
 
 ### Check rendered manifests before upgrade
@@ -219,8 +159,5 @@ kubectl logs deploy/<release-name>-apollo -n <namespace> --tail=200
 
 ### Common mistakes
 
-- Enabling both `redis.enabled` and `externalRedis.enabled`
 - Enabling Sentinel mode without setting both `hosts` and `masterName`
-- Leaving `redis.architecture` as `standalone` while enabling bundled Sentinel
 - Expecting `REDIS_URL` to be used in Sentinel mode
-- Forgetting to rotate the bundled Redis secret/pod after changing `redis.auth.password`

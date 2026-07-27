@@ -189,7 +189,7 @@ kubectl wait --for=condition=Ready pods --all -n knative-serving --timeout=300s<
                         <div class="code-block">
                             <pre><code class="language-bash"># Export required secrets
 export POSTGRES_URL="postgresql://postgres:YourSecurePassword123!@${POSTGRES_IP}:5432/composio?sslmode=require"
-export REDIS_URL=""  # Leave empty to use bundled Redis
+export REDIS_URL="redis://user:password@redis.example.com:6379/0"  # Set when externalRedis.enabled is true
 export OPENAI_API_KEY="sk-your-openai-key"  # Optional
 
 # Run secret setup script

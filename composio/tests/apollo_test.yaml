@@ -7,8 +7,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - isKind:
           of: Deployment
@@ -27,8 +25,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.serviceAccount.enabled: false
     asserts:
       - isNull:
@@ -39,8 +35,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.serviceAccount.enabled: true
       apollo.serviceAccount.name: apollo-sa
     asserts:
@@ -53,8 +47,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.replicaCount: 3
     asserts:
       - equal:
@@ -66,8 +58,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.image.repository: test-repo
       apollo.image.tag: test-tag
       apollo.image.pullPolicy: IfNotPresent
@@ -84,8 +74,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - equal:
           path: spec.template.spec.containers[0].ports[0].containerPort
@@ -96,8 +84,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - equal:
           path: spec.template.spec.containers[0].livenessProbe.httpGet.path
@@ -114,8 +100,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.path
@@ -129,8 +113,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - equal:
           path: spec.strategy.type
@@ -147,8 +129,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       global.imagePullSecrets:
         - name: test-secret
     asserts:
@@ -194,8 +174,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       openAI.enabled: false
     asserts:
       - contains:
@@ -213,8 +191,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.additionalInitContainers:
         - name: populate-apollo-secrets
           image: busybox:1.36
@@ -244,8 +220,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.secretsDir: /var/run/apollo-secrets
     asserts:
       - contains:
@@ -265,8 +239,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.resources:
         requests:
           memory: "2Gi"
@@ -288,12 +260,29 @@ tests:
           path: spec.template.spec.containers[0].resources.limits.cpu
           value: "1"
 
+  - it: should not configure Redis when external Redis is disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      externalRedis.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_URL
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_SENTINEL_HOSTS
+          any: true
+
   - it: should configure external Redis URL in direct mode
     documentSelector:
       path: kind
       value: Deployment
     set:
-      redis.enabled: false
       externalRedis.enabled: true
       externalRedis.secretRef: redis-credentials
       externalRedis.key: REDIS_URL
@@ -313,7 +302,6 @@ tests:
       path: kind
       value: Deployment
     set:
-      redis.enabled: false
       externalRedis.enabled: true
       externalRedis.sentinel.enabled: true
       externalRedis.sentinel.hosts: "sentinel-a:26379,sentinel-b:26379"
@@ -378,52 +366,6 @@ tests:
             name: REDIS_URL
           any: true
 
-  - it: should configure bundled Redis Sentinel envs without REDIS_URL
-    documentSelector:
-      path: kind
-      value: Deployment
-    set:
-      redis.enabled: true
-      externalRedis.enabled: false
-      redis.architecture: replication
-      redis.sentinel.enabled: true
-      redis.sentinel.masterSet: ha-master
-      redis.sentinel.service.ports.sentinel: 26379
-      redis.auth.password: supersecret
-      redis.auth.sentinel: true
-      redis.tls.enabled: true
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_SENTINEL_HOSTS
-            value: RELEASE-NAME-redis:26379
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_SENTINEL_MASTER_NAME
-            value: ha-master
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_TLS_ENABLED
-            value: "true"
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_PASSWORD
-            value: supersecret
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_SENTINEL_PASSWORD
-            value: supersecret
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: REDIS_URL
-          any: true
-
 ---
 suite: test apollo service
 templates:
@@ -434,8 +376,6 @@ tests:
       path: kind
       value: Service
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - isKind:
           of: Service
@@ -451,8 +391,6 @@ tests:
       path: kind
       value: Service
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.service.type: NodePort
       apollo.service.port: 9900
       apollo.service.nodePort: 30900
@@ -469,8 +407,6 @@ tests:
       path: kind
       value: Service
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
     asserts:
       - equal:
           path: spec.selector.app

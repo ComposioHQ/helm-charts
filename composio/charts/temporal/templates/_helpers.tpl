@@ -427,7 +427,6 @@ The first Cassandra host in the stateful set.
 {{- end -}}
 
 {{/*
-Based on Bitnami charts method
 Renders a value that contains template.
 Usage:
 {{ include "common.tplvalues.render" ( dict "value" .Values.path.to.the.Value "context" $) }}

@@ -131,6 +131,42 @@ tests:
           path: metadata.labels["app.kubernetes.io/component"]
           value: knative-setup
 
+  - it: should use a digest-pinned kubectl image for knative setup job
+    documentIndex: 2
+    set:
+      mercury.useKnative: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.k8s.io/kubectl:v1.30.14@sha256:3f2cf26d036505664c9d636d1545898f7a060f6008c21cb6982cf31fe469b0fa
+      - notEqual:
+          path: spec.template.spec.containers[0].image
+          value: bitnami/kubectl:latest
+
+  - it: should not create resources when knative is disabled
+    set:
+      mercury.useKnative: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+---
+suite: test knative config
+templates:
+  - knative/knative-serving.yaml
+tests:
+  - it: should use a digest-pinned kubectl image for knative config job
+    documentIndex: 1
+    set:
+      mercury.useKnative: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.k8s.io/kubectl:v1.30.14@sha256:3f2cf26d036505664c9d636d1545898f7a060f6008c21cb6982cf31fe469b0fa
+      - notEqual:
+          path: spec.template.spec.containers[0].image
+          value: bitnami/kubectl:latest
+
   - it: should not create resources when knative is disabled
     set:
       mercury.useKnative: false

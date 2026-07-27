@@ -263,18 +263,6 @@ otel:
 - With SSL: `rediss://username:password@host:6380/0`
 
 
-### Initial Admin Email
-
-Set the initial admin user's email used by the database init jobs. Update `values.yaml`:
-
-```yaml
-dbInit:
-  adminEmail: "your-admin@example.com"
-```
-
-This value is consumed by init jobs (maps to `ADMIN_EMAIL`) to create/configure the admin user.
-
-
 ### Knative-Specific Configuration
 
 | Parameter | Description | Default |

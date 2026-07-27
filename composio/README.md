@@ -9,7 +9,6 @@ A Helm chart for Composio
 | Repository | Name | Version |
 |------------|------|---------|
 | file://./charts/temporal | temporal(temporal) | 0.68.1 |
-| https://charts.bitnami.com/bitnami | redis | 17.11.3 |
 
 ## Values
 
@@ -70,12 +69,11 @@ A Helm chart for Composio
 | aws.region | string | `"us-east-1"` | AWS region |
 | aws.s3.lambdaBucketName | string | `"tools"` | S3 bucket name for Lambda functions |
 | cassandra.enabled | bool | `false` | Enable Cassandra |
-| dbInit.adminEmail | string | `"hello@composio.dev"` | Admin email for initial setup |
 | dbInit.job.activeDeadlineSeconds | int | `2400` | Maximum time for job execution (seconds) |
 | dbInit.job.backoffLimit | int | `3` | Maximum number of retries for failed jobs |
 | dbInit.job.restartPolicy | string | `"OnFailure"` | Job restart policy |
 | elasticsearch.enabled | bool | `false` | Enable Elasticsearch |
-| externalRedis.enabled | bool | `false` | Enable external Redis. Set to true to use an external Redis instance |
+| externalRedis.enabled | bool | `false` | Inject external Redis configuration when enabled |
 | externalRedis.key | string | `"REDIS_URL"` | Key name in the secret containing the Redis URL |
 | externalRedis.secretRef | string | `"composio-composio-secrets"` | Secret name containing Redis connection URL |
 | externalRedis.sentinel.db | string | `""` | Optional Redis DB index to use in Sentinel mode |
@@ -139,6 +137,7 @@ A Helm chart for Composio
 | mercury.knative.maxReplicas | int | `5` | Maximum number of replicas for Knative |
 | mercury.knative.minReplicas | int | `1` | Minimum number of replicas for Knative |
 | mercury.knative.replicas | int | `2` | Initial number of replicas |
+| mercury.knative.kubectlImage | string | `"registry.k8s.io/kubectl:v1.30.14@sha256:3f2cf26d036505664c9d636d1545898f7a060f6008c21cb6982cf31fe469b0fa"` | Image used by Knative setup/config hook jobs |
 | mercury.livenessProbe.enabled | bool | `false` | Enable liveness probe |
 | mercury.readinessProbe.enabled | bool | `false` | Enable readiness probe |
 | mercury.replicaCount | int | `1` | Number of Mercury pod replicas (when not using Knative) |
@@ -162,6 +161,7 @@ A Helm chart for Composio
 | openAI.enabled | bool | `true` | Enable OpenAI integration |
 | openAI.key | string | `"API_KEY"` | Key name in the secret |
 | openAI.secretRef | string | `"composio-composio-secrets"` | Secret name containing OpenAI API key |
+| preflight.openAI.image | string | `"curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd"` | Image used by the OpenAI API preflight check pod |
 | otel.apollo.metricsEndpoint | string | `"http://composio-otel-collector:4318/v1/metrics"` | HTTP endpoint for metrics |
 | otel.apollo.serviceName | string | `"apollo"` | Apollo service name |
 | otel.apollo.serviceVersion | string | `"1.0.0"` | Apollo service version |
@@ -246,23 +246,6 @@ A Helm chart for Composio
 | rbac.create | bool | `false` | Create RBAC resources |
 | rbac.namespaced | bool | `true` | Use namespaced RBAC |
 | rbac.pspEnabled | bool | `false` | Enable Pod Security Policies |
-| redis.architecture | string | `"standalone"` | Redis architecture (standalone or replication) |
-| redis.auth.enabled | bool | `true` | Enable Redis authentication |
-| redis.auth.password | string | `""` | Redis password |
-| redis.auth.sentinel | bool | `true` | Enable password authentication on bundled Redis Sentinels too |
-| redis.enabled | bool | `true` | Enable internal Redis. Set to false when using externalRedis |
-| redis.master.persistence.enabled | bool | `true` | Enable persistent storage |
-| redis.master.persistence.size | string | `"8Gi"` | Size of persistent volume |
-| redis.master.resources.limits.cpu | string | `"2"` | CPU limit for Redis master |
-| redis.master.resources.limits.memory | string | `"4Gi"` | Memory limit for Redis master |
-| redis.master.resources.requests.cpu | string | `"2"` | CPU request for Redis master |
-| redis.master.resources.requests.memory | string | `"4Gi"` | Memory request for Redis master |
-| redis.sentinel.enabled | bool | `false` | Enable bundled Redis Sentinel and switch Apollo to Sentinel mode |
-| redis.sentinel.masterSet | string | `"mymaster"` | Redis Sentinel master set name |
-| redis.sentinel.service.ports.sentinel | int | `26379` | Redis Sentinel service port |
-| redis.tls.enabled | bool | `false` | Enable TLS for bundled Redis connections |
-| redis.master.sysctl.enabled | bool | `false` | Disable sysctl for GKE Autopilot |
-| redis.master.sysctlImage.enabled | bool | `false` | Disable sysctl image for GKE Autopilot |
 | serviceAccount.annotations | object | `{}` | Service account annotations |
 | serviceAccount.create | bool | `true` | Create service account |
 | serviceAccount.name | string | `""` | Service account name (generated if not specified) |
@@ -280,6 +263,8 @@ A Helm chart for Composio
 | temporal.elasticsearch.imageTag | string | `"7.17.3"` |  |
 | temporal.fullnameOverride | string | `"temporal-stack"` | Override the full name of Temporal resources |
 | temporal.grafana.enabled | bool | `false` | Enable Grafana |
+| temporal.grafana.imageRenderer.image.sha | string | `"c13f98282c7f82a8bb0d75048d483045159d7ce04d1d02f5e06b21b26b4e5a0b"` | Optional Grafana image renderer image digest |
+| temporal.grafana.imageRenderer.image.tag | string | `"3.11.0"` | Optional Grafana image renderer image tag |
 | temporal.mysql.enabled | bool | `false` | Enable MySQL |
 | temporal.prometheus.enabled | bool | `false` | Enable Prometheus |
 | temporal.prometheus.nodeExporter.enabled | bool | `false` | Enable node exporter |
@@ -369,48 +354,6 @@ A Helm chart for Composio
 
 ## Upgrading
 
-### From version 1.47 and below
-
-Starting from this version, the default value of `redis.auth.password` has been changed to `""` (empty). If you are upgrading from version 1.47 or earlier and your deployment uses the **internal Redis** (`redis.enabled: true`), this affects you in one of two ways:
-
-- **If you were not explicitly setting `redis.auth.password` in your values file**, the default has changed from `"redis123"` to `""`. After upgrading, Redis will still enforce the old password (persisted in the `<release-name>-redis` Kubernetes Secret), while Apollo will attempt to connect without one. You must delete the Redis secret and restart the Redis pod as described in the section below.
-
-- **If you want to keep using a Redis password**, you must now explicitly set `redis.auth.password` in your values file, since the default is no longer populated.
-
-### Changing the internal Redis password
-
-The Bitnami Redis subchart persists the Redis password in a Kubernetes Secret (`<release-name>-redis`). This secret is **not updated** by `helm upgrade`. This means that any change to `redis.auth.password` in your values — whether setting, changing, or removing it — requires manual intervention. Without these steps, the Redis server will continue using the old password while Apollo attempts to connect with the new one, resulting in `NOAUTH Authentication required` or `ERR AUTH` errors.
-
-**Steps** (replace `<release-name>` and `<namespace>` with your values):
-
-1. Delete the Redis secret so it gets recreated with the new password on upgrade:
-
-   ```bash
-   kubectl delete secret <release-name>-redis -n <namespace>
-   ```
-
-2. Run the helm upgrade:
-
-   ```bash
-   helm upgrade <release-name> composio/ -f your-values.yaml -n <namespace>
-   ```
-
-3. Delete the Redis pod so it restarts with the updated password:
-
-   ```bash
-   kubectl delete pod <release-name>-redis-master-0 -n <namespace>
-   ```
-
-4. Verify Redis is accepting connections:
-
-   ```bash
-   kubectl exec <release-name>-redis-master-0 -n <namespace> -- redis-cli ping
-   ```
-
-   You should see `PONG`. If you see `NOAUTH Authentication required`, repeat steps 1-3.
-
-This applies **any time** you change `redis.auth.password` while using the chart's internal Redis. It does not apply if you are using an external Redis (`externalRedis.enabled: true`).
-
 ### Redis Sentinel support
 
 For a standalone step-by-step guide, see [docs/redis-sentinel.md](../docs/redis-sentinel.md).
@@ -436,9 +379,6 @@ externalRedis:
   enabled: true
   secretRef: composio-composio-secrets
   key: REDIS_URL
-
-redis:
-  enabled: false
 ```
 
 Your secret must contain:
@@ -466,9 +406,6 @@ externalRedis:
     usernameKey: REDIS_USERNAME
     passwordKey: REDIS_PASSWORD
     sentinelPasswordKey: REDIS_SENTINEL_PASSWORD
-
-redis:
-  enabled: false
 ```
 
 The Sentinel auth secret can contain any subset you need:
@@ -486,33 +423,6 @@ Notes:
 - `externalRedis.sentinel.hosts` and `externalRedis.sentinel.masterName` are required when Sentinel mode is enabled.
 - `externalRedis.key` / `REDIS_URL` is ignored in Sentinel mode.
 - Preflight checks validate whichever Sentinel secret keys you configure.
-
-#### Bundled Bitnami Redis with Sentinel
-
-Use this when you want the chart-managed Redis dependency to run in replication mode with Sentinel:
-
-```yaml
-redis:
-  enabled: true
-  architecture: replication
-  sentinel:
-    enabled: true
-    masterSet: mymaster
-  auth:
-    enabled: true
-    sentinel: true
-    password: "replace-me"
-
-externalRedis:
-  enabled: false
-```
-
-Notes:
-
-- `redis.architecture` must be `replication` when `redis.sentinel.enabled=true`.
-- Apollo will automatically use the bundled Sentinel service at `<release-name>-redis:26379`.
-- If you enable TLS in the Redis subchart, also set `redis.tls.enabled: true` so Apollo advertises `REDIS_TLS_ENABLED=true`.
-- If you change `redis.auth.password`, follow the password-rotation steps in the section above before or during upgrade.
 
 #### Example upgrade
 
