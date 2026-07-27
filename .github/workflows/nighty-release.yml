@@ -683,10 +683,10 @@ jobs:
                 target_commitish,
                 name: version,
                 body,
-                draft: false,
+                draft: true,
                 prerelease: true,
               });
-              core.info(`Created GitHub release ${tag_name} at ${target_commitish}`);
+              core.info(`Created draft GitHub release ${tag_name} at ${target_commitish}`);
               core.setOutput("release_id", String(release.id));
               core.setOutput("release_url", release.html_url);
             }
@@ -741,6 +741,25 @@ jobs:
             } catch (error) {
               core.warning(`Unable to attach CVE baseline to GitHub release; use the workflow artifact instead. ${error.message}`);
             }
+
+      - name: Publish GitHub nightly release
+        if: ${{ steps.github_release.outputs.release_id != '' }}
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          github-token: ${{ steps.app_token.outputs.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const release_id = Number("${{ steps.github_release.outputs.release_id }}");
+
+            await github.rest.repos.updateRelease({
+              owner,
+              repo,
+              release_id,
+              draft: false,
+              prerelease: true,
+            });
+            core.info("Published GitHub nightly release.");
 
   onprem-testbed:
     if: ${{ needs.replicated-release.result == 'success' }}
