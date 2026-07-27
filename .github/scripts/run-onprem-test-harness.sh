@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ONPREM_REPO="${ONPREM_REPO:-ComposioHQ/onprem-testbed}"
 ONPREM_WORKFLOW_FILE="${ONPREM_WORKFLOW_FILE:-replicated-cmx-harness.yml}"
 ONPREM_REF="${ONPREM_REF:-main}"
+ONPREM_DISPATCH_MODE="${ONPREM_DISPATCH_MODE:-workflow_dispatch}"
 HARNESS_NAME="${HARNESS_NAME:-onprem-testbed}"
 HARNESS_ENV_JSON="${HARNESS_ENV_JSON:-{}}"
 SCENARIOS="${SCENARIOS:-}"
@@ -17,14 +18,22 @@ CLUSTER_SIZE="${CLUSTER_SIZE:-}"
 CLUSTER_TTL="${CLUSTER_TTL:-}"
 GITHUB_APP_OWNER="${GITHUB_APP_OWNER:-ComposioHQ}"
 GITHUB_APP_REPOSITORIES="${GITHUB_APP_REPOSITORIES:-helm-charts,onprem-testbed}"
-GITHUB_APP_PERMISSIONS_JSON="${GITHUB_APP_PERMISSIONS_JSON:-{\"actions\":\"write\",\"contents\":\"read\"}}"
+if [[ -z "${GITHUB_APP_PERMISSIONS_JSON:-}" ]]; then
+  if [[ "${ONPREM_DISPATCH_MODE}" == "repository_dispatch" ]]; then
+    GITHUB_APP_PERMISSIONS_JSON='{"actions":"write","contents":"write"}'
+  else
+    GITHUB_APP_PERMISSIONS_JSON='{"actions":"write","contents":"read"}'
+  fi
+fi
 GITHUB_APP_TOKEN_EXPIRES_AT_EPOCH="${GITHUB_APP_TOKEN_EXPIRES_AT_EPOCH:-0}"
+payload="{}"
 
 append_field() {
   local name="$1"
   local value="$2"
   if [[ -n "${value}" ]]; then
     workflow_args+=(--raw-field "${name}=${value}")
+    payload="$(jq -c --arg name "${name}" --arg value "${value}" '. + {($name): $value}' <<<"${payload}")"
   fi
 }
 
@@ -83,42 +92,66 @@ append_field "cluster_ttl" "${CLUSTER_TTL}"
 append_field "harness_env_json" "${HARNESS_ENV_JSON}"
 
 echo "Dispatching ${HARNESS_NAME} to ${ONPREM_REPO}/${ONPREM_WORKFLOW_FILE} on ${ONPREM_REF}"
+echo "Dispatch mode: ${ONPREM_DISPATCH_MODE}"
 echo "Helm chart version: ${HELM_CHART_VERSION}"
 echo "Scenarios: ${SCENARIOS:-<default>}"
 echo "Upgrade from versions: ${UPGRADE_FROM_VERSIONS:-<none>}"
 echo "Cluster size: ${CLUSTER_SIZE:-<workflow default>}"
 
 ensure_github_token
-gh "${workflow_args[@]}"
-
-run_id=""
-for attempt in {1..60}; do
-  ensure_github_token
-  runs_json="$(
-    gh run list \
-      --repo "${ONPREM_REPO}" \
-      --workflow "${ONPREM_WORKFLOW_FILE}" \
-      --event workflow_dispatch \
-      --limit 20 \
-      --json databaseId,createdAt,url
-  )"
-  run_id="$(
-    jq -r --argjson started "${dispatch_started}" '
-      [.[] | select((.createdAt | fromdateiso8601) >= ($started - 60))]
-      | sort_by(.createdAt)
-      | reverse
-      | .[0].databaseId // empty
-    ' <<<"${runs_json}"
-  )"
-  if [[ -n "${run_id}" ]]; then
-    break
+if [[ "${ONPREM_DISPATCH_MODE}" == "repository_dispatch" ]]; then
+  if [[ "${ONPREM_REF}" != "main" ]]; then
+    echo "repository_dispatch always runs the target repo default branch; set ONPREM_REF=main or use workflow_dispatch" >&2
+    exit 1
   fi
-  echo "Waiting for onprem-testbed workflow run to appear (${attempt}/60)"
-  sleep 10
-done
+  dispatch_payload="$(
+    jq -nc \
+      --arg event_type "replicated-cmx-harness" \
+      --argjson client_payload "${payload}" \
+      '{event_type: $event_type, client_payload: $client_payload}'
+  )"
+  dispatch_output="$(gh api "repos/${ONPREM_REPO}/dispatches" --method POST --input - <<<"${dispatch_payload}")"
+  run_event="repository_dispatch"
+else
+  dispatch_output="$(gh "${workflow_args[@]}")"
+  run_event="workflow_dispatch"
+fi
+printf '%s\n' "${dispatch_output}"
+
+run_id="$(
+  sed -nE 's#.*actions/runs/([0-9]+).*#\1#p' <<<"${dispatch_output}" \
+    | tail -n1
+)"
 
 if [[ -z "${run_id}" ]]; then
-  echo "Unable to find onprem-testbed workflow_dispatch run for chart ${HELM_CHART_VERSION}" >&2
+  for attempt in {1..60}; do
+    ensure_github_token
+    runs_json="$(
+      gh run list \
+        --repo "${ONPREM_REPO}" \
+        --workflow "${ONPREM_WORKFLOW_FILE}" \
+        --event "${run_event}" \
+        --limit 20 \
+        --json databaseId,createdAt,url
+    )"
+    run_id="$(
+      jq -r --argjson started "${dispatch_started}" '
+        [.[] | select((.createdAt | fromdateiso8601) >= $started)]
+        | sort_by(.createdAt)
+        | reverse
+        | .[0].databaseId // empty
+      ' <<<"${runs_json}"
+    )"
+    if [[ -n "${run_id}" ]]; then
+      break
+    fi
+    echo "Waiting for onprem-testbed workflow run to appear (${attempt}/60)"
+    sleep 10
+  done
+fi
+
+if [[ -z "${run_id}" ]]; then
+  echo "Unable to find onprem-testbed ${run_event} run for chart ${HELM_CHART_VERSION}" >&2
   exit 1
 fi
 

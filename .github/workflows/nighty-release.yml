@@ -711,32 +711,36 @@ jobs:
             const name = "release-cve-baseline.json";
             const data = fs.readFileSync("downloaded-cve-reports/finding-details.json");
 
-            const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
-              owner,
-              repo,
-              release_id,
-              per_page: 100,
-            });
-
-            for (const asset of assets.filter((item) => item.name === name)) {
-              await github.rest.repos.deleteReleaseAsset({
+            try {
+              const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
                 owner,
                 repo,
-                asset_id: asset.id,
+                release_id,
+                per_page: 100,
               });
-            }
 
-            await github.rest.repos.uploadReleaseAsset({
-              owner,
-              repo,
-              release_id,
-              name,
-              data,
-              headers: {
-                "content-type": "application/json",
-                "content-length": data.length,
-              },
-            });
+              for (const asset of assets.filter((item) => item.name === name)) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner,
+                  repo,
+                  asset_id: asset.id,
+                });
+              }
+
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id,
+                name,
+                data,
+                headers: {
+                  "content-type": "application/json",
+                  "content-length": data.length,
+                },
+              });
+            } catch (error) {
+              core.warning(`Unable to attach CVE baseline to GitHub release; use the workflow artifact instead. ${error.message}`);
+            }
 
   onprem-testbed:
     if: ${{ needs.replicated-release.result == 'success' }}
@@ -779,6 +783,7 @@ jobs:
           INCLUDE_OPTIONAL_SCENARIOS: "false"
           HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1"}'
           ONPREM_REF: main
+          ONPREM_DISPATCH_MODE: repository_dispatch
         run: |
           export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
           export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
@@ -797,6 +802,7 @@ jobs:
           INCLUDE_OPTIONAL_SCENARIOS: "false"
           HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1"}'
           ONPREM_REF: main
+          ONPREM_DISPATCH_MODE: repository_dispatch
         run: |
           export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
           export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
