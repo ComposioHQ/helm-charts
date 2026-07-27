@@ -835,6 +835,7 @@ jobs:
         with:
           sparse-checkout: |
             .github/actions/slack-notify
+            .github/scripts/nightly-slack-summary.sh
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
@@ -885,132 +886,7 @@ jobs:
           SLACK_IMPLEMENTATIONS_USERGROUP_ID: ${{ env.SLACK_IMPLEMENTATIONS_USERGROUP_ID }}
         run: |
           set -euo pipefail
-
-          good_to_go="true"
-          blocker=""
-          status="SUCCESS"
-
-          mark_not_good() {
-            good_to_go="false"
-            status="FAILURE"
-            if [[ -z "${blocker}" ]]; then
-              blocker="$1"
-            fi
-          }
-
-          require_success() {
-            local label="$1"
-            local result="$2"
-            if [[ "${result}" != "success" ]]; then
-              mark_not_good "${label} result was ${result}"
-            fi
-          }
-
-          require_success "Secret preflight" "${NIGHTLY_SECRETS_RESULT}"
-          require_success "Image retag" "${RETAG_RESULT}"
-
-          cve_status="${CVE_RESULT}"
-          if [[ "${CVE_RESULT}" == "failure" ]]; then
-            case "${CVE_FAILURE_REASON:-unknown}" in
-              high-critical-findings)
-                cve_status="failure (HIGH/CRITICAL findings reported; release continued alert-only)"
-                mark_not_good "Grype found HIGH or CRITICAL vulnerabilities"
-                ;;
-              report-build-failed)
-                cve_status="failure (Build Grype report failed; findings unknown)"
-                mark_not_good "${CVE_FAILURE_SUMMARY:-Build Grype report failed; Grype may or may not have found HIGH/CRITICAL vulnerabilities.}"
-                ;;
-              render-failed|scan-execution-failed|report-publish-failed|missing-scan-result)
-                cve_status="failure (${CVE_FAILURE_SUMMARY:-Grype CVE workflow failed; findings may be incomplete or unavailable.})"
-                mark_not_good "${CVE_FAILURE_SUMMARY:-Grype CVE workflow failed; findings may be incomplete or unavailable.}"
-                ;;
-              *)
-                cve_status="failure (CVE workflow failed before a definitive scan result)"
-                mark_not_good "Grype CVE workflow failed; scan findings may be incomplete or unavailable"
-                ;;
-            esac
-          elif [[ "${CVE_RESULT}" != "success" ]]; then
-            mark_not_good "Grype CVE scan result was ${CVE_RESULT}"
-          elif [[ "${CVE_SCAN_RESULT:-success}" != "success" ]]; then
-            cve_status="${CVE_SCAN_RESULT} (HIGH/CRITICAL findings reported; release continued alert-only)"
-            mark_not_good "Grype found HIGH or CRITICAL vulnerabilities"
-          else
-            cve_status="success"
-          fi
-
-          require_success "Replicated release" "${REPLICATED_RESULT}"
-          require_success "GitHub PR/release" "${PR_RESULT}"
-          require_success "onprem-testbed validation" "${ONPREM_RESULT}"
-
-          if [[ "${good_to_go}" == "true" ]]; then
-            title=":white_check_mark: Nightly release: GOOD TO GO"
-            verdict_line="*Good to go:* YES"
-          else
-            title=":rotating_light: Nightly release: NOT GOOD TO GO"
-            verdict_line="*Good to go:* NO - ${blocker}"
-          fi
-
-          {
-            if [[ "${good_to_go}" != "true" ]]; then
-              echo "<!subteam^${SLACK_IMPLEMENTATIONS_USERGROUP_ID}|@implementations>"
-            fi
-            echo "${verdict_line}"
-            echo "*Release blocking:* NO - CVE findings are alert-only."
-            if [[ "${REPLICATED_RESULT}" == "success" ]]; then
-              echo "*Release created:* YES"
-              echo "- Image release tag: \`${RELEASE_TAG:-unknown}\`"
-              echo "- Replicated Nightly version: \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
-              echo "- Nightly branch: \`${RELEASE_BRANCH:-unknown}\`"
-            else
-              echo "*Release created:* NO"
-              echo "- Intended image release tag: \`${RELEASE_TAG:-unknown}\`"
-              echo "- Intended Replicated version: \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
-            fi
-            echo "*Stages:*"
-            echo "- Secret preflight: \`${NIGHTLY_SECRETS_RESULT}\`"
-            echo "- Image retag: \`${RETAG_RESULT}\`"
-            echo "- Grype CVE scan: \`${cve_status}\`"
-            echo "- Replicated release: \`${REPLICATED_RESULT}\`"
-            echo "- GitHub PR/release: \`${PR_RESULT}\`"
-            echo "- onprem-testbed validation (fresh + upgrade + triggers): \`${ONPREM_RESULT}\`"
-            if [[ -n "${CVE_STATS:-}" ]]; then
-              echo "*Grype findings:*"
-              printf '%s\n' "${CVE_STATS}"
-            fi
-            if [[ -n "${CVE_ARTIFACT_NAME:-}" ]]; then
-              echo "*Grype artifact:* \`${CVE_ARTIFACT_NAME}\`"
-            fi
-            if [[ -n "${CVE_ARTIFACT_DOWNLOAD_COMMAND:-}" ]]; then
-              echo "*Download Grype reports:*"
-              echo "\`\`\`"
-              echo "${CVE_ARTIFACT_DOWNLOAD_COMMAND}"
-              echo "\`\`\`"
-            fi
-            links=()
-            if [[ -n "${PR_URL:-}" ]]; then
-              links+=("<${PR_URL}|PR>")
-            fi
-            if [[ -n "${RELEASE_URL:-}" ]]; then
-              links+=("<${RELEASE_URL}|GitHub release>")
-            fi
-            links+=("<${RUN_URL}|Workflow>")
-            printf '*Links:* '
-            for index in "${!links[@]}"; do
-              if (( index > 0 )); then
-                printf ' | '
-              fi
-              printf '%s' "${links[index]}"
-            done
-            printf '\n'
-          } > slack-summary.txt
-
-          {
-            echo "status=${status}"
-            echo "title=${title}"
-            echo "summary<<__SLACK_SUMMARY__"
-            cat slack-summary.txt
-            echo "__SLACK_SUMMARY__"
-          } >> "${GITHUB_OUTPUT}"
+          bash .github/scripts/nightly-slack-summary.sh
 
       - name: Announce nightly report in Slack
         uses: ./.github/actions/slack-notify
