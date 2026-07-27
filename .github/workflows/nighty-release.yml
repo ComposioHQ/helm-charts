@@ -520,6 +520,16 @@ jobs:
         id: nightly_head
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Checkout workflow scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.sha }}
+          path: workflow-scripts
+          sparse-checkout: |
+            .github/scripts/github-app-token.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - name: Fetch nightly secrets from Doppler
         uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
         with:
@@ -540,7 +550,7 @@ jobs:
           set -euo pipefail
           export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
           export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
-          token_json="$(node .github/scripts/github-app-token.mjs)"
+          token_json="$(node workflow-scripts/.github/scripts/github-app-token.mjs)"
           token="$(jq -r '.token' <<<"${token_json}")"
           expires_at="$(jq -r '.expires_at' <<<"${token_json}")"
           if [[ -z "${token}" || "${token}" == "null" ]]; then

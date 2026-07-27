@@ -24,7 +24,7 @@ append_field() {
   local name="$1"
   local value="$2"
   if [[ -n "${value}" ]]; then
-    workflow_args+=(--field "${name}=${value}")
+    workflow_args+=(--raw-field "${name}=${value}")
   fi
 }
 
