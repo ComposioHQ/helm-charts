@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  OPRA_CI_DOPPLER_IDENTITY_ID: fc94b8db-1149-4b8a-8ba7-1fd4833bb870
+
 concurrency:
   group: nightly-onprem-trigger-tests-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -78,11 +81,11 @@ jobs:
       (
         (
           github.event.action == 'labeled' &&
-          github.event.label.name == 'nightly'
+          github.event.label.name == 'nightly-release'
         ) ||
         (
           github.event.action != 'labeled' &&
-          contains(github.event.pull_request.labels.*.name, 'nightly')
+          contains(github.event.pull_request.labels.*.name, 'nightly-release')
         )
       )
     needs:
@@ -90,19 +93,37 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout harness trigger script
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
             .github/scripts/run-onprem-test-harness.sh
+            .github/scripts/github-app-token.mjs
           sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Fetch nightly secrets from Doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ env.OPRA_CI_DOPPLER_IDENTITY_ID }}
+          doppler-project: opra-ci
+          doppler-config: prd
+          inject-env-vars: true
 
       - name: Run onprem test harness
         shell: bash
         timeout-minutes: 360
         env:
-          GH_TOKEN: ${{ secrets.ONPREM_TESTBED_WORKFLOW_DISPATCH_TOKEN }}
+          HARNESS_NAME: Manual nightly onprem trigger tests
           HELM_CHART_VERSION: ${{ needs.resolve-version.outputs.helm_chart_version }}
-          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1"}'
-        run: bash .github/scripts/run-onprem-test-harness.sh
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1"}'
+          CLUSTER_SIZE: xlarge
+          INCLUDE_OPTIONAL_SCENARIOS: "false"
+          ONPREM_REF: main
+        run: |
+          export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
+          export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
+          bash .github/scripts/run-onprem-test-harness.sh
