@@ -6,8 +6,16 @@ on:
     - cron: "30 18 * * *"
   workflow_dispatch:
     inputs:
+      release_type:
+        description: "Release path and Replicated channel."
+        required: true
+        type: choice
+        default: standard
+        options:
+          - standard
+          - glean
       apollo_image_tag:
-        description: "ECR source tag for apollo (default latest). Resolved image is retagged to the nightly release tag."
+        description: "ECR source tag for apollo (default latest). Resolved image is retagged to the calculated release tag."
         required: false
         type: string
         default: "latest"
@@ -46,6 +54,11 @@ on:
         required: false
         type: string
         default: "latest"
+
+concurrency:
+  group: nighty-release-${{ github.event.inputs.release_type || 'standard' }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -58,6 +71,26 @@ env:
   SLACK_IMPLEMENTATIONS_USERGROUP_ID: S092C0T771V
 
 jobs:
+  release-config:
+    runs-on: ubuntu-latest
+    outputs:
+      release_type: ${{ steps.config.outputs.release_type }}
+      channel_name: ${{ steps.config.outputs.channel_name }}
+      channel_id: ${{ steps.config.outputs.channel_id }}
+      chart_oci_ref: ${{ steps.config.outputs.chart_oci_ref }}
+      tag_calculation_mode: ${{ steps.config.outputs.tag_calculation_mode }}
+      branch_prefix: ${{ steps.config.outputs.branch_prefix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Resolve release configuration
+        id: config
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release_type || 'standard' }}
+        run: bash ./.github/scripts/resolve-release-config.sh
+
   nightly-secrets:
     runs-on: ubuntu-latest
     permissions:
@@ -93,10 +126,12 @@ jobs:
   retag-latest-images:
     runs-on: ubuntu-latest
     needs:
+      - release-config
       - nightly-secrets
     outputs:
       release_tag: ${{ steps.retag.outputs.release_tag }}
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
+      current_version: ${{ steps.calculate_release_tag.outputs.replicated_current_version }}
     env:
       IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate thermos-toolkit-registry"
       # Per-repo ECR source tags (manual runs only; empty on schedule). Empty = use "latest".
@@ -135,7 +170,7 @@ jobs:
       - name: Login to chart registry
         shell: bash
         env:
-          CHART_OCI_REF: oci://registry.composio.io/composio-rodent/nightly/composio
+          CHART_OCI_REF: ${{ needs.release-config.outputs.chart_oci_ref }}
         run: |
           set -euo pipefail
           registry_host="${CHART_OCI_REF#oci://}"
@@ -150,12 +185,14 @@ jobs:
 
           printf '%s' "${registry_password}" | helm registry login "${registry_host}" --username "${registry_username}" --password-stdin
 
-      - name: Calculate release tag from latest Replicated Nightly release
+      - name: Calculate release tag from selected Replicated channel
         id: calculate_release_tag
         shell: bash
         env:
-          CHART_OCI_REF: oci://registry.composio.io/composio-rodent/nightly/composio
-          NIGHTLY_CHANNEL_NAME: Nightly
+          CHART_OCI_REF: ${{ needs.release-config.outputs.chart_oci_ref }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
+          RELEASE_CHANNEL_ID: ${{ needs.release-config.outputs.channel_id }}
+          TAG_CALCULATION_MODE: ${{ needs.release-config.outputs.tag_calculation_mode }}
         run: bash ./.github/scripts/calculate-nightly-release-tag.sh
 
       - name: Determine AWS Assume Role ARN
@@ -181,7 +218,7 @@ jobs:
           fi
 
           NEW_TAG="${{ steps.calculate_release_tag.outputs.release_tag }}"
-          echo "Using release tag from latest Replicated Nightly calculation: ${NEW_TAG}"
+          echo "Using release tag from latest Replicated ${{ needs.release-config.outputs.channel_name }} calculation: ${NEW_TAG}"
           echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
 
           resolve_source_tag() {
@@ -303,6 +340,7 @@ jobs:
 
   cve-scan:
     needs:
+      - release-config
       - retag-latest-images
     permissions:
       id-token: write
@@ -311,8 +349,8 @@ jobs:
     with:
       release_tag: ${{ needs.retag-latest-images.outputs.release_tag }}
       chart_ref: release-stable
-      scan_name: nightly
-      artifact_prefix: nightly-grype-cve-reports
+      scan_name: ${{ needs.release-config.outputs.release_type }}
+      artifact_prefix: ${{ needs.release-config.outputs.release_type }}-grype-cve-reports
       fail_on_high_critical: false
       render_temporal: true
 
@@ -320,6 +358,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.retag-latest-images.result == 'success' }}
     needs:
+      - release-config
       - retag-latest-images
       - cve-scan
     permissions:
@@ -339,9 +378,9 @@ jobs:
       - name: Set branch name
         id: branch
         run: |
-          echo "branch_name=nightly-${{ needs.retag-latest-images.outputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          echo "branch_name=${{ needs.release-config.outputs.branch_prefix }}-${{ needs.retag-latest-images.outputs.release_tag }}" >> "$GITHUB_OUTPUT"
 
-      - name: Create nightly branch
+      - name: Create release branch
         run: |
           git checkout -B "${{ steps.branch.outputs.branch_name }}"
 
@@ -390,41 +429,9 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          app_id="$(
-            curl -fsSL "https://api.replicated.com/vendor/v3/apps" \
-              --header "Accept: application/json" \
-              --header "Authorization: ${REPLICATED_API_TOKEN}" \
-              | jq -r --arg app "${REPLICATED_APP}" '
-                  .apps[]
-                  | select(.id == $app or .slug == $app or .name == $app)
-                  | .id
-                ' \
-              | head -n1
-          )"
-
-          if [[ -z "${app_id}" || "${app_id}" == "null" ]]; then
-            echo "Unable to resolve Replicated app ID for ${REPLICATED_APP}" >&2
-            exit 1
-          fi
-
-          channels_json="$(
-            curl -fsSLG "https://api.replicated.com/vendor/v3/app/${app_id}/channels" \
-              --data-urlencode "channelName=Nightly" \
-              --header "Accept: application/json" \
-              --header "Authorization: ${REPLICATED_API_TOKEN}"
-          )"
-
-          if [[ "$(echo "${channels_json}" | jq -r '.totalCount')" != "1" ]]; then
-            echo "Nightly channel was not found in Replicated channels API response" >&2
-            exit 1
-          fi
-
-          CURRENT_APPVERSION="$(
-            echo "${channels_json}" | jq -r '.channels[0].currentVersion // empty'
-          )"
-
-          if [[ -z "${CURRENT_APPVERSION}" || "${CURRENT_APPVERSION}" == "null" ]]; then
-            echo "Nightly channel response did not include currentVersion" >&2
+          CURRENT_APPVERSION="${{ needs.retag-latest-images.outputs.current_version }}"
+          if [[ ! "${CURRENT_APPVERSION}" =~ ^[0-9]+([.][0-9]+)*$ ]]; then
+            echo "${{ needs.release-config.outputs.channel_name }} channel returned an invalid currentVersion: ${CURRENT_APPVERSION:-<empty>}" >&2
             exit 1
           fi
 
@@ -465,13 +472,13 @@ jobs:
           yq eval -i '.spec.chart.chartVersion = strenv(NEW_VERSION)' ./composio.yaml
           echo "Updated manifest files and composio values"
 
-      - name: Commit nightly release updates
+      - name: Commit release updates
         run: |
           set -euo pipefail
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
           git add composio/Chart.yaml composio/values.yaml manifests/k8s-app.yaml manifests/composio.yaml
-          git commit --signoff -m "chore: nightly release ${{ steps.branch.outputs.branch_name }}"
+          git commit --signoff -m "chore: ${{ needs.release-config.outputs.channel_name }} release ${{ steps.branch.outputs.branch_name }}"
 
       - name: Clean old packages
         run: |
@@ -486,10 +493,10 @@ jobs:
           echo "Creating Replicated release..."
           replicated release create \
           --yaml-dir manifests \
-          --promote "Nightly" \
+          --promote "${{ needs.release-config.outputs.channel_name }}" \
           --version "${{ steps.version.outputs.new }}"
 
-      - name: Push nightly branch
+      - name: Push release branch
         if: success()
         run: |
           set -euo pipefail
@@ -499,6 +506,7 @@ jobs:
     if: ${{ always() && needs.replicated-release.result == 'success' }}
     runs-on: ubuntu-latest
     needs:
+      - release-config
       - cve-scan
       - retag-latest-images
       - replicated-release
@@ -510,13 +518,13 @@ jobs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
       release_url: ${{ steps.github_release.outputs.release_url }}
     steps:
-      - name: Pull latest nightly branch
+      - name: Pull release branch
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
           ref: ${{ needs.replicated-release.outputs.branch_name }}
 
-      - name: Record nightly branch HEAD
+      - name: Record release branch HEAD
         id: nightly_head
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
@@ -561,7 +569,7 @@ jobs:
           echo "token=${token}" >> "${GITHUB_OUTPUT}"
           echo "expires_at=${expires_at}" >> "${GITHUB_OUTPUT}"
 
-      - name: Create nightly release PR
+      - name: Create release PR
         id: create_pr
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -573,6 +581,7 @@ jobs:
             const head = "${{ needs.replicated-release.outputs.branch_name }}";
             const releaseTag = "${{ needs.retag-latest-images.outputs.release_tag }}";
             const version = "${{ needs.replicated-release.outputs.version }}";
+            const channelName = "${{ needs.release-config.outputs.channel_name }}";
             const cveScanResult = ${{ toJSON(needs.cve-scan.outputs.scan_result) }};
             const cveFailureSummary = ${{ toJSON(needs.cve-scan.outputs.failure_summary) }};
             const cveLine = cveScanResult === "success"
@@ -580,14 +589,14 @@ jobs:
               : cveScanResult
                 ? `Grype CVE scan result was \`${cveScanResult}\`; release continued with Slack alerting`
                 : `Grype CVE scan did not publish a complete result${cveFailureSummary ? ` (${cveFailureSummary})` : ""}; release continued with Slack alerting`;
-            const title = `Nightly release ${releaseTag}`;
+            const title = `${channelName} release ${releaseTag}`;
             const body = `## Summary
 
             - Bump Helm chart version to ${version}
-            - Update nightly image tags to ${releaseTag}
-            - Refresh replicated manifest versions
+            - Update ${channelName} image tags to ${releaseTag}
+            - Refresh Replicated manifest versions for ${channelName}
             - ${cveLine}
-            - Nightly workflow dispatches onprem-testbed fresh-install and upgrade validation`;
+            - Release workflow dispatches onprem-testbed fresh-install and upgrade validation`;
 
             const { data: pulls } = await github.rest.pulls.list({
               owner,
@@ -629,7 +638,7 @@ jobs:
             core.setOutput("pr_url", pr.html_url);
             core.setOutput("pr_number", String(pr.number));
 
-      - name: Ensure GitHub nightly release exists
+      - name: Ensure GitHub release exists
         id: github_release
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -641,8 +650,9 @@ jobs:
             const target_commitish = "${{ steps.nightly_head.outputs.sha }}";
             const version = "${{ needs.replicated-release.outputs.version }}";
             const prUrl = "${{ steps.create_pr.outputs.pr_url }}";
+            const channelName = "${{ needs.release-config.outputs.channel_name }}";
             const body = [
-              `Nightly image tag **\`${tag_name}\`** (Helm / Replicated appVersion **${version}**).`,
+              `${channelName} image tag **\`${tag_name}\`** (Helm / Replicated appVersion **${version}**).`,
               "",
               prUrl ? `Tracking PR: ${prUrl}` : "",
             ]
@@ -742,7 +752,7 @@ jobs:
               core.warning(`Unable to attach CVE baseline to GitHub release; use the workflow artifact instead. ${error.message}`);
             }
 
-      - name: Publish GitHub nightly release
+      - name: Publish GitHub release
         if: ${{ steps.github_release.outputs.release_id != '' }}
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -759,12 +769,13 @@ jobs:
               draft: false,
               prerelease: true,
             });
-            core.info("Published GitHub nightly release.");
+            core.info("Published GitHub release.");
 
   onprem-testbed:
     if: ${{ needs.replicated-release.result == 'success' }}
     runs-on: ubuntu-latest
     needs:
+      - release-config
       - replicated-release
     permissions:
       id-token: write
@@ -795,7 +806,7 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          HARNESS_NAME: Nightly onprem-testbed fresh install
+          HARNESS_NAME: ${{ needs.release-config.outputs.channel_name }} onprem-testbed fresh install
           HELM_CHART_VERSION: ${{ needs.replicated-release.outputs.version }}
           MIGRATION_DIRECTION: upgrade
           CLUSTER_SIZE: xlarge
@@ -813,7 +824,7 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          HARNESS_NAME: Nightly onprem-testbed upgrade
+          HARNESS_NAME: ${{ needs.release-config.outputs.channel_name }} onprem-testbed upgrade
           HELM_CHART_VERSION: ${{ needs.replicated-release.outputs.version }}
           UPGRADE_FROM_VERSIONS: ${{ needs.replicated-release.outputs.previous_version }}
           MIGRATION_DIRECTION: upgrade
@@ -839,6 +850,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     needs:
+      - release-config
       - nightly-secrets
       - retag-latest-images
       - cve-scan
@@ -892,6 +904,7 @@ jobs:
           REPLICATED_RESULT: ${{ needs.replicated-release.result }}
           PR_RESULT: ${{ needs.create-nightly-release-pr.result }}
           ONPREM_RESULT: ${{ needs.onprem-testbed.result }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
           RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
           RELEASE_BRANCH: ${{ needs.replicated-release.outputs.branch_name }}
           PREVIOUS_VERSION: ${{ needs.replicated-release.outputs.previous_version }}

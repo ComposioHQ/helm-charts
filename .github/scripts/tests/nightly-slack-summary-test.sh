@@ -75,5 +75,11 @@ assert_contains "${report_dir}/slack-summary.txt" "*Good to go:* NA - Build Gryp
 assert_not_contains "${report_dir}/slack-summary.txt" "*Good to go:* NO - Build Grype report failed"
 assert_contains "${report_dir}/slack-summary.txt" "Build Grype report failed; findings unknown"
 
-rm -rf "${cve_dir}" "${build_dir}" "${report_dir}"
+glean_dir="$(run_summary glean RELEASE_CHANNEL_NAME=Glean-Stable)"
+assert_contains "${glean_dir}/github-output" \
+  "title=:white_check_mark: Glean-Stable release: GOOD TO GO"
+assert_contains "${glean_dir}/slack-summary.txt" \
+  "- Replicated Glean-Stable version: \`0.2.134\` -> \`0.2.135\`"
+
+rm -rf "${cve_dir}" "${build_dir}" "${report_dir}" "${glean_dir}"
 echo "nightly-slack-summary tests passed"

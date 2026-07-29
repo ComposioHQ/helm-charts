@@ -4,6 +4,7 @@ set -euo pipefail
 good_to_go="YES"
 blocker=""
 status="SUCCESS"
+release_channel_name="${RELEASE_CHANNEL_NAME:-Nightly}"
 
 mark_no() {
   status="FAILURE"
@@ -67,22 +68,22 @@ require_success "onprem-testbed validation" "${ONPREM_RESULT:-unknown}"
 
 case "${good_to_go}" in
   YES)
-    title=":white_check_mark: Nightly release: GOOD TO GO"
+    title=":white_check_mark: ${release_channel_name} release: GOOD TO GO"
     verdict_line="*Good to go:* YES"
     release_blocking_line="*Release blocking:* NO - CVE findings are alert-only."
     ;;
   NO)
-    title=":rotating_light: Nightly release: NOT GOOD TO GO"
+    title=":rotating_light: ${release_channel_name} release: NOT GOOD TO GO"
     verdict_line="*Good to go:* NO - ${blocker}"
     release_blocking_line="*Release blocking:* NO - CVE findings are alert-only."
     ;;
   NA)
-    title=":rotating_light: Nightly release: NOT GOOD TO GO"
+    title=":rotating_light: ${release_channel_name} release: NOT GOOD TO GO"
     verdict_line="*Good to go:* NA - ${blocker}"
     release_blocking_line="*Release blocking:* NA - build/release validation did not complete cleanly."
     ;;
   *)
-    title=":rotating_light: Nightly release: NOT GOOD TO GO"
+    title=":rotating_light: ${release_channel_name} release: NOT GOOD TO GO"
     verdict_line="*Good to go:* NA - release readiness could not be determined"
     release_blocking_line="*Release blocking:* NA - build/release validation did not complete cleanly."
     ;;
@@ -97,8 +98,8 @@ esac
   if [[ "${REPLICATED_RESULT:-unknown}" == "success" ]]; then
     echo "*Release created:* YES"
     echo "- Image release tag: \`${RELEASE_TAG:-unknown}\`"
-    echo "- Replicated Nightly version: \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
-    echo "- Nightly branch: \`${RELEASE_BRANCH:-unknown}\`"
+    echo "- Replicated ${release_channel_name} version: \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
+    echo "- Release branch: \`${RELEASE_BRANCH:-unknown}\`"
   else
     echo "*Release created:* NO"
     echo "- Intended image release tag: \`${RELEASE_TAG:-unknown}\`"
