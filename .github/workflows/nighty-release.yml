@@ -899,6 +899,7 @@ jobs:
           REPLICATED_RESULT: ${{ needs.replicated-release.result }}
           PR_RESULT: ${{ needs.create-nightly-release-pr.result }}
           ONPREM_RESULT: ${{ needs.onprem-testbed.result }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
           RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
           RELEASE_BRANCH: ${{ needs.replicated-release.outputs.branch_name }}
           PREVIOUS_VERSION: ${{ needs.replicated-release.outputs.previous_version }}
