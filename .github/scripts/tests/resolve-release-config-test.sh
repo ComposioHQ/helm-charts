@@ -59,7 +59,7 @@ assert_config standard standard Nightly 397k1WtPrJ1J56bhb70SfeKGcxL \
 assert_config glean glean Glean-Stable 3GwShNBOwcf13Bs7i5pfn3N8TDh \
   oci://registry.composio.io/composio-rodent/glean-stable/composio glean glean \
   Nightly 397k1WtPrJ1J56bhb70SfeKGcxL \
-  oci://registry.composio.io/composio-rodent/nightly/composio 0.2.87
+  oci://registry.composio.io/composio-rodent/nightly/composio 0.2.87-glean
 
 if RELEASE_TYPE=unsupported bash "${SCRIPT}" >/dev/null 2>&1; then
   fail "unsupported release type should fail"

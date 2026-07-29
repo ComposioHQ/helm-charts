@@ -80,16 +80,19 @@ assert_version_fails() {
 assert_version "increments standard version" \
   standard "0.2.140" "" "0.2.140" "0.2.141"
 assert_version "bootstraps empty Glean version" \
-  glean "" "0.2.87" "" "0.2.87.1"
+  glean "" "0.2.87-glean" "" "0.2.87-glean.1"
 assert_version "increments existing Glean version" \
-  glean "0.2.87.1" "0.2.87" "0.2.87.1" "0.2.87.2"
+  glean "0.2.87-glean.1" "0.2.87-glean" \
+  "0.2.87-glean.1" "0.2.87-glean.2"
 assert_version "increments a multi-digit Glean sequence" \
-  glean "0.2.87.19" "0.2.87" "0.2.87.19" "0.2.87.20"
+  glean "0.2.87-glean.19" "0.2.87-glean" \
+  "0.2.87-glean.19" "0.2.87-glean.20"
 
 assert_version_fails "rejects empty standard version" \
   standard "" "" "Nightly channel returned an invalid currentVersion: <empty>"
 assert_version_fails "rejects a different Glean family" \
-  glean "0.2.88.1" "0.2.87" "Glean-Stable currentVersion must match 0.2.87.x: 0.2.88.1"
+  glean "0.2.88-glean.1" "0.2.87-glean" \
+  "Glean-Stable currentVersion must match 0.2.87-glean.x: 0.2.88-glean.1"
 assert_version_fails "requires the Glean version prefix" \
   glean "" "" "VERSION_PREFIX is required."
 
