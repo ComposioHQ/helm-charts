@@ -103,6 +103,7 @@ coverage/
 tmp/
 temp/
 .tmp/
+.worktrees/
 
 # Backup files
 *.bak
