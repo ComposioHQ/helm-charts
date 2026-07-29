@@ -25,7 +25,7 @@ case "${release_type}" in
     seed_channel_name="Nightly"
     seed_channel_id="397k1WtPrJ1J56bhb70SfeKGcxL"
     seed_chart_oci_ref="oci://registry.composio.io/composio-rodent/nightly/composio"
-    version_prefix="0.2.87"
+    version_prefix="0.2.87-glean"
     ;;
   *)
     echo "Unsupported release type: ${release_type}" >&2
