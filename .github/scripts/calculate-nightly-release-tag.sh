@@ -6,6 +6,9 @@ CHART_OCI_REF="${CHART_OCI_REF:-oci://registry.composio.io/composio-rodent/night
 RELEASE_CHANNEL_NAME="${RELEASE_CHANNEL_NAME:-${NIGHTLY_CHANNEL_NAME:-Nightly}}"
 RELEASE_CHANNEL_ID="${RELEASE_CHANNEL_ID:-}"
 TAG_CALCULATION_MODE="${TAG_CALCULATION_MODE:-standard}"
+SEED_CHANNEL_NAME="${SEED_CHANNEL_NAME:-}"
+SEED_CHANNEL_ID="${SEED_CHANNEL_ID:-}"
+SEED_CHART_OCI_REF="${SEED_CHART_OCI_REF:-}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -31,7 +34,8 @@ write_output() {
 }
 
 chart_name_from_ref() {
-  basename "${CHART_OCI_REF}"
+  local chart_oci_ref="$1"
+  basename "${chart_oci_ref}"
 }
 
 resolve_replicated_app_id() {
@@ -64,18 +68,20 @@ resolve_replicated_app_id() {
 
 resolve_release_channel() {
   local app_id="$1"
+  local channel_name="$2"
+  local expected_channel_id="$3"
   local channels_json total_count channel_id current_version release_sequence
 
   channels_json="$(
     curl -fsSLG "https://api.replicated.com/vendor/v3/app/${app_id}/channels" \
-      --data-urlencode "channelName=${RELEASE_CHANNEL_NAME}" \
+      --data-urlencode "channelName=${channel_name}" \
       --header "Accept: application/json" \
       --header "Authorization: ${REPLICATED_API_TOKEN}"
   )"
 
   total_count="$(echo "${channels_json}" | jq -r '.totalCount // (.channels | length)')"
   if [[ "${total_count}" != "1" ]]; then
-    echo "${RELEASE_CHANNEL_NAME} channel was not found in Replicated channels API response" >&2
+    echo "${channel_name} channel was not found in Replicated channels API response" >&2
     exit 1
   fi
 
@@ -83,13 +89,8 @@ resolve_release_channel() {
   current_version="$(echo "${channels_json}" | jq -r '.channels[0].currentVersion // empty')"
   release_sequence="$(echo "${channels_json}" | jq -r '.channels[0].releaseSequence // .channels[0].currentReleaseSequence // empty')"
 
-  if [[ -n "${RELEASE_CHANNEL_ID}" && "${channel_id}" != "${RELEASE_CHANNEL_ID}" ]]; then
-    echo "${RELEASE_CHANNEL_NAME} channel ID mismatch: expected ${RELEASE_CHANNEL_ID}, got ${channel_id:-<empty>}" >&2
-    exit 1
-  fi
-
-  if [[ -z "${current_version}" || "${current_version}" == "null" ]]; then
-    echo "${RELEASE_CHANNEL_NAME} channel response did not include currentVersion" >&2
+  if [[ -n "${expected_channel_id}" && "${channel_id}" != "${expected_channel_id}" ]]; then
+    echo "${channel_name} channel ID mismatch: expected ${expected_channel_id}, got ${channel_id:-<empty>}" >&2
     exit 1
   fi
 
@@ -101,15 +102,16 @@ resolve_release_channel() {
 }
 
 pull_release_values() {
-  local chart_version="$1"
+  local chart_oci_ref="$1"
+  local chart_version="$2"
   local chart_name pull_root chart_dir
 
   require_cmd helm
 
-  chart_name="$(chart_name_from_ref)"
+  chart_name="$(chart_name_from_ref "${chart_oci_ref}")"
   pull_root="$(mktemp -d)"
 
-  helm pull "${CHART_OCI_REF}" --version "${chart_version}" --untar --untardir "${pull_root}" >/dev/null
+  helm pull "${chart_oci_ref}" --version "${chart_version}" --untar --untardir "${pull_root}" >/dev/null
 
   chart_dir="${pull_root}/${chart_name}"
   if [[ ! -f "${chart_dir}/values.yaml" ]]; then
@@ -207,6 +209,7 @@ calculate_next_glean_tag() {
 main() {
   local date_ist app_id channel_json channel_id current_version release_sequence
   local values_file base_tag base_tags base_count suffix_tag new_tag glean_tags
+  local seed_channel_json values_source_name values_source_version values_source_ref
 
   require_cmd jq
 
@@ -216,6 +219,9 @@ main() {
   current_version=""
   release_sequence=""
   suffix_tag=""
+  values_source_name="local file"
+  values_source_version=""
+  values_source_ref=""
 
   if [[ -n "${RELEASE_VALUES_FILE:-}" ]]; then
     values_file="${RELEASE_VALUES_FILE}"
@@ -225,11 +231,41 @@ main() {
     require_cmd curl
 
     app_id="$(resolve_replicated_app_id)"
-    channel_json="$(resolve_release_channel "${app_id}")"
+    channel_json="$(
+      resolve_release_channel "${app_id}" "${RELEASE_CHANNEL_NAME}" "${RELEASE_CHANNEL_ID}"
+    )"
     channel_id="$(echo "${channel_json}" | jq -r '.id // empty')"
     current_version="$(echo "${channel_json}" | jq -r '.currentVersion // empty')"
     release_sequence="$(echo "${channel_json}" | jq -r '.releaseSequence // empty')"
-    values_file="$(pull_release_values "${current_version}")"
+
+    values_source_name="${RELEASE_CHANNEL_NAME}"
+    values_source_version="${current_version}"
+    values_source_ref="${CHART_OCI_REF}"
+
+    if [[ -z "${current_version}" || "${current_version}" == "null" ]]; then
+      if [[ "${TAG_CALCULATION_MODE}" != "glean" ]]; then
+        echo "${RELEASE_CHANNEL_NAME} channel response did not include currentVersion" >&2
+        exit 1
+      fi
+
+      require_env SEED_CHANNEL_NAME
+      require_env SEED_CHANNEL_ID
+      require_env SEED_CHART_OCI_REF
+
+      seed_channel_json="$(
+        resolve_release_channel "${app_id}" "${SEED_CHANNEL_NAME}" "${SEED_CHANNEL_ID}"
+      )"
+      values_source_version="$(echo "${seed_channel_json}" | jq -r '.currentVersion // empty')"
+      if [[ -z "${values_source_version}" || "${values_source_version}" == "null" ]]; then
+        echo "${SEED_CHANNEL_NAME} seed channel response did not include currentVersion" >&2
+        exit 1
+      fi
+
+      values_source_name="${SEED_CHANNEL_NAME}"
+      values_source_ref="${SEED_CHART_OCI_REF}"
+    fi
+
+    values_file="$(pull_release_values "${values_source_ref}" "${values_source_version}")"
   fi
 
   case "${TAG_CALCULATION_MODE}" in
@@ -276,6 +312,7 @@ main() {
   echo "${RELEASE_CHANNEL_NAME} channel id: ${channel_id:-not resolved}"
   echo "${RELEASE_CHANNEL_NAME} current chart version: ${current_version:-not resolved}"
   echo "${RELEASE_CHANNEL_NAME} release sequence: ${release_sequence:-not resolved}"
+  echo "Chart values source: ${values_source_name} ${values_source_version:-not resolved}"
   echo "Base image tag used for increment: ${base_tag:-none}"
   echo "Suffix image tag used for increment: ${suffix_tag:-none}"
   echo "Calculated release tag: ${new_tag}"
