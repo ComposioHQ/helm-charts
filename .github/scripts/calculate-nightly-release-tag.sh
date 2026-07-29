@@ -206,7 +206,7 @@ calculate_next_glean_tag() {
 
 main() {
   local date_ist app_id channel_json channel_id current_version release_sequence
-  local values_file base_tag suffix_tag new_tag glean_tags
+  local values_file base_tag base_tags base_count suffix_tag new_tag glean_tags
 
   require_cmd jq
 
@@ -239,13 +239,22 @@ main() {
       ;;
     glean)
       glean_tags="$(extract_glean_tags "${values_file}")"
-      base_tag="$(
+      base_tags="$(
         printf '%s\n' "${glean_tags}" \
           | sed -E 's/-p[0-9]{8}_[0-9]{2}$//' \
           | awk 'NF' \
-          | sort -u \
-          | tail -n1
+          | sort -u
       )"
+      base_count="$(printf '%s\n' "${base_tags}" | awk 'NF { count++ } END { print count + 0 }')"
+      if [[ "${base_count}" == "0" ]]; then
+        echo "Glean tag calculation requires a valid fixed base tag." >&2
+        exit 1
+      fi
+      if [[ "${base_count}" != "1" ]]; then
+        echo "Glean tag calculation requires exactly one fixed base tag; found ${base_count}." >&2
+        exit 1
+      fi
+      base_tag="${base_tags}"
       suffix_tag="$(
         printf '%s\n' "${glean_tags}" \
           | awk -v prefix="${base_tag}-" 'index($0, prefix) == 1 {

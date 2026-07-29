@@ -54,6 +54,11 @@ on:
         required: false
         type: string
         default: "latest"
+
+concurrency:
+  group: nighty-release-${{ github.event.inputs.release_type || 'standard' }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write

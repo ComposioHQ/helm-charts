@@ -30,6 +30,10 @@ assert_eq "release input default" \
 assert_eq "release input options" \
   "$(yq -o=json -I=0 '.on.workflow_dispatch.inputs.release_type.options' "${WORKFLOW}")" \
   '["standard","glean"]'
+assert_contains "release type concurrency group" \
+  "group: nighty-release-\${{ github.event.inputs.release_type || 'standard' }}"
+assert_eq "release concurrency cancellation" \
+  "$(yq -r '.concurrency.cancel-in-progress' "${WORKFLOW}")" false
 
 assert_contains "config resolver" \
   'bash ./.github/scripts/resolve-release-config.sh'

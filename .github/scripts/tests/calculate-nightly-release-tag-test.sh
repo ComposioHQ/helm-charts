@@ -136,4 +136,14 @@ apollo:
     tag: latest
 '
 
+assert_release_tag_fails "rejects mixed glean fixed bases" glean \
+  "20260801" "Glean tag calculation requires exactly one fixed base tag; found 2." '
+apollo:
+  image:
+    tag: r20260729_01-p20260731_08
+mercury:
+  image:
+    tag: r20260730_01
+'
+
 echo "calculate-nightly-release-tag tests passed"
