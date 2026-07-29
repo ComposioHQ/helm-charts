@@ -80,6 +80,10 @@ jobs:
       chart_oci_ref: ${{ steps.config.outputs.chart_oci_ref }}
       tag_calculation_mode: ${{ steps.config.outputs.tag_calculation_mode }}
       branch_prefix: ${{ steps.config.outputs.branch_prefix }}
+      seed_channel_name: ${{ steps.config.outputs.seed_channel_name }}
+      seed_channel_id: ${{ steps.config.outputs.seed_channel_id }}
+      seed_chart_oci_ref: ${{ steps.config.outputs.seed_chart_oci_ref }}
+      version_prefix: ${{ steps.config.outputs.version_prefix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -131,7 +135,8 @@ jobs:
     outputs:
       release_tag: ${{ steps.retag.outputs.release_tag }}
       retagged_images: ${{ steps.retag.outputs.retagged_images }}
-      current_version: ${{ steps.calculate_release_tag.outputs.replicated_current_version }}
+      current_version: ${{ steps.calculate_version.outputs.current }}
+      new_version: ${{ steps.calculate_version.outputs.new }}
     env:
       IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate thermos-toolkit-registry"
       # Per-repo ECR source tags (manual runs only; empty on schedule). Empty = use "latest".
@@ -193,7 +198,20 @@ jobs:
           RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
           RELEASE_CHANNEL_ID: ${{ needs.release-config.outputs.channel_id }}
           TAG_CALCULATION_MODE: ${{ needs.release-config.outputs.tag_calculation_mode }}
+          SEED_CHANNEL_NAME: ${{ needs.release-config.outputs.seed_channel_name }}
+          SEED_CHANNEL_ID: ${{ needs.release-config.outputs.seed_channel_id }}
+          SEED_CHART_OCI_REF: ${{ needs.release-config.outputs.seed_chart_oci_ref }}
         run: bash ./.github/scripts/calculate-nightly-release-tag.sh
+
+      - name: Calculate and validate release version
+        id: calculate_version
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ needs.release-config.outputs.release_type }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
+          CURRENT_VERSION: ${{ steps.calculate_release_tag.outputs.replicated_current_version }}
+          VERSION_PREFIX: ${{ needs.release-config.outputs.version_prefix }}
+        run: bash ./.github/scripts/calculate-release-version.sh
 
       - name: Determine AWS Assume Role ARN
         id: env
@@ -366,8 +384,8 @@ jobs:
       id-token: write
     outputs:
       branch_name: ${{ steps.branch.outputs.branch_name }}
-      previous_version: ${{ steps.version.outputs.current }}
-      version: ${{ steps.version.outputs.new }}
+      previous_version: ${{ needs.retag-latest-images.outputs.current_version }}
+      version: ${{ needs.retag-latest-images.outputs.new_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -425,33 +443,17 @@ jobs:
         run: |
           helm template composio ./composio
 
-      - name: Get and bump version
-        id: version
-        run: |
-          set -euo pipefail
-          CURRENT_APPVERSION="${{ needs.retag-latest-images.outputs.current_version }}"
-          if [[ ! "${CURRENT_APPVERSION}" =~ ^[0-9]+([.][0-9]+)*$ ]]; then
-            echo "${{ needs.release-config.outputs.channel_name }} channel returned an invalid currentVersion: ${CURRENT_APPVERSION:-<empty>}" >&2
-            exit 1
-          fi
-
-          NEW_APPVERSION="$(echo "${CURRENT_APPVERSION}" | awk -F. '{$NF = $NF + 1} 1' OFS=.)"
-          echo "current=${CURRENT_APPVERSION}" >> "${GITHUB_OUTPUT}"
-          echo "new=${NEW_APPVERSION}" >> "${GITHUB_OUTPUT}"
-          echo "Current version: ${CURRENT_APPVERSION}"
-          echo "New version: ${NEW_APPVERSION}"
-
       - name: Update Chart.yaml versions
         run: |
           cd ./composio
-          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          export NEW_VERSION="${{ needs.retag-latest-images.outputs.new_version }}"
           yq eval -i '.appVersion = strenv(NEW_VERSION)' ./Chart.yaml
           yq eval -i '.version = strenv(NEW_VERSION)' ./Chart.yaml
           echo "Updated Chart.yaml"
 
       - name: Update manifest versions
         run: |
-          export NEW_VERSION="${{ steps.version.outputs.new }}"
+          export NEW_VERSION="${{ needs.retag-latest-images.outputs.new_version }}"
           export RELEASE_TAG="${{ needs.retag-latest-images.outputs.release_tag }}"
 
           cd ./composio
@@ -494,7 +496,7 @@ jobs:
           replicated release create \
           --yaml-dir manifests \
           --promote "${{ needs.release-config.outputs.channel_name }}" \
-          --version "${{ steps.version.outputs.new }}"
+          --version "${{ needs.retag-latest-images.outputs.new_version }}"
 
       - name: Push release branch
         if: success()
