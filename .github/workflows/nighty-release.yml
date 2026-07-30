@@ -813,7 +813,7 @@ jobs:
           MIGRATION_DIRECTION: upgrade
           CLUSTER_SIZE: xlarge
           INCLUDE_OPTIONAL_SCENARIOS: "false"
-          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1"}'
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1","HELM_OCI_CHART_REF":"${{ needs.release-config.outputs.chart_oci_ref }}"}'
           ONPREM_REF: main
           ONPREM_DISPATCH_MODE: repository_dispatch
         run: |
@@ -832,7 +832,7 @@ jobs:
           MIGRATION_DIRECTION: upgrade
           CLUSTER_SIZE: xlarge
           INCLUDE_OPTIONAL_SCENARIOS: "false"
-          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1"}'
+          HARNESS_ENV_JSON: '{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1","HELM_OCI_CHART_REF":"${{ needs.release-config.outputs.chart_oci_ref }}"}'
           ONPREM_REF: main
           ONPREM_DISPATCH_MODE: repository_dispatch
         run: |
