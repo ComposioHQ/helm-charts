@@ -119,6 +119,14 @@ assert_eq "replicated new version consumption" \
   "$(yq -r '.jobs.replicated-release.outputs.version' "${WORKFLOW}")" \
   '${{ needs.retag-latest-images.outputs.new_version }}'
 
+expected_harness_env_json='{"RUN_TRIGGER_TESTS":"1","RUN_POLLING_TRIGGER_TESTS":"1","RUN_WEBHOOK_TRIGGER_TESTS":"1","HELM_OCI_CHART_REF":"${{ needs.release-config.outputs.chart_oci_ref }}"}'
+assert_eq "fresh-install harness selected chart" \
+  "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "fresh") | .env.HARNESS_ENV_JSON' "${WORKFLOW}")" \
+  "${expected_harness_env_json}"
+assert_eq "upgrade harness selected chart" \
+  "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "upgrade") | .env.HARNESS_ENV_JSON' "${WORKFLOW}")" \
+  "${expected_harness_env_json}"
+
 assert_step_before "version validation precedes AWS credentials" \
   calculate_version "Determine AWS Assume Role ARN"
 assert_not_contains "late inline version calculation" \
