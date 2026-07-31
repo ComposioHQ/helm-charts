@@ -80,28 +80,28 @@ assert_contains "selected tag mode" \
 assert_contains "selected promotion" \
   '--promote "${{ needs.release-config.outputs.channel_name }}"'
 
-assert_eq "seed channel name output" \
-  "$(yq -r '.jobs.release-config.outputs.seed_channel_name' "${WORKFLOW}")" \
-  '${{ steps.config.outputs.seed_channel_name }}'
-assert_eq "seed channel id output" \
-  "$(yq -r '.jobs.release-config.outputs.seed_channel_id' "${WORKFLOW}")" \
-  '${{ steps.config.outputs.seed_channel_id }}'
-assert_eq "seed chart output" \
-  "$(yq -r '.jobs.release-config.outputs.seed_chart_oci_ref' "${WORKFLOW}")" \
-  '${{ steps.config.outputs.seed_chart_oci_ref }}'
+assert_eq "seed channel name output removed" \
+  "$(yq -r '.jobs.release-config.outputs.seed_channel_name // "absent"' "${WORKFLOW}")" \
+  absent
+assert_eq "seed channel id output removed" \
+  "$(yq -r '.jobs.release-config.outputs.seed_channel_id // "absent"' "${WORKFLOW}")" \
+  absent
+assert_eq "seed chart output removed" \
+  "$(yq -r '.jobs.release-config.outputs.seed_chart_oci_ref // "absent"' "${WORKFLOW}")" \
+  absent
 assert_eq "version prefix output" \
   "$(yq -r '.jobs.release-config.outputs.version_prefix' "${WORKFLOW}")" \
   '${{ steps.config.outputs.version_prefix }}'
 
-assert_eq "selected seed channel name" \
-  "$(yq -r '.jobs.retag-latest-images.steps[] | select(.id == "calculate_release_tag") | .env.SEED_CHANNEL_NAME' "${WORKFLOW}")" \
-  '${{ needs.release-config.outputs.seed_channel_name }}'
-assert_eq "selected seed channel id" \
-  "$(yq -r '.jobs.retag-latest-images.steps[] | select(.id == "calculate_release_tag") | .env.SEED_CHANNEL_ID' "${WORKFLOW}")" \
-  '${{ needs.release-config.outputs.seed_channel_id }}'
-assert_eq "selected seed chart" \
-  "$(yq -r '.jobs.retag-latest-images.steps[] | select(.id == "calculate_release_tag") | .env.SEED_CHART_OCI_REF' "${WORKFLOW}")" \
-  '${{ needs.release-config.outputs.seed_chart_oci_ref }}'
+assert_eq "seed channel name env removed" \
+  "$(yq -r '.jobs.retag-latest-images.steps[] | select(.id == "calculate_release_tag") | .env.SEED_CHANNEL_NAME // "absent"' "${WORKFLOW}")" \
+  absent
+assert_eq "seed channel id env removed" \
+  "$(yq -r '.jobs.retag-latest-images.steps[] | select(.id == "calculate_release_tag") | .env.SEED_CHANNEL_ID // "absent"' "${WORKFLOW}")" \
+  absent
+assert_eq "seed chart env removed" \
+  "$(yq -r '.jobs.retag-latest-images.steps[] | select(.id == "calculate_release_tag") | .env.SEED_CHART_OCI_REF // "absent"' "${WORKFLOW}")" \
+  absent
 
 assert_eq "release version helper" \
   "$(yq -r '.jobs.retag-latest-images.steps[] | select(.id == "calculate_version") | .run' "${WORKFLOW}")" \

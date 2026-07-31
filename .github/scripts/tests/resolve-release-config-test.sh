@@ -27,10 +27,7 @@ assert_config() {
   local expected_ref="$5"
   local expected_mode="$6"
   local expected_prefix="$7"
-  local expected_seed_name="$8"
-  local expected_seed_id="$9"
-  local expected_seed_ref="${10}"
-  local expected_version_prefix="${11}"
+  local expected_version_prefix="$8"
   local tmp_dir output_file
 
   tmp_dir="$(mktemp -d)"
@@ -43,23 +40,20 @@ assert_config() {
   assert_output "${output_file}" chart_oci_ref "${expected_ref}"
   assert_output "${output_file}" tag_calculation_mode "${expected_mode}"
   assert_output "${output_file}" branch_prefix "${expected_prefix}"
-  assert_output "${output_file}" seed_channel_name "${expected_seed_name}"
-  assert_output "${output_file}" seed_channel_id "${expected_seed_id}"
-  assert_output "${output_file}" seed_chart_oci_ref "${expected_seed_ref}"
   assert_output "${output_file}" version_prefix "${expected_version_prefix}"
+  if grep -Eq '^seed_(channel_name|channel_id|chart_oci_ref)=' "${output_file}"; then
+    fail "resolver unexpectedly emitted seed-channel configuration"
+  fi
   rm -rf "${tmp_dir}"
 }
 
 assert_config "" standard Nightly 397k1WtPrJ1J56bhb70SfeKGcxL \
-  oci://registry.composio.io/composio-rodent/nightly/composio standard nightly \
-  "" "" "" ""
+  oci://registry.composio.io/composio-rodent/nightly/composio standard nightly ""
 assert_config standard standard Nightly 397k1WtPrJ1J56bhb70SfeKGcxL \
-  oci://registry.composio.io/composio-rodent/nightly/composio standard nightly \
-  "" "" "" ""
+  oci://registry.composio.io/composio-rodent/nightly/composio standard nightly ""
 assert_config glean glean Glean-Stable 3GwShNBOwcf13Bs7i5pfn3N8TDh \
   oci://registry.composio.io/composio-rodent/glean-stable/composio glean glean \
-  Nightly 397k1WtPrJ1J56bhb70SfeKGcxL \
-  oci://registry.composio.io/composio-rodent/nightly/composio 0.2.87-glean
+  0.2.87-glean
 
 if RELEASE_TYPE=unsupported bash "${SCRIPT}" >/dev/null 2>&1; then
   fail "unsupported release type should fail"

@@ -6,9 +6,7 @@ CHART_OCI_REF="${CHART_OCI_REF:-oci://registry.composio.io/composio-rodent/night
 RELEASE_CHANNEL_NAME="${RELEASE_CHANNEL_NAME:-${NIGHTLY_CHANNEL_NAME:-Nightly}}"
 RELEASE_CHANNEL_ID="${RELEASE_CHANNEL_ID:-}"
 TAG_CALCULATION_MODE="${TAG_CALCULATION_MODE:-standard}"
-SEED_CHANNEL_NAME="${SEED_CHANNEL_NAME:-}"
-SEED_CHANNEL_ID="${SEED_CHANNEL_ID:-}"
-SEED_CHART_OCI_REF="${SEED_CHART_OCI_REF:-}"
+readonly GLEAN_BASE_TAG="r20260701_02"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -154,11 +152,14 @@ extract_base_calendar_tag() {
     | tail -n1
 }
 
-extract_glean_tags() {
+extract_glean_suffixes() {
   local values_file="$1"
 
   extract_image_tags "${values_file}" \
-    | awk '/^r[0-9]{8}_[0-9]{2}(-p[0-9]{8}_[0-9]{2})?$/' \
+    | awk '/^r[0-9]{8}_[0-9]{2}-p[0-9]{8}_[0-9]{2}$/ {
+        sub(/^r[0-9]{8}_[0-9]{2}-/, "")
+        print
+      }' \
     | sort -u
 }
 
@@ -208,8 +209,8 @@ calculate_next_glean_tag() {
 
 main() {
   local date_ist app_id channel_json channel_id current_version release_sequence
-  local values_file base_tag base_tags base_count suffix_tag new_tag glean_tags
-  local seed_channel_json values_source_name values_source_version values_source_ref
+  local values_file="" base_tag suffix_tag new_tag
+  local values_source_name values_source_version values_source_ref
 
   require_cmd jq
 
@@ -247,25 +248,9 @@ main() {
         echo "${RELEASE_CHANNEL_NAME} channel response did not include currentVersion" >&2
         exit 1
       fi
-
-      require_env SEED_CHANNEL_NAME
-      require_env SEED_CHANNEL_ID
-      require_env SEED_CHART_OCI_REF
-
-      seed_channel_json="$(
-        resolve_release_channel "${app_id}" "${SEED_CHANNEL_NAME}" "${SEED_CHANNEL_ID}"
-      )"
-      values_source_version="$(echo "${seed_channel_json}" | jq -r '.currentVersion // empty')"
-      if [[ -z "${values_source_version}" || "${values_source_version}" == "null" ]]; then
-        echo "${SEED_CHANNEL_NAME} seed channel response did not include currentVersion" >&2
-        exit 1
-      fi
-
-      values_source_name="${SEED_CHANNEL_NAME}"
-      values_source_ref="${SEED_CHART_OCI_REF}"
+    else
+      values_file="$(pull_release_values "${values_source_ref}" "${values_source_version}")"
     fi
-
-    values_file="$(pull_release_values "${values_source_ref}" "${values_source_version}")"
   fi
 
   case "${TAG_CALCULATION_MODE}" in
@@ -274,32 +259,13 @@ main() {
       new_tag="$(calculate_next_calendar_tag "${base_tag}" "${date_ist}")"
       ;;
     glean)
-      glean_tags="$(extract_glean_tags "${values_file}")"
-      base_tags="$(
-        printf '%s\n' "${glean_tags}" \
-          | sed -E 's/-p[0-9]{8}_[0-9]{2}$//' \
-          | awk 'NF' \
-          | sort -u
-      )"
-      base_count="$(printf '%s\n' "${base_tags}" | awk 'NF { count++ } END { print count + 0 }')"
-      if [[ "${base_count}" == "0" ]]; then
-        echo "Glean tag calculation requires a valid fixed base tag." >&2
-        exit 1
+      base_tag="${GLEAN_BASE_TAG}"
+      if [[ -n "${values_file}" ]]; then
+        suffix_tag="$(
+          extract_glean_suffixes "${values_file}" \
+            | tail -n1
+        )"
       fi
-      if [[ "${base_count}" != "1" ]]; then
-        echo "Glean tag calculation requires exactly one fixed base tag; found ${base_count}." >&2
-        exit 1
-      fi
-      base_tag="${base_tags}"
-      suffix_tag="$(
-        printf '%s\n' "${glean_tags}" \
-          | awk -v prefix="${base_tag}-" 'index($0, prefix) == 1 {
-              sub("^" prefix, "", $0)
-              print
-            }' \
-          | sort -u \
-          | tail -n1
-      )"
       new_tag="$(calculate_next_glean_tag "${base_tag}" "${suffix_tag}" "${date_ist}")"
       ;;
     *)

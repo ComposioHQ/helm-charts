@@ -80,9 +80,6 @@ jobs:
       chart_oci_ref: ${{ steps.config.outputs.chart_oci_ref }}
       tag_calculation_mode: ${{ steps.config.outputs.tag_calculation_mode }}
       branch_prefix: ${{ steps.config.outputs.branch_prefix }}
-      seed_channel_name: ${{ steps.config.outputs.seed_channel_name }}
-      seed_channel_id: ${{ steps.config.outputs.seed_channel_id }}
-      seed_chart_oci_ref: ${{ steps.config.outputs.seed_chart_oci_ref }}
       version_prefix: ${{ steps.config.outputs.version_prefix }}
     steps:
       - name: Checkout code
@@ -198,9 +195,6 @@ jobs:
           RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
           RELEASE_CHANNEL_ID: ${{ needs.release-config.outputs.channel_id }}
           TAG_CALCULATION_MODE: ${{ needs.release-config.outputs.tag_calculation_mode }}
-          SEED_CHANNEL_NAME: ${{ needs.release-config.outputs.seed_channel_name }}
-          SEED_CHANNEL_ID: ${{ needs.release-config.outputs.seed_channel_id }}
-          SEED_CHART_OCI_REF: ${{ needs.release-config.outputs.seed_chart_oci_ref }}
         run: bash ./.github/scripts/calculate-nightly-release-tag.sh
 
       - name: Calculate and validate release version
