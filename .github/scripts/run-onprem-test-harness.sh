@@ -9,6 +9,7 @@ ONPREM_WORKFLOW_FILE="${ONPREM_WORKFLOW_FILE:-replicated-cmx-harness.yml}"
 ONPREM_REF="${ONPREM_REF:-main}"
 ONPREM_DISPATCH_MODE="${ONPREM_DISPATCH_MODE:-workflow_dispatch}"
 HARNESS_NAME="${HARNESS_NAME:-onprem-testbed}"
+DISPATCH_ID="${DISPATCH_ID:-${GITHUB_REPOSITORY:-local}:${GITHUB_RUN_ID:-manual}:${GITHUB_RUN_ATTEMPT:-1}:${HARNESS_NAME}}"
 HARNESS_ENV_JSON="${HARNESS_ENV_JSON:-}"
 if [[ -z "${HARNESS_ENV_JSON}" ]]; then
   HARNESS_ENV_JSON="{}"
@@ -93,10 +94,12 @@ append_field "migration_direction" "${MIGRATION_DIRECTION}"
 append_field "cluster_size" "${CLUSTER_SIZE}"
 append_field "cluster_ttl" "${CLUSTER_TTL}"
 append_field "harness_env_json" "${HARNESS_ENV_JSON}"
+append_field "dispatch_id" "${DISPATCH_ID}"
 
 echo "Dispatching ${HARNESS_NAME} to ${ONPREM_REPO}/${ONPREM_WORKFLOW_FILE} on ${ONPREM_REF}"
 echo "Dispatch mode: ${ONPREM_DISPATCH_MODE}"
 echo "Helm chart version: ${HELM_CHART_VERSION}"
+echo "Dispatch ID: ${DISPATCH_ID}"
 echo "Scenarios: ${SCENARIOS:-<default>}"
 echo "Upgrade from versions: ${UPGRADE_FROM_VERSIONS:-<none>}"
 echo "Cluster size: ${CLUSTER_SIZE:-<workflow default>}"
@@ -135,11 +138,14 @@ if [[ -z "${run_id}" ]]; then
         --workflow "${ONPREM_WORKFLOW_FILE}" \
         --event "${run_event}" \
         --limit 20 \
-        --json databaseId,createdAt,url
+        --json databaseId,createdAt,displayTitle,url
     )"
     run_id="$(
-      jq -r --argjson started "${dispatch_started}" '
-        [.[] | select((.createdAt | fromdateiso8601) >= $started)]
+      jq -r --argjson started "${dispatch_started}" --arg dispatch_id "${DISPATCH_ID}" '
+        [.[] | select(
+          (.createdAt | fromdateiso8601) >= $started
+          and (.displayTitle | contains($dispatch_id))
+        )]
         | sort_by(.createdAt)
         | reverse
         | .[0].databaseId // empty

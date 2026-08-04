@@ -72,6 +72,7 @@ env:
 
 jobs:
   release-config:
+    name: Prepare release configuration
     runs-on: ubuntu-latest
     outputs:
       release_type: ${{ steps.config.outputs.release_type }}
@@ -93,6 +94,7 @@ jobs:
         run: bash ./.github/scripts/resolve-release-config.sh
 
   nightly-secrets:
+    name: Validate nightly secrets
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -125,6 +127,7 @@ jobs:
           fi
 
   retag-latest-images:
+    name: Build nightly image release
     runs-on: ubuntu-latest
     needs:
       - release-config
@@ -351,6 +354,7 @@ jobs:
           echo "retagged_images: ${{ steps.retag.outputs.retagged_images }}"
 
   cve-scan:
+    name: CVE scan
     needs:
       - release-config
       - retag-latest-images
@@ -366,13 +370,51 @@ jobs:
       fail_on_high_critical: false
       render_temporal: true
 
+  cve-validation-verdict:
+    name: CVE release validation
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    needs:
+      - cve-scan
+    steps:
+      - name: Publish CVE validation verdict
+        shell: bash
+        env:
+          CVE_JOB_RESULT: ${{ needs.cve-scan.result }}
+          CVE_SCAN_RESULT: ${{ needs.cve-scan.outputs.scan_result }}
+          CVE_FAILURE_SUMMARY: ${{ needs.cve-scan.outputs.failure_summary }}
+          CVE_ARTIFACT_NAME: ${{ needs.cve-scan.outputs.artifact_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [[ "${CVE_JOB_RESULT}" == "success" && "${CVE_SCAN_RESULT}" == "success" ]]; then
+            echo "### ✅ CVE validation passed" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          message="${CVE_FAILURE_SUMMARY:-CVE validation did not complete successfully}"
+          echo "::error title=Nightly CVE validation failed::${message}. Release publication was not blocked."
+          {
+            echo "### 🚨 Nightly release published with CVE validation failure"
+            echo
+            echo "${message}"
+            echo
+            echo "- CVE workflow result: \`${CVE_JOB_RESULT}\`"
+            echo "- CVE scan result: \`${CVE_SCAN_RESULT:-unknown}\`"
+            if [[ -n "${CVE_ARTIFACT_NAME}" ]]; then
+              echo "- Report artifact: \`${CVE_ARTIFACT_NAME}\`"
+            fi
+            echo "- [Open nightly workflow](${RUN_URL})"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 1
+
   replicated-release:
+    name: Create Replicated nightly release
     runs-on: ubuntu-latest
     if: ${{ always() && needs.retag-latest-images.result == 'success' }}
     needs:
       - release-config
       - retag-latest-images
-      - cve-scan
     permissions:
       contents: write
       id-token: write
@@ -499,6 +541,7 @@ jobs:
           git push --force-with-lease origin "${{ steps.branch.outputs.branch_name }}"
 
   create-nightly-release-pr:
+    name: Publish release PR and GitHub release
     if: ${{ always() && needs.replicated-release.result == 'success' }}
     runs-on: ubuntu-latest
     needs:
@@ -768,6 +811,7 @@ jobs:
             core.info("Published GitHub release.");
 
   onprem-testbed:
+    name: On-prem release validation
     if: ${{ needs.replicated-release.result == 'success' }}
     runs-on: ubuntu-latest
     needs:
@@ -777,6 +821,11 @@ jobs:
       id-token: write
       contents: read
     timeout-minutes: 720
+    outputs:
+      fresh_conclusion: ${{ steps.fresh.outputs.conclusion }}
+      fresh_url: ${{ steps.fresh.outputs.run_url }}
+      upgrade_conclusion: ${{ steps.upgrade.outputs.conclusion }}
+      upgrade_url: ${{ steps.upgrade.outputs.run_url }}
     steps:
       - name: Checkout harness dispatch scripts
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -838,11 +887,19 @@ jobs:
         if: ${{ steps.fresh.outcome != 'success' || steps.upgrade.outcome != 'success' }}
         shell: bash
         run: |
-          echo "Fresh-install harness outcome: ${{ steps.fresh.outcome }}" >&2
-          echo "Upgrade harness outcome: ${{ steps.upgrade.outcome }}" >&2
+          fresh_url="${{ steps.fresh.outputs.run_url }}"
+          upgrade_url="${{ steps.upgrade.outputs.run_url }}"
+          echo "::error title=Nightly on-prem validation failed::Fresh install: ${{ steps.fresh.outcome }}; upgrade: ${{ steps.upgrade.outcome }}. Release publication was not blocked."
+          {
+            echo "### 🚨 Nightly release published with on-prem validation failure"
+            echo
+            echo "- Fresh install: **${{ steps.fresh.outcome }}** — [open test run](${fresh_url})"
+            echo "- Upgrade: **${{ steps.upgrade.outcome }}** — [open test run](${upgrade_url})"
+          } >> "${GITHUB_STEP_SUMMARY}"
           exit 1
 
   notify-nightly-report:
+    name: Publish final release report
     if: always()
     runs-on: ubuntu-latest
     needs:
@@ -850,6 +907,7 @@ jobs:
       - nightly-secrets
       - retag-latest-images
       - cve-scan
+      - cve-validation-verdict
       - replicated-release
       - create-nightly-release-pr
       - onprem-testbed
@@ -900,6 +958,10 @@ jobs:
           REPLICATED_RESULT: ${{ needs.replicated-release.result }}
           PR_RESULT: ${{ needs.create-nightly-release-pr.result }}
           ONPREM_RESULT: ${{ needs.onprem-testbed.result }}
+          ONPREM_FRESH_CONCLUSION: ${{ needs.onprem-testbed.outputs.fresh_conclusion }}
+          ONPREM_FRESH_URL: ${{ needs.onprem-testbed.outputs.fresh_url }}
+          ONPREM_UPGRADE_CONCLUSION: ${{ needs.onprem-testbed.outputs.upgrade_conclusion }}
+          ONPREM_UPGRADE_URL: ${{ needs.onprem-testbed.outputs.upgrade_url }}
           RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
           RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
           RELEASE_BRANCH: ${{ needs.replicated-release.outputs.branch_name }}
