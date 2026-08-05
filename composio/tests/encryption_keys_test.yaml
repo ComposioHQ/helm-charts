@@ -1,0 +1,171 @@
+suite: encryption key wiring
+templates:
+  - apollo/apollo.yaml
+  - thermos/thermos.yaml
+tests:
+  # The defaults must reproduce the historical aliasing exactly. If these
+  # break, existing installs lose access to their API keys on upgrade.
+  - it: defaults alias ORG_API_KEY_ENCRYPTION_KEY onto the ENCRYPTION_KEY secret entry
+    template: apollo/apollo.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      apollo.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ORG_API_KEY_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: ENCRYPTION_KEY
+                optional: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: ENCRYPTION_KEY
+                optional: true
+
+  - it: defaults alias both Thermos trigger keys onto TEMPORAL_TRIGGER_ENCRYPTION_KEY
+    template: thermos/thermos.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEBHOOK_PAYLOAD_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
+                optional: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POLLING_TRIGGER_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
+                optional: true
+
+  # Self-hosted single-encrypts. The outer-layer keys must stay absent unless
+  # explicitly configured, or Apollo starts double-encrypting new rows and the
+  # existing single-encrypted rows become unreadable.
+  - it: omits the outer-layer keys by default
+    template: apollo/apollo.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          any: true
+          content:
+            name: CONNECTED_ACCOUNT_ENCRYPTION_KEY
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          any: true
+          content:
+            name: AUTH_CONFIG_ENCRYPTION_KEY
+
+  - it: allows ORG_API_KEY_ENCRYPTION_KEY to be split onto its own secret entry
+    template: apollo/apollo.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      encryptionKeys.orgApiKeyEncryptionKey.secretKey: ORG_API_KEY_ENCRYPTION_KEY
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ORG_API_KEY_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: ORG_API_KEY_ENCRYPTION_KEY
+                optional: true
+
+  - it: allows the polling trigger key to be split from the webhook key
+    template: thermos/thermos.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      encryptionKeys.pollingTriggerEncryptionKey.secretKey: POLLING_TRIGGER_ENCRYPTION_KEY
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POLLING_TRIGGER_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: POLLING_TRIGGER_ENCRYPTION_KEY
+                optional: true
+      # The webhook key must be unaffected by splitting the polling key.
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEBHOOK_PAYLOAD_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
+                optional: true
+
+  - it: wires the outer-layer keys when explicitly configured
+    template: apollo/apollo.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      encryptionKeys.connectedAccountEncryptionKey.secretKey: CONNECTED_ACCOUNT_ENCRYPTION_KEY
+      encryptionKeys.authConfigEncryptionKey.secretKey: AUTH_CONFIG_ENCRYPTION_KEY
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CONNECTED_ACCOUNT_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: CONNECTED_ACCOUNT_ENCRYPTION_KEY
+                optional: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_CONFIG_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: AUTH_CONFIG_ENCRYPTION_KEY
+                optional: true
+
+  - it: honours a custom core secret name
+    template: apollo/apollo.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      secret.name: my-custom-secret
+      encryptionKeys.orgApiKeyEncryptionKey.secretKey: ORG_API_KEY_ENCRYPTION_KEY
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ORG_API_KEY_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: my-custom-secret
+                key: ORG_API_KEY_ENCRYPTION_KEY
+                optional: true

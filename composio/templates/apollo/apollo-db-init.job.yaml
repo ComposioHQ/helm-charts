@@ -71,18 +71,8 @@ spec:
                   name: {{ $coreSecret }}
                   key: POSTGRES_URL
                   optional: true
-            - name: ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: ENCRYPTION_KEY
-                  optional: true
-            - name: ORG_API_KEY_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: ENCRYPTION_KEY
-                  optional: true
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "ENCRYPTION_KEY" "setting" "encryptionKey" "default" "ENCRYPTION_KEY" "context" .) }}{{- . | nindent 12 }}{{- end }}
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "ORG_API_KEY_ENCRYPTION_KEY" "setting" "orgApiKeyEncryptionKey" "default" "ENCRYPTION_KEY" "context" .) }}{{- . | nindent 12 }}{{- end }}
             - name: SHOULD_REWRITE_COMPOSIO_SERVICE_KEY_NAME
               value: "true"
             - name: SELF_HOSTED

@@ -161,12 +161,9 @@ spec:
                   key: {{ $externalRedis.key }}
                   optional: true
             {{- end }}
-            - name: ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: ENCRYPTION_KEY
-                  optional: true
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "ENCRYPTION_KEY" "setting" "encryptionKey" "default" "ENCRYPTION_KEY" "context" .) }}{{- . | nindent 12 }}{{- end }}
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "CONNECTED_ACCOUNT_ENCRYPTION_KEY" "setting" "connectedAccountEncryptionKey" "default" "" "context" .) }}{{- . | nindent 12 }}{{- end }}
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "AUTH_CONFIG_ENCRYPTION_KEY" "setting" "authConfigEncryptionKey" "default" "" "context" .) }}{{- . | nindent 12 }}{{- end }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -199,12 +196,7 @@ spec:
                   name: {{ $coreSecret }}
                   key: POSTGRES_URL
                   optional: true
-            - name: ORG_API_KEY_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: ENCRYPTION_KEY
-                  optional: true
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "ORG_API_KEY_ENCRYPTION_KEY" "setting" "orgApiKeyEncryptionKey" "default" "ENCRYPTION_KEY" "context" .) }}{{- . | nindent 12 }}{{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:

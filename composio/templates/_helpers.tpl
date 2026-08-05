@@ -18,6 +18,36 @@ Expand the name of the chart.
 {{- printf "%s" .Values.secret.name -}}
 {{- end -}}
 
+{{/*
+Render one encryption-key env var sourced from the core secret.
+
+Usage:
+  {{- include "composio.encryptionKeyEnv" (dict
+        "envVar" "ORG_API_KEY_ENCRYPTION_KEY"
+        "setting" "orgApiKeyEncryptionKey"
+        "default" "ENCRYPTION_KEY"
+        "context" .) | nindent 12 }}
+
+Resolves .Values.encryptionKeys.<setting>.secretKey and falls back to the
+supplied default, so existing releases render exactly as they did before this
+helper was introduced. An empty resolved value renders nothing, which is how
+the cloud-only outer-layer keys stay absent on self-hosted installs.
+*/}}
+{{- define "composio.encryptionKeyEnv" -}}
+{{- $ctx := .context -}}
+{{- $keys := default (dict) $ctx.Values.encryptionKeys -}}
+{{- $cfg := default (dict) (get $keys .setting) -}}
+{{- $secretKey := default .default $cfg.secretKey -}}
+{{- if $secretKey -}}
+- name: {{ .envVar }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "composio.coreSecretName" $ctx }}
+      key: {{ $secretKey }}
+      optional: true
+{{- end -}}
+{{- end -}}
+
 
 {{- define "composio-admin-token" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}

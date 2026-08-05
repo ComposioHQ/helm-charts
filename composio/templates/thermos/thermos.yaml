@@ -135,18 +135,8 @@ spec:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
                   optional: true
-            - name: POLLING_TRIGGER_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
-                  optional: true
-            - name: WEBHOOK_PAYLOAD_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $coreSecret }}
-                  key: TEMPORAL_TRIGGER_ENCRYPTION_KEY
-                  optional: true
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "POLLING_TRIGGER_ENCRYPTION_KEY" "setting" "pollingTriggerEncryptionKey" "default" "TEMPORAL_TRIGGER_ENCRYPTION_KEY" "context" .) }}{{- . | nindent 12 }}{{- end }}
+            {{- with include "composio.encryptionKeyEnv" (dict "envVar" "WEBHOOK_PAYLOAD_ENCRYPTION_KEY" "setting" "webhookPayloadEncryptionKey" "default" "TEMPORAL_TRIGGER_ENCRYPTION_KEY" "context" .) }}{{- . | nindent 12 }}{{- end }}
             - name: TOOLKIT_REGISTRY_DB_URL
               value: {{ include "composio.toolkitRegistryDbUrl" . | quote }}
             {{- if .Values.thermos.env }}

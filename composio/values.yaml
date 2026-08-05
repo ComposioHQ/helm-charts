@@ -10,6 +10,42 @@ features:
 # Composio Application Secrets
 secret:
   name: "composio-composio-secrets"
+# Encryption key wiring.
+#
+# Historically several distinct application env vars were served from the same
+# two entries in the core secret. The defaults below preserve that exactly, so
+# upgrading an existing release changes nothing. Override a `secretKey` only
+# when you have added that entry to the core secret and intend to rotate it
+# independently — see docs/encryption-key-rotation-runbook.md in the platform
+# repo.
+#
+# WARNING: pointing one of these at a secret entry that does not exist will NOT
+# fail the deploy. Every reference is `optional: true`, so the env var is simply
+# unset and the application falls back to an internal default, which silently
+# invalidates existing API keys. Add the entry to the secret first.
+encryptionKeys:
+  # -- Core data-at-rest key backing credential payloads and log columns.
+  encryptionKey:
+    secretKey: "ENCRYPTION_KEY"
+  # -- Signs and encrypts ak_/oak_/uak_/ck_ API keys. Defaults to the same
+  # secret entry as encryptionKey, so rotating one rotates both.
+  orgApiKeyEncryptionKey:
+    secretKey: "ENCRYPTION_KEY"
+  # -- Thermos webhook payload key. Must be exactly 32 bytes.
+  webhookPayloadEncryptionKey:
+    secretKey: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
+  # -- Thermos polling trigger key. Must be exactly 32 bytes. Defaults to the
+  # same secret entry as webhookPayloadEncryptionKey.
+  pollingTriggerEncryptionKey:
+    secretKey: "TEMPORAL_TRIGGER_ENCRYPTION_KEY"
+  # -- Outer credential encryption layer, Composio cloud only. Self-hosted
+  # installs single-encrypt; leave empty. Setting these changes how new rows
+  # are written and makes existing single-encrypted rows unreadable.
+  connectedAccountEncryptionKey:
+    secretKey: ""
+  # -- Outer auth-config encryption layer, Composio cloud only. Leave empty.
+  authConfigEncryptionKey:
+    secretKey: ""
 # Namespace configuration for Composio services
 namespace:
   # -- Whether to create namespaces automatically
