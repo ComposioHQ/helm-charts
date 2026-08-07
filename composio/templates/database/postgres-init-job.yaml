@@ -1,5 +1,8 @@
 {{- if .Values.databaseMigration.enabled }}
 {{- $databaseMigrationUser := printf "\"%s\"" (replace "\"" "\"\"" .Values.databaseMigration.user) }}
+{{- $workerDbEnabled := eq (include "composio.thermosWorkerDbEnabled" .) "true" }}
+{{- $workerDbDatabaseName := include "composio.thermosWorkerDbDatabaseName" . }}
+{{- $workerDbDatabase := printf "\"%s\"" (replace "\"" "\"\"" $workerDbDatabaseName) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -59,6 +62,9 @@ spec:
           CREATE DATABASE temporal_visibility;
           {{- end }}
           CREATE DATABASE thermosdb;
+          {{- if $workerDbEnabled }}
+          CREATE DATABASE {{ $workerDbDatabase }};
+          {{- end }}
 
           -- Alter Database
           ALTER DATABASE composiodb OWNER TO {{ $databaseMigrationUser }};
@@ -67,6 +73,9 @@ spec:
           ALTER DATABASE temporal_visibility OWNER TO {{ $databaseMigrationUser }};
           {{- end }}
           ALTER DATABASE thermosdb OWNER TO {{ $databaseMigrationUser }};
+          {{- if $workerDbEnabled }}
+          ALTER DATABASE {{ $workerDbDatabase }} OWNER TO {{ $databaseMigrationUser }};
+          {{- end }}
 
           -- Grant privileges on thermosdb
           \c thermosdb
@@ -75,6 +84,16 @@ spec:
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
+
+          {{- if $workerDbEnabled }}
+          -- Grant privileges on Thermos worker DB
+          \c {{ $workerDbDatabase }}
+          GRANT ALL PRIVILEGES ON DATABASE {{ $workerDbDatabase }} TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
+          {{- end }}
 
           -- Grant privileges on composiodb
           \c composiodb

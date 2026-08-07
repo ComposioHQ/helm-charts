@@ -18,6 +18,34 @@ Expand the name of the chart.
 {{- printf "%s" .Values.secret.name -}}
 {{- end -}}
 
+{{/* Secret name containing THERMOS_WORKER_DB. Defaults to the primary Thermos DB secret. */}}
+{{- define "composio.thermosWorkerDbSecretName" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- default (include "composio.coreSecretName" .) $workerDb.secretName -}}
+{{- end -}}
+
+{{/* Secret key containing THERMOS_WORKER_DB. */}}
+{{- define "composio.thermosWorkerDbSecretKey" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- default "THERMOS_WORKER_DB" $workerDb.secretKey -}}
+{{- end -}}
+
+{{/* Database created for Thermos worker DB when databaseMigration.enabled is true. */}}
+{{- define "composio.thermosWorkerDbDatabaseName" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- default "thermos_workerdb" $workerDb.databaseName -}}
+{{- end -}}
+
+{{/* Whether Thermos should use the worker DB. Defaults enabled for trigger-capable installs. */}}
+{{- define "composio.thermosWorkerDbEnabled" -}}
+{{- $workerDb := .Values.thermos.workerDb | default (dict) -}}
+{{- if hasKey $workerDb "enabled" -}}
+{{- ternary "true" "false" $workerDb.enabled -}}
+{{- else -}}
+true
+{{- end -}}
+{{- end -}}
+
 
 {{- define "composio-admin-token" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}

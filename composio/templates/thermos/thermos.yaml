@@ -135,6 +135,14 @@ spec:
                   name: {{ $coreSecret }}
                   key: THERMOS_DATABASE_URL
                   optional: true
+            {{- if eq (include "composio.thermosWorkerDbEnabled" .) "true" }}
+            - name: THERMOS_WORKER_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "composio.thermosWorkerDbSecretName" . }}
+                  key: {{ include "composio.thermosWorkerDbSecretKey" . }}
+                  optional: true
+            {{- end }}
             - name: POLLING_TRIGGER_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
