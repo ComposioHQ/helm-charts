@@ -81,5 +81,18 @@ assert_contains "${glean_dir}/github-output" \
 assert_contains "${glean_dir}/slack-summary.txt" \
   "- Replicated Glean-Stable version: \`0.2.134\` -> \`0.2.135\`"
 
-rm -rf "${cve_dir}" "${build_dir}" "${report_dir}" "${glean_dir}"
+onprem_dir="$(run_summary onprem \
+  ONPREM_RESULT=failure \
+  ONPREM_FRESH_CONCLUSION=failure \
+  ONPREM_FRESH_URL=https://github.com/ComposioHQ/onprem-testbed/actions/runs/101 \
+  ONPREM_UPGRADE_CONCLUSION=success \
+  ONPREM_UPGRADE_URL=https://github.com/ComposioHQ/onprem-testbed/actions/runs/102)"
+assert_contains "${onprem_dir}/slack-summary.txt" \
+  "*Good to go:* NA - onprem-testbed validation result was failure"
+assert_contains "${onprem_dir}/slack-summary.txt" \
+  "- Fresh install: \`failure\` — <https://github.com/ComposioHQ/onprem-testbed/actions/runs/101|open test run>"
+assert_contains "${onprem_dir}/slack-summary.txt" \
+  "- Upgrade: \`success\` — <https://github.com/ComposioHQ/onprem-testbed/actions/runs/102|open test run>"
+
+rm -rf "${cve_dir}" "${build_dir}" "${report_dir}" "${glean_dir}" "${onprem_dir}"
 echo "nightly-slack-summary tests passed"

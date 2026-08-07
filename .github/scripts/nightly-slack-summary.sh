@@ -95,6 +95,15 @@ esac
   fi
   echo "${verdict_line}"
   echo "${release_blocking_line}"
+  if [[ -n "${ONPREM_FRESH_URL:-}" || -n "${ONPREM_UPGRADE_URL:-}" ]]; then
+    echo "*On-prem validation:*"
+    if [[ -n "${ONPREM_FRESH_URL:-}" ]]; then
+      echo "- Fresh install: \`${ONPREM_FRESH_CONCLUSION:-unknown}\` — <${ONPREM_FRESH_URL}|open test run>"
+    fi
+    if [[ -n "${ONPREM_UPGRADE_URL:-}" ]]; then
+      echo "- Upgrade: \`${ONPREM_UPGRADE_CONCLUSION:-unknown}\` — <${ONPREM_UPGRADE_URL}|open test run>"
+    fi
+  fi
   if [[ "${REPLICATED_RESULT:-unknown}" == "success" ]]; then
     echo "*Release created:* YES"
     echo "- Image release tag: \`${RELEASE_TAG:-unknown}\`"
