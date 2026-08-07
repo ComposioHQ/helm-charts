@@ -103,7 +103,7 @@ spec:
               {{- $registryEnabled = .Values.toolkitRegistry.enabled -}}
             {{- end }}
             - name: TOOLKIT_REGISTRY_ENABLED
-              value: {{ $registryEnabled | quote }}
+              value: "true"
             {{- if .Values.thermos.dbInit.extraAtlasFlags }}
             - name: EXTRA_ATLAS_FLAGS
               value: {{ .Values.thermos.dbInit.extraAtlasFlags | quote }}

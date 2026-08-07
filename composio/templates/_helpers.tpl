@@ -303,15 +303,6 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end }}
 
 {{/*
-Create a default fully qualified redis name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-*/}}
-{{- define "composio.redis.fullname" -}}
-{{- $name := default "redis" .Values.redis.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end }}
-
-{{/*
 Create a default fully qualified temporal name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
@@ -398,7 +389,6 @@ Compile all warnings into a single message, and call fail.
 {{- define "composio.validateValues" -}}
 {{- $messages := list -}}
 {{- $messages := append $messages (include "composio.validateValues.database" .) -}}
-{{- $messages := append $messages (include "composio.validateValues.redis" .) -}}
 
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
@@ -415,20 +405,6 @@ Validate database configuration
 composio: database
     You must provide database URL when PostgreSQL is disabled.
     Please set apollo.secrets.databaseUrl
-{{- end -}}
-{{- end -}}
-
-{{/*
-Validate Redis configuration
-*/}}
-{{/*
-Validate Redis configuration
-*/}}
-{{- define "composio.validateValues.redis" -}}
-{{- if and .Values.externalRedis.enabled .Values.redis.enabled -}}
-composio: redis
-    You cannot enable both external Redis and built-in Redis.
-    Please set redis.enabled to false when externalRedis.enabled is true
 {{- end -}}
 {{- end -}}
 

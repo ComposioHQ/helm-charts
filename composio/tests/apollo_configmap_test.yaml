@@ -37,6 +37,35 @@ tests:
           path: data.SELF_HOSTED
           value: "true"
 
+  - it: should omit single tenant caps by default
+    asserts:
+      - isNull:
+          path: data.MAX_ORG_COUNT
+      - isNull:
+          path: data.MAX_PROJECT_COUNT
+      - isNull:
+          path: data.LOG_TENANCY_DIAGNOSTICS
+
+  - it: should configure single tenant caps when set
+    set:
+      apollo.singleTenant.maxOrgCount: 1
+      apollo.singleTenant.maxProjectCount: 1
+    asserts:
+      - equal:
+          path: data.MAX_ORG_COUNT
+          value: "1"
+      - equal:
+          path: data.MAX_PROJECT_COUNT
+          value: "1"
+
+  - it: should enable tenancy diagnostics when set
+    set:
+      apollo.singleTenant.logDiagnostics: true
+    asserts:
+      - equal:
+          path: data.LOG_TENANCY_DIAGNOSTICS
+          value: "true"
+
   - it: should have correct COMPOSIO_ENV
     asserts:
       - equal:

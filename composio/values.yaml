@@ -85,64 +85,6 @@ externalRedis:
     passwordKey: ""
     # -- Optional secret key for REDIS_SENTINEL_PASSWORD
     sentinelPasswordKey: ""
-# Internal Redis configuration (embedded Redis instance)
-redis:
-  image:
-    registry: docker.io
-    repository: redis
-    tag: latest
-  # -- Enable internal Redis. Set to false when using externalRedis
-  enabled: true
-  # Redis authentication configuration
-  auth:
-    # -- Enable Redis authentication
-    enabled: true
-    # -- Enable password authentication on bundled Redis Sentinels too
-    sentinel: true
-    # -- Redis password
-    password: ""
-  # -- Redis architecture (standalone or replication)
-  architecture: standalone
-  # Optional Bitnami Redis Sentinel settings for HA failover support in Apollo.
-  sentinel:
-    # -- Enable bundled Redis Sentinel and switch Apollo to Sentinel mode
-    enabled: false
-    # -- Redis Sentinel master set name
-    masterSet: "mymaster"
-    service:
-      ports:
-        # -- Redis Sentinel service port
-        sentinel: 26379
-  tls:
-    # -- Enable TLS for bundled Redis connections
-    enabled: false
-  # Redis master node configuration
-  master:
-    # Persistence configuration
-    persistence:
-      # -- Enable persistent storage
-      enabled: false
-      # -- Size of persistent volume
-      size: 8Gi
-    # Resource requests and limits for Redis master
-    resources:
-      requests:
-        # -- Memory request for Redis master
-        memory: "4Gi"
-        # -- CPU request for Redis master
-        cpu: "2"
-      limits:
-        # -- Memory limit for Redis master
-        memory: "4Gi"
-        # -- CPU limit for Redis master
-        cpu: "2"
-    # Disable privileged sysctls for GKE Autopilot compatibility
-    sysctlImage:
-      # -- Disable sysctl image for GKE Autopilot
-      enabled: false
-    sysctl:
-      # -- Disable sysctl for GKE Autopilot
-      enabled: false
 # OpenAI API configuration (required for Frontend, Mercury and Apollo)
 openAI:
   # -- Enable OpenAI integration
@@ -153,10 +95,22 @@ openAI:
   key: "OPENAI_API_KEY"
   # -- Base URL for OpenAI-compatible API endpoints
   baseUrl: "https://api.openai.com/v1"
+# Preflight check configuration
+preflight:
+  openAI:
+    # -- Image used by the OpenAI API preflight check pod.
+    image: "curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd"
 # Apollo service configuration (main API service)
 apollo:
   # -- Number of Apollo pod replicas
   replicaCount: 2
+  singleTenant:
+    # -- Optional cap for active organizations. Apollo only enforces this when SELF_HOSTED=true.
+    maxOrgCount: null
+    # -- Optional cap for active projects. Apollo only enforces this when SELF_HOSTED=true.
+    maxProjectCount: null
+    # -- Print tenant structure diagnostics on Apollo startup without requiring caps. Apollo only uses this when SELF_HOSTED=true.
+    logDiagnostics: false
   podDisruptionBudget:
     # -- Enable a PodDisruptionBudget for Apollo.
     enabled: false
@@ -484,9 +438,6 @@ thermos:
     scaleUpPods: 4
 # Toolkit registry configuration (read-only Postgres with toolkit/tool/trigger data)
 toolkitRegistry:
-  # -- Enable the standalone toolkit registry Postgres deployment used by Thermos for toolkit/tool/trigger reads.
-  # Enabled by default for on-prem installs; disable only if you explicitly want Thermos to fall back to the primary registry DB.
-  enabled: true
   # -- Number of toolkit registry pod replicas
   replicaCount: 2
   image:
@@ -566,10 +517,7 @@ thermosMiscWorkers:
     limits:
       memory: "2Gi"
       cpu: "1"
-# Database initialization job configuration
 dbInit:
-  # -- Admin email for initial setup
-  adminEmail: "hello@composio.dev"
   # Kubernetes job configuration
   job:
     # -- Maximum number of retries for failed jobs
@@ -794,6 +742,12 @@ temporal:
   grafana:
     # -- Enable Grafana
     enabled: false
+    imageRenderer:
+      image:
+        # -- Optional Grafana image renderer image tag.
+        tag: "3.11.0"
+        # -- Optional Grafana image renderer image digest.
+        sha: "c13f98282c7f82a8bb0d75048d483045159d7ce04d1d02f5e06b21b26b4e5a0b"
 # Prometheus monitoring configuration
 prometheus:
   # -- Enable Prometheus
@@ -1192,6 +1146,8 @@ mercury:
     replicas: 2
     # -- Maximum number of replicas for Knative
     maxReplicas: 5
+    # -- Image used by Knative setup/config hook jobs.
+    kubectlImage: "registry.k8s.io/kubectl:v1.30.14@sha256:3f2cf26d036505664c9d636d1545898f7a060f6008c21cb6982cf31fe469b0fa"
   # Security context for Mercury container
   securityContext:
     # -- Allow privilege escalation

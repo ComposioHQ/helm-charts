@@ -9,8 +9,6 @@ tests:
 
   - it: should render apollo pod disruption budget when enabled
     set:
-      redis.enabled: true
-      externalRedis.enabled: false
       apollo.podDisruptionBudget.enabled: true
     documentSelector:
       path: metadata.name

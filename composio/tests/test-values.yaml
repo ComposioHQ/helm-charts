@@ -88,7 +88,6 @@ dbInit:
     repository: test-init
     tag: "test"
     pullPolicy: IfNotPresent
-  adminEmail: "test@example.com"
   database:
     urlSecret:
       name: "test-db-secret"
@@ -163,9 +162,6 @@ replicated:
 
 openAI:
   enabled: false
-
-redis:
-  enabled: true
 
 externalRedis:
   enabled: false 

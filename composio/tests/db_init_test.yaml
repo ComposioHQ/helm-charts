@@ -84,17 +84,6 @@ tests:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: Always
 
-  - it: should have correct admin email environment variable
-    set:
-      apollo.dbInit.enabled: true
-      dbInit.adminEmail: test@example.com
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: ADMIN_EMAIL
-            value: "test@example.com"
-
   - it: should have database URL from core secret
     set:
       apollo.dbInit.enabled: true
@@ -411,28 +400,6 @@ tests:
   - it: should set TOOLKIT_REGISTRY_ENABLED=true by default
     set:
       thermos.dbInit.enabled: true
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: TOOLKIT_REGISTRY_ENABLED
-            value: "true"
-
-  - it: should set TOOLKIT_REGISTRY_ENABLED=false when toolkitRegistry is disabled
-    set:
-      thermos.dbInit.enabled: true
-      toolkitRegistry.enabled: false
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: TOOLKIT_REGISTRY_ENABLED
-            value: "false"
-
-  - it: should default TOOLKIT_REGISTRY_ENABLED=true when toolkitRegistry stanza is omitted
-    set:
-      thermos.dbInit.enabled: true
-      toolkitRegistry: null
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
