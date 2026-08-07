@@ -19,6 +19,35 @@ tests:
           path: metadata.labels.release
           value: RELEASE-NAME
 
+  - it: should not wire the worker DB by default
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_WORKER_DB
+
+  - it: should wire the worker DB when explicitly enabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.workerDb.enabled: true
+      thermos.workerDb.secretName: worker-db-secret
+      thermos.workerDb.secretKey: WORKER_DATABASE_URL
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_WORKER_DB
+            valueFrom:
+              secretKeyRef:
+                name: worker-db-secret
+                key: WORKER_DATABASE_URL
+                optional: true
+
   - it: should not set serviceAccountName when SA is disabled
     documentSelector:
       path: kind

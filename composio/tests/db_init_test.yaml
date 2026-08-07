@@ -419,6 +419,23 @@ tests:
       - isKind:
           of: Job
 
+  - it: should not create the Thermos worker DB by default
+    set:
+      databaseMigration.enabled: true
+    asserts:
+      - notMatchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'CREATE DATABASE "thermos_workerdb";'
+
+  - it: should create the Thermos worker DB when explicitly enabled
+    set:
+      databaseMigration.enabled: true
+      thermos.workerDb.enabled: true
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'CREATE DATABASE "thermos_workerdb";'
+
   - it: should not create postgres init job when disabled
     set:
       databaseMigration.enabled: false

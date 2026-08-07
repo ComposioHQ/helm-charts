@@ -349,7 +349,7 @@ thermos:
   # worker database's public schema.
   workerDb:
     # -- Enable Thermos worker DB runtime wiring, worker DB creation, and worker DB migrations.
-    enabled: true
+    enabled: false
     # -- Secret containing the worker DB connection URL. Empty uses `secret.name`.
     secretName: ""
     # -- Secret key containing the worker DB connection URL.
