@@ -133,6 +133,37 @@ tests:
             name: thermos-secrets
             emptyDir: {}
 
+  - it: should wire the worker database from the configured secret
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.workerDb.enabled: true
+      thermos.workerDb.secretName: thermos-worker-secret
+      thermos.workerDb.secretKey: WORKER_DATABASE_URL
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_WORKER_DB
+            valueFrom:
+              secretKeyRef:
+                name: thermos-worker-secret
+                key: WORKER_DATABASE_URL
+                optional: true
+
+  - it: should omit the worker database env when disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      thermos.workerDb.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_WORKER_DB
+
   - it: should render additional thermos init containers
     documentSelector:
       path: kind
@@ -450,6 +481,23 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].name
           value: wait-for-toolkit-registry
+
+  - it: should wire the worker database into misc workers
+    set:
+      thermosMiscWorkers.enabled: true
+      thermos.workerDb.enabled: true
+      thermos.workerDb.secretName: thermos-worker-secret
+      thermos.workerDb.secretKey: WORKER_DATABASE_URL
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_WORKER_DB
+            valueFrom:
+              secretKeyRef:
+                name: thermos-worker-secret
+                key: WORKER_DATABASE_URL
+                optional: true
 
   - it: should percent-encode misc worker toolkit registry db url and shell-quote wait configuration
     set:
