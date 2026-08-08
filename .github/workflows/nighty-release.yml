@@ -69,7 +69,6 @@ env:
   GRYPE_VERSION: v0.115.0
   OPRA_CI_DOPPLER_IDENTITY_ID: fc94b8db-1149-4b8a-8ba7-1fd4833bb870
   SLACK_IMPLEMENTATIONS_USERGROUP_ID: S092C0T771V
-  SLACK_ZEN_MEMBER_ID: U0BE5KWJH9P
 
 jobs:
   release-config:
@@ -920,7 +919,6 @@ jobs:
           CVE_ARTIFACT_DOWNLOAD_COMMAND: ${{ needs.cve-scan.outputs.artifact_download_command }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SLACK_IMPLEMENTATIONS_USERGROUP_ID: ${{ env.SLACK_IMPLEMENTATIONS_USERGROUP_ID }}
-          SLACK_ZEN_MEMBER_ID: ${{ env.SLACK_ZEN_MEMBER_ID }}
         run: |
           set -euo pipefail
           bash .github/scripts/nightly-slack-summary.sh

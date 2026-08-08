@@ -130,22 +130,33 @@ impl_mention="@implementations"
 if [[ -n "${SLACK_IMPLEMENTATIONS_USERGROUP_ID:-}" ]]; then
   impl_mention="<!subteam^${SLACK_IMPLEMENTATIONS_USERGROUP_ID}|@implementations>"
 fi
-zen_mention="@zen"
-if [[ -n "${SLACK_ZEN_MEMBER_ID:-}" ]]; then
-  zen_mention="<@${SLACK_ZEN_MEMBER_ID}>"
-fi
 
 mention_line=""
 if [[ "${good_to_go}" == "NO" || "${good_to_go}" == "NA" ]]; then
   mention_line="${impl_mention}"
 fi
 
-action_lines=()
+# Zen cannot be triggered by this message: Slack does not deliver @-mentions
+# from bot/webhook-posted messages to other bots. Until the zen API trigger
+# ships, the report carries a ready-to-paste trigger a human posts in-thread
+# (typing the zen mention manually so it resolves).
+zen_tasks=()
 if [[ "${onprem_result}" == "failure" ]]; then
-  action_lines+=(":mag: ${zen_mention} start an investigation into the onprem-testbed failures in this run, publish a report of the root cause, and tag ${impl_mention} with the findings.")
+  zen_tasks+=("- Investigate the onprem-testbed failures (fresh install: ${onprem_fresh}, upgrade: ${onprem_upgrade}), publish a root-cause report, and tag the implementations team with the findings.")
 fi
 if (( cve_findings )) && [[ "${fixable_cves}" =~ ^[0-9]+$ ]] && (( fixable_cves > 0 )); then
-  action_lines+=(":wrench: ${zen_mention} fix the ${fixable_cves} fixable CVE(s) called out in the Grype findings below.")
+  zen_tasks+=("- Fix the ${fixable_cves} fixable CVE(s) called out in the Grype report.")
+fi
+
+zen_instruction=""
+zen_paste_text=""
+zen_why="Zen cannot self-start from this report: Slack does not deliver @-mentions from bot-posted messages to other bots. Manual until the zen API trigger ships."
+if (( ${#zen_tasks[@]} > 0 )); then
+  zen_instruction="*Zen action needed* — reply in this thread, type an @-mention of zen (so it resolves), then paste:"
+  zen_paste_text="${release_channel_name} release ${RELEASE_TAG:-unknown} is NOT GOOD TO GO (run: ${RUN_URL:-unknown})."
+  for line in "${zen_tasks[@]}"; do
+    zen_paste_text+=$'\n'"${line}"
+  done
 fi
 
 stage_icon() {
@@ -210,10 +221,14 @@ fi
   echo "${verdict_line}"
   echo
   echo "${release_blocking_line}"
-  for line in "${action_lines[@]+"${action_lines[@]}"}"; do
+  if [[ -n "${zen_instruction}" ]]; then
     echo
-    echo "${line}"
-  done
+    echo "${zen_instruction}"
+    echo '```'
+    printf '%s\n' "${zen_paste_text}"
+    echo '```'
+    echo "_${zen_why}_"
+  fi
   echo
   echo "*Release created:* ${release_created}"
   echo "- ${tag_label}: \`${RELEASE_TAG:-unknown}\`"
@@ -312,15 +327,9 @@ if [[ -n "${mention_line}" ]]; then
 fi
 add_section "${verdict_block}"
 
-if (( ${#action_lines[@]} > 0 )); then
-  actions_text=""
-  for line in "${action_lines[@]}"; do
-    if [[ -n "${actions_text}" ]]; then
-      actions_text+=$'\n\n'
-    fi
-    actions_text+="${line}"
-  done
-  add_section "${actions_text}"
+if [[ -n "${zen_instruction}" ]]; then
+  add_section "${zen_instruction}"$'\n''```'$'\n'"${zen_paste_text}"$'\n''```'
+  add_context "${zen_why}"
 fi
 
 add_divider
