@@ -46,17 +46,15 @@ runs:
         fi
 
         if [ -n "$BLOCKS_JSON" ]; then
+          # Top-level blocks render exactly once; `text` is then only the
+          # notification fallback. Blocks inside an attachment would render
+          # in addition to `text` and collapse behind "Show more".
           PAYLOAD=$(jq -n \
-            --arg color    "$COLOR" \
             --arg title    "$INPUT_TITLE" \
-            --arg summary  "$INPUT_SUMMARY" \
             --argjson blocks "$BLOCKS_JSON" \
             '{
-              text: ($title + "\n" + $summary[0:3000]),
-              attachments: [{
-                color: $color,
-                blocks: $blocks
-              }],
+              text: $title,
+              blocks: $blocks,
               unfurl_links: false,
               unfurl_media: false
             }')

@@ -205,23 +205,29 @@ fi
 {
   if [[ -n "${mention_line}" ]]; then
     echo "${mention_line}"
+    echo
   fi
   echo "${verdict_line}"
+  echo
   echo "${release_blocking_line}"
   for line in "${action_lines[@]+"${action_lines[@]}"}"; do
+    echo
     echo "${line}"
   done
+  echo
   echo "*Release created:* ${release_created}"
   echo "- ${tag_label}: \`${RELEASE_TAG:-unknown}\`"
   echo "- ${version_label}: \`${PREVIOUS_VERSION:-unknown}\` -> \`${NEW_VERSION:-unknown}\`"
   if [[ "${release_created}" == "YES" ]]; then
     echo "- Release branch: \`${RELEASE_BRANCH:-unknown}\`"
   fi
+  echo
   echo "*Stages:*"
   for line in "${stage_lines[@]}"; do
     echo "${line}"
   done
   if [[ -n "${CVE_STATS:-}" ]]; then
+    echo
     echo "*Grype findings:*"
     printf '%s\n' "${CVE_STATS}"
   fi
@@ -300,14 +306,22 @@ add_fields() {
 
 add_header "${title}"
 
-verdict_block="${verdict_line}"$'\n'"${release_blocking_line}"
+verdict_block="${verdict_line}"$'\n\n'"${release_blocking_line}"
 if [[ -n "${mention_line}" ]]; then
-  verdict_block="${mention_line}"$'\n'"${verdict_block}"
+  verdict_block="${mention_line}"$'\n\n'"${verdict_block}"
 fi
-for line in "${action_lines[@]+"${action_lines[@]}"}"; do
-  verdict_block+=$'\n'"${line}"
-done
 add_section "${verdict_block}"
+
+if (( ${#action_lines[@]} > 0 )); then
+  actions_text=""
+  for line in "${action_lines[@]}"; do
+    if [[ -n "${actions_text}" ]]; then
+      actions_text+=$'\n\n'
+    fi
+    actions_text+="${line}"
+  done
+  add_section "${actions_text}"
+fi
 
 add_divider
 release_fields=(
@@ -328,7 +342,7 @@ add_section "${stages_text}"
 
 if [[ -n "${CVE_STATS:-}" ]]; then
   add_divider
-  add_section "*Grype CVE findings*"$'\n'"${CVE_STATS}"
+  add_section "*Grype CVE findings*"$'\n\n'"${CVE_STATS}"
 fi
 if [[ -n "${CVE_ARTIFACT_NAME:-}" ]]; then
   add_context "Grype artifact: \`${CVE_ARTIFACT_NAME}\`"
