@@ -777,6 +777,9 @@ jobs:
       id-token: write
       contents: read
     timeout-minutes: 720
+    outputs:
+      fresh_result: ${{ steps.fresh.outcome }}
+      upgrade_result: ${{ steps.upgrade.outcome }}
     steps:
       - name: Checkout harness dispatch scripts
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -900,6 +903,8 @@ jobs:
           REPLICATED_RESULT: ${{ needs.replicated-release.result }}
           PR_RESULT: ${{ needs.create-nightly-release-pr.result }}
           ONPREM_RESULT: ${{ needs.onprem-testbed.result }}
+          ONPREM_FRESH_RESULT: ${{ needs.onprem-testbed.outputs.fresh_result }}
+          ONPREM_UPGRADE_RESULT: ${{ needs.onprem-testbed.outputs.upgrade_result }}
           RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
           RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
           RELEASE_BRANCH: ${{ needs.replicated-release.outputs.branch_name }}
@@ -908,6 +913,8 @@ jobs:
           PR_URL: ${{ needs.create-nightly-release-pr.outputs.pr_url }}
           RELEASE_URL: ${{ needs.create-nightly-release-pr.outputs.release_url }}
           CVE_STATS: ${{ needs.cve-scan.outputs.stats }}
+          CVE_UNIQUE_CVES: ${{ needs.cve-scan.outputs.unique_cves }}
+          CVE_FIXABLE_CVES: ${{ needs.cve-scan.outputs.fixable_cves }}
           CVE_ARTIFACT_NAME: ${{ needs.cve-scan.outputs.artifact_name }}
           CVE_ARTIFACT_DOWNLOAD_COMMAND: ${{ needs.cve-scan.outputs.artifact_download_command }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -923,3 +930,4 @@ jobs:
           slack_webhook_url: ${{ steps.doppler.outputs.NIGHTLY_SLACK_WEBHOOK_URL }}
           title: ${{ steps.summary.outputs.title }}
           summary: ${{ steps.summary.outputs.summary }}
+          blocks: ${{ steps.summary.outputs.blocks }}

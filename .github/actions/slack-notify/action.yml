@@ -3,7 +3,7 @@ description: 'Post one final Slack message with the release verdict and build su
 
 inputs:
   status:
-    description: 'SUCCESS or FAILURE'
+    description: 'SUCCESS, WARNING, or FAILURE'
     required: true
   slack_webhook_url:
     description: 'Slack incoming webhook URL bound to the destination channel'
@@ -12,8 +12,12 @@ inputs:
     description: 'Header text for the notification'
     required: true
   summary:
-    description: 'Body text with release details (supports Slack mrkdwn)'
+    description: 'Body text with release details (supports Slack mrkdwn); also used as the notification fallback text'
     required: true
+  blocks:
+    description: 'Optional Slack Block Kit blocks (JSON array). When provided, rendered instead of the summary sections; the summary is still used as fallback text.'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -24,42 +28,64 @@ runs:
         INPUT_STATUS: ${{ inputs.status }}
         INPUT_TITLE: ${{ inputs.title }}
         INPUT_SUMMARY: ${{ inputs.summary }}
+        INPUT_BLOCKS: ${{ inputs.blocks }}
         SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
       run: |
         set -euo pipefail
 
         case "$INPUT_STATUS" in
           SUCCESS) COLOR="#28a745" ;;
+          WARNING) COLOR="#dbab09" ;;
           FAILURE) COLOR="#cb2431" ;;
           *)       COLOR="#808080" ;;
         esac
 
-        PAYLOAD=$(jq -n \
-          --arg color    "$COLOR" \
-          --arg title    "$INPUT_TITLE" \
-          --arg summary  "$INPUT_SUMMARY" \
-          '
-          def chunks($text; $size):
-            [range(0; ($text | length); $size) as $start | $text[$start:($start + $size)]]
-            | map(select(length > 0));
+        BLOCKS_JSON=""
+        if [ -n "$INPUT_BLOCKS" ] && jq -e 'type == "array"' >/dev/null 2>&1 <<<"$INPUT_BLOCKS"; then
+          BLOCKS_JSON="$INPUT_BLOCKS"
+        fi
 
-          {
-            text: ($title + "\n" + $summary[0:3000]),
-            attachments: [{
-              color: $color,
-              blocks: ([
-                {
-                  type: "section",
-                  text: { type: "mrkdwn", text: ("*" + $title + "*") }
-                }
-              ] + (chunks($summary; 2900) | .[:49] | map({
-                  type: "section",
-                  text: { type: "mrkdwn", text: . }
-                })))
-            }],
-            unfurl_links: false,
-            unfurl_media: false
-          }')
+        if [ -n "$BLOCKS_JSON" ]; then
+          # Top-level blocks render exactly once; `text` is then only the
+          # notification fallback. Blocks inside an attachment would render
+          # in addition to `text` and collapse behind "Show more".
+          PAYLOAD=$(jq -n \
+            --arg title    "$INPUT_TITLE" \
+            --argjson blocks "$BLOCKS_JSON" \
+            '{
+              text: $title,
+              blocks: $blocks,
+              unfurl_links: false,
+              unfurl_media: false
+            }')
+        else
+          PAYLOAD=$(jq -n \
+            --arg color    "$COLOR" \
+            --arg title    "$INPUT_TITLE" \
+            --arg summary  "$INPUT_SUMMARY" \
+            '
+            def chunks($text; $size):
+              [range(0; ($text | length); $size) as $start | $text[$start:($start + $size)]]
+              | map(select(length > 0));
+
+            {
+              text: ($title + "\n" + $summary[0:3000]),
+              attachments: [{
+                color: $color,
+                blocks: ([
+                  {
+                    type: "section",
+                    text: { type: "mrkdwn", text: ("*" + $title + "*") }
+                  }
+                ] + (chunks($summary; 2900) | .[:49] | map({
+                    type: "section",
+                    text: { type: "mrkdwn", text: . }
+                  })))
+              }],
+              unfurl_links: false,
+              unfurl_media: false
+            }')
+        fi
 
         response="$(curl -fsS -X POST "$SLACK_WEBHOOK_URL" \
           -H "Content-Type: application/json" \
