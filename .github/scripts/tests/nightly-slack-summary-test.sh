@@ -61,9 +61,37 @@ run_summary() {
   printf '%s\n' "${tmp_dir}"
 }
 
+assert_valid_blocks() {
+  local dir="$1"
+  jq -e 'type == "array" and length > 0' "${dir}/slack-blocks.json" >/dev/null ||
+    fail "expected ${dir}/slack-blocks.json to be a non-empty JSON array"
+}
+
 cve_dir="$(run_summary cve CVE_SCAN_RESULT=failed)"
 assert_contains "${cve_dir}/slack-summary.txt" "*Good to go:* NO - Grype found HIGH or CRITICAL vulnerabilities"
 assert_contains "${cve_dir}/github-output" "status=FAILURE"
+assert_valid_blocks "${cve_dir}"
+
+provisional_dir="$(run_summary provisional CVE_SCAN_RESULT=failed CVE_FIXABLE_CVES=0 CVE_UNIQUE_CVES=42)"
+assert_contains "${provisional_dir}/github-output" "title=:large_yellow_circle: Nightly release: GOOD TO GO - PROVISIONALLY"
+assert_contains "${provisional_dir}/github-output" "status=WARNING"
+assert_contains "${provisional_dir}/slack-summary.txt" "*Good to go:* PROVISIONALLY"
+assert_not_contains "${provisional_dir}/slack-summary.txt" "<!subteam^S123|@implementations>"
+assert_valid_blocks "${provisional_dir}"
+
+fixable_dir="$(run_summary fixable CVE_SCAN_RESULT=failed CVE_FIXABLE_CVES=2 SLACK_ZEN_MEMBER_ID=U999)"
+assert_contains "${fixable_dir}/slack-summary.txt" "*Good to go:* NO - Grype found 2 HIGH/CRITICAL CVE(s) with a fix already available"
+assert_contains "${fixable_dir}/slack-summary.txt" "<@U999> fix the 2 fixable CVE(s)"
+assert_contains "${fixable_dir}/slack-summary.txt" "<!subteam^S123|@implementations>"
+assert_contains "${fixable_dir}/github-output" "status=FAILURE"
+
+onprem_dir="$(run_summary onprem ONPREM_RESULT=failure ONPREM_FRESH_RESULT=failure ONPREM_UPGRADE_RESULT=success)"
+assert_contains "${onprem_dir}/slack-summary.txt" "onprem-testbed validation FAILED (fresh install: failure, upgrade: success)"
+assert_contains "${onprem_dir}/slack-summary.txt" "must not be shipped to customers"
+assert_contains "${onprem_dir}/slack-summary.txt" "@zen start an investigation into the onprem-testbed failures"
+assert_contains "${onprem_dir}/slack-summary.txt" "<!subteam^S123|@implementations>"
+assert_contains "${onprem_dir}/github-output" "status=FAILURE"
+assert_valid_blocks "${onprem_dir}"
 
 build_dir="$(run_summary build RETAG_RESULT=failure)"
 assert_contains "${build_dir}/slack-summary.txt" "*Good to go:* NA - Image retag result was failure"
@@ -81,5 +109,5 @@ assert_contains "${glean_dir}/github-output" \
 assert_contains "${glean_dir}/slack-summary.txt" \
   "- Replicated Glean-Stable version: \`0.2.134\` -> \`0.2.135\`"
 
-rm -rf "${cve_dir}" "${build_dir}" "${report_dir}" "${glean_dir}"
+rm -rf "${cve_dir}" "${provisional_dir}" "${fixable_dir}" "${onprem_dir}" "${build_dir}" "${report_dir}" "${glean_dir}"
 echo "nightly-slack-summary tests passed"

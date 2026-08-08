@@ -4,6 +4,13 @@ set -euo pipefail
 OUTPUT_DIR="${OUTPUT_DIR:-cve-reports}"
 SCAN_TARGETS_FILE="${SCAN_TARGETS_FILE:-${OUTPUT_DIR}/scan-targets.json}"
 GRYPE_BIN="${GRYPE_BIN:-grype}"
+GRYPE_IGNORE_FILE="${GRYPE_IGNORE_FILE:-.github/cve/grype-ignores.yaml}"
+
+grype_config_args=()
+if [[ -f "${GRYPE_IGNORE_FILE}" ]]; then
+  echo "Using Grype ignore rules from ${GRYPE_IGNORE_FILE}"
+  grype_config_args+=(--config "${GRYPE_IGNORE_FILE}")
+fi
 
 if [[ ! -f "${SCAN_TARGETS_FILE}" ]]; then
   echo "Scan targets file not found: ${SCAN_TARGETS_FILE}" >&2
@@ -22,6 +29,7 @@ for target in "${targets[@]}"; do
   echo "Scanning ${scan_image}"
   set +e
   "${GRYPE_BIN}" "registry:${scan_image}" \
+    ${grype_config_args[@]+"${grype_config_args[@]}"} \
     --fail-on high \
     --output json \
     --file "${report_json}"

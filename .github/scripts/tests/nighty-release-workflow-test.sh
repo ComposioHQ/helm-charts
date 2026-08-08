@@ -127,6 +127,21 @@ assert_eq "upgrade harness selected chart" \
   "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "upgrade") | .env.HARNESS_ENV_JSON' "${WORKFLOW}")" \
   "${expected_harness_env_json}"
 
+assert_eq "onprem fresh outcome exposed" \
+  "$(yq -r '.jobs.onprem-testbed.outputs.fresh_result' "${WORKFLOW}")" \
+  '${{ steps.fresh.outcome }}'
+assert_eq "onprem upgrade outcome exposed" \
+  "$(yq -r '.jobs.onprem-testbed.outputs.upgrade_result' "${WORKFLOW}")" \
+  '${{ steps.upgrade.outcome }}'
+assert_contains "summary consumes fixable CVE count" \
+  'CVE_FIXABLE_CVES: ${{ needs.cve-scan.outputs.fixable_cves }}'
+assert_contains "summary consumes onprem harness outcomes" \
+  'ONPREM_FRESH_RESULT: ${{ needs.onprem-testbed.outputs.fresh_result }}'
+assert_contains "summary passes zen member id" \
+  'SLACK_ZEN_MEMBER_ID: ${{ env.SLACK_ZEN_MEMBER_ID }}'
+assert_contains "slack notify renders blocks" \
+  'blocks: ${{ steps.summary.outputs.blocks }}'
+
 assert_step_before "version validation precedes AWS credentials" \
   calculate_version "Determine AWS Assume Role ARN"
 assert_not_contains "late inline version calculation" \
