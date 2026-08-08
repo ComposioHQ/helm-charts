@@ -139,6 +139,9 @@ assert_contains "summary consumes onprem harness outcomes" \
   'ONPREM_FRESH_RESULT: ${{ needs.onprem-testbed.outputs.fresh_result }}'
 assert_contains "summary passes zen member id" \
   'SLACK_ZEN_MEMBER_ID: ${{ env.SLACK_ZEN_MEMBER_ID }}'
+assert_eq "zen member id pinned at workflow level" \
+  "$(yq -r '.env.SLACK_ZEN_MEMBER_ID' "${WORKFLOW}")" \
+  U0BE5KWJH9P
 assert_contains "slack notify renders blocks" \
   'blocks: ${{ steps.summary.outputs.blocks }}'
 
