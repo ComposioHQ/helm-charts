@@ -116,4 +116,7 @@ temp/
 # Build artifacts
 dist/
 build/
-out/ 
+out/
+
+# Local clone of the separate ComposioHQ/onprem-testbed repo
+/onprem-testbed/
