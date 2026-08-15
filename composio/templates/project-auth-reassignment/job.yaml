@@ -1,0 +1,97 @@
+{{- if .Values.projectAuthReassignment.enabled }}
+{{- $config := .Values.projectAuthReassignment }}
+{{- $sourceEmail := required "projectAuthReassignment.sourceAdminEmail is required when projectAuthReassignment.enabled=true" $config.sourceAdminEmail }}
+{{- $destinationEmail := required "projectAuthReassignment.destinationAdminEmail is required when projectAuthReassignment.enabled=true" $config.destinationAdminEmail }}
+{{- $sourceCreatedAtFrom := required "projectAuthReassignment.sourceCreatedAtFrom is required when projectAuthReassignment.enabled=true" $config.sourceCreatedAtFrom }}
+{{- $sourceCreatedAtTo := required "projectAuthReassignment.sourceCreatedAtTo is required when projectAuthReassignment.enabled=true" $config.sourceCreatedAtTo }}
+{{- $coreSecret := include "composio.coreSecretName" . }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-project-auth-reassignment
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: project-auth-reassignment
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: {{ $config.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: project-auth-reassignment
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: project-auth-reassignment
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- if .Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- else if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: project-auth-reassignment
+          image: {{ $config.image | quote }}
+          imagePullPolicy: {{ $config.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          command:
+            - sh
+            - -ec
+          args:
+            - |
+              if [ -z "${POSTGRES_URL:-}" ]; then
+                printf '%s\\n' "project_auth_reassignment.failed: POSTGRES_URL is missing; expected from core Secret ${CORE_SECRET_NAME}" >&2
+                exit 1
+              fi
+              psql --quiet --tuples-only --no-align --no-psqlrc --set=ON_ERROR_STOP=1 \
+                --set=source_admin_email="$SOURCE_ADMIN_EMAIL" \
+                --set=destination_admin_email="$DESTINATION_ADMIN_EMAIL" \
+                --set=source_created_at_from="$SOURCE_CREATED_AT_FROM" \
+                --set=source_created_at_to="$SOURCE_CREATED_AT_TO" \
+                --set=dry_run="$DRY_RUN" \
+                --set=allow_write="$ALLOW_WRITE" \
+                --file=/scripts/migration.sql \
+                "$POSTGRES_URL"
+          envFrom:
+            - secretRef:
+                name: {{ $coreSecret }}
+                optional: true
+          env:
+            - name: CORE_SECRET_NAME
+              value: {{ $coreSecret | quote }}
+            - name: SOURCE_ADMIN_EMAIL
+              value: {{ $sourceEmail | quote }}
+            - name: DESTINATION_ADMIN_EMAIL
+              value: {{ $destinationEmail | quote }}
+            - name: SOURCE_CREATED_AT_FROM
+              value: {{ $sourceCreatedAtFrom | quote }}
+            - name: SOURCE_CREATED_AT_TO
+              value: {{ $sourceCreatedAtTo | quote }}
+            - name: DRY_RUN
+              value: {{ $config.dryRun | quote }}
+            - name: ALLOW_WRITE
+              value: {{ $config.allowWrite | quote }}
+          volumeMounts:
+            - name: project-auth-reassignment-script
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            {{- toYaml $config.resources | nindent 12 }}
+      volumes:
+        - name: project-auth-reassignment-script
+          configMap:
+            name: {{ .Release.Name }}-project-auth-reassignment-script
+            defaultMode: 0444
+{{- end }}
