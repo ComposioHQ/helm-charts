@@ -101,8 +101,9 @@ spec:
                   optional: true
             {{- if .Values.otel.enabled }}
             # OTEL Resource attributes
+            {{- include "composio.otelKubernetesEnv" . | nindent 12 }}
             - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.otel.mercury.serviceName | default "mercury-openapi" }},service.version={{ .Values.otel.mercury.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
+              value: {{ include "composio.otelResourceAttributes" (dict "root" . "serviceName" (.Values.otel.mercury.serviceName | default "mercury-openapi") "serviceVersion" (.Values.otel.mercury.serviceVersion | default "1.0.0")) | quote }}
             {{- end }}
           resources:
             {{- toYaml .Values.mercury.resources | nindent 12 }}
