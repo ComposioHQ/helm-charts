@@ -153,28 +153,7 @@ avg(last_1h):avg:aws.ecs.service.memory_utilization{clustername:prod_cluster} by
 
 ---
 
-## Alert 8: Error rate is high on mcp-server production
-
-**Priority:** P1 - Critical  
-**Type:** Anomaly Detection  
-**Status:** Active
-
-### Query
-```
-avg(last_1h):anomalies(avg:trace.http.server.request.errors{env:production,service:mcp-server-next}.as_rate(), 'basic', 2, direction='above', alert_window='last_5m', interval=20, count_default_zero='true') >= 0.9
-```
-
-### Thresholds
-- **Alert:** >= 0.9 (anomaly confidence)
-- **Evaluation Window:** last 1 hour, alert window last 5 minutes
-
-### Notifications
-- **Alert:** `@slack-composio-critical @pagerduty-oncall`
-- **Tags:** `service:mcp-server-next, env:production, anomaly:error_rate`
-
----
-
-## Alert 9: High Error Rate on {{functionname.name}} in {{region.name}} for {{aws_account.name}}
+## Alert 8: High Error Rate on {{functionname.name}} in {{region.name}} for {{aws_account.name}}
 
 **Priority:** P2 - High  
 **Type:** Metric  
@@ -195,7 +174,7 @@ sum(last_15m):sum:aws.lambda.errors{*} by {functionname,region,aws_account}.as_c
 
 ---
 
-## Alert 10: Important Endpoint 5xx Error rate > {{threshold}}%
+## Alert 9: Important Endpoint 5xx Error rate > {{threshold}}%
 
 **Priority:** P1 - Critical  
 **Type:** Trace Analytics  
@@ -216,7 +195,7 @@ trace-analytics("(count[service:apollo env:production @hono.response.status_code
 
 ---
 
-## Alert 11: Lambda High Error Rate
+## Alert 10: Lambda High Error Rate
 
 **Priority:** P2 - High  
 **Type:** Metric  
@@ -237,7 +216,7 @@ avg(last_5m):sum:aws.lambda.errors{*} / sum:aws.lambda.invocations{*} > 0.05
 
 ---
 
-## Alert 12: Memory usage on {{servicename.name}} is high with {{threshold}}
+## Alert 11: Memory usage on {{servicename.name}} is high with {{threshold}}
 
 **Priority:** P2 - High  
 **Type:** Metric  
@@ -258,7 +237,7 @@ avg(last_1h):avg:aws.ecs.service.memory_utilization{clustername:prod_cluster} by
 
 ---
 
-## Alert 13: Polling Triggers Workflows are stopping
+## Alert 12: Polling Triggers Workflows are stopping
 
 **Priority:** P1 - Critical  
 **Type:** Metric  
@@ -279,7 +258,7 @@ avg(last_5m):per_hour(sum:temporal_workflow_completed{namespace:polling-prod.kl3
 
 ---
 
-## Alert 14: Thermos HTTP Request Errors >1%
+## Alert 13: Thermos HTTP Request Errors >1%
 
 **Priority:** P2 - High  
 **Type:** Metric  
@@ -300,7 +279,7 @@ sum(last_5m):sum:trace.http.request.errors{env:production, service:thermos}.as_c
 
 ---
 
-## Alert 15: Tool anomaly alert
+## Alert 14: Tool anomaly alert
 
 **Priority:** P2 - High  
 **Type:** Anomaly Detection  
@@ -321,7 +300,7 @@ avg(last_4h):anomalies(cutoff_min(sum:mercury.tool_call{env:production, error:tr
 
 ---
 
-## Alert 16: [AWS] RDS CPU utilization is high
+## Alert 15: [AWS] RDS CPU utilization is high
 
 **Priority:** P1 - Critical  
 **Type:** Metric  
@@ -342,7 +321,7 @@ max(last_15m):avg:aws.rds.cpuutilization{! dbinstanceidentifier:stagingrds} by {
 
 ---
 
-## Alert 17: [AWS] RDS Storage utilization is high
+## Alert 16: [AWS] RDS Storage utilization is high
 
 **Priority:** P1 - Critical  
 **Type:** Metric  
@@ -363,7 +342,7 @@ avg(last_15m):100 - ((avg:aws.rds.free_storage_space{*} by {dbinstanceidentifier
 
 ---
 
-## Alert 18: [Mercury] OTA Module Load Failures
+## Alert 17: [Mercury] OTA Module Load Failures
 
 **Priority:** P2 - High  
 **Type:** Log Analytics  
