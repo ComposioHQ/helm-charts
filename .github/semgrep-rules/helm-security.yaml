@@ -1,0 +1,79 @@
+rules:
+  - id: helm-privileged-container
+    patterns:
+      - pattern: "privileged: true"
+    message: >
+      Container is running in privileged mode. Privileged containers have full
+      access to the host and should be avoided. Set `privileged: false` or
+      remove the field entirely.
+    severity: ERROR
+    languages: [generic]
+    metadata:
+      cwe:
+        - "CWE-250: Execution with Unnecessary Privileges"
+      category: security
+      technology:
+        - kubernetes
+        - helm
+
+  - id: helm-host-network
+    patterns:
+      - pattern: "hostNetwork: true"
+    message: >
+      Pod is configured to use the host network namespace. This allows the pod
+      to access all network interfaces on the host and can be used to sniff
+      traffic. Set `hostNetwork: false` or remove the field.
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      cwe:
+        - "CWE-668: Exposure of Resource to Wrong Sphere"
+      category: security
+      technology:
+        - kubernetes
+        - helm
+
+  - id: helm-no-resource-limits
+    patterns:
+      - pattern: |
+          containers:
+            - ...
+              name: $NAME
+      - pattern-not: |
+          containers:
+            - ...
+              name: $NAME
+              ...
+              resources:
+                ...
+                limits:
+                  ...
+    message: >
+      Container '$NAME' does not have resource limits configured. Without
+      resource limits, a container can consume all available resources on the
+      node. Add `resources.limits.cpu` and `resources.limits.memory`.
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      category: security
+      technology:
+        - kubernetes
+        - helm
+
+  - id: helm-run-as-root
+    pattern-either:
+      - pattern: "runAsUser: 0"
+      - pattern: "runAsNonRoot: false"
+    message: >
+      Container or pod security context allows running as root. Running
+      containers as root increases the attack surface. Set `runAsNonRoot: true`
+      and use a non-zero `runAsUser`.
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      cwe:
+        - "CWE-250: Execution with Unnecessary Privileges"
+      category: security
+      technology:
+        - kubernetes
+        - helm
