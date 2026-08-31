@@ -454,14 +454,17 @@ Scope changes the answer more than any single log field.
              | "\(.timestamp) \(.message)"'
   ```
 
-  - **Neither message.** Nothing refreshed in the window, so refresh did not
-    produce the `401`. It was provider flakiness or a rate limit surfaced as
-    `401`. Stop there.
+  - **Neither message.** No refresh ran in that window — which is a finding in
+    itself, not an all-clear. A connection with no stored expiry is skipped
+    silently, and an active backoff or a status gate suppresses refresh just as
+    quietly. Go to [7.3](#73-clean-refresh-but-401s) and rule those three out.
+    Provider flakiness or a rate limit surfaced as `401` is the conclusion only
+    once they are excluded.
   - **`Token refresh succeeded` between the `401` and the `200`.** Refresh is
     working; the `401` was served just before it fired. That is a timing
-    finding, not flakiness — the expiry Apollo derived left a window where the
-    provider had already rejected the token. Continue to
-    [7.3](#73-clean-refresh-but-401s) and check the stored expiry.
+    finding — the expiry Apollo derived left a window in which the provider had
+    already rejected the token. Go to [7.3](#73-clean-refresh-but-401s) and
+    check the stored expiry.
   - **`Auth refresh failed` present.** Refresh is implicated regardless of the
     interleaved 200s. Go to [7.1](#71-refresh-is-failing).
 
