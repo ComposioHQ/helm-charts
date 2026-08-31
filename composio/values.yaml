@@ -618,10 +618,6 @@ temporal:
         namespace:
           - name: default
             retention: 7d
-          - name: batched-polling
-            retention: 10d
-          - name: webhook
-            retention: 10d
           - name: timer-shards
             retention: 10d
     # Temporal frontend service configuration
