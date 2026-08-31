@@ -22,6 +22,8 @@ externalRedis:
 # Disable Temporal installation
 features:
   temporal: true
+  # Set to true when this installation uses triggers.
+  triggers: false
 
 # Configure below temporal values if features.temporal is enabled
 temporal:

@@ -1,0 +1,269 @@
+suite: temporal namespace job ownership
+templates:
+  - charts/temporal/templates/server-namespace-job.yaml
+tests:
+  - it: should disable the Temporal subchart namespace job
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+---
+suite: parent Temporal namespace job
+templates:
+  - temporal-namespace-job.yaml
+tests:
+  - it: should not create a namespace job when Temporal is disabled
+    set:
+      features:
+        temporal: false
+        triggers: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create only core namespaces when triggers are disabled
+    set:
+      features:
+        temporal: true
+        triggers: false
+    asserts:
+      - isKind:
+          of: Job
+      - matchRegex:
+          path: metadata.name
+          pattern: '^temporal-stack-namespaces-[0-9]+$'
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-default-namespace
+          any: true
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-timer-shards-namespace
+          any: true
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-batched-polling-namespace
+          any: true
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-webhook-namespace
+          any: true
+
+  - it: should add trigger namespaces when triggers are enabled
+    set:
+      features:
+        temporal: true
+        triggers: true
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-batched-polling-namespace
+          any: true
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-webhook-namespace
+          any: true
+
+  - it: should reject legacy values that re-enable the Temporal subchart namespace job
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          config:
+            namespaces:
+              create: true
+    asserts:
+      - failedTemplate:
+          errorMessage: temporal.server.config.namespaces.create must remain false because the parent Composio chart manages Temporal namespaces
+
+  - it: should filter trigger namespaces from the legacy core list when triggers are disabled
+    set:
+      features:
+        temporal: true
+        triggers: false
+      temporal:
+        server:
+          config:
+            namespaces:
+              namespace:
+                - name: default
+                  retention: 7d
+                - name: batched-polling
+                  retention: 10d
+                - name: webhook
+                  retention: 10d
+                - name: timer-shards
+                  retention: 10d
+    asserts:
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-batched-polling-namespace
+          any: true
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-webhook-namespace
+          any: true
+
+  - it: should deduplicate legacy trigger namespaces when triggers are enabled
+    set:
+      features:
+        temporal: true
+        triggers: true
+      temporal:
+        server:
+          config:
+            namespaces:
+              namespace:
+                - name: default
+                  retention: 7d
+                - name: batched-polling
+                  retention: 10d
+                - name: webhook
+                  retention: 10d
+                - name: timer-shards
+                  retention: 10d
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-batched-polling-namespace
+          count: 1
+          any: true
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: create-webhook-namespace
+          count: 1
+          any: true
+
+  - it: should keep the namespace job name within the Kubernetes length limit
+    set:
+      features:
+        temporal: true
+      temporal:
+        fullnameOverride: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - matchRegex:
+          path: metadata.name
+          pattern: '^a{50}-namespaces-[0-9]$'
+
+  - it: should preserve Temporal namespace job pod configuration
+    set:
+      features:
+        temporal: true
+      temporal:
+        additionalLabels:
+          policy.example.com/workload: temporal-admin
+        serviceAccount:
+          create: true
+          name: temporal-admin
+        schema:
+          jobAnnotations:
+            policy.example.com/job: temporal-admin
+          podLabels:
+            policy.example.com/pod: temporal-admin
+          podAnnotations:
+            policy.example.com/annotation: temporal-admin
+          resources:
+            requests:
+              cpu: 100m
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+          securityContext:
+            runAsNonRoot: true
+        admintools:
+          image:
+            repository: registry.example.com/temporal-admin-tools
+            tag: test
+            pullPolicy: Always
+          additionalEnv:
+            - name: TEMPORAL_TLS_CA
+              value: /etc/temporal/certs/ca.crt
+          additionalEnvSecretName: temporal-admin-env
+          additionalVolumeMounts:
+            - name: temporal-certs
+              mountPath: /etc/temporal/certs
+              readOnly: true
+          nodeSelector:
+            workload: temporal
+          tolerations:
+            - key: workload
+              operator: Equal
+              value: temporal
+              effect: NoSchedule
+          additionalVolumes:
+            - name: temporal-certs
+              secret:
+                secretName: temporal-certs
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: temporal-admin
+      - equal:
+          path: metadata.labels["policy.example.com/workload"]
+          value: temporal-admin
+      - equal:
+          path: metadata.annotations["policy.example.com/job"]
+          value: temporal-admin
+      - equal:
+          path: spec.template.metadata.labels["policy.example.com/pod"]
+          value: temporal-admin
+      - equal:
+          path: spec.template.metadata.annotations["policy.example.com/annotation"]
+          value: temporal-admin
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: registry.example.com/temporal-admin-tools:test
+      - equal:
+          path: spec.template.spec.initContainers[0].imagePullPolicy
+          value: Always
+      - equal:
+          path: spec.template.spec.nodeSelector.workload
+          value: temporal
+      - equal:
+          path: spec.template.spec.tolerations[0].key
+          value: workload
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: temporal-certs
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: TEMPORAL_TLS_CA
+            value: /etc/temporal/certs/ca.crt
+      - equal:
+          path: spec.template.spec.initContainers[0].envFrom[0].secretRef.name
+          value: temporal-admin-env
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: temporal-certs
+      - equal:
+          path: spec.template.spec.initContainers[0].resources.requests.cpu
+          value: 100m
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.backoffLimit
+          value: 100
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 86400

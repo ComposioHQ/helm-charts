@@ -19,6 +19,57 @@ tests:
           path: metadata.labels.release
           value: RELEASE-NAME
 
+  - it: should wait only for core Temporal namespaces when triggers are disabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      features:
+        temporal: true
+        triggers: false
+      temporal:
+        server:
+          config:
+            namespaces:
+              namespace:
+                - name: default
+                  retention: 7d
+                - name: batched-polling
+                  retention: 10d
+                - name: webhook
+                  retention: 10d
+                - name: timer-shards
+                  retention: 10d
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'namespace describe -n "default"'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'namespace describe -n "timer-shards"'
+      - notMatchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'namespace describe -n "batched-polling"'
+      - notMatchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'namespace describe -n "webhook"'
+
+  - it: should wait for trigger Temporal namespaces when triggers are enabled
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      features:
+        temporal: true
+        triggers: true
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'namespace describe -n "batched-polling"'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: 'namespace describe -n "webhook"'
+
   - it: should not wire the worker DB by default
     documentSelector:
       path: kind

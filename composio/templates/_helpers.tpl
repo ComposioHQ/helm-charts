@@ -327,9 +327,43 @@ Return the Temporal frontend address used by Composio services.
 {{- end }}
 
 {{/*
+Return the effective Temporal namespace list.
+Legacy values may still include trigger namespaces in the core namespace list,
+so filter them when triggers are disabled and deduplicate them when enabled.
+*/}}
+{{- define "composio.temporal.namespaces" -}}
+{{- $namespaces := list -}}
+{{- $seen := dict -}}
+{{- $triggersEnabled := and .Values.features .Values.features.triggers -}}
+{{- $configured := .Values.temporal.server.config.namespaces.namespace | default (list) -}}
+{{- if $triggersEnabled -}}
+{{- $configured = concat $configured (.Values.temporal.server.config.namespaces.triggerNamespace | default (list)) -}}
+{{- end -}}
+{{- range $namespace := $configured -}}
+{{- $name := $namespace.name | toString -}}
+{{- $isTriggerNamespace := or (eq $name "batched-polling") (eq $name "webhook") -}}
+{{- if and (or $triggersEnabled (not $isTriggerNamespace)) (not (hasKey $seen $name)) -}}
+{{- $namespaces = append $namespaces $namespace -}}
+{{- $_ := set $seen $name true -}}
+{{- end -}}
+{{- end -}}
+{{- toYaml $namespaces -}}
+{{- end }}
+
+{{/*
+Create a Temporal component name that remains within Kubernetes' 63-character limit.
+*/}}
+{{- define "composio.temporal.componentName" -}}
+{{- $root := index . 0 -}}
+{{- $component := index . 1 | trimPrefix "-" -}}
+{{- printf "%s-%s" (include "composio.temporal.fullname" $root | trunc (sub 62 (len $component) | int) | trimSuffix "-") $component | trimSuffix "-" -}}
+{{- end }}
+
+{{/*
 Wait until Temporal frontend and configured namespaces are available.
 */}}
 {{- define "composio.temporalNamespaceWaitInitContainer" -}}
+{{- $namespaces := include "composio.temporal.namespaces" . | fromYamlArray -}}
 - name: wait-for-temporal-namespaces
   image: "{{ .Values.temporal.admintools.image.repository }}:{{ .Values.temporal.admintools.image.tag }}"
   imagePullPolicy: {{ .Values.temporal.admintools.image.pullPolicy }}
@@ -341,7 +375,7 @@ Wait until Temporal frontend and configured namespaces are available.
         echo "waiting for temporal frontend"
         sleep 5
       done
-      {{- range $namespace := .Values.temporal.server.config.namespaces.namespace }}
+      {{- range $namespace := $namespaces }}
       until temporal operator namespace describe -n {{ $namespace.name | quote }} >/dev/null 2>&1; do
         echo "waiting for temporal namespace {{ $namespace.name }}"
         sleep 5
