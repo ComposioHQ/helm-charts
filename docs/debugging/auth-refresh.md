@@ -539,7 +539,7 @@ noise. Raise it with Composio support with the toolkit slug and a sample
 
 ### 7.3 Clean refresh but 401s
 
-Three candidates, cheapest first.
+Four candidates, cheapest first.
 
 **JIT never fired because there is no stored expiry.** If Apollo has no
 access-token expiry for the connection, JIT refresh is skipped and **nothing is
@@ -563,10 +563,23 @@ explicitly — password changed, grant revoked, token invalid — with their own
 error codes. That string is usually the entire answer, and the fix is for the
 end user to reconnect.
 
-**Backoff or a status gate is suppressing the refresh.** A recent failure buys a
-quiet window that grows to 30 minutes, and `EXPIRED` connections are skipped
-outright. Both live in Redis, which you operate, so you can check and clear
-them:
+**A status gate is suppressing the refresh.** An `EXPIRED` connection is skipped
+outright, and it is not a Redis value — it is the connection's own status, read
+back through the API from Step 0:
+
+```bash
+curl -s "$COMPOSIO_BASE_URL/api/v3/connected_accounts/ca_YOUR_ID" \
+  -H "x-api-key: $COMPOSIO_API_KEY" | jq '{status, status_reason}'
+```
+
+`EXPIRED` is only ever written after a refresh already failed terminally and an
+independent probe found the credential dead, so `status_reason` tells you which
+earlier failure put it there. Clearing Redis does not undo it — the end user has
+to reconnect.
+
+**A post-failure backoff is suppressing the refresh.** A recent failure buys a
+quiet window that grows to 30 minutes. This one does live in Redis, so you can
+inspect and clear it.
 
 Redis is external to the chart (`externalRedis`), so use whatever access you
 normally have to it. From inside the cluster, run a throwaway pod that reads the
