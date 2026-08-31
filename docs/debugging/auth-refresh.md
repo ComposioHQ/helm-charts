@@ -441,13 +441,29 @@ Scope changes the answer more than any single log field.
   broken.
 - Starting from a **connection**: ask the inverse. If the whole toolkit is
   failing, this connection is not the story.
-- Either way, if the same connection returned a `200` within a few minutes of a
-  `401` **and** Probe A shows no `Auth refresh failed` for it in that window,
-  the `401` was not a refresh problem — it was provider flakiness or a rate
-  limit surfaced as `401`. Stop there. Tool execution resolves its credential
-  through the JIT path, so a later `200` may have used a freshly refreshed
-  token; interleaved 200s on their own do not clear refresh, the absence of
-  failure lines does.
+- Either way, when the same connection returned a `200` within a few minutes of
+  a `401`, do not read the `200` as clearing refresh on its own. Tool execution
+  resolves its credential through the JIT path, so that `200` may have used a
+  token JIT had just replaced. Check **both** refresh messages for the
+  connection over that window and read the pair:
+
+  ```bash
+  kubectl logs -n composio -l app=apollo --since=1h --tail=-1 \
+    | jq -r 'select(.connectionNanoId == "ca_YOUR_ID" or .connectionId == "ca_YOUR_ID")
+             | select(.message == "Auth refresh failed" or .message == "Token refresh succeeded")
+             | "\(.timestamp) \(.message)"'
+  ```
+
+  - **Neither message.** Nothing refreshed in the window, so refresh did not
+    produce the `401`. It was provider flakiness or a rate limit surfaced as
+    `401`. Stop there.
+  - **`Token refresh succeeded` between the `401` and the `200`.** Refresh is
+    working; the `401` was served just before it fired. That is a timing
+    finding, not flakiness — the expiry Apollo derived left a window where the
+    provider had already rejected the token. Continue to
+    [7.3](#73-clean-refresh-but-401s) and check the stored expiry.
+  - **`Auth refresh failed` present.** Refresh is implicated regardless of the
+    interleaved 200s. Go to [7.1](#71-refresh-is-failing).
 
 ---
 
