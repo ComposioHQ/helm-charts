@@ -55,6 +55,30 @@ assert_step_before() {
   fi
 }
 
+assert_job_step_before() {
+  local name="$1"
+  local job="$2"
+  local first_id="$3"
+  local second_id="$4"
+  local first_index second_index
+
+  first_index="$(
+    yq -r \
+      ".jobs.${job}.steps | to_entries | map(select(.value.id == \"${first_id}\")) | .[0].key" \
+      "${WORKFLOW}"
+  )"
+  second_index="$(
+    yq -r \
+      ".jobs.${job}.steps | to_entries | map(select(.value.id == \"${second_id}\")) | .[0].key" \
+      "${WORKFLOW}"
+  )"
+
+  if [[ "${first_index}" == "null" || "${second_index}" == "null" || "${first_index}" -ge "${second_index}" ]]; then
+    echo "FAIL: ${name}: expected ${first_id} before ${second_id}" >&2
+    exit 1
+  fi
+}
+
 assert_eq "release input type" \
   "$(yq -r '.on.workflow_dispatch.inputs.release_type.type' "${WORKFLOW}")" choice
 assert_eq "release input default" \
@@ -126,6 +150,27 @@ assert_eq "fresh-install harness selected chart" \
 assert_eq "upgrade harness selected chart" \
   "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "upgrade") | .env.HARNESS_ENV_JSON' "${WORKFLOW}")" \
   "${expected_harness_env_json}"
+
+assert_eq "onprem tag token repository scope" \
+  "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "onprem_app_token") | .env.GITHUB_APP_REPOSITORIES' "${WORKFLOW}")" \
+  onprem-testbed
+assert_eq "onprem tag token permission scope" \
+  "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "onprem_app_token") | .env.GITHUB_APP_PERMISSIONS_JSON' "${WORKFLOW}")" \
+  '{"contents":"write"}'
+assert_eq "onprem tag uses app token" \
+  "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "tag_onprem_release") | .with."github-token"' "${WORKFLOW}")" \
+  '${{ steps.onprem_app_token.outputs.token }}'
+assert_eq "onprem tag uses chart version" \
+  "$(yq -r '.jobs.onprem-testbed.steps[] | select(.id == "tag_onprem_release") | .env.ONPREM_RELEASE_VERSION' "${WORKFLOW}")" \
+  '${{ needs.replicated-release.outputs.version }}'
+assert_contains "onprem tag helper checked out" \
+  '.github/scripts/create-onprem-release-tag.cjs'
+assert_contains "onprem tag uses immutable helper" \
+  'createImmutableReleaseTag'
+assert_job_step_before "onprem release tag precedes fresh harness" \
+  onprem-testbed tag_onprem_release fresh
+assert_job_step_before "onprem release tag precedes upgrade harness" \
+  onprem-testbed tag_onprem_release upgrade
 
 assert_eq "onprem fresh outcome exposed" \
   "$(yq -r '.jobs.onprem-testbed.outputs.fresh_result' "${WORKFLOW}")" \
