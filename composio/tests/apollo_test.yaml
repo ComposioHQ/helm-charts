@@ -42,6 +42,32 @@ tests:
           path: spec.template.spec.serviceAccountName
           value: apollo-sa
 
+  - it: should render extra env vars from apollo.env
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      apollo.env:
+        - name: ENABLE_DEBUG_LOGS
+          value: "true"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENABLE_DEBUG_LOGS
+            value: "true"
+
+  - it: should not render extra env vars when apollo.env is empty
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENABLE_DEBUG_LOGS
+            value: "true"
+
   - it: should have correct replica count
     documentSelector:
       path: kind
