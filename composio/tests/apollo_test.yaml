@@ -57,6 +57,27 @@ tests:
             name: ENABLE_DEBUG_LOGS
             value: "true"
 
+  - it: should render valueFrom entries from apollo.env
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      apollo.env:
+        - name: EXTRA_FROM_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: my-secret
+              key: MY_KEY
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: EXTRA_FROM_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: MY_KEY
+
   - it: should not render extra env vars when apollo.env is empty
     documentSelector:
       path: kind

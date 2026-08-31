@@ -127,9 +127,11 @@ apollo:
     imageName: ""
   # -- Directory exposed to Apollo containers via APOLLO_SECRET_DIR.
   secretsDir: "/etc/secrets/apollo"
-  # -- Additional environment variables for Apollo pods, as a list of `{name, value}` entries.
-  # Rendered into the container's `env` list, which takes precedence over the Apollo ConfigMap
-  # loaded via `envFrom`. Use `ENABLE_DEBUG_LOGS: "true"` to raise Apollo's log level to debug
+  # -- Additional environment variables for Apollo pods, as standard Kubernetes env entries
+  # (`name` + `value`, or `name` + `valueFrom` to source a value from a Secret or ConfigMap;
+  # never put secret values inline here). Rendered verbatim into the container's `env` list,
+  # which takes precedence over the Apollo ConfigMap loaded via `envFrom`. Set
+  # `ENABLE_DEBUG_LOGS: "true"` to raise Apollo's log level to debug
   # (see docs/debugging/auth-refresh.md).
   env: []
   # -- Additional init containers for Apollo. Mount `apollo-secrets` to populate `.Values.apollo.secretsDir`.

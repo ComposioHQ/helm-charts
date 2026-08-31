@@ -107,11 +107,13 @@ means the status inside the encrypted connection payload disagrees with the
 status column on the row. This is invisible at info level and points at a
 partially-applied write.
 
-**A support-safe dump of the resolved auth.** `Auth metadata` carries an
+**An encrypted dump of the resolved auth.** `Auth metadata` carries an
 `encryptedAuthMetadata` field: the fully resolved authorization data for that
-execution, encrypted with your instance's key. You cannot read it, and it is
-safe to keep in your logs, but you can hand it to Composio support so they can
-see exactly which credential and headers were built.
+execution, encrypted at the call site with your deployment's own encryption key
+so it never lands in your logs as plaintext. Its presence tells you auth
+resolution completed for that execution. Only your deployment can decrypt it —
+Composio does not hold your key — so it is not something to send to support,
+and the plaintext behind it contains live credentials.
 
 **Auth-config field mapping.** `strict and generic field mappings` prints how
 the auth config's fields map to their generic names. Useful when a refresh
@@ -440,9 +442,12 @@ Scope changes the answer more than any single log field.
 - Starting from a **connection**: ask the inverse. If the whole toolkit is
   failing, this connection is not the story.
 - Either way, if the same connection returned a `200` within a few minutes of a
-  `401`, its credential was valid at that moment. Apollo does not JIT-refresh
-  on the execute path, so that `200` used the same token. The `401` was
-  provider flakiness or a rate limit surfaced as `401`. Stop there.
+  `401` **and** Probe A shows no `Auth refresh failed` for it in that window,
+  the `401` was not a refresh problem — it was provider flakiness or a rate
+  limit surfaced as `401`. Stop there. Tool execution resolves its credential
+  through the JIT path, so a later `200` may have used a freshly refreshed
+  token; interleaved 200s on their own do not clear refresh, the absence of
+  failure lines does.
 
 ---
 
@@ -485,10 +490,20 @@ Because a self-hosted Apollo has to reach the provider's token endpoint
 directly, rule out network causes before anything else when `httpStatus` is
 missing or `failureKind` is `provider_unavailable`:
 
+The Apollo image is deliberately minimal and ships no `curl`, but Node is
+always present, so probe egress from the Apollo pod itself — that is the network
+namespace and proxy configuration that matters:
+
 ```bash
 kubectl exec -n composio deploy/composio-apollo -- \
-  curl -sS -o /dev/null -w '%{http_code}\n' --max-time 10 https://oauth2.googleapis.com/token
+  node -e 'fetch("https://oauth2.googleapis.com/token",{method:"POST"})
+    .then(r=>console.log("status",r.status))
+    .catch(e=>console.log("failed",e.cause?.message??e.message))'
 ```
+
+A `failed` line naming a DNS, TLS or connection error is an egress problem, not
+a Composio one. A status code (even a 4xx, which is the expected answer to an
+empty token request) means the provider is reachable.
 
 ### 7.2 Refresh fails but nothing 401s
 
@@ -534,23 +549,28 @@ quiet window that grows to 30 minutes, and `EXPIRED` connections are skipped
 outright. Both live in Redis, which you operate, so you can check and clear
 them:
 
-Redis is external to the chart (`externalRedis`), so connect with your own
-client. From inside the cluster, a throwaway pod using the same `REDIS_URL` the
-services use:
+Redis is external to the chart (`externalRedis`), so use whatever access you
+normally have to it. From inside the cluster, run a throwaway pod that reads the
+URL from the Secret at runtime rather than passing it on the command line — a
+`--env` value would be written into the pod spec, where anyone with pod read
+access (and your audit log) can see the Redis password:
 
 ```bash
 kubectl run redis-cli --rm -it --restart=Never -n composio \
   --image=redis:7-alpine \
-  --env="REDIS_URL=$(kubectl get secret -n composio composio-composio-secrets \
-        -o jsonpath='{.data.REDIS_URL}' | base64 -d)" \
-  -- sh -c '
-    redis-cli -u "$REDIS_URL" GET "auth_refresh_backoff:ca_YOUR_ID";
-    redis-cli -u "$REDIS_URL" GET "auth_failure_first_at:ca_YOUR_ID"
-  '
+  --overrides='{"spec":{"containers":[{"name":"redis-cli","image":"redis:7-alpine",
+    "stdin":true,"tty":true,"command":["sh"],
+    "env":[{"name":"REDIS_URL","valueFrom":{"secretKeyRef":
+      {"name":"composio-composio-secrets","key":"REDIS_URL"}}}]}]}}'
+
+# then, inside the pod:
+redis-cli -u "$REDIS_URL" GET "auth_refresh_backoff:ca_YOUR_ID"
+redis-cli -u "$REDIS_URL" GET "auth_failure_first_at:ca_YOUR_ID"
 ```
 
-The secret name and key come from `externalRedis.secretRef` and
-`externalRedis.key` — adjust the command if you overrode either.
+The Secret name and key come from `externalRedis.secretRef` and
+`externalRedis.key` — adjust the override if you changed either. Delete the pod
+when you are done (`--rm` handles it on a clean exit).
 
 `auth_refresh_backoff:<ca_id>` holds the quiet-window end time;
 `auth_failure_first_at:<ca_id>` holds the epoch-milliseconds start of the
@@ -661,9 +681,10 @@ values file. Open a support ticket with:
    `GET /api/v3.1/logs/tool_execution/{id}`.
 5. The success/failure ratio for the toolkit and the window you measured it
    over.
-6. If you enabled debug logs, the `encryptedAuthMetadata` value from an `Auth
-   metadata` line for the affected execution.
 
-Redact nothing beyond credentials themselves — `responseBodyPreview` and
-`status_reason` already exclude token values, and the encrypted fields are safe
-to send as-is.
+Review what you send. `responseBodyPreview`, provider error bodies and
+`status_reason` are plaintext passthroughs of what the provider returned: they
+normally carry error codes and messages rather than credentials, but they are
+not sanitized, so read them before attaching. Do not send
+`encryptedAuthMetadata` — only your deployment holds the key, so it is
+unreadable to support, and its plaintext is a live credential.
