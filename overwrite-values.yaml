@@ -24,6 +24,8 @@ databaseMigration:
   # Disable Temporal installation. NOTE: Ensure temporal.server.enabled is true
 features:
   temporal: false
+  # Enable batched-polling and webhook Temporal namespaces. Requires temporal=true.
+  triggers: false
 
 # Configure below temporal values if features.temporal is enabled
 # temporal:

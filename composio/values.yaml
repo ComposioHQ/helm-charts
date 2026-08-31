@@ -4,9 +4,12 @@
 
 # Feature flags for optional functionality
 features:
-  # -- Enable Temporal, auth token refresh, and triggers
-  # When true, deploys Temporal and enables auth refresh + trigger workers in thermos
+  # -- Enable Temporal and auth token refresh
+  # When true, deploys Temporal and enables auth refresh workers in Thermos.
   temporal: false
+  # -- Enable trigger-specific Temporal namespaces
+  # Requires features.temporal=true. When enabled, creates the batched-polling and webhook namespaces.
+  triggers: false
 # Composio Application Secrets
 secret:
   name: "composio-composio-secrets"
@@ -612,17 +615,20 @@ temporal:
             maxConnLifetime: "1h"
       # Temporal namespace configuration
       namespaces:
-        # -- Enable namespace creation
-        create: true
-        # -- List of namespaces to create
+        # Namespace creation is managed by the parent Composio chart.
+        # This must remain false to keep the Temporal subchart's namespace Job disabled.
+        create: false
+        # -- List of core namespaces to create when Temporal is enabled
         namespace:
           - name: default
             retention: 7d
+          - name: timer-shards
+            retention: 10d
+        # -- Additional namespaces to create when features.triggers=true
+        triggerNamespace:
           - name: batched-polling
             retention: 10d
           - name: webhook
-            retention: 10d
-          - name: timer-shards
             retention: 10d
     # Temporal frontend service configuration
     frontend:

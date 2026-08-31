@@ -5,7 +5,10 @@
 1. Copy the base [overwrite-values.yaml](https://github.com/ComposioHQ/helm-charts/blob/release-stable/overwrite-values.yaml) file into your working directory
 
 > [!NOTE]
-> Temporal is only needed if auth refresh and/or triggers are enabled. By default temporal is disabled, you can enable it by setting `features.temporal` to `true`. Ensure the required values for temporal are passed in your `overwrite-values.yaml`.
+> Temporal is only needed if auth refresh and/or triggers are enabled. By default Temporal is disabled; enable it with `features.temporal=true`. Installations using triggers must also set `features.triggers=true` to create the `batched-polling` and `webhook` Temporal namespaces. Ensure the required Temporal values are passed in your `overwrite-values.yaml`.
+
+> [!IMPORTANT]
+> Keep `temporal.server.config.namespaces.create=false`. The parent Composio chart owns the single namespace creation Job. When upgrading with a copied values file from an older chart, remove any `create: true` override. Turning `features.triggers` off stops creating and waiting for trigger namespaces, but does not delete Temporal namespaces created by an earlier release.
 
 > [!NOTE]
 > If you need tool router, please ensure `weaviate.enabled` is set to `true`.

@@ -109,6 +109,8 @@ A Helm chart for Composio
 | frontend.resources.requests.memory | string | `"2Gi"` | Memory request for frontend |
 | frontend.service.port | int | `3000` | Service port |
 | frontend.service.type | string | `"ClusterIP"` | Service type |
+| features.temporal | bool | `false` | Enable Temporal and auth token refresh |
+| features.triggers | bool | `false` | Enable trigger-specific Temporal namespaces |
 | global.domain | string | `"localhost"` | Domain name for the deployment |
 | global.environment | string | `"development"` | Environment name (e.g., development, staging, production) |
 | global.imagePullSecrets | list | `[{"name":"ecr-secret"}]` | Image pull secrets for private registries |
@@ -276,8 +278,9 @@ A Helm chart for Composio
 | temporal.schema.update.enabled | bool | `true` | Enable schema updates |
 | temporal.schema.useHelmHooks | bool | `true` | Use Helm hooks to run schema setup before server pods start. Set false for Flux, Rancher, or Terraform. |
 | temporal.server.config.logLevel | string | `"info"` | Log level (debug, info, warn, error) |
-| temporal.server.config.namespaces.create | bool | `true` | Enable namespace creation |
-| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"},{"name":"timer-shards","retention":"10d"}]` | List of namespaces to create |
+| temporal.server.config.namespaces.create | bool | `false` | Must remain false because the parent chart manages namespace creation |
+| temporal.server.config.namespaces.namespace | list | `[{"name":"default","retention":"7d"},{"name":"timer-shards","retention":"10d"}]` | List of core namespaces to create when Temporal is enabled |
+| temporal.server.config.namespaces.triggerNamespace | list | `[{"name":"batched-polling","retention":"10d"},{"name":"webhook","retention":"10d"}]` | Additional namespaces to create when features.triggers=true |
 | temporal.server.config.numHistoryShards | int | `512` | Number of history shards (affects scalability) |
 | temporal.server.config.persistence.default.driver | string | `"sql"` | Database driver |
 | temporal.server.config.persistence.default.sql.database | string | `"temporal"` | Database name |
