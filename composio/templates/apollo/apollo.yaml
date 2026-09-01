@@ -278,6 +278,10 @@ metadata:
   labels:
     app: apollo
     release: {{ .Release.Name }}
+  {{- with .Values.apollo.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.apollo.service.type }}
   ports:

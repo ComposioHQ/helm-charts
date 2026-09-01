@@ -410,6 +410,19 @@ tests:
           path: spec.selector["app.kubernetes.io/component"]
           value: frontend
 
+  - it: should merge custom service annotations
+    set:
+      frontend.enabled: true
+      frontend.image.repository: test-frontend
+      frontend.image.tag: "v1.0.0"
+      frontend.service.annotations:
+        cloud.google.com/neg: '{"ingress": true}'
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: metadata.annotations["cloud.google.com/neg"]
+          value: '{"ingress": true}'
+
 ---
 suite: test frontend horizontal pod autoscaler
 templates:

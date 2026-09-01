@@ -93,6 +93,19 @@ tests:
           path: spec.rules[0].http.paths[0].pathType
           value: Prefix
 
+  - it: should use custom path and pathType when configured
+    set:
+      apollo.ingress.enabled: true
+      apollo.ingress.path: /*
+      apollo.ingress.pathType: ImplementationSpecific
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /*
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: ImplementationSpecific
+
   - it: should route to apollo service with correct port
     set:
       apollo.ingress.enabled: true

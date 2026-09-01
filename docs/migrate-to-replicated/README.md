@@ -76,6 +76,11 @@ Ensure you run the Helm template pre-flight check in the Replicated Enterprise p
 
 Once secrets are created, refer to the current [override.yaml](./override.yaml) file for Helm override values. Also check [example-override.yaml](./example-override.yaml) for reference.
 
+For customers migrating from older cloud-specific Helm forks, use these focused override examples as add-ons to the base override file:
+
+- [example-override-gcp-customer.yaml](./example-override-gcp-customer.yaml)
+- [example-override-azure-customer.yaml](./example-override-azure-customer.yaml)
+
 **Example:**
 
 ```bash
