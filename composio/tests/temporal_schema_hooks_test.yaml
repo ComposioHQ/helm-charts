@@ -235,40 +235,15 @@ tests:
   - it: uses imageName for every admin-tools container in the schema job
     template: charts/temporal/templates/server-job.yaml
     set:
-      features:
-        temporal: true
-      temporal:
-        server:
-          enabled: true
-          config:
-            namespaces:
-              create: true
-              namespace:
-                - name: image-regression
-                  retention: 7d
-        cassandra:
-          enabled: false
-        elasticsearch:
-          enabled: true
-        prometheus:
-          enabled: false
-        grafana:
-          enabled: false
-        web:
-          enabled: false
-        admintools:
-          enabled: false
-          image:
-            repository: fallback.example/admin-tools
-            tag: fallback
-            imageName: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-        schema:
-          createDatabase:
-            enabled: true
-          setup:
-            enabled: true
-          update:
-            enabled: true
+      features.temporal: true
+      temporal.cassandra.enabled: false
+      temporal.elasticsearch.enabled: true
+      temporal.admintools.image.repository: fallback.example/admin-tools
+      temporal.admintools.image.tag: fallback
+      temporal.admintools.image.imageName: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      temporal.schema.createDatabase.enabled: true
+      temporal.schema.setup.enabled: true
+      temporal.schema.update.enabled: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].image
@@ -292,40 +267,19 @@ tests:
   - it: uses imageName for every admin-tools container in the namespace job
     template: charts/temporal/templates/server-namespace-job.yaml
     set:
-      features:
-        temporal: true
-      temporal:
-        server:
-          enabled: true
-          config:
-            namespaces:
-              create: true
-              namespace:
-                - name: image-regression
-                  retention: 7d
-        cassandra:
-          enabled: false
-        elasticsearch:
-          enabled: true
-        prometheus:
-          enabled: false
-        grafana:
-          enabled: false
-        web:
-          enabled: false
-        admintools:
-          enabled: false
-          image:
-            repository: fallback.example/admin-tools
-            tag: fallback
-            imageName: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-        schema:
-          createDatabase:
-            enabled: true
-          setup:
-            enabled: true
-          update:
-            enabled: true
+      features.temporal: true
+      temporal.cassandra.enabled: false
+      temporal.elasticsearch.enabled: true
+      temporal.admintools.image.repository: fallback.example/admin-tools
+      temporal.admintools.image.tag: fallback
+      temporal.admintools.image.imageName: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      temporal.schema.createDatabase.enabled: true
+      temporal.schema.setup.enabled: true
+      temporal.schema.update.enabled: true
+      temporal.server.config.namespaces.create: true
+      temporal.server.config.namespaces.namespace:
+        - name: image-regression
+          retention: 7d
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].image
@@ -340,25 +294,15 @@ tests:
   - it: falls back to repository and tag when schema job imageName is empty
     template: charts/temporal/templates/server-job.yaml
     set:
-      features:
-        temporal: true
-      temporal:
-        cassandra:
-          enabled: false
-        elasticsearch:
-          enabled: true
-        admintools:
-          image:
-            repository: fallback.example/admin-tools
-            tag: fallback
-            imageName: ""
-        schema:
-          createDatabase:
-            enabled: true
-          setup:
-            enabled: true
-          update:
-            enabled: true
+      features.temporal: true
+      temporal.cassandra.enabled: false
+      temporal.elasticsearch.enabled: true
+      temporal.admintools.image.repository: fallback.example/admin-tools
+      temporal.admintools.image.tag: fallback
+      temporal.admintools.image.imageName: ""
+      temporal.schema.createDatabase.enabled: true
+      temporal.schema.setup.enabled: true
+      temporal.schema.update.enabled: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].image
@@ -382,21 +326,19 @@ tests:
   - it: falls back to repository and tag when namespace job imageName is empty
     template: charts/temporal/templates/server-namespace-job.yaml
     set:
-      features:
-        temporal: true
-      temporal:
-        server:
-          config:
-            namespaces:
-              create: true
-              namespace:
-                - name: image-regression
-                  retention: 7d
-        admintools:
-          image:
-            repository: fallback.example/admin-tools
-            tag: fallback
-            imageName: ""
+      features.temporal: true
+      temporal.cassandra.enabled: false
+      temporal.elasticsearch.enabled: true
+      temporal.admintools.image.repository: fallback.example/admin-tools
+      temporal.admintools.image.tag: fallback
+      temporal.admintools.image.imageName: ""
+      temporal.schema.createDatabase.enabled: true
+      temporal.schema.setup.enabled: true
+      temporal.schema.update.enabled: true
+      temporal.server.config.namespaces.create: true
+      temporal.server.config.namespaces.namespace:
+        - name: image-regression
+          retention: 7d
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].image
