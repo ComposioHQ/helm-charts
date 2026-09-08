@@ -352,9 +352,31 @@ tests:
             repository: fallback.example/admin-tools
             tag: fallback
             imageName: ""
+        schema:
+          createDatabase:
+            enabled: true
+          setup:
+            enabled: true
+          update:
+            enabled: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].image
+          value: fallback.example/admin-tools:fallback
+      - equal:
+          path: spec.template.spec.initContainers[1].image
+          value: fallback.example/admin-tools:fallback
+      - equal:
+          path: spec.template.spec.initContainers[2].image
+          value: fallback.example/admin-tools:fallback
+      - equal:
+          path: spec.template.spec.initContainers[3].image
+          value: fallback.example/admin-tools:fallback
+      - equal:
+          path: spec.template.spec.initContainers[4].image
+          value: fallback.example/admin-tools:fallback
+      - equal:
+          path: spec.template.spec.containers[0].image
           value: fallback.example/admin-tools:fallback
 
   - it: falls back to repository and tag when namespace job imageName is empty
@@ -378,4 +400,10 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].image
+          value: fallback.example/admin-tools:fallback
+      - equal:
+          path: spec.template.spec.initContainers[1].image
+          value: fallback.example/admin-tools:fallback
+      - equal:
+          path: spec.template.spec.containers[0].image
           value: fallback.example/admin-tools:fallback

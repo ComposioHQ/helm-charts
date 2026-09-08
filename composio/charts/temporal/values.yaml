@@ -468,6 +468,8 @@ admintools:
   image:
     repository: temporalio/admin-tools
     tag: "1.29"
+    # Full image name (optional, overrides repository:tag if set)
+    imageName: ""
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
