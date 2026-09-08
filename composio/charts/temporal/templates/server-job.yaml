@@ -50,7 +50,7 @@ spec:
         {{- end }}
         {{- if or $.Values.elasticsearch.enabled }}
         - name: check-elasticsearch
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.image.imageName | default (printf "%s:%s" $.Values.admintools.image.repository $.Values.admintools.image.tag) }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
           command: ['sh', '-c', 'until curl --silent --fail --user "$ES_USER:$ES_PWD" $ES_SCHEME://$ES_HOST:$ES_PORT 2>&1 > /dev/null; do echo waiting for elasticsearch to start; sleep 1; done;']
           env:
@@ -66,7 +66,7 @@ spec:
             {{- $driver := include "temporal.persistence.driver" (list $ $store) }}
             {{- if and (ne $driver "elasticsearch") (ne $driver "custom") }}
         - name: create-{{ $store }}-store
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.image.imageName | default (printf "%s:%s" $.Values.admintools.image.repository $.Values.admintools.image.tag) }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
               {{- if eq $driver "cassandra" }}
           command: ['temporal-cassandra-tool', 'create', '-k', '{{ $storeConfig.cassandra.keyspace }}', '--replication-factor', '{{ $storeConfig.cassandra.replicationFactor }}'{{- if $storeConfig.cassandra.datacenter }}, '--datacenter', '{{ $storeConfig.cassandra.datacenter }}'{{- end }}]
@@ -96,7 +96,7 @@ spec:
             {{- $driver := include "temporal.persistence.driver" (list $ $store) }}
             {{- if ne $driver "custom" }}
         - name: setup-{{ $store }}-store
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.image.imageName | default (printf "%s:%s" $.Values.admintools.image.repository $.Values.admintools.image.tag) }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
               {{- if eq $driver "cassandra" }}
           command: ['temporal-cassandra-tool', 'setup-schema', '-v', '0.0']
@@ -133,7 +133,7 @@ spec:
             {{- $schema := include "temporal.persistence.schema" $store }}
             {{- if and (ne $driver "elasticsearch") (ne $driver "custom") }}
         - name: update-{{ $store }}-store
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.image.imageName | default (printf "%s:%s" $.Values.admintools.image.repository $.Values.admintools.image.tag) }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
               {{- if eq $driver "cassandra" }}
           command: ['temporal-cassandra-tool', 'update-schema', '--schema-dir', '/etc/temporal/schema/cassandra/{{ $schema }}/versioned']
@@ -164,7 +164,7 @@ spec:
         {{- end }}
       containers:
         - name: done
-          image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
+          image: "{{ $.Values.admintools.image.imageName | default (printf "%s:%s" $.Values.admintools.image.repository $.Values.admintools.image.tag) }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
           command: ['sh', '-c', 'echo "Store setup completed"']
             {{- with $.Values.schema.resources }}

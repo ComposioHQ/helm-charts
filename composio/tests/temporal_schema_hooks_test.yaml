@@ -1,6 +1,7 @@
 suite: temporal schema hook annotations
 templates:
   - charts/temporal/templates/server-job.yaml
+  - charts/temporal/templates/server-namespace-job.yaml
   - charts/temporal/templates/server-secret.yaml
   - charts/temporal/templates/serviceaccount.yaml
 tests:
@@ -230,3 +231,151 @@ tests:
       - equal:
           path: metadata.annotations.custom-service-account-annotation
           value: abc
+
+  - it: uses imageName for every admin-tools container in the schema job
+    template: charts/temporal/templates/server-job.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+          config:
+            namespaces:
+              create: true
+              namespace:
+                - name: image-regression
+                  retention: 7d
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: true
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+          image:
+            repository: fallback.example/admin-tools
+            tag: fallback
+            imageName: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        schema:
+          createDatabase:
+            enabled: true
+          setup:
+            enabled: true
+          update:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.template.spec.initContainers[1].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.template.spec.initContainers[2].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.template.spec.initContainers[3].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.template.spec.initContainers[4].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  - it: uses imageName for every admin-tools container in the namespace job
+    template: charts/temporal/templates/server-namespace-job.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          enabled: true
+          config:
+            namespaces:
+              create: true
+              namespace:
+                - name: image-regression
+                  retention: 7d
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: true
+        prometheus:
+          enabled: false
+        grafana:
+          enabled: false
+        web:
+          enabled: false
+        admintools:
+          enabled: false
+          image:
+            repository: fallback.example/admin-tools
+            tag: fallback
+            imageName: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        schema:
+          createDatabase:
+            enabled: true
+          setup:
+            enabled: true
+          update:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.template.spec.initContainers[1].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example/admin-tools@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  - it: falls back to repository and tag when schema job imageName is empty
+    template: charts/temporal/templates/server-job.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        cassandra:
+          enabled: false
+        elasticsearch:
+          enabled: true
+        admintools:
+          image:
+            repository: fallback.example/admin-tools
+            tag: fallback
+            imageName: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: fallback.example/admin-tools:fallback
+
+  - it: falls back to repository and tag when namespace job imageName is empty
+    template: charts/temporal/templates/server-namespace-job.yaml
+    set:
+      features:
+        temporal: true
+      temporal:
+        server:
+          config:
+            namespaces:
+              create: true
+              namespace:
+                - name: image-regression
+                  retention: 7d
+        admintools:
+          image:
+            repository: fallback.example/admin-tools
+            tag: fallback
+            imageName: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: fallback.example/admin-tools:fallback
