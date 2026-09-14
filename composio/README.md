@@ -32,6 +32,7 @@ A Helm chart for Composio
 | apollo.dbInit.image.pullPolicy | string | `"Always"` | Image pull policy |
 | apollo.dbInit.image.repository | string | `"composio-self-host/apollo-db-init"` | Database init image repository |
 | apollo.dbInit.image.tag | string | `"release-20251209_00"` | Database init image tag |
+| apollo.disableSensitiveCredentialsMasking | bool | `false` | Disable sensitive credential masking in self-hosted Apollo via DISABLE_SENSITIVE_CREDENTIALS_MASKING. |
 | apollo.image.pullPolicy | string | `"Always"` | Image pull policy |
 | apollo.image.repository | string | `"composio-self-host/apollo"` | Apollo image repository |
 | apollo.image.tag | string | `"release-20251209_00"` | Apollo image tag |
