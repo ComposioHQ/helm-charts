@@ -37,6 +37,28 @@ tests:
           path: data.SELF_HOSTED
           value: "true"
 
+  - it: should keep sensitive credentials masking enabled by default
+    asserts:
+      - equal:
+          path: data.DISABLE_SENSITIVE_CREDENTIALS_MASKING
+          value: "false"
+
+  - it: should allow disabling sensitive credentials masking
+    set:
+      apollo.disableSensitiveCredentialsMasking: true
+    asserts:
+      - equal:
+          path: data.DISABLE_SENSITIVE_CREDENTIALS_MASKING
+          value: "true"
+
+  - it: should keep sensitive credentials masking enabled when explicitly configured
+    set:
+      apollo.disableSensitiveCredentialsMasking: false
+    asserts:
+      - equal:
+          path: data.DISABLE_SENSITIVE_CREDENTIALS_MASKING
+          value: "false"
+
   - it: should omit single tenant caps by default
     asserts:
       - isNull:

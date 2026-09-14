@@ -104,6 +104,8 @@ preflight:
 apollo:
   # -- Number of Apollo pod replicas
   replicaCount: 2
+  # -- Disable sensitive credential masking in self-hosted Apollo via DISABLE_SENSITIVE_CREDENTIALS_MASKING.
+  disableSensitiveCredentialsMasking: false
   singleTenant:
     # -- Optional cap for active organizations. Apollo only enforces this when SELF_HOSTED=true.
     maxOrgCount: null
