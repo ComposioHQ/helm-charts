@@ -27,3 +27,5 @@ Visit the Composio Enterprise portal to get your Helm chart:
 4. **Frontend Configuration**
    - **Composio Frontend** - Configure the Composio frontend. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/frontend-setup.md)
    - **SMTP Setup** - Configure SMTP for email functionality. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/smtp-setup.md)
+
+5. **One-shot Auth-config Reassignment** - Move auth configs from a newer project into an older project. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/project-auth-reassignment.md)
