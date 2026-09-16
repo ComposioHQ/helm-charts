@@ -119,6 +119,37 @@ false
 {{- printf "postgresql://%s@%s-toolkit-registry:%v/%s?sslmode=disable" $user .Release.Name (.Values.toolkitRegistry.service.port | int) $database -}}
 {{- end -}}
 
+{{/*
+Render OTEL_RESOURCE_ATTRIBUTES with Kubernetes pod identity.
+Expected keys:
+- root: chart root context
+- serviceName: service.name value
+- serviceVersion: service.version value
+*/}}
+{{- define "composio.otelResourceAttributes" -}}
+{{- $root := .root -}}
+{{- $clusterName := $root.Values.otel.clusterName | default "" -}}
+service.name={{ .serviceName }},service.namespace=$(POD_NAMESPACE),service.instance.id=$(POD_NAME),service.version={{ .serviceVersion }},deployment.environment={{ $root.Values.otel.environment | default $root.Values.global.environment | default "development" }},k8s.namespace.name=$(POD_NAMESPACE),k8s.pod.name=$(POD_NAME),k8s.node.name=$(NODE_NAME){{- if $clusterName }},k8s.cluster.name={{ $clusterName }}{{- end -}}
+{{- end -}}
+
+{{/*
+Render Kubernetes downward API env vars used by composio.otelResourceAttributes.
+*/}}
+{{- define "composio.otelKubernetesEnv" -}}
+- name: POD_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: POD_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+- name: NODE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
+{{- end -}}
+
 {{- define "temporal-encryption-key" -}}
 {{- $coreName := include "composio.coreSecretName" . -}}
 {{- $core := lookup "v1" "Secret" .Release.Namespace $coreName -}}
