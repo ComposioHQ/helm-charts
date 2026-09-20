@@ -107,3 +107,5 @@ If you are deploying the Composio chart using ArgoCD, create the OCI Helm reposi
       ```
 
 This configuration enables automated sync, namespace creation, pruning of removed resources, and drift correction.
+
+For CI-based deployments, see [Quick Deployment with GitHub Actions and Jenkins](./quick-deployment-ci.md).
