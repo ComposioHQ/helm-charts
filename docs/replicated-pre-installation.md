@@ -94,7 +94,7 @@ If you are deploying the Composio chart using ArgoCD, create the OCI Helm reposi
       source:
          repoURL: registry.composio.io/composio-rodent/unstable
          chart: composio
-         targetRevision: 0.1.57
+         targetRevision: 0.2.13   # use the chart version you are installing
       destination:
          server: <https://kubernetes.default.svc>
          namespace: composio
