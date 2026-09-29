@@ -532,3 +532,52 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[0].name
           value: mercury-secret
+
+  - it: should use repository and tag for the knative image when imageName is not set
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      replicated.enabled: false
+      global.registry.name: registry.example.com
+      mercury.image.repository: composio-self-host/mercury
+      mercury.image.tag: r20260101_01
+      mercury.image.imageName: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/composio-self-host/mercury:r20260101_01
+
+  - it: should fall back to the chart appVersion for the knative image tag when tag is empty
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      replicated.enabled: false
+      global.registry.name: registry.example.com
+      mercury.image.repository: composio-self-host/mercury
+      mercury.image.tag: ""
+      mercury.image.imageName: ""
+    chart:
+      appVersion: 9.9.9
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/composio-self-host/mercury:9.9.9
+
+  - it: should honor mercury.image.imageName for the knative image
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+      mercury.image.imageName: mirror.example.com/composio/mercury@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: mirror.example.com/composio/mercury@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  - it: should keep the replicated proxy image for knative by default
+    set:
+      mercury.enabled: true
+      mercury.useKnative: true
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^artifacts\.composio\.io/proxy/composio-rodent/.+/composio-self-host/mercury:.+$
