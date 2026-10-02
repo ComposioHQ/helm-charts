@@ -1,0 +1,662 @@
+name: Replicated AWS Install Check
+
+on:
+  push:
+    branches:
+      - ft-add-replicated-aws-install-check
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Replicated release version to install. Leave empty to use the current channel release.
+        required: false
+        default: ""
+        type: string
+      channel:
+        description: Replicated channel for the requested release
+        required: true
+        default: unstable
+        type: choice
+        options:
+          - unstable
+          - beta
+          - stable
+          - nightly
+      eks_version:
+        description: Optional EKS Kubernetes version. If empty, use the latest Replicated-supported EKS version.
+        required: false
+        type: string
+      cluster_ttl:
+        description: CMX cluster TTL (max 48h)
+        required: false
+        default: 6h
+        type: string
+      instance_type:
+        description: EKS instance type for the CMX cluster
+        required: false
+        default: m6i.2xlarge
+        type: string
+      nodes:
+        description: Node count for the CMX cluster
+        required: false
+        default: "3"
+        type: string
+      disk_gib:
+        description: Disk size per node in GiB
+        required: false
+        default: "100"
+        type: string
+      keep_cluster:
+        description: Keep the CMX cluster after the workflow finishes
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: replicated-aws-install-check-${{ github.ref }}-${{ github.event.inputs.release_version || 'channel-current' }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_NAME: composio
+  NAMESPACE: composio
+  POSTGRES_RELEASE_NAME: composio-postgresql
+  WORKFLOW_RELEASE_VERSION: ${{ github.event.inputs.release_version || '' }}
+  WORKFLOW_CHANNEL: ${{ github.event.inputs.channel || 'unstable' }}
+  WORKFLOW_EKS_VERSION: ${{ github.event.inputs.eks_version || '' }}
+  WORKFLOW_CLUSTER_TTL: ${{ github.event.inputs.cluster_ttl || '6h' }}
+  WORKFLOW_INSTANCE_TYPE: ${{ github.event.inputs.instance_type || 'm6i.2xlarge' }}
+  WORKFLOW_NODES: ${{ github.event.inputs.nodes || '3' }}
+  WORKFLOW_DISK_GIB: ${{ github.event.inputs.disk_gib || '100' }}
+  WORKFLOW_KEEP_CLUSTER: ${{ github.event.inputs.keep_cluster || 'false' }}
+  REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+  REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+  REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
+  REPLICATED_HELM_AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
+  REPLICATED_REGISTRY: ${{ secrets.REPLICATED_REGISTRY }}
+
+jobs:
+  install-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.32.2
+
+      - name: Install Replicated CLI
+        run: |
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls \
+            "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
+            -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+          sudo mv replicated /usr/local/bin/replicated
+          replicated version
+
+      - name: Verify Replicated access
+        run: |
+          set -euo pipefail
+          replicated app ls >/dev/null
+
+      - name: Resolve release and CMX target
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          requested_release_version="${WORKFLOW_RELEASE_VERSION}"
+          registry_host="${REPLICATED_REGISTRY:-registry.composio.io}"
+          registry_host="${registry_host#oci://}"
+          cluster_name="cmx-composio-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          release_sequence=""
+
+          channel_name="$(
+            replicated channel ls \
+              | awk 'NR > 1 && tolower($2) == tolower("'"${WORKFLOW_CHANNEL}"'") { print $2; exit }'
+          )"
+
+          if [[ -z "${channel_name}" ]]; then
+            echo "Unable to resolve channel name for ${WORKFLOW_CHANNEL} from replicated channel ls." >&2
+            exit 1
+          fi
+
+          channel_inspect="$(
+            replicated channel inspect "${channel_name}"
+          )"
+
+          current_channel_release_sequence="$(
+            printf '%s\n' "${channel_inspect}" \
+              | awk -F':' '/^RELEASE:/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
+          )"
+          current_channel_release_version="$(
+            printf '%s\n' "${channel_inspect}" \
+              | awk -F':' '/^VERSION:/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
+          )"
+
+          if [[ -z "${current_channel_release_sequence}" || -z "${current_channel_release_version}" ]]; then
+            echo "Unable to resolve current release/version from replicated channel inspect ${channel_name}." >&2
+            printf '%s\n' "${channel_inspect}" >&2
+            exit 1
+          fi
+
+          if [[ -z "${requested_release_version}" ]]; then
+            requested_release_version="${current_channel_release_version}"
+            release_sequence="${current_channel_release_sequence}"
+          elif [[ "${requested_release_version}" == "${current_channel_release_version}" ]]; then
+            release_sequence="${current_channel_release_sequence}"
+          fi
+
+          replicated release ls --output json >"${RUNNER_TEMP}/releases.json"
+          if [[ -z "${release_sequence}" ]]; then
+            mapfile -t release_sequences < <(
+              jq -r '
+                [
+                  .. | objects
+                  | (.Sequence // .sequence // .ReleaseSequence // .releaseSequence // empty | tostring)
+                ]
+                | map(select(length > 0))
+                | unique
+                | .[]
+              ' "${RUNNER_TEMP}/releases.json"
+            )
+
+            for sequence in "${release_sequences[@]}"; do
+              release_inspect_path="${RUNNER_TEMP}/release-${sequence}.json"
+              replicated release inspect "${sequence}" --output json >"${release_inspect_path}"
+
+              if jq -e --arg version "${requested_release_version}" '
+                [
+                  .. | objects
+                  | (.Version // .version // .AppVersion // .appVersion // .VersionLabel // .versionLabel // empty | tostring)
+                ]
+                | map(select(length > 0))
+                | any(. == $version)
+              ' "${release_inspect_path}" >/dev/null; then
+                release_sequence="${sequence}"
+                break
+              fi
+            done
+          fi
+
+          if [[ -z "${release_sequence}" ]]; then
+            echo "Release version ${requested_release_version} was not found. Current ${channel_name} version is ${current_channel_release_version} (sequence ${current_channel_release_sequence})." >&2
+            exit 1
+          fi
+
+          replicated cluster versions --distribution eks --output json >"${RUNNER_TEMP}/eks-versions.json"
+          mapfile -t supported_eks_versions < <(
+            jq -r '
+              [
+                .. | strings
+                | select(test("^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"))
+              ]
+              | unique
+              | sort_by(split(".") | map(tonumber))
+              | .[]
+            ' "${RUNNER_TEMP}/eks-versions.json"
+          )
+
+          if [[ "${#supported_eks_versions[@]}" -eq 0 ]]; then
+            echo "Replicated cluster versions did not return any supported EKS versions." >&2
+            exit 1
+          fi
+
+          target_eks_version="${WORKFLOW_EKS_VERSION}"
+          if [[ -z "${target_eks_version}" ]]; then
+            target_eks_version="${supported_eks_versions[-1]}"
+          fi
+
+          if ! printf '%s\n' "${supported_eks_versions[@]}" | grep -Fx "${target_eks_version}" >/dev/null; then
+            echo "Requested EKS version ${target_eks_version} is not in Replicated-supported versions: ${supported_eks_versions[*]}" >&2
+            exit 1
+          fi
+
+          chart_url="oci://${registry_host}/${REPLICATED_APP}/${WORKFLOW_CHANNEL}/composio"
+
+          {
+            echo "channel_name=${channel_name}"
+            echo "release_sequence=${release_sequence}"
+            echo "release_version=${requested_release_version}"
+            echo "current_channel_release_sequence=${current_channel_release_sequence}"
+            echo "current_channel_release_version=${current_channel_release_version}"
+            echo "eks_version=${target_eks_version}"
+            echo "chart_url=${chart_url}"
+            echo "cluster_name=${cluster_name}"
+            echo "registry_host=${registry_host}"
+            echo "supported_eks_versions=$(IFS=,; echo "${supported_eks_versions[*]}")"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Create CMX EKS cluster
+        id: create_cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          replicated cluster create \
+            --name "${{ steps.resolve.outputs.cluster_name }}" \
+            --distribution eks \
+            --version "${{ steps.resolve.outputs.eks_version }}" \
+            --nodes "${WORKFLOW_NODES}" \
+            --instance-type "${WORKFLOW_INSTANCE_TYPE}" \
+            --disk "${WORKFLOW_DISK_GIB}" \
+            --ttl "${WORKFLOW_CLUSTER_TTL}" \
+            --wait 90m \
+            --output json >"${RUNNER_TEMP}/cluster-create.json"
+
+          cluster_id="$(
+            jq -r '
+              [
+                .. | objects
+                | (.id // .ID // .cluster_id // .clusterID // empty | tostring)
+              ]
+              | map(select(length > 0))
+              | first // ""
+            ' "${RUNNER_TEMP}/cluster-create.json"
+          )"
+
+          if [[ -z "${cluster_id}" ]]; then
+            echo "Unable to determine cluster id from replicated cluster create output." >&2
+            cat "${RUNNER_TEMP}/cluster-create.json" >&2
+            exit 1
+          fi
+
+          echo "cluster_id=${cluster_id}" >>"$GITHUB_OUTPUT"
+
+      - name: Download kubeconfig
+        id: kubeconfig
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubeconfig_path="${RUNNER_TEMP}/cmx-kubeconfig"
+          replicated cluster kubeconfig "${{ steps.create_cluster.outputs.cluster_id }}" --output-path "${kubeconfig_path}"
+          echo "KUBECONFIG=${kubeconfig_path}" >>"$GITHUB_ENV"
+
+          kubectl get ns >/dev/null
+
+          actual_cluster_version="$(
+            kubectl version -o json \
+              | jq -r '.serverVersion.major + "." + (.serverVersion.minor | sub("\\+"; ""))'
+          )"
+
+          echo "actual_cluster_version=${actual_cluster_version}" >>"$GITHUB_OUTPUT"
+
+      - name: Install preflight plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$(mktemp -d)"
+          os="$(uname | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m)"
+          if [[ "${arch}" == "x86_64" ]]; then
+            arch="amd64"
+          elif [[ "${arch}" == "aarch64" ]]; then
+            arch="arm64"
+          fi
+
+          krew_archive="krew-${os}_${arch}"
+          curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${krew_archive}.tar.gz"
+          tar zxvf "${krew_archive}.tar.gz"
+          ./"${krew_archive}" install krew
+          export PATH="${KREW_ROOT:-$HOME/.krew}/bin:${PATH}"
+          echo "${KREW_ROOT:-$HOME/.krew}/bin" >>"$GITHUB_PATH"
+          kubectl krew install preflight
+
+      - name: Install PostgreSQL 17
+        id: postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+          postgres_chart_version="$(
+            helm search repo bitnami/postgresql --versions --output json \
+              | jq -r '[.[] | select(.app_version | startswith("17"))][0].version // ""'
+          )"
+
+          if [[ -z "${postgres_chart_version}" ]]; then
+            echo "Unable to find a Bitnami PostgreSQL chart version backed by PostgreSQL 17." >&2
+            exit 1
+          fi
+
+          postgres_password="$(openssl rand -hex 24)"
+          echo "::add-mask::${postgres_password}"
+          echo "POSTGRES_PASSWORD=${postgres_password}" >>"$GITHUB_ENV"
+
+          kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+
+          helm upgrade --install "${POSTGRES_RELEASE_NAME}" bitnami/postgresql \
+            --namespace "${NAMESPACE}" \
+            --version "${postgres_chart_version}" \
+            --set architecture=standalone \
+            --set auth.enablePostgresUser=true \
+            --set auth.postgresPassword="${postgres_password}" \
+            --set primary.persistence.enabled=false \
+            --wait \
+            --timeout 20m
+
+          postgres_service="$(
+            kubectl get svc -n "${NAMESPACE}" \
+              -l "app.kubernetes.io/instance=${POSTGRES_RELEASE_NAME},app.kubernetes.io/name=postgresql" \
+              -o json \
+              | jq -r '.items[] | select(.spec.clusterIP != "None") | .metadata.name' \
+              | head -n 1
+          )"
+
+          if [[ -z "${postgres_service}" ]]; then
+            echo "Unable to determine PostgreSQL service name." >&2
+            exit 1
+          fi
+
+          {
+            echo "chart_version=${postgres_chart_version}"
+            echo "service_name=${postgres_service}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Create Composio bootstrap secret and values
+        id: bootstrap
+        shell: bash
+        env:
+          OPTIONAL_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          composio_admin_token="$(openssl rand -hex 24)"
+          encryption_key="$(openssl rand -hex 32)"
+          jwt_secret="$(openssl rand -hex 32)"
+          docker_auth="$(printf '%s:%s' "${REPLICATED_USERNAME}" "${REPLICATED_HELM_AUTH_TOKEN}" | base64 | tr -d '\n')"
+          dockerconfigjson="$(
+            jq -nc \
+              --arg replicated_registry "${{ steps.resolve.outputs.registry_host }}" \
+              --arg portal_registry "registry.composio.io" \
+              --arg proxy_registry "artifacts.composio.io" \
+              --arg username "${REPLICATED_USERNAME}" \
+              --arg password "${REPLICATED_HELM_AUTH_TOKEN}" \
+              --arg auth "${docker_auth}" '
+              {
+                auths: {
+                  ($replicated_registry): {
+                    username: $username,
+                    password: $password,
+                    auth: $auth
+                  },
+                  ($portal_registry): {
+                    username: $username,
+                    password: $password,
+                    auth: $auth
+                  },
+                  ($proxy_registry): {
+                    username: $username,
+                    password: $password,
+                    auth: $auth
+                  }
+                }
+              }
+            ' | base64 | tr -d '\n'
+          )"
+
+          echo "::add-mask::${composio_admin_token}"
+          echo "::add-mask::${encryption_key}"
+          echo "::add-mask::${jwt_secret}"
+
+          postgres_url="postgresql://postgres:${POSTGRES_PASSWORD}@${{ steps.postgres.outputs.service_name }}:5432/composiodb?sslmode=disable"
+          thermos_database_url="postgresql://postgres:${POSTGRES_PASSWORD}@${{ steps.postgres.outputs.service_name }}:5432/thermosdb?sslmode=disable"
+
+          {
+            echo "COMPOSIO_ADMIN_TOKEN=${composio_admin_token}"
+            echo "ENCRYPTION_KEY=${encryption_key}"
+            echo "JWT_SECRET=${jwt_secret}"
+            echo "POSTGRES_URL=${postgres_url}"
+            echo "THERMOS_DATABASE_URL=${thermos_database_url}"
+          } >>"$GITHUB_ENV"
+
+          kubectl create secret generic composio-composio-secrets \
+            --namespace "${NAMESPACE}" \
+            --from-literal="COMPOSIO_ADMIN_TOKEN=${composio_admin_token}" \
+            --from-literal="ENCRYPTION_KEY=${encryption_key}" \
+            --from-literal="JWT_SECRET=${jwt_secret}" \
+            --from-literal="POSTGRES_URL=${postgres_url}" \
+            --from-literal="THERMOS_DATABASE_URL=${thermos_database_url}" \
+            --from-literal="OPENAI_API_KEY=${OPTIONAL_OPENAI_API_KEY}" \
+            --from-literal="password=${POSTGRES_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          values_file="${RUNNER_TEMP}/replicated-install-values.yaml"
+          cat >"${values_file}" <<EOF
+          secret:
+            name: "composio-composio-secrets"
+
+          namespace:
+            create: false
+            name: "${NAMESPACE}"
+
+          global:
+            imagePullSecrets: []
+            replicated:
+              dockerconfigjson: "${dockerconfigjson}"
+
+          weaviate:
+            enabled: false
+
+          databaseMigration:
+            enabled: true
+            host: "${{ steps.postgres.outputs.service_name }}"
+            port: "5432"
+            user: "postgres"
+
+          features:
+            temporal: false
+
+          openAI:
+            enabled: false
+
+          apollo:
+            service:
+              type: ClusterIP
+          EOF
+
+          echo "values_file=${values_file}" >>"$GITHUB_OUTPUT"
+
+      - name: Log in to Replicated OCI registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm registry login "${{ steps.resolve.outputs.registry_host }}" \
+            --username "${REPLICATED_USERNAME}" \
+            --password "${REPLICATED_HELM_AUTH_TOKEN}"
+
+      - name: Run preflight checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="${KREW_ROOT:-$HOME/.krew}/bin:${PATH}"
+
+          helm template -n "${NAMESPACE}" "${RELEASE_NAME}" "${{ steps.resolve.outputs.chart_url }}" \
+            --version "${{ steps.resolve.outputs.release_version }}" \
+            --values "${{ steps.bootstrap.outputs.values_file }}" \
+            | kubectl preflight -
+
+      - name: Install requested Replicated release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          helm upgrade --install "${RELEASE_NAME}" "${{ steps.resolve.outputs.chart_url }}" \
+            --namespace "${NAMESPACE}" \
+            --create-namespace \
+            --values "${{ steps.bootstrap.outputs.values_file }}" \
+            --version "${{ steps.resolve.outputs.release_version }}" \
+            --wait \
+            --wait-for-jobs \
+            --timeout 40m
+
+      - name: Verify Kubernetes workloads
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for workload in $(kubectl get deployment,statefulset -n "${NAMESPACE}" -o name); do
+            kubectl rollout status -n "${NAMESPACE}" "${workload}" --timeout=20m
+          done
+
+          for job in $(kubectl get jobs -n "${NAMESPACE}" -o name); do
+            kubectl wait -n "${NAMESPACE}" --for=condition=complete "${job}" --timeout=20m
+          done
+
+      - name: Run Composio smoke test
+        id: smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          port_forward_log="${RUNNER_TEMP}/port-forward.log"
+          identify_response_file="${RUNNER_TEMP}/identify-response.json"
+          weather_response_file="${RUNNER_TEMP}/weather-response.json"
+          identity_hash="gha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com"
+
+          kubectl port-forward "svc/${RELEASE_NAME}-apollo" -n "${NAMESPACE}" 9900:9900 >"${port_forward_log}" 2>&1 &
+          port_forward_pid=$!
+
+          cleanup() {
+            kill "${port_forward_pid}" >/dev/null 2>&1 || true
+            wait "${port_forward_pid}" 2>/dev/null || true
+          }
+
+          trap cleanup EXIT
+
+          for _ in {1..36}; do
+            if curl -fsS http://127.0.0.1:9900/api/v1/health >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url http://127.0.0.1:9900/api/v3/admin/identify \
+            --header 'Content-Type: application/json' \
+            --header "x-composio-admin-token: ${COMPOSIO_ADMIN_TOKEN}" \
+            --data "$(jq -nc --arg hash "${identity_hash}" '{hash: $hash}')" \
+            >"${identify_response_file}"
+
+          composio_api_key="$(grep -Eo 'ak_[A-Za-z0-9]+' "${identify_response_file}" | head -n 1 || true)"
+          if [[ -z "${composio_api_key}" ]]; then
+            composio_api_key="$(
+              jq -r '
+                .api_key // .apiKey // .key // .data.api_key // .data.apiKey // .data.key // empty
+              ' "${identify_response_file}"
+            )"
+          fi
+
+          if [[ -z "${composio_api_key}" ]]; then
+            echo "Unable to extract Composio API key from /api/v3/admin/identify response." >&2
+            cat "${identify_response_file}" >&2
+            exit 1
+          fi
+
+          echo "::add-mask::${composio_api_key}"
+
+          curl --fail-with-body --silent --show-error --location \
+            --url http://127.0.0.1:9900/api/v3/tools/execute/WEATHERMAP_WEATHER \
+            --header 'Content-Type: application/json' \
+            --header "x-api-key: ${composio_api_key}" \
+            --data '{"arguments":{"location":"brussels"},"version":"latest"}' \
+            >"${weather_response_file}"
+
+          jq -e '
+            if type != "object" then
+              true
+            else
+              ((.successful? // .success? // true) == true)
+              and ((.error? // null) == null)
+            end
+          ' "${weather_response_file}" >/dev/null
+
+      - name: Report compatibility result back to Replicated
+        if: always() && steps.resolve.outputs.release_sequence != '' && steps.create_cluster.outputs.cluster_id != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          report_version="${{ steps.kubeconfig.outputs.actual_cluster_version || steps.resolve.outputs.eks_version }}"
+          status_flag="--success"
+          notes="GitHub Actions workflow ${GITHUB_WORKFLOW} completed successfully. PostgreSQL bootstrap, Helm install, preflight, and WEATHERMAP_WEATHER smoke test passed."
+
+          if [[ "${{ job.status }}" != "success" ]]; then
+            status_flag="--failure"
+            notes="GitHub Actions workflow ${GITHUB_WORKFLOW} failed. Review the run summary and diagnostics for the failing install or smoke-test step."
+          fi
+
+          replicated release compatibility "${{ steps.resolve.outputs.release_sequence }}" \
+            --distribution eks \
+            --version "${report_version}" \
+            "${status_flag}" \
+            --notes "${notes}"
+
+      - name: Collect diagnostics on failure
+        if: failure() && steps.create_cluster.outputs.cluster_id != ''
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubectl get ns
+          kubectl get all -n "${NAMESPACE}" || true
+          kubectl get events -n "${NAMESPACE}" --sort-by=.metadata.creationTimestamp | tail -n 200 || true
+
+          for workload in $(kubectl get deployment,statefulset -n "${NAMESPACE}" -o name 2>/dev/null || true); do
+            kubectl describe -n "${NAMESPACE}" "${workload}" || true
+          done
+
+          for pod in $(kubectl get pods -n "${NAMESPACE}" -o name 2>/dev/null | head -n 12); do
+            kubectl describe -n "${NAMESPACE}" "${pod}" || true
+            kubectl logs -n "${NAMESPACE}" "${pod}" --all-containers --tail=200 || true
+          done
+
+      - name: Write workflow summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Replicated AWS install check"
+            echo
+            echo "- Resolved release version: \`${{ steps.resolve.outputs.release_version }}\`"
+            echo "- Channel: \`${{ steps.resolve.outputs.channel_name }}\`"
+            echo "- Release sequence: \`${{ steps.resolve.outputs.release_sequence }}\`"
+            echo "- Current channel version: \`${{ steps.resolve.outputs.current_channel_release_version }}\`"
+            echo "- Selected EKS version: \`${{ steps.resolve.outputs.eks_version }}\`"
+            echo "- Actual cluster version: \`${{ steps.kubeconfig.outputs.actual_cluster_version }}\`"
+            echo "- CMX cluster id: \`${{ steps.create_cluster.outputs.cluster_id }}\`"
+            echo "- CMX cluster name: \`${{ steps.resolve.outputs.cluster_name }}\`"
+            echo "- PostgreSQL chart version: \`${{ steps.postgres.outputs.chart_version }}\`"
+            echo "- Chart URL: \`${{ steps.resolve.outputs.chart_url }}\`"
+            echo "- Final job status: \`${{ job.status }}\`"
+            if [[ "${WORKFLOW_KEEP_CLUSTER}" == "true" ]]; then
+              echo "- Cluster retention: kept"
+            else
+              echo "- Cluster retention: cleanup requested"
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Remove CMX cluster
+        if: always() && env.WORKFLOW_KEEP_CLUSTER != 'true' && steps.create_cluster.outputs.cluster_id != ''
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          replicated cluster rm "${{ steps.create_cluster.outputs.cluster_id }}"

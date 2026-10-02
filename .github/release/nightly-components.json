@@ -1,0 +1,57 @@
+{
+  "services": [
+    {
+      "name": "apollo",
+      "images": [
+        {
+          "repository": "composio-self-host/apollo",
+          "values_path": ".apollo.image.tag"
+        },
+        {
+          "repository": "composio-self-host/apollo-db-init",
+          "values_path": ".apollo.dbInit.image.tag"
+        }
+      ]
+    },
+    {
+      "name": "thermos",
+      "images": [
+        {
+          "repository": "composio-self-host/thermos",
+          "values_path": ".thermos.image.tag"
+        },
+        {
+          "repository": "composio-self-host/thermos-db-init",
+          "values_path": ".thermos.dbInit.image.tag"
+        }
+      ]
+    },
+    {
+      "name": "mercury",
+      "images": [
+        {
+          "repository": "composio-self-host/mercury",
+          "values_path": ".mercury.image.tag"
+        }
+      ]
+    },
+    {
+      "name": "frontend",
+      "images": [
+        {
+          "repository": "composio-self-host/frontend",
+          "values_path": ".frontend.image.tag"
+        }
+      ]
+    },
+    {
+      "name": "weaviate",
+      "images": [
+        {
+          "repository": "composio-self-host/weaviate",
+          "values_path": ".weaviate.image.tag"
+        }
+      ]
+    }
+  ]
+}

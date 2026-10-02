@@ -1,0 +1,541 @@
+name: Nightly Snapshot Release
+
+on:
+  push:
+    branches:
+      - ft-add-replicated-aws-install-check
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: Source image tag to snapshot from in the source image registry
+        required: true
+        default: latest
+        type: string
+      image_registry:
+        description: Optional source image registry override. Defaults to values.global.registry.name.
+        required: false
+        default: ""
+        type: string
+      eks_version:
+        description: Optional EKS Kubernetes version override
+        required: false
+        default: ""
+        type: string
+      gke_version:
+        description: Optional GKE Kubernetes version override
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-snapshot-release
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+      github_release_tag: ${{ steps.metadata.outputs.github_release_tag }}
+      replicated_version: ${{ steps.metadata.outputs.replicated_version }}
+      image_registry: ${{ steps.metadata.outputs.image_registry }}
+      release_url: ${{ steps.github_release.outputs.release_url }}
+      upgrade_matrix: ${{ steps.stable_versions.outputs.upgrade_matrix }}
+      slack_message_id: ${{ steps.slack.outputs.message_id }}
+    env:
+      REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+      REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+      REPLICATED_USERNAME: ${{ secrets.REPLICATED_USERNAME }}
+      REPLICATED_HELM_AUTH_TOKEN: ${{ secrets.REPLICATED_HELM_AUTH_TOKEN }}
+      REPLICATED_REGISTRY: ${{ secrets.REPLICATED_REGISTRY }}
+      IMAGE_REGISTRY_USERNAME: ${{ secrets.NIGHTLY_IMAGE_REGISTRY_USERNAME }}
+      IMAGE_REGISTRY_PASSWORD: ${{ secrets.NIGHTLY_IMAGE_REGISTRY_PASSWORD }}
+      INVENTORY_FILE: .github/release/nightly-components.json
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Install Replicated CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls \
+            "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" \
+            -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+          sudo mv replicated /usr/local/bin/replicated
+          replicated version
+
+      - name: Install crane
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="v0.20.3"
+          curl -fsSL "https://github.com/google/go-containerregistry/releases/download/${version}/go-containerregistry_Linux_x86_64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin crane
+          crane version
+
+      - name: Verify Replicated access
+        shell: bash
+        run: |
+          set -euo pipefail
+          replicated app ls >/dev/null
+
+      - name: Resolve nightly metadata
+        id: metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ist_date="$(TZ=Asia/Kolkata date +%Y%m%d)"
+          max_index="$(
+            gh release list --limit 200 --json tagName \
+              | jq -r --arg prefix "nightly-r${ist_date}_" '
+                  [
+                    .[].tagName
+                    | select(startswith($prefix))
+                    | capture("_(?<n>[0-9]{2})$").n
+                    | tonumber
+                  ]
+                  | max? // -1
+                '
+          )"
+          next_index=$((max_index + 1))
+          release_tag="$(printf 'r%s_%02d' "${ist_date}" "${next_index}")"
+          github_release_tag="nightly-${release_tag}"
+
+          image_registry="${{ github.event_name == 'push' && '' || inputs.image_registry }}"
+          if [[ -z "${image_registry}" ]]; then
+            image_registry="$(yq eval '.global.registry.name' composio/values.yaml)"
+          fi
+
+          if [[ -z "${image_registry}" || "${image_registry}" == "null" ]]; then
+            echo "Unable to determine the source image registry." >&2
+            exit 1
+          fi
+
+          channel_name="$(
+            replicated channel ls \
+              | awk 'NR > 1 && tolower($2) == "nightly" { print $2; exit }'
+          )"
+
+          if [[ -z "${channel_name}" ]]; then
+            echo "Unable to resolve Nightly channel from replicated channel ls." >&2
+            exit 1
+          fi
+
+          channel_inspect="$(replicated channel inspect "${channel_name}")"
+          current_version="$(
+            printf '%s\n' "${channel_inspect}" \
+              | awk -F':' '/^VERSION:/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
+          )"
+
+          if [[ -z "${current_version}" ]]; then
+            echo "Unable to determine current Nightly version from replicated channel inspect." >&2
+            printf '%s\n' "${channel_inspect}" >&2
+            exit 1
+          fi
+
+          replicated_version="$(echo "${current_version}" | awk -F. '{$NF = $NF + 1} 1' OFS=.)"
+
+          {
+            echo "release_tag=${release_tag}"
+            echo "github_release_tag=${github_release_tag}"
+            echo "image_registry=${image_registry}"
+            echo "replicated_version=${replicated_version}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Log in to source image registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${IMAGE_REGISTRY_USERNAME}" || -z "${IMAGE_REGISTRY_PASSWORD}" ]]; then
+            echo "NIGHTLY_IMAGE_REGISTRY_USERNAME and NIGHTLY_IMAGE_REGISTRY_PASSWORD secrets are required for image retagging." >&2
+            exit 1
+          fi
+          crane auth login "${{ steps.metadata.outputs.image_registry }}" \
+            --username "${IMAGE_REGISTRY_USERNAME}" \
+            --password "${IMAGE_REGISTRY_PASSWORD}"
+
+      - name: Build nightly release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/nightly-build-manifest.sh \
+            --inventory "${INVENTORY_FILE}" \
+            --registry-host "${{ steps.metadata.outputs.image_registry }}" \
+            --source-tag "${{ github.event_name == 'push' && 'latest' || inputs.source_tag }}" \
+            --release-tag "${{ steps.metadata.outputs.release_tag }}" \
+            --github-release-tag "${{ steps.metadata.outputs.github_release_tag }}" \
+            --replicated-version "${{ steps.metadata.outputs.replicated_version }}" \
+            --channel "Nightly" \
+            --output "${RUNNER_TEMP}/release-manifest.json"
+
+      - name: Retag nightly images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r row; do
+            repository="$(jq -r '.repository' <<<"${row}")"
+            source_digest="$(jq -r '.source_digest' <<<"${row}")"
+            nightly_tag="$(jq -r '.nightly_tag' <<<"${row}")"
+
+            source_ref="${{ steps.metadata.outputs.image_registry }}/${repository}@${source_digest}"
+            target_ref="${{ steps.metadata.outputs.image_registry }}/${repository}:${nightly_tag}"
+
+            crane copy "${source_ref}" "${target_ref}"
+
+            target_digest="$(crane digest "${target_ref}")"
+            if [[ "${target_digest}" != "${source_digest}" ]]; then
+              echo "Retag verification failed for ${target_ref}" >&2
+              exit 1
+            fi
+          done < <(jq -c '.services[].images[]' "${RUNNER_TEMP}/release-manifest.json")
+
+      - name: Apply nightly chart metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/nightly-apply-release-metadata.sh \
+            --inventory "${INVENTORY_FILE}" \
+            --image-tag "${{ steps.metadata.outputs.release_tag }}" \
+            --app-version "${{ steps.metadata.outputs.replicated_version }}" \
+            --values-file "composio/values.yaml" \
+            --chart-file "composio/Chart.yaml" \
+            --k8s-app-file "manifests/k8s-app.yaml" \
+            --replicated-manifest-file "manifests/composio.yaml"
+
+      - name: Run Helm template
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm template composio ./composio >/dev/null
+
+      - name: Resolve stable manifest baseline
+        id: stable_manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          stable_tag="$(
+            gh release list --limit 200 --json tagName,isDraft,isPrerelease \
+              | jq -r '
+                  .[]
+                  | select(.isDraft == false and .isPrerelease == false)
+                  | select(.tagName | startswith("nightly-") | not)
+                  | .tagName
+                ' \
+              | head -n 1
+          )"
+
+          if [[ -n "${stable_tag}" ]]; then
+            mkdir -p "${RUNNER_TEMP}/stable-manifest"
+            if gh release download "${stable_tag}" -p "release-manifest.json" -D "${RUNNER_TEMP}/stable-manifest" >/dev/null 2>&1; then
+              echo "baseline_manifest=${RUNNER_TEMP}/stable-manifest/release-manifest.json" >>"$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Render nightly release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --current-manifest "${RUNNER_TEMP}/release-manifest.json"
+            --output "${RUNNER_TEMP}/release-notes.md"
+          )
+          if [[ -n "${{ steps.stable_manifest.outputs.baseline_manifest }}" ]]; then
+            args+=(--baseline-manifest "${{ steps.stable_manifest.outputs.baseline_manifest }}")
+          fi
+          bash .github/scripts/nightly-render-release-notes.sh "${args[@]}"
+
+      - name: Create GitHub nightly prerelease
+        id: github_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh release create "${{ steps.metadata.outputs.github_release_tag }}" \
+            --prerelease \
+            --latest=false \
+            --target "${GITHUB_SHA}" \
+            --title "Nightly Snapshot ${{ steps.metadata.outputs.release_tag }}" \
+            --notes-file "${RUNNER_TEMP}/release-notes.md" \
+            "${RUNNER_TEMP}/release-manifest.json#release-manifest.json"
+
+          release_url="$(
+            gh release view "${{ steps.metadata.outputs.github_release_tag }}" --json url --jq '.url'
+          )"
+          echo "release_url=${release_url}" >>"$GITHUB_OUTPUT"
+
+      - name: Package and create Replicated nightly release
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_notes="$(cat "${RUNNER_TEMP}/release-notes.md")"
+          rm -f ./manifests/*.tgz
+          helm package ./composio --destination manifests
+          replicated release create \
+            --yaml-dir manifests \
+            --promote "Nightly" \
+            --version "${{ steps.metadata.outputs.replicated_version }}" \
+            --release-notes "${release_notes}"
+
+      - name: Discover last 3 Stable versions
+        id: stable_versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          replicated release ls --output json >"${RUNNER_TEMP}/releases.json"
+          mapfile -t sequences < <(
+            jq -r '
+              [
+                .. | objects
+                | (.Sequence // .sequence // .ReleaseSequence // .releaseSequence // empty | tostring)
+              ]
+              | map(select(length > 0))
+              | unique
+              | .[]
+            ' "${RUNNER_TEMP}/releases.json"
+          )
+
+          declare -A seen_versions=()
+          stable_versions=()
+
+          for sequence in "${sequences[@]}"; do
+            inspect_path="${RUNNER_TEMP}/release-${sequence}.json"
+            replicated release inspect "${sequence}" --output json >"${inspect_path}"
+
+            if ! jq -e '
+              [.. | strings | ascii_downcase]
+              | any(. == "stable")
+            ' "${inspect_path}" >/dev/null; then
+              continue
+            fi
+
+            version="$(
+              jq -r '
+                [
+                  .. | objects
+                  | (.Version // .version // .AppVersion // .appVersion // .VersionLabel // .versionLabel // empty | tostring)
+                ]
+                | map(select(length > 0 and test("^[0-9]+\\.[0-9]+\\.[0-9]+$")))
+                | first // ""
+              ' "${inspect_path}"
+            )"
+
+            if [[ -z "${version}" || -n "${seen_versions[${version}]:-}" ]]; then
+              continue
+            fi
+
+            seen_versions["${version}"]=1
+            stable_versions+=("${version}")
+            if [[ "${#stable_versions[@]}" -eq 3 ]]; then
+              break
+            fi
+          done
+
+          if [[ "${#stable_versions[@]}" -lt 3 ]]; then
+            echo "Unable to resolve the last 3 Stable versions from Replicated release history." >&2
+            exit 1
+          fi
+
+          versions_json="$(printf '%s\n' "${stable_versions[@]}" | jq -R . | jq -sc .)"
+          upgrade_matrix="$(
+            jq -nc \
+              --argjson versions "${versions_json}" \
+              --arg eks_version "${{ github.event_name == 'push' && '' || inputs.eks_version }}" \
+              --arg gke_version "${{ github.event_name == 'push' && '' || inputs.gke_version }}" '
+              [
+                $versions[] as $version
+                | {
+                    distribution: "eks",
+                    from_version: $version,
+                    artifact_name: ("qa-upgrade-eks-" + ($version | gsub("\\."; "-"))),
+                    kubernetes_version: $eks_version
+                  },
+                  {
+                    distribution: "gke",
+                    from_version: $version,
+                    artifact_name: ("qa-upgrade-gke-" + ($version | gsub("\\."; "-"))),
+                    kubernetes_version: $gke_version
+                  }
+              ]'
+          )"
+
+          {
+            echo "versions=${versions_json}"
+            echo "upgrade_matrix=${upgrade_matrix}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Notify Slack - Started
+        id: slack
+        uses: ./.github/actions/slack-notify
+        with:
+          status: STARTED
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: C093CVARNKC
+          title: "Nightly Snapshot ${{ steps.metadata.outputs.release_tag }}"
+          summary: |
+            *Replicated Version:* `${{ steps.metadata.outputs.replicated_version }}`
+            *GitHub Release:* <${{ steps.github_release.outputs.release_url }}|${{ steps.metadata.outputs.github_release_tag }}>
+            *Validation:* AWS/GKE fresh install + last 3 Stable direct upgrades
+
+  fresh-installs:
+    needs: [prepare-release]
+    if: needs.prepare-release.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distribution: eks
+            artifact_name: qa-fresh-eks
+            kubernetes_version: ${{ github.event_name == 'push' && '' || inputs.eks_version }}
+          - distribution: gke
+            artifact_name: qa-fresh-gke
+            kubernetes_version: ${{ github.event_name == 'push' && '' || inputs.gke_version }}
+    name: Fresh install (${{ matrix.distribution }})
+    uses: ./.github/workflows/replicated-cmx-install-check.yaml
+    secrets: inherit
+    with:
+      distribution: ${{ matrix.distribution }}
+      channel: nightly
+      release_version: ${{ needs.prepare-release.outputs.replicated_version }}
+      mode: fresh
+      artifact_name: ${{ matrix.artifact_name }}
+      kubernetes_version: ${{ matrix.kubernetes_version }}
+
+  upgrade-installs:
+    needs: [prepare-release]
+    if: needs.prepare-release.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-release.outputs.upgrade_matrix) }}
+    name: Upgrade (${{ matrix.distribution }} / ${{ matrix.from_version }})
+    uses: ./.github/workflows/replicated-cmx-install-check.yaml
+    secrets: inherit
+    with:
+      distribution: ${{ matrix.distribution }}
+      channel: nightly
+      release_version: ${{ needs.prepare-release.outputs.replicated_version }}
+      mode: upgrade
+      from_version: ${{ matrix.from_version }}
+      artifact_name: ${{ matrix.artifact_name }}
+      kubernetes_version: ${{ matrix.kubernetes_version }}
+
+  finalize-release:
+    runs-on: ubuntu-latest
+    needs: [prepare-release, fresh-installs, upgrade-installs]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download QA artifacts
+        if: needs.prepare-release.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: qa-*
+          path: ${{ runner.temp }}/qa-artifacts
+
+      - name: Aggregate QA reports
+        if: needs.prepare-release.result == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/nightly-aggregate-qa.sh \
+            --input-dir "${RUNNER_TEMP}/qa-artifacts" \
+            --release-tag "${{ needs.prepare-release.outputs.release_tag }}" \
+            --replicated-version "${{ needs.prepare-release.outputs.replicated_version }}" \
+            --output-markdown "${RUNNER_TEMP}/qa-report.md" \
+            --output-json "${RUNNER_TEMP}/qa-results.json"
+
+      - name: Attach QA assets to GitHub release
+        if: needs.prepare-release.result == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "${{ needs.prepare-release.outputs.github_release_tag }}" \
+            "${RUNNER_TEMP}/qa-report.md#qa-report.md" \
+            "${RUNNER_TEMP}/qa-results.json#qa-results.json" \
+            --clobber
+
+      - name: Build Slack summary
+        id: summary
+        if: needs.prepare-release.result == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fresh_summary="$(
+            jq -r '
+              [.[] | select(.mode == "fresh") | "\(.distribution)=\(.job_status)"]
+              | join(", ")
+            ' "${RUNNER_TEMP}/qa-results.json"
+          )"
+
+          upgrade_passed="$(
+            jq -r '[.[] | select(.mode == "upgrade" and .job_status == "success")] | length' "${RUNNER_TEMP}/qa-results.json"
+          )"
+          upgrade_total="$(
+            jq -r '[.[] | select(.mode == "upgrade")] | length' "${RUNNER_TEMP}/qa-results.json"
+          )"
+
+          {
+            echo 'summary<<EOF'
+            echo "*Replicated Version:* \`${{ needs.prepare-release.outputs.replicated_version }}\`"
+            echo "*GitHub Release:* <${{ needs.prepare-release.outputs.release_url }}|${{ needs.prepare-release.outputs.github_release_tag }}>"
+            echo "*Fresh Installs:* ${fresh_summary}"
+            echo "*Upgrade Matrix:* ${upgrade_passed}/${upgrade_total} passed"
+            echo "EOF"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Notify Slack - Success
+        if: needs.prepare-release.result == 'success' && needs.fresh-installs.result == 'success' && needs.upgrade-installs.result == 'success' && needs.prepare-release.outputs.slack_message_id != ''
+        uses: ./.github/actions/slack-notify
+        with:
+          status: SUCCESS
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: C093CVARNKC
+          message_id: ${{ needs.prepare-release.outputs.slack_message_id }}
+          title: "Nightly Snapshot ${{ needs.prepare-release.outputs.release_tag }}"
+          summary: ${{ steps.summary.outputs.summary }}
+
+      - name: Notify Slack - Failure
+        if: needs.prepare-release.outputs.slack_message_id != '' && (needs.prepare-release.result != 'success' || needs.fresh-installs.result != 'success' || needs.upgrade-installs.result != 'success')
+        uses: ./.github/actions/slack-notify
+        with:
+          status: FAILURE
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: C093CVARNKC
+          message_id: ${{ needs.prepare-release.outputs.slack_message_id }}
+          title: "Nightly Snapshot ${{ needs.prepare-release.outputs.release_tag }}"
+          summary: |
+            *Replicated Version:* `${{ needs.prepare-release.outputs.replicated_version }}`
+            *GitHub Release:* <${{ needs.prepare-release.outputs.release_url }}|${{ needs.prepare-release.outputs.github_release_tag }}>
+            *Result:* validation failed in at least one AWS/GKE job
