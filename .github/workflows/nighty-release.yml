@@ -787,6 +787,7 @@ jobs:
           sparse-checkout: |
             .github/scripts/run-onprem-test-harness.sh
             .github/scripts/github-app-token.mjs
+            .github/scripts/create-onprem-release-tag.cjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
@@ -799,6 +800,47 @@ jobs:
           doppler-project: opra-ci
           doppler-config: prd
           inject-env-vars: true
+
+      - name: Mint onprem-testbed tag token
+        id: onprem_app_token
+        shell: bash
+        env:
+          GITHUB_APP_OWNER: ${{ github.repository_owner }}
+          GITHUB_APP_REPOSITORIES: onprem-testbed
+          GITHUB_APP_PERMISSIONS_JSON: '{"contents":"write"}'
+        run: |
+          set -euo pipefail
+          export GITHUB_APP_CLIENT_ID="${NIGHTLY_GITHUB_APP_CLIENT_ID}"
+          export GITHUB_APP_PRIVATE_KEY="${NIGHTLY_GITHUB_APP_PRIVATE_KEY}"
+          token_json="$(node .github/scripts/github-app-token.mjs)"
+          token="$(jq -r '.token' <<<"${token_json}")"
+          expires_at="$(jq -r '.expires_at' <<<"${token_json}")"
+          if [[ -z "${token}" || "${token}" == "null" ]]; then
+            echo "Unable to mint GitHub App token" >&2
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+          echo "token=${token}" >> "${GITHUB_OUTPUT}"
+          echo "expires_at=${expires_at}" >> "${GITHUB_OUTPUT}"
+
+      - name: Tag onprem-testbed release snapshot
+        id: tag_onprem_release
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        env:
+          ONPREM_RELEASE_VERSION: ${{ needs.replicated-release.outputs.version }}
+        with:
+          github-token: ${{ steps.onprem_app_token.outputs.token }}
+          script: |
+            const { createImmutableReleaseTag } = require(
+              "./.github/scripts/create-onprem-release-tag.cjs",
+            );
+            await createImmutableReleaseTag({
+              github,
+              core,
+              owner: context.repo.owner,
+              repo: "onprem-testbed",
+              tag: process.env.ONPREM_RELEASE_VERSION,
+            });
 
       - name: Run onprem-testbed fresh-install harness
         id: fresh
