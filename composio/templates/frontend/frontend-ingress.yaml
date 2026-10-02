@@ -27,8 +27,8 @@ spec:
     - host: {{ .Values.frontend.ingress.host | default (printf "app.%s" .Values.global.domain) }}
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: {{ .Values.frontend.ingress.path | default "/" }}
+            pathType: {{ .Values.frontend.ingress.pathType | default "Prefix" }}
             backend:
               service:
                 name: {{ include "composio.fullname" . }}-frontend

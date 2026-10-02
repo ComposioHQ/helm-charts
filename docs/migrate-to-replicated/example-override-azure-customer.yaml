@@ -1,0 +1,41 @@
+# Example customer override for migrating an Azure-style Helm setup to the
+# standard Composio chart without reintroducing provider-specific templates.
+#
+# Apply this on top of the base override file used for the Replicated install.
+# The chart already adds default nginx ingress annotations such as ssl-redirect,
+# so only include the Azure-specific additions here.
+
+apollo:
+  service:
+    type: ClusterIP
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /api/healthz
+  ingress:
+    enabled: true
+    className: nginx
+    host: api.dev-adp.composio.ema.co
+    path: /
+    pathType: ImplementationSpecific
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: |
+        if ($ssl_server_name != "api.dev-adp.composio.ema.co") { return 444; }
+    tls:
+      - secretName: dev-adp-apollo-tls
+        hosts:
+          - api.dev-adp.composio.ema.co
+
+frontend:
+  enabled: true
+  ingress:
+    enabled: true
+    className: nginx
+    host: dev-adp.composio.ema.co
+    path: /
+    pathType: ImplementationSpecific
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: |
+        if ($ssl_server_name != "dev-adp.composio.ema.co") { return 444; }
+    tls:
+      - secretName: dev-adp-composio-tls
+        hosts:
+          - dev-adp.composio.ema.co

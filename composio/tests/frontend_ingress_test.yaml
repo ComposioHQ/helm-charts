@@ -106,6 +106,20 @@ tests:
           path: spec.rules[0].http.paths[0].pathType
           value: Prefix
 
+  - it: should use custom path and pathType when configured
+    set:
+      frontend.enabled: true
+      frontend.ingress.enabled: true
+      frontend.ingress.path: /*
+      frontend.ingress.pathType: ImplementationSpecific
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /*
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: ImplementationSpecific
+
   - it: should route to frontend service
     set:
       frontend.enabled: true

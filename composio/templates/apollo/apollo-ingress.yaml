@@ -25,8 +25,8 @@ spec:
     - host: {{ .Values.apollo.ingress.host | default (printf "apollo.%s" .Values.global.domain) }}
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: {{ .Values.apollo.ingress.path | default "/" }}
+            pathType: {{ .Values.apollo.ingress.pathType | default "Prefix" }}
             backend:
               service:
                 name: {{ include "composio.fullname" . }}-apollo
@@ -37,4 +37,3 @@ spec:
     {{- toYaml .Values.apollo.ingress.tls | nindent 4 }}
   {{- end }}
 {{- end }}
-

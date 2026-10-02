@@ -1,0 +1,35 @@
+# Example customer override for migrating a GCP-style Helm setup to the
+# standard Composio chart without reintroducing provider-specific templates.
+#
+# Apply this on top of the base override file used for the Replicated install.
+
+apollo:
+  service:
+    type: ClusterIP
+    annotations:
+      cloud.google.com/neg: '{"ingress": true}'
+  ingress:
+    enabled: true
+    className: gce
+    host: api.dev.composio.ema.co
+    path: /*
+    pathType: ImplementationSpecific
+    annotations:
+      ingress.gcp.kubernetes.io/pre-shared-cert: composio-api-cert
+      kubernetes.io/ingress.global-static-ip-name: composio-ingress-global-ip
+
+frontend:
+  enabled: true
+  service:
+    type: ClusterIP
+    annotations:
+      cloud.google.com/neg: '{"ingress": true}'
+  ingress:
+    enabled: true
+    className: gce
+    host: dev.composio.ema.co
+    path: /*
+    pathType: ImplementationSpecific
+    annotations:
+      ingress.gcp.kubernetes.io/pre-shared-cert: composio-dev-ssl
+      kubernetes.io/ingress.global-static-ip-name: composio-ing-global-ip
