@@ -316,6 +316,23 @@ tests:
                 key: THERMOS_DATABASE_URL
                 optional: true
 
+  - it: should wire the worker database into thermos db init
+    set:
+      thermos.dbInit.enabled: true
+      thermos.workerDb.enabled: true
+      thermos.workerDb.secretName: thermos-worker-secret
+      thermos.workerDb.secretKey: WORKER_DATABASE_URL
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: THERMOS_WORKER_DB
+            valueFrom:
+              secretKeyRef:
+                name: thermos-worker-secret
+                key: WORKER_DATABASE_URL
+                optional: true
+
   - it: should mount thermos db init secrets under /etc/secrets/thermos
     set:
       thermos.dbInit.enabled: true
@@ -556,6 +573,34 @@ tests:
       - matchRegex:
           path: spec.template.spec.containers[0].args[2]
           pattern: 'CREATE DATABASE composiodb;'
+
+  - it: should create and grant the configured worker database
+    set:
+      databaseMigration.enabled: true
+      thermos.workerDb.enabled: true
+      thermos.workerDb.databaseName: thermos-worker-db
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'CREATE DATABASE "thermos-worker-db";'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'ALTER DATABASE "thermos-worker-db" OWNER TO "postgres";'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: '\\c "thermos-worker-db"'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'GRANT ALL PRIVILEGES ON SCHEMA public TO "postgres";'
+
+  - it: should omit worker database SQL when worker DB is disabled
+    set:
+      databaseMigration.enabled: true
+      thermos.workerDb.enabled: false
+    asserts:
+      - notMatchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'thermos_workerdb'
 
   - it: should quote database migration user as a SQL identifier
     set:
