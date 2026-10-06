@@ -262,7 +262,7 @@ tests:
           path: spec.template.spec.initContainers[0].image
           pattern: ".*/composio-self-host/thermos-toolkit-registry:[^/]+$"
 
-  - it: should percent-encode toolkit registry db url and shell-quote wait configuration
+  - it: should percent-encode toolkit registry db url and preserve literal wait arguments
     documentSelector:
       path: kind
       value: Deployment
@@ -275,33 +275,28 @@ tests:
           content:
             name: TOOLKIT_REGISTRY_DB_URL
             value: postgresql://user%24name%40example.com@RELEASE-NAME-toolkit-registry:5432/thermos%20db%2Fprod?sslmode=disable
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: 'pg_isready -h "RELEASE-NAME-toolkit-registry" -p "5432" -U ''user\$name@example\.com'' -d ''thermos db/prod'''
+      - equal:
+          path: spec.template.spec.initContainers[0].args
+          value: ["-h", "RELEASE-NAME-toolkit-registry", "-p", "5432", "-U", "user$name@example.com", "-d", "thermos db/prod"]
 
-  - it: should bound the toolkit registry wait and log on success
+  - it: should configure a bounded shell-free toolkit registry wait
     documentSelector:
       path: kind
       value: Deployment
     asserts:
       - equal:
-          path: spec.template.spec.initContainers[0].command[0]
-          value: sh
-      - equal:
-          path: spec.template.spec.initContainers[0].command[1]
-          value: -c
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "max_attempts=60"
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "toolkit registry not ready after \\$max_attempts attempts, giving up"
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "exit 1"
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "toolkit registry is ready after \\$i attempt\\(s\\)"
+          path: spec.template.spec.initContainers[0].command
+          value: ["/usr/local/bin/pg-wait"]
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: DB_WAIT_TIMEOUT_SECONDS
+            value: "120"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: DB_POLL_INTERVAL_SECONDS
+            value: "2"
 
   - it: should append thermos additional init containers after toolkit registry wait
     documentSelector:
@@ -480,7 +475,7 @@ tests:
           path: spec.template.spec.initContainers[0].name
           value: wait-for-toolkit-registry
 
-  - it: should percent-encode misc worker toolkit registry db url and shell-quote wait configuration
+  - it: should percent-encode misc worker toolkit registry db url and preserve literal wait arguments
     set:
       thermosMiscWorkers.enabled: true
       toolkitRegistry.auth.username: user$name@example.com
@@ -491,9 +486,9 @@ tests:
           content:
             name: TOOLKIT_REGISTRY_DB_URL
             value: postgresql://user%24name%40example.com@RELEASE-NAME-toolkit-registry:5432/thermos%20db%2Fprod?sslmode=disable
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: 'pg_isready -h "RELEASE-NAME-toolkit-registry" -p "5432" -U ''user\$name@example\.com'' -d ''thermos db/prod'''
+      - equal:
+          path: spec.template.spec.initContainers[0].args
+          value: ["-h", "RELEASE-NAME-toolkit-registry", "-p", "5432", "-U", "user$name@example.com", "-d", "thermos db/prod"]
 
   - it: should append misc worker additional init containers after toolkit registry wait
     set:
@@ -510,25 +505,20 @@ tests:
           path: spec.template.spec.initContainers[1].name
           value: custom-misc-init
 
-  - it: should bound the misc worker toolkit registry wait and log on success
+  - it: should configure a bounded shell-free misc worker toolkit registry wait
     set:
       thermosMiscWorkers.enabled: true
     asserts:
       - equal:
-          path: spec.template.spec.initContainers[0].command[0]
-          value: sh
-      - equal:
-          path: spec.template.spec.initContainers[0].command[1]
-          value: -c
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "max_attempts=60"
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "toolkit registry not ready after \\$max_attempts attempts, giving up"
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "exit 1"
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          pattern: "toolkit registry is ready after \\$i attempt\\(s\\)"
+          path: spec.template.spec.initContainers[0].command
+          value: ["/usr/local/bin/pg-wait"]
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: DB_WAIT_TIMEOUT_SECONDS
+            value: "120"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: DB_POLL_INTERVAL_SECONDS
+            value: "2"
