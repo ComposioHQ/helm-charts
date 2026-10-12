@@ -12,5 +12,5 @@ dependencies:
     condition: features.temporal
   - name: replicated
     repository: oci://registry.replicated.com/library
-    version: 1.19.10
+    version: 1.19.11
     condition: replicated.enabled
