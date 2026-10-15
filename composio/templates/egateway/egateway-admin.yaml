@@ -1,0 +1,93 @@
+{{- if .Values.egateway.enabled }}
+{{- $secret := include "egateway.secretName" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "egateway.adminServiceName" . }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-admin
+spec:
+  replicas: {{ .Values.egateway.admin.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: egateway-admin
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: egateway-admin
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/egateway/egateway-configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "egateway.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: admin
+          image: {{ include "composio.imageReference" (dict "image" .Values.egateway.admin.image "context" .) | quote }}
+          imagePullPolicy: {{ .Values.egateway.admin.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: {{ include "composio.fullname" . }}-egateway-config
+          env:
+            - name: PORT
+              value: "3002"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            # Admin reads its Redis from REDIS_URL_VERCEL (falls back to REDIS_URL).
+            - name: REDIS_URL_VERCEL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: EGATEWAY_REDIS_URL
+            {{- include "egateway.secretEnv" . | nindent 12 }}
+            {{- range $key := list "SAML_AUTHN_PROXY_HMAC_SECRET" "FUSIONAUTH_WEBHOOK_SECRET" "INTERNAL_SERVICE_TOKEN" "CRON_SECRET" }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- with .Values.egateway.admin.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.egateway.admin.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "egateway.adminServiceName" . }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-admin
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3002
+      targetPort: http
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-admin
+{{- end }}

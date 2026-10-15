@@ -1,0 +1,21 @@
+{{- if .Values.egateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "composio.fullname" . }}-egateway-config
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway
+data:
+  NODE_ENV: "production"
+  SELF_HOSTED: "true"
+  AUTH_PUBLIC_URL: {{ printf "https://%s" (include "egateway.adminHost" .) | quote }}
+  NEXTAUTH_URL: {{ printf "https://%s" (include "egateway.adminHost" .) | quote }}
+  PROXY_PUBLIC_URL: {{ printf "https://%s" (include "egateway.proxyHost" .) | quote }}
+  FUSIONAUTH_URL: {{ printf "https://%s" (include "egateway.authHost" .) | quote }}
+  FUSIONAUTH_ISSUER: {{ include "egateway.authHost" . | quote }}
+  FUSIONAUTH_JWKS_URL: {{ printf "http://%s:9011/.well-known/jwks.json" (include "egateway.fusionauthServiceName" .) | quote }}
+  FUSIONAUTH_ADMIN_REDIRECT_URL: {{ printf "https://%s/api/auth/callback" (include "egateway.adminHost" .) | quote }}
+  COMPOSIO_BASE_URL: {{ include "egateway.composioBaseUrl" . | quote }}
+{{- end }}

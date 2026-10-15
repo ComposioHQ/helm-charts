@@ -1,0 +1,37 @@
+{{- if and .Values.egateway.enabled .Values.egateway.migrate.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "composio.fullname" . }}-egateway-migrate
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-migrate
+  annotations:
+    # Runs after the databaseMigration job (weight -5) creates the database.
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: egateway-migrate
+    spec:
+      restartPolicy: Never
+      {{- include "egateway.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: migrate
+          image: {{ include "composio.imageReference" (dict "image" .Values.egateway.migrate.image "context" .) | quote }}
+          imagePullPolicy: {{ .Values.egateway.migrate.image.pullPolicy }}
+          command: ["bun", "run", "--filter", "@repo/db", "db:migrate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "egateway.secretName" . }}
+                  key: EGATEWAY_POSTGRES_URL
+{{- end }}

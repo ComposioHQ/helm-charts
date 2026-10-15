@@ -1,0 +1,56 @@
+{{- if and .Values.egateway.enabled .Values.egateway.ingress.enabled }}
+{{- $ing := .Values.egateway.ingress }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "composio.fullname" . }}-egateway
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway
+  {{- with $ing.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $ing.className }}
+  ingressClassName: {{ $ing.className }}
+  {{- end }}
+  {{- with $ing.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ include "egateway.adminHost" . | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "egateway.adminServiceName" . }}
+                port:
+                  name: http
+    - host: {{ include "egateway.proxyHost" . | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "egateway.proxyServiceName" . }}
+                port:
+                  name: http
+    {{- if .Values.egateway.fusionauth.enabled }}
+    - host: {{ include "egateway.authHost" . | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "egateway.fusionauthServiceName" . }}
+                port:
+                  name: http
+    {{- end }}
+{{- end }}
