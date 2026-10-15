@@ -1,0 +1,139 @@
+{{- if and .Values.egateway.enabled .Values.egateway.fusionauth.enabled }}
+{{- $fa := .Values.egateway.fusionauth }}
+{{- $dbHost := $fa.database.host | default .Values.databaseMigration.host }}
+{{- $dbPort := $fa.database.port | default .Values.databaseMigration.port }}
+{{- $dbUser := $fa.database.user | default .Values.databaseMigration.user }}
+{{- $secret := include "egateway.secretName" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "egateway.fusionauthServiceName" . }}-kickstart
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-fusionauth
+data:
+  # Runs once on a fresh FusionAuth database. Creates the API key admin/proxy
+  # use (from the FUSIONAUTH_API_KEY secret) and sets the default tenant issuer.
+  # Org tenants and applications are provisioned at runtime by admin.
+  kickstart.json: |
+    {
+      "apiKeys": [
+        {
+          "key": "#{ENV.FUSIONAUTH_API_KEY}",
+          "description": "Composio eGateway",
+          "keyManager": true
+        }
+      ],
+      "requests": [
+        {
+          "method": "PATCH",
+          "url": "/api/tenant/#{FUSIONAUTH_TENANT_ID}",
+          "body": {
+            "tenant": {
+              "issuer": {{ include "egateway.authHost" . | quote }}
+            }
+          }
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "egateway.fusionauthServiceName" . }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-fusionauth
+spec:
+  replicas: {{ $fa.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: egateway-fusionauth
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: egateway-fusionauth
+    spec:
+      containers:
+        - name: fusionauth
+          image: {{ printf "%s:%s" $fa.image.repository $fa.image.tag | quote }}
+          imagePullPolicy: {{ $fa.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9011
+          env:
+            - name: DATABASE_URL
+              value: {{ printf "jdbc:postgresql://%s:%v/%s" $dbHost $dbPort $fa.database.name | quote }}
+            - name: DATABASE_USERNAME
+              value: {{ $dbUser | quote }}
+            - name: DATABASE_ROOT_USERNAME
+              value: {{ $dbUser | quote }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: FUSIONAUTH_DATABASE_PASSWORD
+            - name: DATABASE_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: FUSIONAUTH_DATABASE_PASSWORD
+            - name: FUSIONAUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: FUSIONAUTH_API_KEY
+            - name: FUSIONAUTH_APP_SILENT_MODE
+              value: "true"
+            - name: FUSIONAUTH_APP_URL
+              value: "http://localhost:9011"
+            - name: SEARCH_TYPE
+              value: "database"
+            - name: FUSIONAUTH_APP_KICKSTART_FILE
+              value: /usr/local/fusionauth/kickstart/kickstart.json
+          volumeMounts:
+            - name: kickstart
+              mountPath: /usr/local/fusionauth/kickstart
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            {{- toYaml $fa.resources | nindent 12 }}
+      volumes:
+        - name: kickstart
+          configMap:
+            name: {{ include "egateway.fusionauthServiceName" . }}-kickstart
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "egateway.fusionauthServiceName" . }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-fusionauth
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9011
+      targetPort: http
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-fusionauth
+{{- end }}

@@ -1384,3 +1384,124 @@ weaviate:
   volumeMounts: []
   # -- Additional volumes
   volumes: []
+# Enterprise MCP Gateway (eGateway): admin dashboard, MCP proxy, migrations,
+# scheduled jobs and a bundled FusionAuth identity provider.
+# Source: https://github.com/ComposioHQ/composio-enterprise
+egateway:
+  # -- Enable the enterprise MCP gateway
+  enabled: false
+  # -- Secret holding gateway credentials (defaults to the core secret, `secret.name`).
+  # Required keys: EGATEWAY_POSTGRES_URL, EGATEWAY_REDIS_URL,
+  # COMPOSIO_API_KEY_ENCRYPTION_SECRET, SAML_AUTHN_PROXY_HMAC_SECRET,
+  # FUSIONAUTH_API_KEY, FUSIONAUTH_WEBHOOK_SECRET, INTERNAL_SERVICE_TOKEN,
+  # CRON_SECRET, and FUSIONAUTH_DATABASE_PASSWORD when fusionauth.enabled.
+  secretRef: ""
+  # Public hostnames. Default to <name>.<global.domain>.
+  hosts:
+    # -- Admin dashboard hostname (default: egateway.<global.domain>)
+    admin: ""
+    # -- MCP proxy hostname (default: mcp.<global.domain>)
+    proxy: ""
+    # -- FusionAuth hostname (default: auth.<global.domain>)
+    auth: ""
+  # -- Composio backend URL. Defaults to the in-cluster Apollo service.
+  composioBaseUrl: ""
+  database:
+    # -- Postgres database created by databaseMigration for the gateway
+    name: egatewaydb
+  admin:
+    replicaCount: 1
+    image:
+      # -- Admin image repository (placeholder until the ECR repository exists)
+      repository: composio-self-host/egateway-admin
+      tag: "latest"
+      pullPolicy: Always
+      # -- Full image name (optional, overrides repository:tag if set)
+      imageName: ""
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    # -- Extra environment variables for admin
+    extraEnv: []
+  proxy:
+    replicaCount: 1
+    image:
+      # -- Proxy image repository (placeholder until the ECR repository exists)
+      repository: composio-self-host/egateway-proxy
+      tag: "latest"
+      pullPolicy: Always
+      imageName: ""
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    # -- Extra environment variables for proxy
+    extraEnv: []
+  migrate:
+    # -- Run Prisma migrations as a pre-install/pre-upgrade hook
+    enabled: true
+    image:
+      # -- Migrate image repository (placeholder until the ECR repository exists)
+      repository: composio-self-host/egateway-migrate
+      tag: "latest"
+      pullPolicy: Always
+      imageName: ""
+  cronJobs:
+    # -- Run the admin's scheduled jobs (replaces Vercel crons in apps/admin/vercel.json)
+    enabled: true
+    image: "curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd"
+    # -- Each job calls GET <admin>/api/internal/<path> with the CRON_SECRET bearer token
+    jobs:
+      - { name: scim-projection-queue, path: /api/internal/scim-projection-queue, schedule: "*/1 * * * *" }
+      - { name: provisioning-queue, path: /api/internal/provisioning-queue, schedule: "*/1 * * * *" }
+      - { name: provisioning-sweeper, path: /api/internal/provisioning-sweeper, schedule: "*/15 * * * *" }
+      - { name: scim-reconcile, path: /api/internal/scim-reconcile, schedule: "*/15 * * * *" }
+      - { name: metrics-publish, path: /api/internal/metrics-publish, schedule: "*/2 * * * *" }
+      - { name: sso-delegation-reminders, path: /api/internal/sso-delegation-reminders, schedule: "5 9 * * *" }
+      - { name: archive-expired-trials, path: /api/internal/archive-expired-trials, schedule: "0 3 * * *" }
+      - { name: mcp-connection-expiry-warnings, path: /api/internal/mcp-connection-expiry-warnings, schedule: "0 8 * * *" }
+      - { name: manifest-reverify, path: /api/internal/manifest-reverify, schedule: "0 4 * * *" }
+      - { name: manifest-fix-drift, path: /api/internal/manifest-fix-drift, schedule: "0 5 * * *" }
+      - { name: manifest-corpus-replay, path: /api/internal/manifest-corpus-replay, schedule: "0 6 * * 1" }
+      - { name: argument-profile, path: /api/internal/argument-profile, schedule: "20 * * * *" }
+      - { name: manifest-observation-retention, path: /api/internal/manifest-observation-retention, schedule: "30 3 * * *" }
+      - { name: sandbox-purge, path: /api/internal/sandbox-purge, schedule: "0 4 * * *" }
+      - { name: idempotency-purge, path: /api/internal/idempotency-purge, schedule: "0 */1 * * *" }
+  ingress:
+    # -- Expose admin, proxy and FusionAuth via Ingress
+    enabled: false
+    className: ""
+    annotations: {}
+    # -- TLS settings, e.g. [{ secretName: egateway-tls, hosts: [...] }]
+    tls: []
+  fusionauth:
+    # -- Deploy a bundled FusionAuth instance
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: fusionauth/fusionauth-app
+      tag: "1.67.0"
+      pullPolicy: IfNotPresent
+    database:
+      # -- Postgres database created by databaseMigration for FusionAuth
+      name: fusionauthdb
+      # -- Postgres host (defaults to databaseMigration.host)
+      host: ""
+      # -- Postgres port (defaults to databaseMigration.port)
+      port: ""
+      # -- Postgres user (defaults to databaseMigration.user)
+      user: ""
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "250m"
+      limits:
+        memory: "2Gi"
+        cpu: "1"

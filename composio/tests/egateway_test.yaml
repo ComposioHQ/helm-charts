@@ -1,0 +1,176 @@
+suite: test enterprise MCP gateway
+templates:
+  - egateway/egateway-configmap.yaml
+  - egateway/egateway-admin.yaml
+  - egateway/egateway-proxy.yaml
+  - egateway/egateway-migrate-job.yaml
+  - egateway/egateway-cronjobs.yaml
+  - egateway/egateway-fusionauth.yaml
+  - egateway/egateway-ingress.yaml
+tests:
+  - it: should render nothing when egateway is disabled
+    set:
+      egateway.enabled: false
+      egateway.ingress.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should configure the gateway for self-hosting with in-cluster Apollo
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      global.domain: customer.example.com
+    asserts:
+      - equal:
+          path: data.SENTRY_ENABLED
+          value: "false"
+      - equal:
+          path: data.DATADOG_ENABLED
+          value: "false"
+      - equal:
+          path: data.RESEND_ENABLED
+          value: "false"
+      - equal:
+          path: data.COMPOSIO_BASE_URL
+          value: http://RELEASE-NAME-apollo:9900
+      - equal:
+          path: data.AUTH_PUBLIC_URL
+          value: https://egateway.customer.example.com
+      - equal:
+          path: data.PROXY_PUBLIC_URL
+          value: https://mcp.customer.example.com
+      - equal:
+          path: data.FUSIONAUTH_ISSUER
+          value: auth.customer.example.com
+      - equal:
+          path: data.FUSIONAUTH_JWKS_URL
+          value: http://RELEASE-NAME-composio-egateway-fusionauth:9011/.well-known/jwks.json
+
+  - it: should honour explicit hosts and backend URL
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      egateway.hosts.admin: gw.acme.io
+      egateway.composioBaseUrl: https://composio.acme.io
+    asserts:
+      - equal:
+          path: data.AUTH_PUBLIC_URL
+          value: https://gw.acme.io
+      - equal:
+          path: data.COMPOSIO_BASE_URL
+          value: https://composio.acme.io
+
+  - it: should read admin secrets from the core secret by default
+    template: egateway/egateway-admin.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: EGATEWAY_POSTGRES_URL
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CRON_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: CRON_SECRET
+
+  - it: should use a custom secret when secretRef is set
+    template: egateway/egateway-proxy.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      egateway.secretRef: egateway-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_URL
+            valueFrom:
+              secretKeyRef:
+                name: egateway-secrets
+                key: EGATEWAY_REDIS_URL
+
+  - it: should run migrations as a pre-install/pre-upgrade hook
+    template: egateway/egateway-migrate-job.yaml
+    set:
+      egateway.enabled: true
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["bun", "run", "--filter", "@repo/db", "db:migrate"]
+
+  - it: should create one CronJob per scheduled admin route
+    template: egateway/egateway-cronjobs.yaml
+    set:
+      egateway.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 15
+      - isKind:
+          of: CronJob
+
+  - it: should skip CronJobs when disabled
+    template: egateway/egateway-cronjobs.yaml
+    set:
+      egateway.enabled: true
+      egateway.cronJobs.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should skip bundled FusionAuth when disabled
+    template: egateway/egateway-fusionauth.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should point FusionAuth at its own database
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 1
+    set:
+      egateway.enabled: true
+      databaseMigration.host: pg.internal
+      databaseMigration.port: "5432"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            value: jdbc:postgresql://pg.internal:5432/fusionauthdb
+
+  - it: should route admin, proxy and auth hosts through the ingress
+    template: egateway/egateway-ingress.yaml
+    set:
+      egateway.enabled: true
+      egateway.ingress.enabled: true
+      global.domain: customer.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: egateway.customer.example.com
+      - equal:
+          path: spec.rules[1].host
+          value: mcp.customer.example.com
+      - equal:
+          path: spec.rules[2].host
+          value: auth.customer.example.com
