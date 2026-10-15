@@ -23,8 +23,14 @@ tests:
       global.domain: customer.example.com
     asserts:
       - equal:
-          path: data.SELF_HOSTED
-          value: "true"
+          path: data.SENTRY_ENABLED
+          value: "false"
+      - equal:
+          path: data.DATADOG_ENABLED
+          value: "false"
+      - equal:
+          path: data.RESEND_ENABLED
+          value: "false"
       - equal:
           path: data.COMPOSIO_BASE_URL
           value: http://RELEASE-NAME-apollo:9900

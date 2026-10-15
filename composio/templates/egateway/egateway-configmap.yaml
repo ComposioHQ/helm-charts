@@ -9,7 +9,10 @@ metadata:
     app.kubernetes.io/component: egateway
 data:
   NODE_ENV: "production"
-  SELF_HOSTED: "true"
+  # Composio's SaaS observability and email providers are off in self-hosted installs.
+  SENTRY_ENABLED: "false"
+  DATADOG_ENABLED: "false"
+  RESEND_ENABLED: "false"
   AUTH_PUBLIC_URL: {{ printf "https://%s" (include "egateway.adminHost" .) | quote }}
   NEXTAUTH_URL: {{ printf "https://%s" (include "egateway.adminHost" .) | quote }}
   PROXY_PUBLIC_URL: {{ printf "https://%s" (include "egateway.proxyHost" .) | quote }}
