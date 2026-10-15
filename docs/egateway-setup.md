@@ -62,8 +62,8 @@ egateway:
 ```
 
 ### Notes
-- Admin runs with `SENTRY_ENABLED`, `DATADOG_ENABLED` and `RESEND_ENABLED` set to `false`, so
-  those SaaS integrations are off and their settings are not required. Without Resend, invite
+- Admin and proxy run with `SENTRY_ENABLED`, `DATADOG_ENABLED` and `RESEND_ENABLED` set to
+  `false`, so those SaaS integrations are off and their settings are not required. Without Resend, invite
   and password-reset emails are not sent.
 - FusionAuth uses its database as the search engine (no OpenSearch needed). Its kickstart
   only runs on an empty database: it creates the API key and sets the tenant issuer. Org
