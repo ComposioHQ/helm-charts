@@ -1,0 +1,26 @@
+suite: project auth reassignment SQL configmap
+templates:
+  - project-auth-reassignment/migration-configmap.yaml
+tests:
+  - it: does not render unless explicitly enabled
+    set:
+      projectAuthReassignment.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: mounts the literal migration SQL without rendering its contents as Helm expressions
+    set:
+      projectAuthReassignment.enabled: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-project-auth-reassignment-script
+      - matchRegex:
+          path: data["migration.sql"]
+          pattern: 'source_user_id text;'
+      - matchRegex:
+          path: data["migration.sql"]
+          pattern: 'project_auth_reassignment.completed'
