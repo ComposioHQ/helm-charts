@@ -9,6 +9,7 @@ This directory contains the GitHub Pages documentation for the Composio Helm Cha
 - `load-tests.html` - Load test results with date range filtering
 - `access-request.html` - On-premises access request form
 - `redis-sentinel.md` - Redis Sentinel setup guide for Apollo
+- `debugging/auth-refresh.md` - Debugging auth refresh failures on a self-hosted deployment
 - `assets/` - CSS and JavaScript files
 - `data/` - JSON data files for dynamic content
 
