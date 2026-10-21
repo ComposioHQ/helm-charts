@@ -348,7 +348,7 @@ export async function packageRelease(o) {
   } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
+if (process.argv[1] && fs.existsSync(process.argv[1]) && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   try {
     const parsed = options(process.argv.slice(2));
     if (parsed.help) console.log(`Usage: node scripts/package-replicated-release.mjs --version 0.2.14 \\\n  [options]
