@@ -237,6 +237,18 @@ export async function packageRelease(o) {
       '--include-crds', '--set', 'global.disableK8SecretCheck=true']), { schema: yaml.JSON_SCHEMA }).filter(Boolean);
     const images = renderedImages(render());
     const q = qualification(o.qualification, images);
+    if (o.qualification) {
+      const validation = path.join(scratch, 'chart-validation.json');
+      writeJson(validation, { documents: render(), images, computeModes: q.computeModes,
+        namespace: values.namespace?.name ?? 'composio',
+        accounts: Object.fromEntries(['apollo', 'thermos', 'mercury'].map(name => [name, values[name]?.serviceAccount?.name ?? `composio-${name}`])) });
+      command(process.execPath, ['-e', `const fs=require('node:fs'); const {validateManifests}=require(process.argv[1]);
+        const v=JSON.parse(fs.readFileSync(process.argv[2]));
+        for(const compute of v.computeModes) validateManifests(v.documents,
+          {installation:{kubernetes:{compute},workloads:{namespace:v.namespace,serviceAccounts:v.accounts}},application:{secrets:[]}},
+          {images:v.images,capabilities:{}});`, path.join(scratch, 'runner-build/stacks/managed-vpc/runner/src/chart.js'), validation], { env: helperEnv });
+    }
+
     const release = { schemaVersion: 2, releaseId: o['release-id'], smokeTestOnly: false,
       toolchain: { pulumi: pins['@pulumi/pulumi'], awsProvider: pins['@pulumi/aws'], randomProvider: pins['@pulumi/random'], nodeMajor: 22 },
       runner: { image: runnerImage, revision: publication.revision },
