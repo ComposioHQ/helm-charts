@@ -6,6 +6,7 @@ metadata:
   labels:
     app: thermos-misc-workers
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.thermosMiscWorkers.replicaCount }}
   strategy:
@@ -22,6 +23,7 @@ spec:
       labels:
         app: thermos-misc-workers
         release: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       {{- if .Values.thermos.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.thermos.serviceAccount.name }}
@@ -56,6 +58,9 @@ spec:
 {{ include "composio.temporalNamespaceWaitInitContainer" . | nindent 8 }}
         {{- end }}
         - name: wait-for-toolkit-registry
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 250m, memory: 128Mi}
           image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
           command: ["/usr/local/bin/pg-wait"]
@@ -165,6 +170,7 @@ spec:
             {{- toYaml .Values.thermosMiscWorkers.env | nindent 12 }}
             {{- end }}
           volumeMounts:
+            {{- include "composio.databaseTlsMount" . | nindent 12 }}
             - name: thermos-secrets
               mountPath: {{ .Values.thermosMiscWorkers.secretsDir | quote }}
               readOnly: true
@@ -176,6 +182,7 @@ spec:
           resources:
             {{- toYaml .Values.thermosMiscWorkers.resources | nindent 12 }}
       volumes:
+        {{- include "composio.databaseTlsVolume" . | nindent 8 }}
         - name: thermos-secrets
           emptyDir: {}
         - name: cache-volume

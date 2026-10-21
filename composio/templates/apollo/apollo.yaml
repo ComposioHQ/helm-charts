@@ -12,6 +12,7 @@ metadata:
   labels:
     app: apollo
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.apollo.replicaCount }}
   strategy:
@@ -28,6 +29,7 @@ spec:
       labels:
         app: apollo
         release: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       {{- if .Values.apollo.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.apollo.serviceAccount.name  }}
@@ -96,7 +98,7 @@ spec:
               value: {{ .Values.apollo.secretsDir | quote }}
             - name: EXPOSE_ADVANCED_AUTH_PARAMS_BETA
               value: "true"
-            {{- if eq .Values.apollo.objectStorage.backend "s3"}}
+            {{- if and (eq .Values.apollo.objectStorage.backend "s3") (not .Values.apollo.objectStorage.useWebIdentity) }}
             - name: S3_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
@@ -247,6 +249,7 @@ spec:
           resources:
             {{- toYaml .Values.apollo.resources | nindent 12 }}
           volumeMounts:
+            {{- include "composio.databaseTlsMount" . | nindent 12 }}
             - name: apollo-secrets
               mountPath: {{ .Values.apollo.secretsDir | quote }}
               readOnly: true
@@ -259,6 +262,7 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
       volumes:
+        {{- include "composio.databaseTlsVolume" . | nindent 8 }}
         - name: apollo-secrets
           emptyDir: {}
         {{- if and .Values.apollo.googleServiceAccount .Values.apollo.googleServiceAccount.enabled }}
@@ -278,6 +282,7 @@ metadata:
   labels:
     app: apollo
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   type: {{ .Values.apollo.service.type }}
   ports:
@@ -290,6 +295,7 @@ spec:
   selector:
     app: apollo
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 ---
 {{- if .Values.apollo.autoscaling.enabled }}
 apiVersion: autoscaling/v2
@@ -299,6 +305,7 @@ metadata:
   labels:
     app: apollo
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

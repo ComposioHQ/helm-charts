@@ -1,0 +1,94 @@
+secret:
+  name: composio-runtime
+openAI:
+  secretRef: composio-runtime
+# Customer IDs, bucket names, image digests and secret values are injected at runtime.
+namespace:
+  create: false
+replicated:
+  enabled: true
+  existingImagePullSecret: composio-runner-registry
+databaseMigration:
+  enabled: false
+externalRedis:
+  enabled: true
+  secretRef: composio-runtime
+  key: REDIS_URL
+  sentinel:
+    enabled: false
+redis:
+  enabled: false
+minio:
+  enabled: false
+weaviate:
+  enabled: false
+features:
+  temporal: false
+thermosMiscWorkers:
+  enabled: false
+otel:
+  enabled: false
+aws:
+  s3:
+    useAwsEndpoints: true
+apollo:
+  smtp:
+    secretRef: composio-runtime
+  objectStorage:
+    backend: s3
+    useWebIdentity: true
+  s3Endpoint: ""
+  s3EndpointUrl: ""
+  s3ForcePathStyle: "false"
+  serviceAccount:
+    enabled: true
+    create: false
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "1"
+      memory: 4Gi
+  ingress:
+    enabled: false
+thermos:
+  serviceAccount:
+    enabled: true
+    create: false
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+mercury:
+  useKnative: false
+  serviceAccount:
+    enabled: true
+    create: false
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  ingress:
+    enabled: false
+frontend:
+  enabled: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  ingress:
+    enabled: false
+databaseTls:
+  enabled: true
+  configMap: composio-rds-ca
+  mountPath: /etc/composio/database-tls

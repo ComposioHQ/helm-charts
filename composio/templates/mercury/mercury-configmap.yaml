@@ -7,11 +7,11 @@ metadata:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: mercury
 data:
-  AWS_S3_REGION_NAME: "us-east-1"
-  AWS_DEFAULT_REGION: "us-east-1"
-  AWS_REGION: "us-east-1"
-  AWS_S3_LAMBDA_BUCKET: "tools"
-  AWS_S3_CUSTOM_TOOLS_BUCKET: "tools"
+  AWS_S3_REGION_NAME: {{ .Values.mercury.aws.region | default .Values.aws.region | quote }}
+  AWS_DEFAULT_REGION: {{ .Values.mercury.aws.region | default .Values.aws.region | quote }}
+  AWS_REGION: {{ .Values.mercury.aws.region | default .Values.aws.region | quote }}
+  AWS_S3_LAMBDA_BUCKET: {{ .Values.mercury.aws.toolsBucket | quote }}
+  AWS_S3_CUSTOM_TOOLS_BUCKET: {{ .Values.mercury.aws.toolsBucket | quote }}
   SELF_HOSTED: "true"
   FILE_BACKEND: {{ .Values.mercury.fileStorage | default "s3" | quote }}
   DISABLE_BUNDLE_SIGNATURE_VERIFICATION: {{ ternary "false" "true" .Values.mercury.bundleSignatureVerification.enabled | quote }}
@@ -19,9 +19,13 @@ data:
   MODULE_BUNDLE_VERIFICATION_PUBLIC_KEY_BASE64: {{ ternary .Values.mercury.bundleSignatureVerification.publicKeyBase64 "" .Values.mercury.bundleSignatureVerification.enabled | quote }}
   BACKEND_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
   APOLLO_URL: {{ printf "http://%s-apollo:9900" .Release.Name | quote }}
+  {{- if not .Values.aws.s3.useAwsEndpoints }}
   AWS_S3_ENDPOINT: "http://{{ .Release.Name }}-minio:9000"
   AWS_S3_ENDPOINT_URL: "http://{{ .Release.Name }}-minio:9000"
   AWS_S3_FORCE_PATH_STYLE: "true"
+  {{- else }}
+  AWS_S3_FORCE_PATH_STYLE: "false"
+  {{- end }}
   USE_APOLLO_GET_DOWNLOAD_URL_API: "true"
   {{- if .Values.otel.enabled }}
   OTEL_ENABLED: {{ .Values.otel.enabled | toString | quote }}
