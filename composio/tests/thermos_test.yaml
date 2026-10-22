@@ -277,26 +277,24 @@ tests:
             value: postgresql://user%24name%40example.com@RELEASE-NAME-toolkit-registry:5432/thermos%20db%2Fprod?sslmode=disable
       - equal:
           path: spec.template.spec.initContainers[0].args
-          value: ["-h", "RELEASE-NAME-toolkit-registry", "-p", "5432", "-U", "user$name@example.com", "-d", "thermos db/prod"]
+          value: ["-h", "RELEASE-NAME-toolkit-registry", "-p", "5432", "-U", "user$name@example.com", "-d", "thermos db/prod", "-t", "2"]
 
-  - it: should configure a bounded shell-free toolkit registry wait
+  - it: should use the bundled PostgreSQL probe with a bounded attempt and native retries
     documentSelector:
       path: kind
       value: Deployment
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].command
-          value: ["/usr/local/bin/pg-wait"]
-      - contains:
+          value: ["pg_isready"]
+      - equal:
+          path: spec.template.spec.initContainers[0].args[8]
+          value: "-t"
+      - equal:
+          path: spec.template.spec.initContainers[0].args[9]
+          value: "2"
+      - notExists:
           path: spec.template.spec.initContainers[0].env
-          content:
-            name: DB_WAIT_TIMEOUT_SECONDS
-            value: "120"
-      - contains:
-          path: spec.template.spec.initContainers[0].env
-          content:
-            name: DB_POLL_INTERVAL_SECONDS
-            value: "2"
 
   - it: should append thermos additional init containers after toolkit registry wait
     documentSelector:
@@ -488,7 +486,7 @@ tests:
             value: postgresql://user%24name%40example.com@RELEASE-NAME-toolkit-registry:5432/thermos%20db%2Fprod?sslmode=disable
       - equal:
           path: spec.template.spec.initContainers[0].args
-          value: ["-h", "RELEASE-NAME-toolkit-registry", "-p", "5432", "-U", "user$name@example.com", "-d", "thermos db/prod"]
+          value: ["-h", "RELEASE-NAME-toolkit-registry", "-p", "5432", "-U", "user$name@example.com", "-d", "thermos db/prod", "-t", "2"]
 
   - it: should append misc worker additional init containers after toolkit registry wait
     set:
@@ -505,20 +503,18 @@ tests:
           path: spec.template.spec.initContainers[1].name
           value: custom-misc-init
 
-  - it: should configure a bounded shell-free misc worker toolkit registry wait
+  - it: should use the bundled PostgreSQL probe for misc worker native retries
     set:
       thermosMiscWorkers.enabled: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].command
-          value: ["/usr/local/bin/pg-wait"]
-      - contains:
+          value: ["pg_isready"]
+      - equal:
+          path: spec.template.spec.initContainers[0].args[8]
+          value: "-t"
+      - equal:
+          path: spec.template.spec.initContainers[0].args[9]
+          value: "2"
+      - notExists:
           path: spec.template.spec.initContainers[0].env
-          content:
-            name: DB_WAIT_TIMEOUT_SECONDS
-            value: "120"
-      - contains:
-          path: spec.template.spec.initContainers[0].env
-          content:
-            name: DB_POLL_INTERVAL_SECONDS
-            value: "2"

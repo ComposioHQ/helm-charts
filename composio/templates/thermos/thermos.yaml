@@ -62,7 +62,8 @@ spec:
             limits: {cpu: 250m, memory: 128Mi}
           image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
-          command: ["/usr/local/bin/pg-wait"]
+          # Kubernetes retries this init container until PostgreSQL accepts connections.
+          command: ["pg_isready"]
           args:
             - -h
             - {{ printf "%s-toolkit-registry" .Release.Name | quote }}
@@ -72,11 +73,8 @@ spec:
             - {{ .Values.toolkitRegistry.auth.username | quote }}
             - -d
             - {{ .Values.toolkitRegistry.database.name | quote }}
-          env:
-            - name: DB_WAIT_TIMEOUT_SECONDS
-              value: "120"
-            - name: DB_POLL_INTERVAL_SECONDS
-              value: "2"
+            - -t
+            - "2"
         {{- with .Values.thermos.additionalInitContainers }}
 {{ tpl (toYaml .) $ | nindent 8 }}
         {{- end }}
