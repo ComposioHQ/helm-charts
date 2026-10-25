@@ -19,7 +19,8 @@ SELECT (to_regprocedure('public.audit_log_insert(text)') IS NULL)::int AS setup_
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 
-DO $$
+-- Kubernetes rewrites bare dollar pairs in container args.
+DO $audit$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'audit_owner') THEN
     CREATE ROLE audit_owner NOLOGIN;
@@ -28,7 +29,7 @@ BEGIN
       OR NOT has_schema_privilege('audit_owner', 'public', 'CREATE') THEN
     GRANT USAGE, CREATE ON SCHEMA public TO audit_owner;
   END IF;
-END $$;
+END $audit$;
 
 -- PostgreSQL 16+ requires SET membership before a non-superuser can transfer
 -- ownership to a role. The migration uses SET LOCAL ROLE audit_owner as well.
@@ -47,7 +48,7 @@ WHERE NOT pg_has_role(grantee, 'audit_owner', :'membership_privilege') \gexec
 SELECT (to_regclass('public.audit_logs') IS NOT NULL)::int AS table_exists \gset
 \if :table_exists
 
-DO $$
+DO $audit$
 DECLARE
   relation regclass;
 BEGIN
@@ -63,7 +64,7 @@ BEGIN
       <> 'audit_owner'::regrole THEN
     ALTER FUNCTION public.audit_logs_block_mutation() OWNER TO audit_owner;
   END IF;
-END $$;
+END $audit$;
 
 -- Preserve the migration role's ability to read audit rows. Its temporary
 -- INSERT grant lets v175 detect the writer and replace direct INSERT with
