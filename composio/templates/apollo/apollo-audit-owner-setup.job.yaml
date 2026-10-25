@@ -1,0 +1,70 @@
+{{- if and .Values.apollo.dbInit.enabled .Values.apollo.dbInit.auditOwnerSetup.enabled }}
+{{- $setup := .Values.apollo.dbInit.auditOwnerSetup }}
+{{- if and $setup.databaseUrlSecret.name (not $setup.migrationRole) }}
+{{- fail "apollo.dbInit.auditOwnerSetup.migrationRole is required when using a separate database URL Secret" }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-apollo-audit-owner-setup
+  labels:
+    app: apollo-audit-owner-setup
+    release: {{ .Release.Name }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "-2"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: {{ .Values.dbInit.job.backoffLimit | default 3 }}
+  activeDeadlineSeconds: {{ .Values.dbInit.job.activeDeadlineSeconds | default 300 }}
+  template:
+    metadata:
+      name: {{ .Release.Name }}-apollo-audit-owner-setup
+      labels:
+        app: apollo-audit-owner-setup
+        release: {{ .Release.Name }}
+    spec:
+      {{- if .Values.apollo.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.apollo.serviceAccount.name }}
+      {{- end }}
+      {{- if .Values.replicated.enabled }}
+      {{- include "replicated.imagePullSecrets" . | nindent 6 }}
+      {{- else if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with .Values.apollo.dbInit.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: {{ .Values.dbInit.job.restartPolicy | default "OnFailure" }}
+      {{- with .Values.apollo.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.apollo.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.apollo.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: audit-owner-setup
+          image: {{ $setup.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+{{ .Files.Get "files/apollo_audit_owner_setup.sh" | indent 14 }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (include "composio.coreSecretName" .) $setup.databaseUrlSecret.name }}
+                  key: {{ $setup.databaseUrlSecret.key }}
+            - name: MIGRATION_ROLE
+              value: {{ $setup.migrationRole | quote }}
+{{- end }}
