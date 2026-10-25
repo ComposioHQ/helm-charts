@@ -16,6 +16,8 @@ data:
   COMPOSIO_ENV: "production"
   USE_CLICKHOUSE_FOR_LOGS: "false"
   SELF_HOSTED: "true"
+  # Apollo currently requires a nonempty project ID at startup. Override via apollo.env when using E2B.
+  E2B_PROJECT_ID: "disabled-self-hosted"
   DISABLE_SENSITIVE_CREDENTIALS_MASKING: {{ .Values.apollo.disableSensitiveCredentialsMasking | default false | toString | quote }}
   {{- if ne .Values.apollo.singleTenant.maxOrgCount nil }}
   MAX_ORG_COUNT: {{ .Values.apollo.singleTenant.maxOrgCount | toString | quote }}

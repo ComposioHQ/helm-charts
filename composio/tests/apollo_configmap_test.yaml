@@ -37,6 +37,12 @@ tests:
           path: data.SELF_HOSTED
           value: "true"
 
+  - it: should give Apollo a nonempty placeholder E2B project ID
+    asserts:
+      - equal:
+          path: data.E2B_PROJECT_ID
+          value: "disabled-self-hosted"
+
   - it: should keep sensitive credentials masking enabled by default
     asserts:
       - equal:
