@@ -163,6 +163,19 @@ apollo:
   dbInit:
     # -- Enable database initialization
     enabled: true
+    # Prepare the audit_logs owner before DB init and application access afterward.
+    # This requires a database role that can create roles and owns audit_logs.
+    auditOwnerSetup:
+      # -- Set up audit ownership and access on both installs and upgrades
+      enabled: true
+      # -- PostgreSQL client image for the audit setup Jobs
+      image: postgres:17-alpine
+      # -- Secret containing a database master URL, if different from the Apollo URL
+      databaseUrlSecret:
+        name: ""
+        key: POSTGRES_URL
+      # -- Apollo login from POSTGRES_URL, required with a separate master URL Secret
+      migrationRole: ""
     # Database init container image configuration
     image:
       # -- Database init image repository (used when imageName is not set)

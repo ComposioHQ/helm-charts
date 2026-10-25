@@ -1,0 +1,3 @@
+{{- if and .Values.apollo.dbInit.enabled .Values.apollo.dbInit.auditOwnerSetup.enabled }}
+{{- include "composio.auditOwnerJob" (dict "root" . "phase" "setup" "weight" "-2" "script" "files/apollo_audit_owner_setup.sh") }}
+{{- end }}
