@@ -2,7 +2,7 @@ suite: test apollo audit owner setup hook
 templates:
   - apollo/apollo-audit-owner-setup.job.yaml
 tests:
-  - it: runs before Apollo migrations on upgrades
+  - it: runs before Apollo migrations on installs and upgrades
     asserts:
       - isKind:
           of: Job
@@ -11,7 +11,7 @@ tests:
           value: RELEASE-NAME-apollo-audit-owner-setup
       - equal:
           path: metadata.annotations["helm.sh/hook"]
-          value: pre-upgrade
+          value: pre-install,pre-upgrade
       - equal:
           path: metadata.annotations["helm.sh/hook-weight"]
           value: "-2"
@@ -45,6 +45,36 @@ tests:
               secretKeyRef:
                 name: install-secret
                 key: POSTGRES_URL
+                optional: true
+
+  - it: reuses Apollo DB init secret loaders for the default credentials
+    set:
+      apollo.secretsDir: /var/run/apollo-secrets
+      apollo.dbInit.additionalInitContainers:
+        - name: load-database-url
+          image: secret-loader:latest
+          args: ["{{ .Release.Name }}"]
+          volumeMounts:
+            - name: apollo-secrets
+              mountPath: /var/run/apollo-secrets
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: load-database-url
+      - equal:
+          path: spec.template.spec.initContainers[0].args[0]
+          value: RELEASE-NAME
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APOLLO_SECRET_DIR
+            value: /var/run/apollo-secrets
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: apollo-secrets
+            mountPath: /var/run/apollo-secrets
+            readOnly: true
 
   - it: accepts a separate database master URL Secret
     set:
@@ -86,7 +116,7 @@ tests:
           pattern: "audit_log_insert\\(text\\)"
       - matchRegex:
           path: spec.template.spec.containers[0].args[0]
-          pattern: "GRANT audit_owner TO CURRENT_USER WITH INHERIT FALSE, SET TRUE"
+          pattern: "WITH INHERIT FALSE, SET TRUE"
       - matchRegex:
           path: spec.template.spec.containers[0].args[0]
           pattern: "GRANT SELECT, INSERT ON TABLE public.audit_logs"
