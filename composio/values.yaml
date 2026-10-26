@@ -1388,6 +1388,9 @@ weaviate:
   # tolerations: []
   # -- Affinity rules for pod placement
   # affinity: {}
+  # -- Pod security context. fsGroup grants the distroless Weaviate user access to mounted persistent data, including volumes written by older root containers. Set null when volume permissions are managed externally.
+  podSecurityContext:
+    fsGroup: 65532
   # -- Security context for Weaviate container
   # securityContext: {}
   # -- Additional environment variables

@@ -261,6 +261,42 @@ tests:
           path: spec.template.spec.containers[0].securityContext.runAsUser
           value: 1000
 
+  - it: should grant the distroless user group access without persistence
+    set:
+      weaviate.enabled: true
+      weaviate.persistence.enabled: false
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 65532
+
+  - it: should allow overriding pod security context for persistent data
+    set:
+      weaviate.enabled: true
+      weaviate.persistence.enabled: true
+      weaviate.podSecurityContext:
+        fsGroup: 2000
+        fsGroupChangePolicy: OnRootMismatch
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 2000
+      - equal:
+          path: spec.template.spec.securityContext.fsGroupChangePolicy
+          value: OnRootMismatch
+
+  - it: should allow externally managed volume permissions
+    set:
+      weaviate.enabled: true
+      weaviate.persistence.enabled: true
+      weaviate.podSecurityContext: null
+    documentIndex: 0
+    asserts:
+      - isNull:
+          path: spec.template.spec.securityContext
+
   - it: should mount persistence volume when enabled
     set:
       weaviate.enabled: true
@@ -269,6 +305,9 @@ tests:
       weaviate.persistence.enabled: true
     documentIndex: 0
     asserts:
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 65532
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
