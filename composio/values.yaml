@@ -688,7 +688,7 @@ temporal:
       # -- Web UI image repository
       repository: temporalio/ui
       # -- Web UI image tag
-      tag: 2.38.3
+      tag: 2.50.1
       # -- Image pull policy
       pullPolicy: IfNotPresent
     # Liveness probe configuration

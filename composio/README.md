@@ -375,7 +375,7 @@ current credential model.
 | temporal.web.enabled | bool | `true` | Enable Temporal Web UI |
 | temporal.web.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | temporal.web.image.repository | string | `"temporalio/ui"` | Web UI image repository |
-| temporal.web.image.tag | string | `"2.38.3"` | Web UI image tag |
+| temporal.web.image.tag | string | `"2.50.1"` | Web UI image tag |
 | temporal.web.livenessProbe.enabled | bool | `false` | Enable liveness probe |
 | temporal.web.readinessProbe.enabled | bool | `false` | Enable readiness probe |
 | temporal.web.replicaCount | int | `1` | Number of Web UI replicas |
