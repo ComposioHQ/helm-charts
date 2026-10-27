@@ -10,59 +10,6 @@ A Helm chart for Composio
 |------------|------|---------|
 | file://./charts/temporal | temporal(temporal) | 0.68.1 |
 
-## Apollo audit database setup
-
-Apollo migration v175 needs an `audit_owner` role and permission for the migration
-login to assume it. The chart prepares this on both installs and upgrades when
-`apollo.dbInit.auditOwnerSetup.enabled` is `true` (the default).
-
-All of these are blocking `pre-install,pre-upgrade` hooks, in this order:
-
-| Weight | Job | Purpose |
-|--------|-----|---------|
-| -5 | `db-init-create` | Create the databases when `databaseMigration.enabled` is true |
-| -2 | `apollo-audit-owner-setup` | Prepare role membership and existing audit-table ownership |
-| -1 | `apollo-db-init` | Run the application migrations, including v104 and v175 |
-| 0 | `apollo-audit-owner-access` | Grant Apollo audit reads and guarded writes after migration |
-
-The audit hooks also run when databases are provisioned externally and
-`databaseMigration.enabled` is false. On a fresh database, the setup hook prepares
-the role before v104 creates the table. The access hook then grants `SELECT` and
-`EXECUTE` on `audit_log_insert(text)` after v175 transfers ownership. It does not
-grant direct `INSERT`, `UPDATE`, `DELETE`, or `TRUNCATE`. If the migration image
-does not contain v175 yet, the access hook does nothing. Rerunning setup after
-v175 has completed does not restore direct writes.
-
-By default, both hooks use Apollo's `POSTGRES_URL` from the core Secret. They also
-support the existing `apollo.dbInit.additionalInitContainers` mechanism for
-loading `DATABASE_URL` into `apollo.secretsDir`. The login must be able to create
-`audit_owner`, grant membership in it, grant access to the `public` schema, and
-transfer ownership of existing audit tables and their mutation-guard function.
-
-If Apollo's login lacks those privileges, provide a separate master connection
-URL to **the same database** in an existing Kubernetes Secret:
-
-```yaml
-apollo:
-  dbInit:
-    auditOwnerSetup:
-      databaseUrlSecret:
-        name: apollo-database-master
-        key: DATABASE_URL
-      migrationRole: apollo_admin # The actual login in Apollo's POSTGRES_URL
-```
-
-`migrationRole` must already exist. A separate master connection must be able to
-act as the current audit-table owner; `CREATEROLE` alone does not confer ownership
-of another login's tables. The URL must be compatible with `psql`. Mirror the
-configurable `postgres:17-alpine` client image for installations without access
-to Docker Hub.
-
-This setup allows the existing shared Apollo migration/runtime login to assume
-`audit_owner`. Enforcing audit immutability against that login requires separate
-runtime credentials without owner-role membership. The hooks preserve the
-current credential model.
-
 ## Values
 
 | Key | Type | Default | Description |
@@ -82,11 +29,6 @@ current credential model.
 | apollo.database.urlSecret.key | string | `"url"` | Key name in the secret |
 | apollo.database.urlSecret.name | string | `"composio-composio-secrets"` | Secret name containing database URL |
 | apollo.dbInit.enabled | bool | `true` | Enable database initialization |
-| apollo.dbInit.auditOwnerSetup.enabled | bool | `true` | Set up audit ownership and access on installs and upgrades |
-| apollo.dbInit.auditOwnerSetup.image | string | `"postgres:17-alpine"` | PostgreSQL client image for both audit hooks |
-| apollo.dbInit.auditOwnerSetup.databaseUrlSecret.name | string | `""` | Optional existing Secret with a master connection to the Apollo database |
-| apollo.dbInit.auditOwnerSetup.databaseUrlSecret.key | string | `"POSTGRES_URL"` | Database URL key in the selected Secret |
-| apollo.dbInit.auditOwnerSetup.migrationRole | string | `""` | Apollo login, required with a separate master Secret; otherwise the connection login |
 | apollo.dbInit.image.pullPolicy | string | `"Always"` | Image pull policy |
 | apollo.dbInit.image.repository | string | `"composio-self-host/apollo-db-init"` | Database init image repository |
 | apollo.dbInit.image.tag | string | `"release-20251209_00"` | Database init image tag |
