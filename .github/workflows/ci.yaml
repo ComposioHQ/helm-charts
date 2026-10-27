@@ -50,6 +50,9 @@ jobs:
       - name: Lint pod scheduling (affinity + tolerations)
         run: python3 composio/scripts/lint_pod_scheduling.py
 
+      - name: Test ConfigMap rollouts
+        run: python3 composio/scripts/test_configmap_rollouts.py
+
       - name: Install helm-unittest plugin
         run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 0.7.2
 

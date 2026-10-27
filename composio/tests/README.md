@@ -86,6 +86,13 @@ helm unittest . -f 'tests/*_test.yaml' -v
 helm unittest . -f 'tests/*_test.yaml' --values tests/test-values.yaml
 ```
 
+### ConfigMap rollout regression tests
+
+From the repository root, run `python3 composio/scripts/test_configmap_rollouts.py`.
+These tests render both Mercury deployment modes and verify that ConfigMap changes
+update only their consumers' pod checksums, identical renders stay stable, and
+disabled optional workloads remain absent. They require Helm 3 and Python 3.9+.
+
 ## 🧪 Test Coverage
 
 ### Apollo Service Tests

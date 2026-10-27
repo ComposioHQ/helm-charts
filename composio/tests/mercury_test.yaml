@@ -1,8 +1,21 @@
 suite: test mercury deployment
 templates:
   - mercury/mercury.yaml
+  - mercury/mercury-configmap.yaml
 tests:
+  - it: should annotate pods with the mercury config checksum
+    template: mercury/mercury.yaml
+    set:
+      mercury.enabled: true
+      mercury.useKnative: false
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/config"]
+          pattern: '^[a-f0-9]{64}$'
+
   - it: should create mercury deployment when enabled and not using knative
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -20,6 +33,7 @@ tests:
           value: mercury
 
   - it: should not create deployment when disabled
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: false
       mercury.useKnative: false
@@ -28,6 +42,7 @@ tests:
           count: 0
 
   - it: should not create deployment when using knative
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -36,6 +51,7 @@ tests:
           count: 0
 
   - it: should not set serviceAccountName when SA is disabled
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -48,6 +64,7 @@ tests:
           path: spec.template.spec.serviceAccountName
 
   - it: should set serviceAccountName when SA is enabled
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -62,6 +79,7 @@ tests:
           value: mercury-sa
 
   - it: should use correct replica count
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -75,6 +93,7 @@ tests:
           value: 2
 
   - it: should use correct image
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -94,6 +113,7 @@ tests:
           value: Always
 
   - it: should have correct port configuration
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -107,6 +127,7 @@ tests:
           value: 8080
 
   - it: should mount mercury secrets under /etc/secrets/mercury
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -132,6 +153,7 @@ tests:
             emptyDir: {}
 
   - it: should keep OPENAI_API_KEY optional for deployment mode when openai integration is disabled
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -151,6 +173,7 @@ tests:
                 optional: true
 
   - it: should render additional mercury init containers
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -182,6 +205,7 @@ tests:
           value: /etc/secrets/mercury
 
   - it: should allow overriding mercury secrets dir
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -203,6 +227,7 @@ tests:
             readOnly: true
 
   - it: should preserve user-defined mercury volumes and mounts
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -239,6 +264,7 @@ tests:
             emptyDir: {}
 
   - it: should include image pull secrets when configured
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -310,8 +336,10 @@ tests:
 suite: test mercury service
 templates:
   - mercury/mercury.yaml
+  - mercury/mercury-configmap.yaml
 tests:
   - it: should create mercury service when enabled and not using knative
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -329,6 +357,7 @@ tests:
           value: mercury
 
   - it: should have correct service configuration
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -349,6 +378,7 @@ tests:
           value: 8080
 
   - it: should not create mercury service when using knative
+    template: mercury/mercury.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -360,8 +390,10 @@ tests:
 suite: test mercury knative service
 templates:
   - mercury/mercury-service.yaml
+  - mercury/mercury-configmap.yaml
 tests:
   - it: should create knative mercury service when enabled and using knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -379,6 +411,7 @@ tests:
           value: mercury
 
   - it: should load shared mercury runtime config from configmap for knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -390,6 +423,7 @@ tests:
               name: RELEASE-NAME-mercury-config
 
   - it: should not create knative mercury service when disabled
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: false
       mercury.useKnative: true
@@ -398,6 +432,7 @@ tests:
           count: 0
 
   - it: should not create knative mercury service when not using knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: false
@@ -406,6 +441,7 @@ tests:
           count: 0
 
   - it: should mount mercury secrets under /etc/secrets/mercury for knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -428,6 +464,7 @@ tests:
             emptyDir: {}
 
   - it: should keep OPENAI_API_KEY optional for knative mode when openai integration is disabled
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -444,6 +481,7 @@ tests:
                 optional: true
 
   - it: should render additional mercury init containers for knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -472,6 +510,7 @@ tests:
           value: /etc/secrets/mercury
 
   - it: should allow overriding mercury secrets dir for knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -490,6 +529,7 @@ tests:
             readOnly: true
 
   - it: should preserve user-defined mercury volumes and mounts for knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
@@ -523,6 +563,7 @@ tests:
             emptyDir: {}
 
   - it: should include image pull secrets when configured for knative
+    template: mercury/mercury-service.yaml
     set:
       mercury.enabled: true
       mercury.useKnative: true
