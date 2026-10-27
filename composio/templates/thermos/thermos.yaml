@@ -21,6 +21,8 @@ spec:
       labels:
         app: thermos
         release: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/thermos/thermos-config.yaml") . | sha256sum | quote }}
     spec:
       {{- if .Values.thermos.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.thermos.serviceAccount.name }}

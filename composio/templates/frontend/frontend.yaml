@@ -24,6 +24,8 @@ spec:
       labels:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/frontend/frontend-configmap.yaml") . | sha256sum | quote }}
     spec:
       {{- if .Values.frontend.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.frontend.serviceAccount.name }}

@@ -28,6 +28,8 @@ spec:
       labels:
         app: apollo
         release: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/apollo/apollo-configmap.yaml") . | sha256sum | quote }}
     spec:
       {{- if .Values.apollo.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.apollo.serviceAccount.name  }}
