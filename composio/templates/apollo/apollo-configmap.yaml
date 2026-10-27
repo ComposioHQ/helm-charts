@@ -101,6 +101,7 @@ data:
   WEAVIATE_API_KEY: {{ .Values.apollo.search.weaviate.apiKey | quote }}
   {{- end }}
   {{- end }}
+  SEARCH_RERANK_DEADLINE_MS: "999000"
   {{- if .Values.apollo.search.enabled }}
   # Master Toggle
   UNIFIED_SEARCH_ENABLED: {{ .Values.apollo.search.unified.enabled | default false | toString | quote }}
