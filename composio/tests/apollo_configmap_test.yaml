@@ -311,6 +311,12 @@ tests:
           path: data.AUTH_JWT_CLOCK_SKEW_SECONDS
           value: "60"
 
+  - it: should set search rerank deadline to 999 seconds by default
+    asserts:
+      - equal:
+          path: data.SEARCH_RERANK_DEADLINE_MS
+          value: "999000"
+
   - it: should configure search settings when enabled
     set:
       weaviate.enabled: true
@@ -334,3 +340,6 @@ tests:
       - equal:
           path: data.EMBEDDINGS_DIMENSIONS
           value: "512"
+      - equal:
+          path: data.SEARCH_RERANK_DEADLINE_MS
+          value: "999000"
