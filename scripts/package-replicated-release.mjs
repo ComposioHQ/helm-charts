@@ -23,7 +23,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 export function options(args) {
   const result = {};
   const allowed = ['version', 'release-id', 'infrastructure-dir', 'infrastructure-base-url',
-    'chart-reference', 'values', 'qualification', 'runner-publication', 'runner-image', 'output', 'help'];
+    'chart-reference', 'alternate-chart-reference', 'values', 'qualification', 'runner-publication', 'runner-image', 'output', 'help'];
   for (let i = 0; i < args.length; i++) {
     const key = args[i].replace(/^--/, '');
     assert(args[i].startsWith('--') && allowed.includes(key) && !(key in result), `Unknown/duplicate option: ${args[i]}`);
@@ -48,6 +48,19 @@ export function options(args) {
   result['chart-reference'] ??= 'oci://registry.replicated.com/composio-rodent/unstable/composio';
   assert(/^oci:\/\/((registry\.replicated\.com|artifacts\.composio\.io)\/[a-z0-9][a-z0-9/_.-]+|proxy\.replicated\.com\/registry\/[a-z0-9][a-z0-9/_.-]+)\/composio$/.test(result['chart-reference']),
     'Chart reference must match the runner-approved Replicated OCI registry and chart name');
+  if (result['alternate-chart-reference']) {
+    const primary = new URL(result['chart-reference'].replace('oci://', 'https://'));
+    const reference = result['alternate-chart-reference'];
+    assert(/^oci:\/\/[a-z0-9./_-]+$/.test(reference) && !reference.split('/').some(part => part === '.' || part === '..'),
+      'Alternate chart reference must be a plain OCI reference');
+    const alternate = new URL(reference.replace('oci://', 'https://'));
+    const original = primary.pathname.split('/').filter(Boolean), parts = alternate.pathname.split('/').filter(Boolean);
+    const appIndex = primary.host === 'proxy.replicated.com' ? 1 : 0;
+    assert(primary.host === alternate.host && original[appIndex] === parts[appIndex]
+      && parts.at(-1) === 'composio' && parts.length >= appIndex + 2 && parts.length <= appIndex + 3
+      && (appIndex === 0 || parts[0] === 'registry'),
+      'Alternate chart reference must preserve registry, application and chart');
+  }
   result['infrastructure-dir'] = path.resolve(result['infrastructure-dir'] ?? path.join(repo, '../infrastructure'));
   result.output = path.resolve(result.output ?? path.join(repo, 'dist/releases', result['release-id']));
   return result;
@@ -253,7 +266,7 @@ export async function packageRelease(o) {
       toolchain: { pulumi: pins['@pulumi/pulumi'], awsProvider: pins['@pulumi/aws'], randomProvider: pins['@pulumi/random'], nodeMajor: 22 },
       runner: { image: runnerImage, revision: publication.revision },
       infrastructure: { source: 'runner-image', sha256: bundle.infrastructure.sha256, project: 'infra-managed-vpc' },
-      chart: { reference: o['chart-reference'], name: 'composio', version: o.version, contentSha256: '0'.repeat(64) }, images, ...q };
+      chart: { reference: o['chart-reference'], ...(o['alternate-chart-reference'] ? { alternateReferences: [o['alternate-chart-reference']] } : {}), name: 'composio', version: o.version, contentSha256: '0'.repeat(64) }, images, ...q };
     const candidate = path.join(scratch, 'candidate.json');
     writeJson(candidate, release);
     fs.writeFileSync(path.join(chart, 'composio-release.json'), helper('release-descriptor', candidate) + '\n');
@@ -357,6 +370,7 @@ Options:
   --infrastructure-dir PATH  Infrastructure checkout (default: ../infrastructure)
   --release-id ID            Release identity (default: chart version)
   --chart-reference OCI     Future Replicated OCI reference (default: composio-rodent/unstable/composio)
+  --alternate-chart-reference OCI  Approved second distribution channel for the same chart
   --values PATH             Public chart defaults/image pins; never customer credentials
   --runner-publication PATH  Required publication.json from the tested deployment runner image\n  --runner-image IMAGE       Optional direct ECR or Replicated proxy reference preserving that digest
   --qualification PATH      Explicit integration attestation; generates a strict runner lock

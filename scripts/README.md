@@ -49,3 +49,74 @@ path. The bootstrap approves the runner image, customer configuration, S3 backen
 and KMS key. Customer preview and approval precede infrastructure and Helm apply.
 Never commit customer licenses, personalized chart archives, stack state or secret
 values. Runtime configuration uses exact Secrets Manager ARN/version references.
+
+## Janus nightly executor
+
+`janus-managed-vpc-release.yml` is a dispatch-only executor for Janus. It has three
+operations: `publish` creates a candidate in Nightly; `test` scans its pinned
+images and runs the existing fresh/upgrade test harness; `promote` moves its exact
+Replicated sequence to Stable. Janus owns scheduling, STS deployment, human QA
+approval and customer child Runs. This workflow does not create a cron schedule.
+
+Commit a reviewed recipe at `releases/nightly.json` on `release-stable` before use.
+For example (replace every example identity and commit with approved values):
+
+```json
+{
+  "schemaVersion": 1,
+  "appId": "APP_ID",
+  "nightlyChannelId": "NIGHTLY_CHANNEL_ID",
+  "stableChannelId": "STABLE_CHANNEL_ID",
+  "infrastructureSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "onpremSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "values": "releases/managed-vpc-values.yaml",
+  "qualification": "releases/qualification.json",
+  "runnerPublication": "releases/runner-publication.json",
+  "chartReference": "oci://registry.replicated.com/composio-rodent/composio",
+  "nightlyChartReference": "oci://registry.replicated.com/composio-rodent/nightly/composio",
+  "cvePolicy": "report",
+  "imageTags": {
+    "apollo": "latest", "apollo-db-init": "latest",
+    "thermos": "latest", "thermos-db-init": "latest",
+    "mercury": "latest", "frontend": "latest",
+    "weaviate": "latest", "thermos-toolkit-registry": "latest"
+  }
+}
+```
+
+The selected ECR tags must represent production-qualified images. Tags are resolved
+once to digests before packaging; promotion retains them. Public values must pin
+non-service images too, including the Replicated SDK, and describe the managed-VPC
+feature set. The qualification file records tested integration capabilities, not
+invented test results. The runner publication must come from its verified image
+build; the infrastructure commit must be merged on `main`. `onpremSha` must match
+the reviewed test harness `main` commit before dispatch and in each returned Run.
+The `report` CVE policy retains advisory findings like the legacy nightly job;
+`block-high-critical` prevents qualification if any high or critical match exists.
+
+The default lock URL serves Stable. `--alternate-chart-reference` records the
+Nightly path for the same app and chart before the lock is hashed. STS's pinned
+registry credentials select that approved path; the runner verifies the same
+chart hash regardless of channel. No secret or customer license goes into the
+recipe, tracking PR or release artifacts.
+
+The executor reuses the existing `opra-ci/prd` Doppler identity, Nightly GitHub App,
+Replicated publishing credential and Helm ECR read role. Repository tokens are
+scoped and refreshed for long tests. Existing App installation access to
+`infrastructure` is needed to read the pinned runner source. No IAM grant is part
+of this implementation. Restrict workflow dispatch and editing to trusted release
+operators: Janus enforces its human gate, while repository administrators retain
+their existing publishing authority.
+
+Publication creates a tracking PR and GitHub prerelease. Recovery evidence and
+test reports are uploaded even on failure; confirmed receipts are published only
+on success. A lost response may have created or promoted a release. Inspect the
+exact Run, evidence artifact and Replicated state before recovery. Manual reruns
+and duplicate request IDs are rejected instead of publishing again.
+
+The executor serializes its publication and promotion jobs. This does not lock
+out other Replicated writers. Drain and disable the legacy `nighty-release.yml`
+schedule in a separate reviewed cutover before enabling Janus's schedule; do not
+run both against the same channels. The Glean-specific legacy release path is
+unchanged. Sandbox publication, STS rollout, rejected/approved promotion and
+customer acceptance are required before production activation.
