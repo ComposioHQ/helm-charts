@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process';
 
 const scripts = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.dirname(scripts);
-const pins = { '@pulumi/aws': '7.19.0', '@pulumi/pulumi': '3.219.0', '@pulumi/random': '4.19.2' };
+const pins = { '@pulumi/aws': '7.19.0', '@pulumi/pulumi': '3.253.0', '@pulumi/random': '4.19.2' };
 const capabilities = ['awsWebIdentity', 'mercuryAwsConfiguration', 'managedDependencies',
   'externalServiceAccounts', 'externalSecrets', 'migrationsOwnedByChart'];
 const features = ['api', 'authentication', 'connectedAccounts', 'tools', 'mcp', 'sessions', 'files'];
