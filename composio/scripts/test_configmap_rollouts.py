@@ -57,7 +57,8 @@ class ConfigMapRolloutTests(unittest.TestCase):
                     ("aws.s3.lambdaBucketName=rollout-test-bucket", {THERMOS, MISC_WORKERS}),
                     ("frontend.env.NODE_ENV=development", {FRONTEND}),
                     ("mercury.fileStorage=base64", {mercury}),
-                    ("aws.region=eu-west-1", {APOLLO, THERMOS, MISC_WORKERS}),
+                    ("aws.region=eu-west-1", {APOLLO, THERMOS, MISC_WORKERS, mercury}),
+                    ("mercury.aws.region=eu-west-1", {mercury}),
                 ):
                     with self.subTest(override=override):
                         updated = render_checksums(mode, override)

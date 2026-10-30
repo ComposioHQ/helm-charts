@@ -18,6 +18,8 @@ namespace:
   name: "composio"
 # replicated based installation. This requires user to authenticate with replicated to download our helm chart. More info on replicated dashboard
 replicated:
+  # -- Reuse registry authentication prepared before migration hooks.
+  existingImagePullSecret: ""
   enabled: true
   registry: artifacts.composio.io # Change for custom domain
   app: "composio-rodent"
@@ -229,6 +231,8 @@ apollo:
     key: "SMTP_CONNECTION_STRING"
   # Object storage configuration (S3 or Azure Blob Storage)
   objectStorage:
+    # -- Use the Kubernetes service account IAM role instead of static S3 credentials.
+    useWebIdentity: false
     # -- Storage backend type (s3 or azure_blob_storage)
     backend: ""
     # S3 access key configuration
@@ -1038,6 +1042,8 @@ aws:
   region: us-east-1
   # S3 configuration
   s3:
+    # -- Use regional AWS S3 endpoints instead of the bundled object store.
+    useAwsEndpoints: false
     # -- S3 bucket name for Lambda functions
     lambdaBucketName: "tools"
   # Lambda configuration
@@ -1053,6 +1059,11 @@ aws:
     secretName: ""
 # Mercury service configuration (OpenAPI tool execution service)
 mercury:
+  aws:
+    # -- AWS region override; empty inherits aws.region.
+    region: ""
+    # -- Customer tools bucket for Mercury custom code.
+    toolsBucket: tools
   # -- Enable Mercury service
   enabled: true
   # -- Use Knative for serverless deployment
@@ -1384,3 +1395,12 @@ weaviate:
   volumeMounts: []
   # -- Additional volumes
   volumes: []
+
+# Managed database certificate verification for workloads and migration hooks.
+databaseTls:
+  # -- Mount the externally managed RDS trust bundle.
+  enabled: false
+  # -- ConfigMap prepared by the deployment runner before migration hooks.
+  configMap: composio-rds-ca
+  # -- Read-only certificate directory shared by database clients.
+  mountPath: /etc/composio/database-tls
