@@ -20,6 +20,16 @@ test('accepts local packaging options and fixes the release identity', () => {
   assert.match(o['chart-reference'], /composio-rodent\/unstable\/composio$/);
 });
 
+test('distribution aliases stay within the same Replicated application and chart', () => {
+  const primary = 'oci://registry.replicated.com/example/composio';
+  assert(options([...base, '--chart-reference', primary, '--alternate-chart-reference', 'oci://registry.replicated.com/example/nightly/composio']));
+  for (const alternate of ['oci://registry.replicated.com/other/composio', 'oci://registry.replicated.com/example/x/../composio',
+    'oci://registry.replicated.com/example/x/y/composio', 'oci://user@registry.replicated.com/example/composio'])
+    assert.throws(() => options([...base, '--chart-reference', primary, '--alternate-chart-reference', alternate]));
+  assert.throws(() => options([...base, '--chart-reference', 'oci://proxy.replicated.com/registry/example/composio',
+    '--alternate-chart-reference', 'oci://proxy.replicated.com/registry/other/composio']));
+});
+
 test('image release requires a publication and no external infrastructure URL', () => {
   const o = options(base);
   assert.equal(o['infrastructure-base-url'], undefined);

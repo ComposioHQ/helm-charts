@@ -1,0 +1,170 @@
+name: Janus managed VPC release operation
+run-name: ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+      operation:
+        required: true
+        type: choice
+        options: [publish, test, promote]
+      payload:
+        required: true
+        type: string
+# One publisher/promoter owns channel movement. Tests may run while a newer candidate is prepared.
+concurrency:
+  group: janus-managed-vpc-${{ inputs.operation == 'test' && inputs.request_id || 'publication' }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  operation:
+    if: github.ref == 'refs/heads/release-stable'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    env:
+      RELEASE_REQUEST_ID: ${{ inputs.request_id }}
+      RELEASE_OPERATION: ${{ inputs.operation }}
+      RELEASE_PAYLOAD: ${{ inputs.payload }}
+      AWS_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: automation
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Select pinned source
+        id: source
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const p = JSON.parse(process.env.RELEASE_PAYLOAD);
+          if (!['publish','test','promote'].includes(p.operation) || p.operation !== process.env.RELEASE_OPERATION) throw Error('Invalid operation');
+          const source = p.operation === 'publish' ? p.preparation : p.publication;
+          if (!/^[a-f0-9]{40}$/.test(source?.helmSha)) throw Error('Pinned Helm SHA required');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `sha=${source.helmSha}\n`);
+          JS
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          fetch-depth: 0
+          path: source
+          persist-credentials: false
+      - name: Require merged Helm source
+        working-directory: source
+        run: git merge-base --is-ancestor HEAD origin/release-stable
+      - name: Verify recipe and select infrastructure
+        id: recipe
+        run: node automation/scripts/janus-nightly-release.mjs configure
+      - name: Load existing publisher credentials
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534
+        with:
+          auth-method: oidc
+          doppler-identity-id: fc94b8db-1149-4b8a-8ba7-1fd4833bb870
+          doppler-project: opra-ci
+          doppler-config: prd
+          inject-env-vars: true
+      - name: Mint repository-scoped GitHub token
+        id: token
+        shell: bash
+        env:
+          GITHUB_APP_OWNER: ComposioHQ
+          GITHUB_APP_REPOSITORIES: infrastructure
+          GITHUB_APP_PERMISSIONS_JSON: '{"contents":"read"}'
+        run: |
+          set -euo pipefail
+          export GITHUB_APP_CLIENT_ID="$NIGHTLY_GITHUB_APP_CLIENT_ID"
+          export GITHUB_APP_PRIVATE_KEY="$NIGHTLY_GITHUB_APP_PRIVATE_KEY"
+          token_json="$(node automation/.github/scripts/github-app-token.mjs)"
+          token="$(jq -er '.token' <<<"$token_json")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ComposioHQ/infrastructure
+          ref: ${{ steps.recipe.outputs.infrastructure_sha }}
+          token: ${{ steps.token.outputs.token }}
+          path: infrastructure
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require merged infrastructure source
+        working-directory: infrastructure
+        run: git merge-base --is-ancestor HEAD origin/main
+      - name: Install pinned infrastructure dependencies
+        working-directory: infrastructure
+        run: |
+          npm install --global npm@11.13.0
+          npm ci --ignore-scripts
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+        with:
+          version: v3.14.4
+      - name: Install pinned release tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tools
+          cd tools
+          curl --fail --silent --show-error --location https://github.com/replicatedhq/replicated/releases/download/v0.129.9/replicated_0.129.9_linux_amd64.tar.gz -o replicated.tar.gz
+          curl --fail --silent --show-error --location https://github.com/replicatedhq/replicated/releases/download/v0.129.9/cli_0.129.9_checksums.txt -o replicated-checksums.txt
+          awk '$2 == "replicated_0.129.9_linux_amd64.tar.gz" {print $1 "  replicated.tar.gz"}' replicated-checksums.txt > replicated.sha256
+          test -s replicated.sha256
+          sha256sum --check replicated.sha256
+          tar xzf replicated.tar.gz replicated
+          curl --fail --silent --show-error --location https://github.com/anchore/grype/releases/download/v0.115.0/grype_0.115.0_linux_amd64.tar.gz -o grype.tar.gz
+          curl --fail --silent --show-error --location https://github.com/anchore/grype/releases/download/v0.115.0/grype_0.115.0_checksums.txt -o grype-checksums.txt
+          awk '$2 == "grype_0.115.0_linux_amd64.tar.gz" {print $1 "  grype.tar.gz"}' grype-checksums.txt > grype.sha256
+          test -s grype.sha256
+          sha256sum --check grype.sha256
+          tar xzf grype.tar.gz grype
+          echo "$PWD" >> "$GITHUB_PATH"
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: arn:aws:iam::008971668139:role/github-actions-helm-charts-ecr
+          aws-region: us-east-1
+      - name: Execute one release operation
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: node automation/scripts/janus-nightly-release.mjs
+      - name: Retain recovery evidence and test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: janus-release-evidence
+          path: |
+            receipts/
+            reports/
+            release-output/
+          if-no-files-found: ignore
+          retention-days: 90
+      - name: Publish confirmed operation receipt
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: janus-release-result
+          path: result/result.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Report operation outcome
+        if: always()
+        continue-on-error: true
+        env:
+          OPERATION_RESULT: ${{ job.status }}
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const url = process.env.NIGHTLY_SLACK_WEBHOOK_URL;
+          if (url) {
+            const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ text: `Managed VPC ${process.env.RELEASE_OPERATION}: ${process.env.OPERATION_RESULT}\nhttps://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` }), signal: AbortSignal.timeout(10000) });
+            if (!response.ok) console.warn('Release notification was not confirmed');
+          }
+          JS

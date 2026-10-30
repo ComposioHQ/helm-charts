@@ -58,3 +58,6 @@ lock. Qualification must describe the integrations and features actually tested.
 Keep customer licenses, personalized chart archives and credential values outside
 Git. The customer initializes its S3/KMS Pulumi stack once, reviews a real preview,
 and approves the same pinned release before infrastructure and Helm deployment.
+
+For Janus-managed Nightly publication, STS testing and approval-gated Stable
+promotion, see the [nightly executor configuration](scripts/README.md#janus-nightly-executor).

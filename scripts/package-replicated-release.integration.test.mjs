@@ -45,6 +45,8 @@ test('builds one reproducible release binding chart and immutable runner image',
     put(path.join(root, 'publication.json'), JSON.stringify(publication));
     const before = digest(path.join(chart, 'Chart.yaml'));
     const args = [path.join(fixture, 'scripts/package-replicated-release.mjs'), '--version', '1.2.3',
+      '--chart-reference', 'oci://registry.replicated.com/composio-rodent/composio',
+      '--alternate-chart-reference', 'oci://registry.replicated.com/composio-rodent/nightly/composio',
       '--infrastructure-dir', infra, '--runner-publication', path.join(root, 'publication.json'), '--qualification', path.join(root, 'qualification.json')];
     for (const name of ['first', 'second']) run(process.execPath, [...args, '--output', path.join(root, name)]);
     const first = path.join(root, 'first'), second = path.join(root, 'second');
@@ -52,6 +54,7 @@ test('builds one reproducible release binding chart and immutable runner image',
     assert.equal(fs.readFileSync(path.join(first, 'SHA256SUMS'), 'utf8'), fs.readFileSync(path.join(second, 'SHA256SUMS'), 'utf8'));
     const releaseBytes = fs.readFileSync(path.join(first, 'release.lock.json'));
     const release = JSON.parse(releaseBytes);
+    assert.deepEqual(release.chart.alternateReferences, ['oci://registry.replicated.com/composio-rodent/nightly/composio']);
     assert.equal(fs.readFileSync(path.join(first, 'release.lock.sha256'), 'utf8').trim(), digest(path.join(first, 'release.lock.json')));
     assert.equal(release.schemaVersion, 2);
     assert.equal(release.infrastructure.sha256, publication.bundle.infrastructure.sha256);
