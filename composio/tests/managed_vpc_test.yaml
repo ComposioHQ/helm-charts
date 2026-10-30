@@ -1,8 +1,10 @@
 suite: managed VPC Apollo workload identity
 templates:
   - apollo/apollo.yaml
+  - apollo/apollo-configmap.yaml
 tests:
   - it: uses the external IAM service account without static S3 keys
+    template: apollo/apollo.yaml
     set:
       apollo.objectStorage.backend: s3
       apollo.objectStorage.useWebIdentity: true
@@ -20,6 +22,7 @@ tests:
           path: spec.template.metadata.labels["app.kubernetes.io/instance"]
           value: RELEASE-NAME
   - it: preserves explicit S3 credential references for existing installations
+    template: apollo/apollo.yaml
     set:
       apollo.objectStorage.backend: s3
       apollo.objectStorage.useWebIdentity: false

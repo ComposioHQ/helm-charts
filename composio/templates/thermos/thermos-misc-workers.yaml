@@ -24,6 +24,8 @@ spec:
         app: thermos-misc-workers
         release: {{ .Release.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/thermos/thermos-config.yaml") . | sha256sum | quote }}
     spec:
       {{- if .Values.thermos.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.thermos.serviceAccount.name }}
@@ -63,19 +65,22 @@ spec:
             limits: {cpu: 250m, memory: 128Mi}
           image: {{ include "composio.imageReference" (dict "image" .Values.toolkitRegistry.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.toolkitRegistry.image.pullPolicy }}
-          # Kubernetes retries this init container until PostgreSQL accepts connections.
-          command: ["pg_isready"]
-          args:
-            - -h
-            - {{ printf "%s-toolkit-registry" .Release.Name | quote }}
-            - -p
-            - {{ .Values.toolkitRegistry.service.port | quote }}
-            - -U
-            - {{ .Values.toolkitRegistry.auth.username | quote }}
-            - -d
-            - {{ .Values.toolkitRegistry.database.name | quote }}
-            - -t
-            - "2"
+          command:
+            - sh
+            - -c
+            - |
+              i=0
+              max_attempts=60
+              until pg_isready -h {{ printf "%s-toolkit-registry" .Release.Name | quote }} -p {{ .Values.toolkitRegistry.service.port | quote }} -U {{ include "composio.shellQuote" .Values.toolkitRegistry.auth.username }} -d {{ include "composio.shellQuote" .Values.toolkitRegistry.database.name }}; do
+                i=$((i+1))
+                if [ "$i" -ge "$max_attempts" ]; then
+                  echo "toolkit registry not ready after $max_attempts attempts, giving up"
+                  exit 1
+                fi
+                echo "waiting for toolkit registry (attempt $i/$max_attempts)"
+                sleep 2
+              done
+              echo "toolkit registry is ready after $i attempt(s)"
         {{- with .Values.thermosMiscWorkers.additionalInitContainers }}
 {{ tpl (toYaml .) $ | nindent 8 }}
         {{- end }}

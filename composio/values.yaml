@@ -679,7 +679,7 @@ temporal:
       # -- Web UI image repository
       repository: temporalio/ui
       # -- Web UI image tag
-      tag: 2.38.3
+      tag: 2.50.1
       # -- Image pull policy
       pullPolicy: IfNotPresent
     # Liveness probe configuration
@@ -1386,9 +1386,6 @@ weaviate:
   # tolerations: []
   # -- Affinity rules for pod placement
   # affinity: {}
-  # -- Pod security context. fsGroup grants the distroless Weaviate user access to mounted persistent data, including volumes written by older root containers. Set null when volume permissions are managed externally.
-  podSecurityContext:
-    fsGroup: 65532
   # -- Security context for Weaviate container
   # securityContext: {}
   # -- Additional environment variables

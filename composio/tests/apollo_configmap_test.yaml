@@ -37,6 +37,12 @@ tests:
           path: data.SELF_HOSTED
           value: "true"
 
+  - it: should give Apollo a nonempty placeholder E2B project ID
+    asserts:
+      - equal:
+          path: data.E2B_PROJECT_ID
+          value: "disabled-self-hosted"
+
   - it: should keep sensitive credentials masking enabled by default
     asserts:
       - equal:
@@ -305,6 +311,12 @@ tests:
           path: data.AUTH_JWT_CLOCK_SKEW_SECONDS
           value: "60"
 
+  - it: should set search rerank deadline to 999 seconds by default
+    asserts:
+      - equal:
+          path: data.SEARCH_RERANK_DEADLINE_MS
+          value: "999000"
+
   - it: should configure search settings when enabled
     set:
       weaviate.enabled: true
@@ -328,3 +340,6 @@ tests:
       - equal:
           path: data.EMBEDDINGS_DIMENSIONS
           value: "512"
+      - equal:
+          path: data.SEARCH_RERANK_DEADLINE_MS
+          value: "999000"
