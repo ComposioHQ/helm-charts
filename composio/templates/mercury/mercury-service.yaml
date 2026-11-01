@@ -19,10 +19,11 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: mercury
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/mercury/mercury-configmap.yaml") . | sha256sum | quote }}
         autoscaling.knative.dev/minScale: "{{ .Values.mercury.autoscaling.minScale | default "1" }}"
         autoscaling.knative.dev/maxScale: "{{ .Values.mercury.autoscaling.maxScale | default "10" }}"
         autoscaling.knative.dev/target: "{{ .Values.mercury.autoscaling.target | default "80" }}"
-        # Force new revision only when image changes
+        # Track the image tag in revision metadata
         composio.dev/image-tag: "{{ .Values.mercury.image.tag | default .Chart.AppVersion }}"
     spec:
       {{- if .Values.replicated.enabled }}

@@ -1,8 +1,18 @@
 suite: test apollo deployment
 templates:
   - apollo/apollo.yaml
+  - apollo/apollo-configmap.yaml
 tests:
+  - it: should annotate pods with the apollo config checksum
+    template: apollo/apollo.yaml
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/config"]
+          pattern: '^[a-f0-9]{64}$'
+
   - it: should create apollo deployment
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -21,6 +31,7 @@ tests:
           value: RELEASE-NAME
 
   - it: should not set serviceAccountName when SA is disabled
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -31,6 +42,7 @@ tests:
           path: spec.template.spec.serviceAccountName
 
   - it: should set serviceAccountName when SA is enabled
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -43,6 +55,7 @@ tests:
           value: apollo-sa
 
   - it: should have correct replica count
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -54,6 +67,7 @@ tests:
           value: 3
 
   - it: should use correct image
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -70,6 +84,7 @@ tests:
           value: IfNotPresent
 
   - it: should have correct port configuration
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -80,6 +95,7 @@ tests:
           value: 9900
 
   - it: should have liveness probe
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -96,6 +112,7 @@ tests:
           value: 60
 
   - it: should have readiness probe
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -109,6 +126,7 @@ tests:
           value: 9900
 
   - it: should have rolling update strategy
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -125,6 +143,7 @@ tests:
           value: 1
 
   - it: should include image pull secrets when configured
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -137,6 +156,7 @@ tests:
           value: test-secret
 
   - it: should mount apollo secrets under /etc/secrets/apollo
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -159,6 +179,7 @@ tests:
             emptyDir: {}
 
   - it: should expose advanced auth params beta
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -170,6 +191,7 @@ tests:
             value: "true"
 
   - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -187,6 +209,7 @@ tests:
                 optional: true
 
   - it: should render additional apollo init containers
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -216,6 +239,7 @@ tests:
           value: /etc/secrets/apollo
 
   - it: should allow overriding apollo secrets dir
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -235,6 +259,7 @@ tests:
             readOnly: true
 
   - it: should have correct resource limits
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -261,6 +286,7 @@ tests:
           value: "1"
 
   - it: should not configure Redis when external Redis is disabled
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -279,6 +305,7 @@ tests:
           any: true
 
   - it: should configure external Redis URL in direct mode
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -298,6 +325,7 @@ tests:
                 optional: true
 
   - it: should configure external Redis Sentinel envs without REDIS_URL
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -370,8 +398,10 @@ tests:
 suite: test apollo service
 templates:
   - apollo/apollo.yaml
+  - apollo/apollo-configmap.yaml
 tests:
   - it: should create apollo service
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Service
@@ -387,6 +417,7 @@ tests:
           value: apollo
 
   - it: should have correct service type and port
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Service
@@ -403,6 +434,7 @@ tests:
           value: 9900
 
   - it: should have correct selector labels
+    template: apollo/apollo.yaml
     documentSelector:
       path: kind
       value: Service

@@ -1,5 +1,5 @@
 {{- $disableK8SecretCheck := .Values.global.disableK8SecretCheck | default false }}
-{{- if eq (.Values.apollo.objectStorage.backend) "s3" }}
+{{- if and (eq (.Values.apollo.objectStorage.backend) "s3") (not .Values.apollo.objectStorage.useWebIdentity) }}
 apiVersion: v1
 kind: Secret
 metadata:

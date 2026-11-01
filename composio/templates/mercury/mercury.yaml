@@ -19,6 +19,8 @@ spec:
       labels:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: mercury
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/mercury/mercury-configmap.yaml") . | sha256sum | quote }}
     spec:
       {{- if .Values.mercury.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.mercury.serviceAccount.name }}

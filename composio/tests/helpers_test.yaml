@@ -1,8 +1,10 @@
 suite: test helper functions
 templates:
   - apollo/apollo.yaml
+  - apollo/apollo-configmap.yaml
 tests:
   - it: should generate correct name with release name
+    template: apollo/apollo.yaml
     documentIndex: 0
     set:
     asserts:
@@ -11,6 +13,7 @@ tests:
           value: RELEASE-NAME-apollo
 
   - it: should generate labels correctly
+    template: apollo/apollo.yaml
     documentIndex: 0
     set:
     asserts:
@@ -25,8 +28,10 @@ tests:
 suite: test composio.fullname helper
 templates:
   - mercury/mercury.yaml
+  - mercury/mercury-configmap.yaml
 tests:
   - it: should use composio.fullname helper in mercury template
+    template: mercury/mercury.yaml
     documentIndex: 0
     set:
       mercury.enabled: true
@@ -37,6 +42,7 @@ tests:
           value: RELEASE-NAME-composio-mercury
 
   - it: should use composio.labels helper in mercury template
+    template: mercury/mercury.yaml
     documentIndex: 0
     set:
       mercury.enabled: true
@@ -53,8 +59,10 @@ tests:
 suite: test namespace helper
 templates:
   - mercury/mercury.yaml
+  - mercury/mercury-configmap.yaml
 tests:
   - it: should use release namespace
+    template: mercury/mercury.yaml
     documentIndex: 0
     set:
       mercury.enabled: true

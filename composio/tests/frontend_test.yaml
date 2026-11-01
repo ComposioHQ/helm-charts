@@ -1,8 +1,20 @@
 suite: test frontend deployment
 templates:
   - frontend/frontend.yaml
+  - frontend/frontend-configmap.yaml
 tests:
+  - it: should annotate pods with the frontend config checksum
+    template: frontend/frontend.yaml
+    set:
+      frontend.enabled: true
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/config"]
+          pattern: '^[a-f0-9]{64}$'
+
   - it: should not create resources when frontend is disabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: false
     asserts:
@@ -10,6 +22,7 @@ tests:
           count: 0
 
   - it: should create frontend deployment when enabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -26,6 +39,7 @@ tests:
           value: frontend
 
   - it: should not set serviceAccountName when SA is disabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -37,6 +51,7 @@ tests:
           path: spec.template.spec.serviceAccountName
 
   - it: should set serviceAccountName when SA is enabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -50,6 +65,7 @@ tests:
           value: frontend-sa
 
   - it: should have correct replica count
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.replicaCount: 3
@@ -62,6 +78,7 @@ tests:
           value: 3
 
   - it: should use correct image
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: my-registry/frontend
@@ -77,6 +94,7 @@ tests:
           value: IfNotPresent
 
   - it: should have correct port configuration
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.service.port: 3000
@@ -89,6 +107,7 @@ tests:
           value: 3000
 
   - it: should have liveness probe
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -106,6 +125,7 @@ tests:
           value: 60
 
   - it: should have readiness probe
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -123,6 +143,7 @@ tests:
           value: 30
 
   - it: should have rolling update strategy
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -140,6 +161,7 @@ tests:
           value: 1
 
   - it: should include image pull secrets when configured
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -153,6 +175,7 @@ tests:
           value: frontend-secret
 
   - it: should mount frontend secrets dir
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -177,6 +200,7 @@ tests:
             emptyDir: {}
 
   - it: should keep OPENAI_API_KEY optional even when openai integration is disabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -195,6 +219,7 @@ tests:
                 optional: true
 
   - it: should render additional frontend init containers
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -225,6 +250,7 @@ tests:
           value: /etc/secrets/frontend
 
   - it: should allow overriding frontend secrets dir
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -245,6 +271,7 @@ tests:
             readOnly: true
 
   - it: should have correct resource limits
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -272,6 +299,7 @@ tests:
           value: "1"
 
   - it: should apply pod security context when configured
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -289,6 +317,7 @@ tests:
           value: true
 
   - it: should apply container security context when configured
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -310,6 +339,7 @@ tests:
           value: 1000
 
   - it: should apply node selector when configured
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -323,6 +353,7 @@ tests:
           value: linux
 
   - it: should apply tolerations when configured
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -346,8 +377,10 @@ tests:
 suite: test frontend service
 templates:
   - frontend/frontend.yaml
+  - frontend/frontend-configmap.yaml
 tests:
   - it: should create frontend service when enabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -364,6 +397,7 @@ tests:
           value: frontend
 
   - it: should have correct service type and port
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -383,6 +417,7 @@ tests:
           value: 3000
 
   - it: should support NodePort service type
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -400,6 +435,7 @@ tests:
           value: 30300
 
   - it: should have correct selector labels
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -414,8 +450,10 @@ tests:
 suite: test frontend horizontal pod autoscaler
 templates:
   - frontend/frontend.yaml
+  - frontend/frontend-configmap.yaml
 tests:
   - it: should not create HPA when autoscaling is disabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -427,6 +465,7 @@ tests:
           count: 2
 
   - it: should create HPA when autoscaling is enabled
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -451,6 +490,7 @@ tests:
           value: 10
 
   - it: should configure CPU-based autoscaling
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -468,6 +508,7 @@ tests:
           value: 75
 
   - it: should configure memory-based autoscaling
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend
@@ -488,6 +529,7 @@ tests:
                 averageUtilization: 80
 
   - it: should configure scale down behavior
+    template: frontend/frontend.yaml
     set:
       frontend.enabled: true
       frontend.image.repository: test-frontend

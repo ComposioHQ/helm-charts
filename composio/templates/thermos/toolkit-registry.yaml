@@ -5,6 +5,7 @@ metadata:
   labels:
     app: toolkit-registry
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.toolkitRegistry.replicaCount }}
   selector:
@@ -16,6 +17,7 @@ spec:
       labels:
         app: toolkit-registry
         release: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       {{- if .Values.replicated.enabled }}
       {{- include "replicated.imagePullSecrets" . | nindent 6 }}
@@ -96,6 +98,7 @@ metadata:
   labels:
     app: toolkit-registry
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   type: {{ .Values.toolkitRegistry.service.type }}
   ports:
@@ -106,3 +109,4 @@ spec:
   selector:
     app: toolkit-registry
     release: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}

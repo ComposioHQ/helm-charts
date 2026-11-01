@@ -440,6 +440,9 @@ Image pull secrets
 */}}
 {{- define "replicated.imagePullSecrets" -}}
   {{- $pullSecrets := list }}
+  {{- with .Values.replicated.existingImagePullSecret }}
+    {{- $pullSecrets = append $pullSecrets . -}}
+  {{- end }}
 
   {{- with ((.Values.global).imagePullSecrets) -}}
     {{- range . -}}
@@ -463,7 +466,7 @@ Image pull secrets
   {{- end -}}
 
   {{/* use secret created with injected docker config */}}
-  {{- if hasKey ((.Values.global).replicated) "dockerconfigjson" }}
+  {{- if and (hasKey ((.Values.global).replicated) "dockerconfigjson") (not .Values.replicated.existingImagePullSecret) }}
     {{- $pullSecrets = append $pullSecrets "replicated-pull-secret" -}}
   {{- end -}}
 
@@ -548,4 +551,21 @@ Get SMTP password from connection string
 {{- define "apollo.smtpPassword" -}}
 {{- $smtp := include "apollo.parseSmtpUrl" . | fromJson -}}
 {{- $smtp.password -}}
+{{- end -}}
+
+{{/* Public RDS trust bundle owned by the runner, available before Helm hooks. */}}
+{{- define "composio.databaseTlsMount" -}}
+{{- if .Values.databaseTls.enabled -}}
+- name: database-tls
+  mountPath: {{ .Values.databaseTls.mountPath | quote }}
+  readOnly: true
+{{- end -}}
+{{- end -}}
+
+{{- define "composio.databaseTlsVolume" -}}
+{{- if .Values.databaseTls.enabled -}}
+- name: database-tls
+  configMap:
+    name: {{ .Values.databaseTls.configMap | quote }}
+{{- end -}}
 {{- end -}}

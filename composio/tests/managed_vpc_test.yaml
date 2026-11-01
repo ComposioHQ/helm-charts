@@ -1,0 +1,113 @@
+suite: managed VPC Apollo workload identity
+templates:
+  - apollo/apollo.yaml
+  - apollo/apollo-configmap.yaml
+tests:
+  - it: uses the external IAM service account without static S3 keys
+    template: apollo/apollo.yaml
+    set:
+      apollo.objectStorage.backend: s3
+      apollo.objectStorage.useWebIdentity: true
+      apollo.serviceAccount.enabled: true
+      apollo.serviceAccount.create: false
+      apollo.serviceAccount.name: customer-apollo
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal: {path: spec.template.spec.serviceAccountName, value: customer-apollo}
+      - notExists:
+          path: spec.template.spec.containers[0].env[?(@.name == "S3_ACCESS_KEY_ID")].name
+      - notExists:
+          path: spec.template.spec.containers[0].env[?(@.name == "S3_SECRET_ACCESS_KEY")].name
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+  - it: preserves explicit S3 credential references for existing installations
+    template: apollo/apollo.yaml
+    set:
+      apollo.objectStorage.backend: s3
+      apollo.objectStorage.useWebIdentity: false
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: S3_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef: {name: s3-cred, key: S3_ACCESS_KEY_ID, optional: true}
+---
+suite: managed VPC Mercury AWS configuration
+templates:
+  - mercury/mercury-configmap.yaml
+tests:
+  - it: uses the customer region and tools bucket with AWS endpoints
+    set:
+      mercury.enabled: true
+      aws.region: eu-west-1
+      aws.s3.useAwsEndpoints: true
+      mercury.aws.toolsBucket: customer-tools
+    asserts:
+      - equal: {path: data.AWS_REGION, value: eu-west-1}
+      - equal: {path: data.AWS_S3_CUSTOM_TOOLS_BUCKET, value: customer-tools}
+      - equal: {path: data.AWS_S3_FORCE_PATH_STYLE, value: "false"}
+      - notExists: {path: data.AWS_S3_ENDPOINT_URL}
+      - notExists: {path: data.AWS_S3_ENDPOINT}
+  - it: preserves the bundled object storage endpoint by default
+    set: {mercury.enabled: true}
+    asserts:
+      - equal: {path: data.AWS_S3_ENDPOINT_URL, value: "http://RELEASE-NAME-minio:9000"}
+---
+suite: managed VPC Thermos AWS configuration
+templates:
+  - thermos/thermos-config.yaml
+tests:
+  - it: uses regional S3 without the bundled object store endpoint
+    set:
+      aws.region: eu-west-1
+      aws.s3.useAwsEndpoints: true
+      aws.s3.lambdaBucketName: customer-tools
+    asserts:
+      - equal: {path: data.AWS_S3_REGION, value: eu-west-1}
+      - equal: {path: data.AWS_S3_LAMBDA_BUCKET_NAME, value: customer-tools}
+      - notExists: {path: data.AWS_S3_ENDPOINT}
+---
+suite: managed VPC prepared registry credentials
+templates:
+  - replicated/replicated-pull-secret.yaml
+tests:
+  - it: reuses the runner registry secret for personalized charts
+    set:
+      replicated.existingImagePullSecret: composio-runner-registry
+      global.replicated.dockerconfigjson: synthetic-test-only
+    asserts:
+      - hasDocuments: {count: 0}
+  - it: preserves chart-managed registry credentials for existing installations
+    set:
+      global.replicated.dockerconfigjson: synthetic-test-only
+    asserts:
+      - equal: {path: metadata.name, value: replicated-pull-secret}
+---
+suite: managed VPC migration hook prerequisites
+templates:
+  - apollo/apollo-db-init.job.yaml
+tests:
+  - it: pulls migrations using credentials prepared before Helm starts
+    set:
+      apollo.dbInit.enabled: true
+      databaseTls.enabled: true
+      replicated.existingImagePullSecret: composio-runner-registry
+      global.imagePullSecrets: []
+      global.replicated.dockerconfigjson: synthetic-test-only
+      apollo.serviceAccount.enabled: true
+      apollo.serviceAccount.create: false
+      apollo.serviceAccount.name: customer-apollo
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value: [{name: composio-runner-registry}]
+      - equal: {path: spec.template.spec.serviceAccountName, value: customer-apollo}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: database-tls, configMap: {name: composio-rds-ca}}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: {name: database-tls, mountPath: /etc/composio/database-tls, readOnly: true}
