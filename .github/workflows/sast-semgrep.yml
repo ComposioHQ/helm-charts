@@ -1,0 +1,47 @@
+name: "SAST - Semgrep IaC Security Scan"
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    name: Semgrep IaC Scan
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep scan
+        run: |
+          semgrep scan \
+            --config "p/kubernetes" \
+            --config "p/dockerfile" \
+            --config ".github/semgrep-rules" \
+            --exclude "node_modules" \
+            --sarif \
+            --output semgrep-results.sarif \
+            --error \
+            --severity ERROR \
+            .
+
+      - name: Upload SARIF results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep-iac

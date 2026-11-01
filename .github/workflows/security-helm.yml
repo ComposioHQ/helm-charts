@@ -1,0 +1,88 @@
+name: "Helm Chart Security Scanning"
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  kubesec:
+    name: Kubesec Template Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.14.0"
+
+      - name: Install kubesec
+        run: |
+          curl -sSL https://github.com/controlplaneio/kubesec/releases/download/v2.14.0/kubesec_linux_amd64.tar.gz | tar xz
+          sudo mv kubesec /usr/local/bin/
+
+      - name: Render Helm templates
+        run: |
+          mkdir -p rendered
+          helm template composio composio/ \
+            --values composio/values.yaml \
+            --output-dir rendered
+
+      - name: Split and scan rendered templates with kubesec
+        run: |
+          exit_code=0
+          find rendered -name '*.yaml' -type f | while read -r file; do
+            echo "=== Scanning: $file ==="
+            # Split multi-document YAML files into individual resources
+            csplit --quiet --prefix="$file.part" --suffix-format='%03d.yaml' \
+              "$file" '/^---$/' '{*}' 2>/dev/null || true
+
+            for part in "$file".part*.yaml; do
+              [ -f "$part" ] || continue
+              # Skip empty files or files with only comments/separators
+              if grep -qE '^\s*(kind|apiVersion):' "$part"; then
+                echo "--- Scanning resource: $part ---"
+                kubesec scan "$part" || exit_code=1
+              fi
+              rm -f "$part"
+            done
+          done
+          exit $exit_code
+
+  checkov:
+    name: Checkov Helm Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Checkov scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: composio/
+          framework: helm
+          soft_fail: true
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      - name: Upload SARIF results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov-helm
