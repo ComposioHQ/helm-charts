@@ -79,12 +79,14 @@ Google Cloud Monitoring receives them under `custom.googleapis.com/composio/`.
 | `mercury.tool_call` | Counter | Number of tool/action executions. |
 | `mercury.tool_call.execution_time` | Histogram | Tool execution duration in milliseconds. |
 | `mercury.tool_call.status_code` | Histogram | HTTP status code distribution for tool executions. |
-| `mercury.key_normalization.count` | Counter | Number of request key alias normalizations. |
+| `mercury.outbound_http.request` | Counter | Number of outbound HTTP requests made by tool execution. |
+| `mercury.outbound_http.request.duration` | Histogram | Outbound HTTP request duration in milliseconds. |
+| `mercury.outbound_http.response.status_code` | Histogram | Outbound HTTP response status code distribution. |
 
 Common Mercury metric attributes include `toolkit_name`, `tool_name`,
-`toolkit_version`, `status_code`, `error`, `env`, and
-`module_loading_mechanism`. Latest-version requests can also include
-`response_validation_status`.
+`toolkit_version`, `status_code`, `status_class`, `method`, `attempt`,
+`error`, `env`, and `module_loading_mechanism`. Latest-version requests can
+also include `response_validation_status`.
 
 In the collector Prometheus exporter, metric names are normalized for
 Prometheus conventions. For example:
@@ -95,7 +97,9 @@ mercury_tool_call_execution_time_bucket
 mercury_tool_call_execution_time_sum
 mercury_tool_call_execution_time_count
 mercury_tool_call_status_code_bucket
-mercury_key_normalization_count_total
+mercury_outbound_http_request_total
+mercury_outbound_http_request_duration_bucket
+mercury_outbound_http_response_status_code_bucket
 ```
 
 In Google Cloud Monitoring, with the default prefix, look for:
@@ -104,8 +108,26 @@ In Google Cloud Monitoring, with the default prefix, look for:
 custom.googleapis.com/composio/mercury.tool_call
 custom.googleapis.com/composio/mercury.tool_call.execution_time
 custom.googleapis.com/composio/mercury.tool_call.status_code
-custom.googleapis.com/composio/mercury.key_normalization.count
+custom.googleapis.com/composio/mercury.outbound_http.request
+custom.googleapis.com/composio/mercury.outbound_http.request.duration
+custom.googleapis.com/composio/mercury.outbound_http.response.status_code
 ```
+
+For Google Cloud Monitoring, the chart adds Kubernetes resource identity to
+`OTEL_RESOURCE_ATTRIBUTES` for each application pod:
+
+```text
+service.namespace=$(POD_NAMESPACE)
+service.instance.id=$(POD_NAME)
+k8s.namespace.name=$(POD_NAMESPACE)
+k8s.pod.name=$(POD_NAME)
+k8s.node.name=$(NODE_NAME)
+```
+
+Set `otel.clusterName` to include `k8s.cluster.name` as well. These attributes
+keep cumulative metric streams distinct per pod and prevent Google Cloud
+Monitoring from rejecting writes with `InvalidArgument: Points must be written
+in order` when multiple pods emit the same metric and labels.
 
 #### Service Endpoint Configuration
 
