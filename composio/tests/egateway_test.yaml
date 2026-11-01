@@ -175,6 +175,128 @@ tests:
           path: spec.rules[2].host
           value: auth.customer.example.com
 
+  - it: should keep API-key auth by default without any JWT settings
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+    asserts:
+      - equal:
+          path: data.COMPOSIO_AUTH_MODE
+          value: api_key
+      - notExists:
+          path: data.COMPOSIO_JWT_KEY_ID
+      - notExists:
+          path: data.COMPOSIO_JWT_ISSUER
+
+  - it: should not mount a JWT signing key or JWKS Service in api_key mode
+    template: egateway/egateway-admin.yaml
+    set:
+      egateway.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COMPOSIO_JWT_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: COMPOSIO_JWT_PRIVATE_KEY
+        documentIndex: 0
+
+  - it: should configure gateway-signed project JWTs in jwt mode
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      global.domain: customer.example.com
+      egateway.composioAuth.mode: jwt
+      egateway.composioAuth.jwt.keyId: egw-2026-11
+    asserts:
+      - equal:
+          path: data.COMPOSIO_AUTH_MODE
+          value: jwt
+      - equal:
+          path: data.COMPOSIO_JWT_KEY_ID
+          value: egw-2026-11
+      - equal:
+          path: data.COMPOSIO_JWT_ISSUER
+          value: https://egateway.customer.example.com
+      - equal:
+          path: data.COMPOSIO_JWT_TTL_SECONDS
+          value: "900"
+      - notExists:
+          path: data.COMPOSIO_JWT_PREVIOUS_PUBLIC_JWKS
+
+  - it: should give admin and proxy the signing key from the secret in jwt mode
+    templates:
+      - egateway/egateway-admin.yaml
+      - egateway/egateway-proxy.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      egateway.composioAuth.mode: jwt
+      egateway.composioAuth.jwt.keyId: egw-1
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COMPOSIO_JWT_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: COMPOSIO_JWT_PRIVATE_KEY
+
+  - it: should serve the JWKS through a Service that includes not-ready admin pods
+    template: egateway/egateway-admin.yaml
+    documentIndex: 2
+    set:
+      egateway.enabled: true
+      egateway.composioAuth.mode: jwt
+      egateway.composioAuth.jwt.keyId: egw-1
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-composio-egateway-jwks
+      - equal:
+          path: spec.publishNotReadyAddresses
+          value: true
+      - equal:
+          path: spec.selector["app.kubernetes.io/component"]
+          value: egateway-admin
+
+  - it: should require a key id in jwt mode
+    # The ConfigMap validation surfaces through the proxy's checksum include.
+    template: egateway/egateway-proxy.yaml
+    set:
+      egateway.enabled: true
+      egateway.composioAuth.mode: jwt
+    asserts:
+      - failedTemplate:
+          errorMessage: egateway.composioAuth.jwt.keyId is required when egateway.composioAuth.mode is jwt
+
+  - it: should refuse jwt mode next to a separately configured Apollo JWT verifier
+    template: egateway/egateway-proxy.yaml
+    set:
+      egateway.enabled: true
+      egateway.composioAuth.mode: jwt
+      egateway.composioAuth.jwt.keyId: egw-1
+      apollo.auth.jwt.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: egateway.composioAuth.mode=jwt configures Apollo's JWT verifier itself; leave apollo.auth.jwt.enabled false (Apollo accepts one JWKS URL)
+
+  - it: should reject an unknown auth mode
+    template: egateway/egateway-proxy.yaml
+    set:
+      egateway.enabled: true
+      egateway.composioAuth.mode: oauth
+    asserts:
+      - failedTemplate:
+          errorMessage: egateway.composioAuth.mode must be api_key or jwt, got "oauth"
+
   - it: should give the proxy a host allow-list so it starts in production
     template: egateway/egateway-proxy.yaml
     documentIndex: 0

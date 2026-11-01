@@ -27,6 +27,30 @@
 {{- printf "%s-egateway-fusionauth" (include "composio.fullname" .) -}}
 {{- end -}}
 
+{{- define "egateway.jwksServiceName" -}}
+{{- printf "%s-egateway-jwks" (include "composio.fullname" .) -}}
+{{- end -}}
+
+{{/* "true" when the gateway signs Composio project JWTs (composioAuth.mode=jwt). */}}
+{{- define "egateway.composioJwtEnabled" -}}
+{{- if and .Values.egateway.enabled (eq (.Values.egateway.composioAuth.mode | default "api_key") "jwt") -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{- define "egateway.composioJwtIssuer" -}}
+{{- .Values.egateway.composioAuth.jwt.issuer | default (printf "https://%s" (include "egateway.adminHost" .)) -}}
+{{- end -}}
+
+{{/*
+In-cluster JWKS URL for Apollo's AUTH_JWT_JWKS_URL. Apollo fetches it with a
+plain fetch (no private-address filtering), so the Service URL works and the
+keys never need a public route.
+*/}}
+{{- define "egateway.composioJwksUrl" -}}
+{{- printf "http://%s:3002/.well-known/composio-jwks.json" (include "egateway.jwksServiceName" .) -}}
+{{- end -}}
+
 {{- define "egateway.composioBaseUrl" -}}
 {{- .Values.egateway.composioBaseUrl | default (printf "http://%s-apollo:9900" .Release.Name) -}}
 {{- end -}}
@@ -60,6 +84,13 @@ imagePullSecrets:
     secretKeyRef:
       name: {{ $secret }}
       key: {{ $key }}
+{{- end }}
+{{- if include "egateway.composioJwtEnabled" . }}
+- name: COMPOSIO_JWT_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secret }}
+      key: COMPOSIO_JWT_PRIVATE_KEY
 {{- end }}
 {{- end -}}
 
