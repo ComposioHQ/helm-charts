@@ -16,7 +16,9 @@ The gateway talks to the in-cluster Composio backend (`<release>-apollo:9900`) b
 
 > **Images:** the `composio-self-host/egateway-{admin,proxy,migrate}` ECR repositories are
 > placeholders until they are created and published by
-> `publish-self-host-images.yml` in composio-enterprise.
+> `publish-self-host-images.yml` in composio-enterprise. They are built from
+> `apps/admin/Dockerfile`, `apps/proxy/Dockerfile` and `packages/db/Dockerfile`, and all
+> three run as the non-root user `1001` (`egateway.podSecurityContext`).
 
 ### Prerequisites
 - External Postgres reachable from the cluster, with `databaseMigration.enabled: true` so the
@@ -40,6 +42,7 @@ Add these keys to the core secret (`secret.name`), or to a dedicated secret set 
 | `INTERNAL_SERVICE_TOKEN` | Random token |
 | `CRON_SECRET` | Random token used by the CronJobs |
 | `FUSIONAUTH_DATABASE_PASSWORD` | Password of the Postgres user for `fusionauthdb` |
+| `COMPOSIO_JWT_PRIVATE_KEY` | Only with `egateway.composioAuth.mode: jwt`: PEM RSA private key, 2048 bits or more |
 
 ### Example values
 ```yaml
@@ -61,10 +64,66 @@ egateway:
         hosts: [egateway.example.com, mcp.example.com, auth.example.com]
 ```
 
+### Authenticating to Composio
+
+`egateway.composioAuth.mode` decides what the gateway sends to Apollo.
+
+**`api_key` (default).** During onboarding an org admin pastes a Composio project API key
+(`ak_...`); the gateway stores it encrypted and sends it as `x-api-key`. On a self-hosted
+Apollo, `POST /api/v3.1/self_hosted/bootstrap` (authenticated with Apollo's admin token)
+returns a project `api_key` for an email.
+
+**`jwt` (opt-in).** No long-lived Composio key is stored. The gateway signs short-lived
+(`ttlSeconds`, default 15 minutes) RS256 project JWTs, and the chart points Apollo at the
+gateway's public keys:
+
+- Apollo gets `AUTH_JWT_JWKS_URL=http://<fullname>-egateway-jwks:3002/.well-known/composio-jwks.json`
+  and `AUTH_JWT_ISSUER` (default `https://<admin host>`). Apollo fetches the JWKS without
+  filtering private addresses, so the in-cluster Service works and the keys need no public
+  route. The `-egateway-jwks` Service also routes to admin pods that are not Ready yet, so
+  Apollo can verify tokens while admin starts.
+- Leave `apollo.auth.jwt.enabled` false: Apollo trusts a single JWKS URL, and the chart
+  refuses to render both.
+- Per org, enter `composio-jwt:<project_id>:<org_member_id>` in the onboarding API key field.
+  `POST /api/v3.1/self_hosted/bootstrap` returns both ids (`project_id`, `org_member_id`).
+  The org member must belong to the project's org, or Apollo answers 401.
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out composio-jwt.pem
+kubectl create secret generic egateway-secrets ... --from-file=COMPOSIO_JWT_PRIVATE_KEY=composio-jwt.pem
+```
+
+```yaml
+egateway:
+  secretRef: egateway-secrets
+  composioAuth:
+    mode: jwt
+    jwt:
+      keyId: egw-2026-11
+```
+
+To rotate the key, store the new PEM, set a new `keyId`, and put the old public JWK (from
+`/.well-known/composio-jwks.json` before the change) in `jwt.previousPublicJwks` as a JSON
+array until tokens signed with it have expired.
+
+Known limits of `jwt` mode, from Apollo's code:
+
+- Apollo inserts a new project service API key row for every tool execution authenticated
+  with a project JWT, because its execution engine still needs a key. On a busy gateway that
+  table grows with every tool call.
+- `POST /api/v3/tools/execute/proxy` refuses JWT callers. The gateway does not call it today.
+- If admin is down when Apollo's 5-minute JWKS cache expires, Apollo rejects the gateway's
+  calls with 401 until admin is back. Run two or more admin replicas in `jwt` mode.
+
 ### Notes
 - Admin and proxy run with `SENTRY_ENABLED`, `DATADOG_ENABLED` and `RESEND_ENABLED` set to
   `false`, so those SaaS integrations are off and their settings are not required. Without Resend, invite
   and password-reset emails are not sent.
+- The proxy only accepts requests for hosts in `ALLOWED_HOSTS` and will not start without
+  it. The chart sets it to the proxy host and the proxy Service name; override with
+  `egateway.proxy.allowedHosts`.
+- Admin readiness uses `/api/health` (Postgres, Redis, FusionAuth, Composio); liveness uses
+  `/api/version` so a dependency outage does not restart the pod.
 - FusionAuth uses its database as the search engine (no OpenSearch needed). Its kickstart
   only runs on an empty database: it creates the API key and sets the tenant issuer. Org
   tenants and applications are provisioned by the admin at runtime.
