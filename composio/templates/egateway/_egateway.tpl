@@ -62,3 +62,18 @@ imagePullSecrets:
       key: {{ $key }}
 {{- end }}
 {{- end -}}
+
+{{/* Pod and container security contexts shared by admin, proxy and migrate. */}}
+{{- define "egateway.podSecurityContext" -}}
+{{- with .Values.egateway.podSecurityContext -}}
+securityContext:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{- define "egateway.containerSecurityContext" -}}
+{{- with .Values.egateway.containerSecurityContext -}}
+securityContext:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}

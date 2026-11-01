@@ -174,3 +174,63 @@ tests:
       - equal:
           path: spec.rules[2].host
           value: auth.customer.example.com
+
+  - it: should give the proxy a host allow-list so it starts in production
+    template: egateway/egateway-proxy.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      global.domain: customer.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALLOWED_HOSTS
+            value: mcp.customer.example.com,RELEASE-NAME-composio-egateway-proxy
+
+  - it: should honour an explicit proxy host allow-list
+    template: egateway/egateway-proxy.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      egateway.proxy.allowedHosts:
+        - mcp.acme.io
+        - "*.acme.io"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALLOWED_HOSTS
+            value: mcp.acme.io,*.acme.io
+
+  - it: should run admin, proxy and migrate as the images' non-root user
+    templates:
+      - egateway/egateway-admin.yaml
+      - egateway/egateway-proxy.yaml
+      - egateway/egateway-migrate-job.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1001
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+
+  - it: should keep admin liveness off the dependency-checking health route
+    template: egateway/egateway-admin.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /api/version
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /api/health

@@ -58,6 +58,18 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: egateway-fusionauth
     spec:
+      {{- with .Values.egateway.fusionauth.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.egateway.fusionauth.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.egateway.fusionauth.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: fusionauth
           image: {{ printf "%s:%s" $fa.image.repository $fa.image.tag | quote }}

@@ -23,10 +23,13 @@ spec:
     spec:
       restartPolicy: Never
       {{- include "egateway.imagePullSecrets" . | nindent 6 }}
+      {{- include "egateway.podSecurityContext" . | nindent 6 }}
       containers:
         - name: migrate
           image: {{ include "composio.imageReference" (dict "image" .Values.egateway.migrate.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.egateway.migrate.image.pullPolicy }}
+          {{- include "egateway.containerSecurityContext" . | nindent 10 }}
+          # Same as the image's default command (packages/db/Dockerfile).
           command: ["bun", "run", "--filter", "@repo/db", "db:migrate"]
           env:
             - name: DATABASE_URL

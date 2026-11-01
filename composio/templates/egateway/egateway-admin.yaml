@@ -23,10 +23,24 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/egateway/egateway-configmap.yaml") . | sha256sum }}
     spec:
       {{- include "egateway.imagePullSecrets" . | nindent 6 }}
+      {{- include "egateway.podSecurityContext" . | nindent 6 }}
+      {{- with .Values.egateway.admin.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.egateway.admin.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.egateway.admin.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: admin
           image: {{ include "composio.imageReference" (dict "image" .Values.egateway.admin.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.egateway.admin.image.pullPolicy }}
+          {{- include "egateway.containerSecurityContext" . | nindent 10 }}
           ports:
             - name: http
               containerPort: 3002
@@ -62,9 +76,11 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 15
+          # /api/health checks Postgres, Redis, FusionAuth and Composio; as a
+          # liveness probe it would restart admin whenever any of them is down.
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /api/version
               port: http
             initialDelaySeconds: 60
             periodSeconds: 30

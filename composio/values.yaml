@@ -1417,6 +1417,18 @@ egateway:
     auth: ""
   # -- Composio backend URL. Defaults to the in-cluster Apollo service.
   composioBaseUrl: ""
+  # -- Pod security context for admin, proxy and migrate (the images run as uid 1001)
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+  # -- Container security context for admin, proxy and migrate
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
   database:
     # -- Postgres database created by databaseMigration for the gateway
     name: egatewaydb
@@ -1438,6 +1450,12 @@ egateway:
         cpu: "1"
     # -- Extra environment variables for admin
     extraEnv: []
+    # -- Node selector for admin pods
+    nodeSelector: {}
+    # -- Affinity rules for admin pods
+    affinity: {}
+    # -- Tolerations for admin pods
+    tolerations: []
   proxy:
     replicaCount: 1
     image:
@@ -1453,8 +1471,17 @@ egateway:
       limits:
         memory: "1Gi"
         cpu: "1"
+    # -- Host-header allow-list (ALLOWED_HOSTS); the proxy refuses to start without one.
+    # Default: the proxy host and its in-cluster Service name.
+    allowedHosts: []
     # -- Extra environment variables for proxy
     extraEnv: []
+    # -- Node selector for proxy pods
+    nodeSelector: {}
+    # -- Affinity rules for proxy pods
+    affinity: {}
+    # -- Tolerations for proxy pods
+    tolerations: []
   migrate:
     # -- Run Prisma migrations as a pre-install/pre-upgrade hook
     enabled: true
@@ -1500,6 +1527,12 @@ egateway:
       repository: fusionauth/fusionauth-app
       tag: "1.67.0"
       pullPolicy: IfNotPresent
+    # -- Node selector for FusionAuth pods
+    nodeSelector: {}
+    # -- Affinity rules for FusionAuth pods
+    affinity: {}
+    # -- Tolerations for FusionAuth pods
+    tolerations: []
     database:
       # -- Postgres database created by databaseMigration for FusionAuth
       name: fusionauthdb

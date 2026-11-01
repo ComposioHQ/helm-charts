@@ -22,10 +22,24 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/egateway/egateway-configmap.yaml") . | sha256sum }}
     spec:
       {{- include "egateway.imagePullSecrets" . | nindent 6 }}
+      {{- include "egateway.podSecurityContext" . | nindent 6 }}
+      {{- with .Values.egateway.proxy.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.egateway.proxy.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.egateway.proxy.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: proxy
           image: {{ include "composio.imageReference" (dict "image" .Values.egateway.proxy.image "context" .) | quote }}
           imagePullPolicy: {{ .Values.egateway.proxy.image.pullPolicy }}
+          {{- include "egateway.containerSecurityContext" . | nindent 10 }}
           ports:
             - name: http
               containerPort: 3001
@@ -35,6 +49,9 @@ spec:
           env:
             - name: PORT
               value: "3001"
+            # Host-header allow-list; the proxy refuses to start in production without one.
+            - name: ALLOWED_HOSTS
+              value: {{ join "," (.Values.egateway.proxy.allowedHosts | default (list (include "egateway.proxyHost" .) (include "egateway.proxyServiceName" .))) | quote }}
             {{- include "egateway.secretEnv" . | nindent 12 }}
             {{- with .Values.egateway.proxy.extraEnv }}
             {{- toYaml . | nindent 12 }}
