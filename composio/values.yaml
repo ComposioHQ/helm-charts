@@ -1454,9 +1454,9 @@ egateway:
   admin:
     replicaCount: 1
     image:
-      # -- Admin image repository (placeholder until the ECR repository exists)
+      # -- Admin image repository
       repository: composio-self-host/egateway-admin
-      tag: "latest"
+      tag: "9f9cfcadda7a3dce30267f902a6519f466617439"
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
       imageName: ""
@@ -1478,9 +1478,9 @@ egateway:
   proxy:
     replicaCount: 1
     image:
-      # -- Proxy image repository (placeholder until the ECR repository exists)
+      # -- Proxy image repository
       repository: composio-self-host/egateway-proxy
-      tag: "latest"
+      tag: "9f9cfcadda7a3dce30267f902a6519f466617439"
       pullPolicy: Always
       imageName: ""
     resources:
@@ -1505,9 +1505,9 @@ egateway:
     # -- Run Prisma migrations as a pre-install/pre-upgrade hook
     enabled: true
     image:
-      # -- Migrate image repository (placeholder until the ECR repository exists)
+      # -- Migrate image repository
       repository: composio-self-host/egateway-migrate
-      tag: "latest"
+      tag: "9f9cfcadda7a3dce30267f902a6519f466617439"
       pullPolicy: Always
       imageName: ""
   cronJobs:
