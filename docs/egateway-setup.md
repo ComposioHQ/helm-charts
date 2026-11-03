@@ -44,6 +44,7 @@ Add these keys to the core secret (`secret.name`), or to a dedicated secret set 
 | `INTERNAL_SERVICE_TOKEN` | Random token |
 | `CRON_SECRET` | Random token used by the CronJobs |
 | `FUSIONAUTH_DATABASE_PASSWORD` | Password of the Postgres user for `fusionauthdb` |
+| `COMPOSIO_JWT_PRIVATE_KEY` | Only with `egateway.composioAuth.mode: jwt`: PEM RSA private key, 2048 bits or more |
 
 ### Example values
 ```yaml
@@ -80,6 +81,50 @@ curl -X POST http://localhost:9900/api/v3/admin/identify \
 The `apiKey` field in the response is the key. Newer Apollo images also serve
 `POST /api/v3.1/self_hosted/bootstrap`, which takes a real email and returns the key as
 `api_key`; the chart's default Apollo image (`r20260501_01`) answers 404 on that route.
+
+### Project-JWT authentication (optional)
+
+Set `egateway.composioAuth.mode: jwt` (default `api_key`) and no long-lived Composio key is stored. The gateway signs short-lived
+(`ttlSeconds`, default 15 minutes) RS256 project JWTs, and the chart points Apollo at the
+gateway's public keys:
+
+- Apollo gets `AUTH_JWT_JWKS_URL=http://<fullname>-egateway-jwks:3002/.well-known/composio-jwks.json`
+  and `AUTH_JWT_ISSUER` (default `https://<admin host>`). Apollo fetches the JWKS without
+  filtering private addresses, so the in-cluster Service works and the keys need no public
+  route. The `-egateway-jwks` Service also routes to admin pods that are not Ready yet, so
+  Apollo can verify tokens while admin starts.
+- Leave `apollo.auth.jwt.enabled` false: Apollo trusts a single JWKS URL, and the chart
+  refuses to render both.
+- Per org, enter `composio-jwt:<project_id>:<org_member_id>` in the onboarding API key field.
+  `POST /api/v3.1/self_hosted/bootstrap` returns both ids (`project_id`, `org_member_id`).
+  The org member must belong to the project's org, or Apollo answers 401.
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out composio-jwt.pem
+kubectl create secret generic egateway-secrets ... --from-file=COMPOSIO_JWT_PRIVATE_KEY=composio-jwt.pem
+```
+
+```yaml
+egateway:
+  secretRef: egateway-secrets
+  composioAuth:
+    mode: jwt
+    jwt:
+      keyId: egw-2026-11
+```
+
+To rotate the key, store the new PEM, set a new `keyId`, and put the old public JWK (from
+`/.well-known/composio-jwks.json` before the change) in `jwt.previousPublicJwks` as a JSON
+array until tokens signed with it have expired.
+
+Known limits of `jwt` mode, from Apollo's code:
+
+- Apollo inserts a new project service API key row for every tool execution authenticated
+  with a project JWT, because its execution engine still needs a key. On a busy gateway that
+  table grows with every tool call.
+- `POST /api/v3/tools/execute/proxy` refuses JWT callers. The gateway does not call it today.
+- If admin is down when Apollo's 5-minute JWKS cache expires, Apollo rejects the gateway's
+  calls with 401 until admin is back. Run two or more admin replicas in `jwt` mode.
 
 ### Creating the first organization
 
