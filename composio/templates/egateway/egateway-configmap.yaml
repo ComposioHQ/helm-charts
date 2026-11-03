@@ -1,16 +1,4 @@
 {{- if .Values.egateway.enabled }}
-{{- $authMode := .Values.egateway.composioAuth.mode | default "api_key" }}
-{{- if not (has $authMode (list "api_key" "jwt")) }}
-{{- fail (printf "egateway.composioAuth.mode must be api_key or jwt, got %q" $authMode) }}
-{{- end }}
-{{- if include "egateway.composioJwtEnabled" . }}
-{{- if not .Values.egateway.composioAuth.jwt.keyId }}
-{{- fail "egateway.composioAuth.jwt.keyId is required when egateway.composioAuth.mode is jwt" }}
-{{- end }}
-{{- if .Values.apollo.auth.jwt.enabled }}
-{{- fail "egateway.composioAuth.mode=jwt configures Apollo's JWT verifier itself; leave apollo.auth.jwt.enabled false (Apollo accepts one JWKS URL)" }}
-{{- end }}
-{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -33,13 +21,4 @@ data:
   FUSIONAUTH_JWKS_URL: {{ printf "http://%s:9011/.well-known/jwks.json" (include "egateway.fusionauthServiceName" .) | quote }}
   FUSIONAUTH_ADMIN_REDIRECT_URL: {{ printf "https://%s/api/auth/callback" (include "egateway.adminHost" .) | quote }}
   COMPOSIO_BASE_URL: {{ include "egateway.composioBaseUrl" . | quote }}
-  COMPOSIO_AUTH_MODE: {{ $authMode | quote }}
-  {{- if include "egateway.composioJwtEnabled" . }}
-  COMPOSIO_JWT_KEY_ID: {{ .Values.egateway.composioAuth.jwt.keyId | quote }}
-  COMPOSIO_JWT_ISSUER: {{ include "egateway.composioJwtIssuer" . | quote }}
-  COMPOSIO_JWT_TTL_SECONDS: {{ .Values.egateway.composioAuth.jwt.ttlSeconds | default 900 | toString | quote }}
-  {{- with .Values.egateway.composioAuth.jwt.previousPublicJwks }}
-  COMPOSIO_JWT_PREVIOUS_PUBLIC_JWKS: {{ . | quote }}
-  {{- end }}
-  {{- end }}
 {{- end }}

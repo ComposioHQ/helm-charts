@@ -106,28 +106,4 @@ spec:
   selector:
     {{- include "composio.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: egateway-admin
-{{- if include "egateway.composioJwtEnabled" . }}
----
-# Apollo's AUTH_JWT_JWKS_URL. Separate from the admin Service so Apollo can
-# fetch the public keys while admin is not Ready: admin readiness includes a
-# Composio check, which in jwt mode needs Apollo to have the keys.
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "egateway.jwksServiceName" . }}
-  namespace: {{ include "composio.namespace" . }}
-  labels:
-    {{- include "composio.labels" . | nindent 4 }}
-    app.kubernetes.io/component: egateway-admin
-spec:
-  type: ClusterIP
-  publishNotReadyAddresses: true
-  ports:
-    - name: http
-      port: 3002
-      targetPort: http
-  selector:
-    {{- include "composio.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: egateway-admin
-{{- end }}
 {{- end }}
