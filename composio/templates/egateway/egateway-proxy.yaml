@@ -50,6 +50,11 @@ spec:
             - name: PORT
               value: "3001"
             # Host-header allow-list; the proxy refuses to start in production without one.
+            {{- if .Values.egateway.fusionauth.enabled }}
+            # The proxy only calls FusionAuth from the server, so it never needs the public host.
+            - name: FUSIONAUTH_URL
+              value: {{ printf "http://%s:9011" (include "egateway.fusionauthServiceName" .) | quote }}
+            {{- end }}
             - name: ALLOWED_HOSTS
               value: {{ join "," (.Values.egateway.proxy.allowedHosts | default (list (include "egateway.proxyHost" .) (include "egateway.proxyServiceName" .))) | quote }}
             {{- include "egateway.secretEnv" . | nindent 12 }}
