@@ -378,3 +378,16 @@ tests:
     asserts:
       - notExists:
           path: data.FUSIONAUTH_INTERNAL_URL
+
+  - it: should point the proxy at the bundled FusionAuth Service
+    template: egateway/egateway-proxy.yaml
+    set:
+      egateway.enabled: true
+      global.domain: customer.example.com
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FUSIONAUTH_URL
+            value: http://RELEASE-NAME-composio-egateway-fusionauth:9011

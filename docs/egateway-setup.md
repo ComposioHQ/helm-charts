@@ -149,10 +149,12 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
 - Admin readiness uses `/api/health` (Postgres, Redis, FusionAuth, Composio); liveness uses
   `/api/version` so a dependency outage does not restart the pod.
 - The bundled FusionAuth is reached through its Service for server-to-server calls
-  (`FUSIONAUTH_INTERNAL_URL`), so admin can become ready before DNS, Ingress and TLS for the
+  (`FUSIONAUTH_INTERNAL_URL` on admin, `FUSIONAUTH_URL` on the proxy), so the gateway can become ready before DNS, Ingress and TLS for the
   auth host work. Logins still need them, because browsers use `https://<auth host>`.
 - `manifest-reverify`, `manifest-fix-drift` and `argument-profile` are not scheduled because
   they need `COMPOSIO_CATALOG_API_KEY`, `ANTHROPIC_API_KEY` and ClickHouse respectively.
+- The `COMPOSIO_SEARCH_TOOLS` MCP tool needs Apollo search, which is off by default
+  (`apollo.search.enabled`). Without it the tool returns an error; tools called by slug still work.
 - FusionAuth uses its database as the search engine (no OpenSearch needed). Its kickstart
   only runs on an empty database: it creates the API key and sets the tenant issuer. Org
   tenants and applications are provisioned by the admin at runtime.
