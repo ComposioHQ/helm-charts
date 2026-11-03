@@ -1496,6 +1496,8 @@ egateway:
     enabled: true
     image: "curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd"
     # -- Each job calls GET <admin>/api/internal/<path> with the CRON_SECRET bearer token
+    # Left out because they need SaaS-only settings: manifest-reverify (COMPOSIO_CATALOG_API_KEY),
+    # manifest-fix-drift (ANTHROPIC_API_KEY) and argument-profile (ClickHouse).
     jobs:
       - { name: scim-projection-queue, path: /api/internal/scim-projection-queue, schedule: "*/1 * * * *" }
       - { name: provisioning-queue, path: /api/internal/provisioning-queue, schedule: "*/1 * * * *" }
@@ -1505,10 +1507,7 @@ egateway:
       - { name: sso-delegation-reminders, path: /api/internal/sso-delegation-reminders, schedule: "5 9 * * *" }
       - { name: archive-expired-trials, path: /api/internal/archive-expired-trials, schedule: "0 3 * * *" }
       - { name: mcp-connection-expiry-warnings, path: /api/internal/mcp-connection-expiry-warnings, schedule: "0 8 * * *" }
-      - { name: manifest-reverify, path: /api/internal/manifest-reverify, schedule: "0 4 * * *" }
-      - { name: manifest-fix-drift, path: /api/internal/manifest-fix-drift, schedule: "0 5 * * *" }
       - { name: manifest-corpus-replay, path: /api/internal/manifest-corpus-replay, schedule: "0 6 * * 1" }
-      - { name: argument-profile, path: /api/internal/argument-profile, schedule: "20 * * * *" }
       - { name: manifest-observation-retention, path: /api/internal/manifest-observation-retention, schedule: "30 3 * * *" }
       - { name: sandbox-purge, path: /api/internal/sandbox-purge, schedule: "0 4 * * *" }
       - { name: idempotency-purge, path: /api/internal/idempotency-purge, schedule: "0 */1 * * *" }

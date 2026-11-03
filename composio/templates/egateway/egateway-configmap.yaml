@@ -17,6 +17,11 @@ data:
   NEXTAUTH_URL: {{ printf "https://%s" (include "egateway.adminHost" .) | quote }}
   PROXY_PUBLIC_URL: {{ printf "https://%s" (include "egateway.proxyHost" .) | quote }}
   FUSIONAUTH_URL: {{ printf "https://%s" (include "egateway.authHost" .) | quote }}
+  {{- if .Values.egateway.fusionauth.enabled }}
+  # Server-to-server calls use the Service, so admin readiness does not depend on
+  # public DNS, Ingress or TLS. Browsers keep using FUSIONAUTH_URL.
+  FUSIONAUTH_INTERNAL_URL: {{ printf "http://%s:9011" (include "egateway.fusionauthServiceName" .) | quote }}
+  {{- end }}
   FUSIONAUTH_ISSUER: {{ include "egateway.authHost" . | quote }}
   FUSIONAUTH_JWKS_URL: {{ printf "http://%s:9011/.well-known/jwks.json" (include "egateway.fusionauthServiceName" .) | quote }}
   FUSIONAUTH_ADMIN_REDIRECT_URL: {{ printf "https://%s/api/auth/callback" (include "egateway.adminHost" .) | quote }}

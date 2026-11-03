@@ -122,7 +122,7 @@ tests:
       egateway.enabled: true
     asserts:
       - hasDocuments:
-          count: 15
+          count: 12
       - isKind:
           of: CronJob
 
@@ -234,3 +234,25 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.path
           value: /api/health
+
+  - it: should call the bundled FusionAuth through its Service
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      global.domain: customer.example.com
+    asserts:
+      - equal:
+          path: data.FUSIONAUTH_INTERNAL_URL
+          value: http://RELEASE-NAME-composio-egateway-fusionauth:9011
+      - equal:
+          path: data.FUSIONAUTH_URL
+          value: https://auth.customer.example.com
+
+  - it: should not set an internal FusionAuth URL for an external FusionAuth
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.enabled: false
+    asserts:
+      - notExists:
+          path: data.FUSIONAUTH_INTERNAL_URL
