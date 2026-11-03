@@ -15,7 +15,7 @@ rest of the Composio stack:
 The gateway talks to the in-cluster Composio backend (`<release>-apollo:9900`) by default.
 
 > **Images:** the chart pins `composio-self-host/egateway-{admin,proxy,migrate}` to `e19746e698b6d38238bc97c7d460bc313536ce16`
-> (from composio-enterprise#2162, not yet merged). Later images come from
+> (from composio-enterprise#2168, not yet merged). Later images come from
 > `publish-self-host-images.yml` in composio-enterprise. They are built from
 > `apps/admin/Dockerfile`, `apps/proxy/Dockerfile` and `packages/db/Dockerfile`, and all
 > three run as the non-root user `1001` (`egateway.podSecurityContext`).
