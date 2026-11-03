@@ -1405,8 +1405,7 @@ egateway:
   # Required keys: EGATEWAY_POSTGRES_URL, EGATEWAY_REDIS_URL,
   # COMPOSIO_API_KEY_ENCRYPTION_SECRET, SAML_AUTHN_PROXY_HMAC_SECRET,
   # FUSIONAUTH_API_KEY, FUSIONAUTH_WEBHOOK_SECRET, INTERNAL_SERVICE_TOKEN,
-  # CRON_SECRET, FUSIONAUTH_DATABASE_PASSWORD when fusionauth.enabled, and
-  # COMPOSIO_JWT_PRIVATE_KEY when composioAuth.mode is jwt.
+  # CRON_SECRET, and FUSIONAUTH_DATABASE_PASSWORD when fusionauth.enabled.
   secretRef: ""
   # Public hostnames. Default to <name>.<global.domain>.
   hosts:
@@ -1418,24 +1417,6 @@ egateway:
     auth: ""
   # -- Composio backend URL. Defaults to the in-cluster Apollo service.
   composioBaseUrl: ""
-  composioAuth:
-    # -- How the gateway authenticates to Composio (Apollo): `api_key` (each org
-    # stores an `ak_` project key, entered during onboarding) or `jwt` (an org
-    # stores `composio-jwt:<project_id>:<org_member_id>` and the gateway signs
-    # short-lived RS256 project JWTs). `jwt` also points Apollo's
-    # AUTH_JWT_JWKS_URL / AUTH_JWT_ISSUER at the gateway, so it cannot be
-    # combined with `apollo.auth.jwt.enabled`. Requires the secret key
-    # COMPOSIO_JWT_PRIVATE_KEY (PEM RSA, 2048 bits or more).
-    mode: api_key
-    jwt:
-      # -- Key id (`kid`) of COMPOSIO_JWT_PRIVATE_KEY. Required in jwt mode; change it when rotating keys.
-      keyId: ""
-      # -- Token issuer (default: https://<admin host>)
-      issuer: ""
-      # -- Token lifetime in seconds (600-3600)
-      ttlSeconds: 900
-      # -- JSON array of retired public JWKs to keep publishing during a key rotation
-      previousPublicJwks: ""
   # -- Pod security context for admin, proxy and migrate (the images run as uid 1001)
   podSecurityContext:
     runAsNonRoot: true
@@ -1515,6 +1496,8 @@ egateway:
     enabled: true
     image: "curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd"
     # -- Each job calls GET <admin>/api/internal/<path> with the CRON_SECRET bearer token
+    # Left out because they need SaaS-only settings: manifest-reverify (COMPOSIO_CATALOG_API_KEY),
+    # manifest-fix-drift (ANTHROPIC_API_KEY) and argument-profile (ClickHouse).
     jobs:
       - { name: scim-projection-queue, path: /api/internal/scim-projection-queue, schedule: "*/1 * * * *" }
       - { name: provisioning-queue, path: /api/internal/provisioning-queue, schedule: "*/1 * * * *" }
@@ -1524,10 +1507,7 @@ egateway:
       - { name: sso-delegation-reminders, path: /api/internal/sso-delegation-reminders, schedule: "5 9 * * *" }
       - { name: archive-expired-trials, path: /api/internal/archive-expired-trials, schedule: "0 3 * * *" }
       - { name: mcp-connection-expiry-warnings, path: /api/internal/mcp-connection-expiry-warnings, schedule: "0 8 * * *" }
-      - { name: manifest-reverify, path: /api/internal/manifest-reverify, schedule: "0 4 * * *" }
-      - { name: manifest-fix-drift, path: /api/internal/manifest-fix-drift, schedule: "0 5 * * *" }
       - { name: manifest-corpus-replay, path: /api/internal/manifest-corpus-replay, schedule: "0 6 * * 1" }
-      - { name: argument-profile, path: /api/internal/argument-profile, schedule: "20 * * * *" }
       - { name: manifest-observation-retention, path: /api/internal/manifest-observation-retention, schedule: "30 3 * * *" }
       - { name: sandbox-purge, path: /api/internal/sandbox-purge, schedule: "0 4 * * *" }
       - { name: idempotency-purge, path: /api/internal/idempotency-purge, schedule: "0 */1 * * *" }
