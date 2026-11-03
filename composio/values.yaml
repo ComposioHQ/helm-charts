@@ -1437,7 +1437,7 @@ egateway:
     image:
       # -- Admin image repository
       repository: composio-self-host/egateway-admin
-      tag: "9f9cfcadda7a3dce30267f902a6519f466617439"
+      tag: "e19746e698b6d38238bc97c7d460bc313536ce16"
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
       imageName: ""
@@ -1461,7 +1461,7 @@ egateway:
     image:
       # -- Proxy image repository
       repository: composio-self-host/egateway-proxy
-      tag: "9f9cfcadda7a3dce30267f902a6519f466617439"
+      tag: "e19746e698b6d38238bc97c7d460bc313536ce16"
       pullPolicy: Always
       imageName: ""
     resources:
@@ -1488,7 +1488,7 @@ egateway:
     image:
       # -- Migrate image repository
       repository: composio-self-host/egateway-migrate
-      tag: "9f9cfcadda7a3dce30267f902a6519f466617439"
+      tag: "e19746e698b6d38238bc97c7d460bc313536ce16"
       pullPolicy: Always
       imageName: ""
   cronJobs:
