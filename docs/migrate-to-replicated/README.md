@@ -76,10 +76,10 @@ Ensure you run the Helm template pre-flight check in the Replicated Enterprise p
 
 Once secrets are created, refer to the current [override.yaml](./override.yaml) file for Helm override values. Also check [example-override.yaml](./example-override.yaml) for reference.
 
-**Example:**
+**Example** (replace `--version` with the chart version you are installing — see `composio/Chart.yaml` or the Replicated portal for the current release):
 
 ```bash
-helm template composio oci://registry.composio.io/composio-rodent/unstable/composio --version 0.1.40 --values ./overrides-values.yaml -n composio | kubectl preflight -
+helm template composio oci://registry.composio.io/composio-rodent/unstable/composio --version 0.2.13 --values ./overrides-values.yaml -n composio | kubectl preflight -
 
-helm upgrade --install composio oci://registry.composio.io/composio-rodent/unstable/composio --version 0.1.40 --values ./overrides-values.yaml -n composio --debug --timeout 15m
+helm upgrade --install composio oci://registry.composio.io/composio-rodent/unstable/composio --version 0.2.13 --values ./overrides-values.yaml -n composio --debug --timeout 15m
 ```
