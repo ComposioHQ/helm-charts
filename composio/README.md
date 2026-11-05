@@ -28,6 +28,8 @@ A Helm chart for Composio
 | apollo.autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage |
 | apollo.database.urlSecret.key | string | `"url"` | Key name in the secret |
 | apollo.database.urlSecret.name | string | `"composio-composio-secrets"` | Secret name containing database URL |
+| apollo.dbInit.databaseSecret.name | string | `""` | Existing Secret containing migration-only credentials; empty retains the core-secret fallback. |
+| apollo.dbInit.databaseSecret.key | string | `"DATABASE_URL"` | Key containing the migration DATABASE_URL; required when name is set. |
 | apollo.dbInit.enabled | bool | `true` | Enable database initialization |
 | apollo.dbInit.image.pullPolicy | string | `"Always"` | Image pull policy |
 | apollo.dbInit.image.repository | string | `"composio-self-host/apollo-db-init"` | Database init image repository |
