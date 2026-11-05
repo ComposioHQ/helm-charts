@@ -3,6 +3,25 @@ templates:
   - apollo/apollo.yaml
   - apollo/apollo-configmap.yaml
 tests:
+  - it: runtime still uses the core secret when migration credentials are separate
+    template: apollo/apollo.yaml
+    set:
+      global.disableK8SecretCheck: true
+      secret.name: runtime-secret
+      apollo.dbInit.databaseSecret.name: apollo-migrations
+      apollo.dbInit.databaseSecret.key: MIGRATION_URL
+    asserts:
+      - contains:
+          documentIndex: 0
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: runtime-secret
+                key: POSTGRES_URL
+                optional: true
+
   - it: should annotate pods with the apollo config checksum
     template: apollo/apollo.yaml
     documentIndex: 0
