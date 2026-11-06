@@ -62,6 +62,12 @@ spec:
           CREATE DATABASE temporal_visibility;
           {{- end }}
           CREATE DATABASE thermosdb;
+          {{- if .Values.egateway.enabled }}
+          CREATE DATABASE {{ .Values.egateway.database.name }};
+          {{- if .Values.egateway.fusionauth.enabled }}
+          CREATE DATABASE {{ .Values.egateway.fusionauth.database.name }};
+          {{- end }}
+          {{- end }}
           {{- if $workerDbEnabled }}
           CREATE DATABASE {{ $workerDbDatabase }};
           {{- end }}
@@ -73,6 +79,12 @@ spec:
           ALTER DATABASE temporal_visibility OWNER TO {{ $databaseMigrationUser }};
           {{- end }}
           ALTER DATABASE thermosdb OWNER TO {{ $databaseMigrationUser }};
+          {{- if .Values.egateway.enabled }}
+          ALTER DATABASE {{ .Values.egateway.database.name }} OWNER TO {{ $databaseMigrationUser }};
+          {{- if .Values.egateway.fusionauth.enabled }}
+          ALTER DATABASE {{ .Values.egateway.fusionauth.database.name }} OWNER TO {{ $databaseMigrationUser }};
+          {{- end }}
+          {{- end }}
           {{- if $workerDbEnabled }}
           ALTER DATABASE {{ $workerDbDatabase }} OWNER TO {{ $databaseMigrationUser }};
           {{- end }}

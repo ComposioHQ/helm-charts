@@ -1,0 +1,45 @@
+{{- if and .Values.egateway.enabled .Values.egateway.cronJobs.enabled }}
+{{- $adminUrl := printf "http://%s:3002" (include "egateway.adminServiceName" .) }}
+{{- $secret := include "egateway.secretName" . }}
+{{- range $job := .Values.egateway.cronJobs.jobs }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-egw-%s" (include "composio.fullname" $) $job.name | trunc 52 | trimSuffix "-" }}
+  namespace: {{ include "composio.namespace" $ }}
+  labels:
+    {{- include "composio.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: egateway-cron
+spec:
+  schedule: {{ $job.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            {{- include "composio.selectorLabels" $ | nindent 12 }}
+            app.kubernetes.io/component: egateway-cron
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: trigger
+              image: {{ $.Values.egateway.cronJobs.image | quote }}
+              # Same request Vercel Cron makes: GET with the CRON_SECRET bearer token.
+              command:
+                - sh
+                - -c
+                - 'curl -fsS --max-time 590 -H "Authorization: Bearer ${CRON_SECRET}" "{{ $adminUrl }}{{ $job.path }}"'
+              env:
+                - name: CRON_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $secret }}
+                      key: CRON_SECRET
+{{- end }}
+{{- end }}
