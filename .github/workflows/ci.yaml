@@ -53,6 +53,11 @@ jobs:
       - name: Test ConfigMap rollouts
         run: python3 composio/scripts/test_configmap_rollouts.py
 
+      - name: Test Managed VPC SDK permissions
+        run: |
+          python3 -m pip install PyYAML==6.0.3
+          python3 composio/scripts/test_managed_vpc_rbac.py
+
       - name: Install helm-unittest plugin
         run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 0.7.2
 
