@@ -125,7 +125,7 @@ apollo:
     # -- Apollo image repository (used when imageName is not set)
     repository: composio-self-host/apollo
     # -- Apollo image tag
-    tag: "r20260501_01"
+    tag: "r20261112_01"
     # -- Image pull policy
     pullPolicy: Always
     imageName: ""
@@ -175,7 +175,7 @@ apollo:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260501_01"
+      tag: "r20261112_01"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -348,7 +348,7 @@ thermos:
     # -- Thermos image repository (used when imageName is not set)
     repository: composio-self-host/thermos
     # -- Thermos image tag
-    tag: "r20260501_01"
+    tag: "r20261112_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -394,7 +394,7 @@ thermos:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/thermos-db-init
       # -- Database init image tag
-      tag: "r20260501_01"
+      tag: "r20261112_01"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
@@ -455,7 +455,7 @@ toolkitRegistry:
     # -- Toolkit registry image repository (used when imageName is not set)
     repository: composio-self-host/thermos-toolkit-registry
     # -- Toolkit registry image tag
-    tag: "r20260501_01"
+    tag: "r20261112_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -506,7 +506,7 @@ thermosMiscWorkers:
   image:
     # Same image as Thermos; behavior is controlled by THERMOS_MODE env var.
     repository: composio-self-host/thermos
-    tag: "r20260501_01"
+    tag: "r20261112_01"
     pullPolicy: Always
     imageName: ""
   # Reuse Thermos secrets dir by default.
@@ -1085,7 +1085,7 @@ mercury:
     # -- Mercury image repository (used when imageName is not set)
     repository: composio-self-host/mercury
     # -- Mercury image tag
-    tag: "r20260501_01"
+    tag: "r20261112_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1229,7 +1229,7 @@ frontend:
     # -- Frontend image repository (used when imageName is not set)
     repository: composio-self-host/frontend
     # -- Frontend image tag
-    tag: "r20260501_01"
+    tag: "r20261112_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1312,7 +1312,7 @@ weaviate:
     # -- Weaviate image repository (used when imageName is not set)
     repository: composio-self-host/weaviate
     # -- Weaviate image tag
-    tag: "r20260501_01"
+    tag: "r20261112_01"
     # -- Image pull policy
     pullPolicy: Always
     # -- Full image name (optional, overrides repository:tag if set)
@@ -1504,18 +1504,18 @@ egateway:
     # Left out because they need SaaS-only settings: manifest-reverify (COMPOSIO_CATALOG_API_KEY),
     # manifest-fix-drift (ANTHROPIC_API_KEY) and argument-profile (ClickHouse).
     jobs:
-      - { name: scim-projection-queue, path: /api/internal/scim-projection-queue, schedule: "*/1 * * * *" }
-      - { name: provisioning-queue, path: /api/internal/provisioning-queue, schedule: "*/1 * * * *" }
-      - { name: provisioning-sweeper, path: /api/internal/provisioning-sweeper, schedule: "*/15 * * * *" }
-      - { name: scim-reconcile, path: /api/internal/scim-reconcile, schedule: "*/15 * * * *" }
-      - { name: metrics-publish, path: /api/internal/metrics-publish, schedule: "*/2 * * * *" }
-      - { name: sso-delegation-reminders, path: /api/internal/sso-delegation-reminders, schedule: "5 9 * * *" }
-      - { name: archive-expired-trials, path: /api/internal/archive-expired-trials, schedule: "0 3 * * *" }
-      - { name: mcp-connection-expiry-warnings, path: /api/internal/mcp-connection-expiry-warnings, schedule: "0 8 * * *" }
-      - { name: manifest-corpus-replay, path: /api/internal/manifest-corpus-replay, schedule: "0 6 * * 1" }
-      - { name: manifest-observation-retention, path: /api/internal/manifest-observation-retention, schedule: "30 3 * * *" }
-      - { name: sandbox-purge, path: /api/internal/sandbox-purge, schedule: "0 4 * * *" }
-      - { name: idempotency-purge, path: /api/internal/idempotency-purge, schedule: "0 */1 * * *" }
+      - {name: scim-projection-queue, path: /api/internal/scim-projection-queue, schedule: "*/1 * * * *"}
+      - {name: provisioning-queue, path: /api/internal/provisioning-queue, schedule: "*/1 * * * *"}
+      - {name: provisioning-sweeper, path: /api/internal/provisioning-sweeper, schedule: "*/15 * * * *"}
+      - {name: scim-reconcile, path: /api/internal/scim-reconcile, schedule: "*/15 * * * *"}
+      - {name: metrics-publish, path: /api/internal/metrics-publish, schedule: "*/2 * * * *"}
+      - {name: sso-delegation-reminders, path: /api/internal/sso-delegation-reminders, schedule: "5 9 * * *"}
+      - {name: archive-expired-trials, path: /api/internal/archive-expired-trials, schedule: "0 3 * * *"}
+      - {name: mcp-connection-expiry-warnings, path: /api/internal/mcp-connection-expiry-warnings, schedule: "0 8 * * *"}
+      - {name: manifest-corpus-replay, path: /api/internal/manifest-corpus-replay, schedule: "0 6 * * 1"}
+      - {name: manifest-observation-retention, path: /api/internal/manifest-observation-retention, schedule: "30 3 * * *"}
+      - {name: sandbox-purge, path: /api/internal/sandbox-purge, schedule: "0 4 * * *"}
+      - {name: idempotency-purge, path: /api/internal/idempotency-purge, schedule: "0 */1 * * *"}
   ingress:
     # -- Expose admin, proxy and FusionAuth via Ingress
     enabled: false
@@ -1553,7 +1553,6 @@ egateway:
       limits:
         memory: "2Gi"
         cpu: "1"
-
 # Managed database certificate verification for workloads and migration hooks.
 databaseTls:
   # -- Mount the externally managed RDS trust bundle.
