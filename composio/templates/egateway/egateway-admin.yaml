@@ -66,6 +66,16 @@ spec:
                   name: {{ $secret }}
                   key: {{ $key }}
             {{- end }}
+            # Encrypts tool-call audit payloads at rest. Required by current admin
+            # images in production and must differ from
+            # COMPOSIO_API_KEY_ENCRYPTION_SECRET. Optional here so older images,
+            # which do not read it, still start without the key.
+            - name: ANALYTICS_PAYLOAD_ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: ANALYTICS_PAYLOAD_ENCRYPTION_SECRET
+                  optional: true
             {{- with .Values.egateway.admin.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -106,4 +116,28 @@ spec:
   selector:
     {{- include "composio.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: egateway-admin
+{{- if include "egateway.composioJwtEnabled" . }}
+---
+# Apollo's AUTH_JWT_JWKS_URL. Separate from the admin Service so Apollo can
+# fetch the public keys while admin is not Ready: admin readiness includes a
+# Composio check, which in jwt mode needs Apollo to have the keys.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "egateway.jwksServiceName" . }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-admin
+spec:
+  type: ClusterIP
+  publishNotReadyAddresses: true
+  ports:
+    - name: http
+      port: 3002
+      targetPort: http
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-admin
+{{- end }}
 {{- end }}

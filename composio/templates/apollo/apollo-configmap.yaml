@@ -82,7 +82,14 @@ data:
   {{- if and .Values.apollo.auth .Values.apollo.auth.disabledModes (gt (len .Values.apollo.auth.disabledModes) 0) }}
   DISABLE_AUTH_MODES: {{ join "," .Values.apollo.auth.disabledModes | quote }}
   {{- end }}
-  {{- if and .Values.apollo.auth .Values.apollo.auth.jwt .Values.apollo.auth.jwt.enabled }}
+  {{- if include "egateway.composioJwtEnabled" . }}
+  # The eGateway signs Composio project JWTs (egateway.composioAuth.mode=jwt);
+  # Apollo verifies them against the gateway's in-cluster JWKS.
+  AUTH_JWT_JWKS_URL: {{ include "egateway.composioJwksUrl" . | quote }}
+  AUTH_JWT_ISSUER: {{ include "egateway.composioJwtIssuer" . | quote }}
+  AUTH_JWT_ALLOWED_ALGS: "RS256"
+  AUTH_JWT_CLOCK_SKEW_SECONDS: {{ .Values.apollo.auth.jwt.clockSkewSeconds | default 60 | toString | quote }}
+  {{- else if and .Values.apollo.auth .Values.apollo.auth.jwt .Values.apollo.auth.jwt.enabled }}
   AUTH_JWT_JWKS_URL: {{ .Values.apollo.auth.jwt.jwksUrl | quote }}
   AUTH_JWT_ISSUER: {{ .Values.apollo.auth.jwt.issuer | quote }}
   AUTH_JWT_ALLOWED_ALGS: {{ join "," (.Values.apollo.auth.jwt.allowedAlgs | default (list "RS256")) | quote }}

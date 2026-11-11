@@ -44,6 +44,9 @@ Add these keys to the core secret (`secret.name`), or to a dedicated secret set 
 | `INTERNAL_SERVICE_TOKEN` | Random token |
 | `CRON_SECRET` | Random token used by the CronJobs |
 | `FUSIONAUTH_DATABASE_PASSWORD` | Password of the Postgres user for `fusionauthdb` |
+| `COMPOSIO_JWT_PRIVATE_KEY` | Only with `egateway.composioAuth.mode: jwt`: PEM RSA private key, 2048 bits or more |
+| `FUSIONAUTH_LICENSE_ID` | Optional. FusionAuth license ID, read when `egateway.fusionauth.license.enabled` is `true` |
+| `ANALYTICS_PAYLOAD_ENCRYPTION_SECRET` | Random string, at least 16 characters, different from `COMPOSIO_API_KEY_ENCRYPTION_SECRET`. Encrypts audit payloads; required by admin images built from composio-enterprise#1970 onward |
 
 ### Example values
 ```yaml
@@ -81,6 +84,50 @@ The `apiKey` field in the response is the key. Newer Apollo images also serve
 `POST /api/v3.1/self_hosted/bootstrap`, which takes a real email and returns the key as
 `api_key`; the chart's default Apollo image (`r20260501_01`) answers 404 on that route.
 
+### Project-JWT authentication (optional)
+
+Set `egateway.composioAuth.mode: jwt` (default `api_key`) and no long-lived Composio key is stored. The gateway signs short-lived
+(`ttlSeconds`, default 15 minutes) RS256 project JWTs, and the chart points Apollo at the
+gateway's public keys:
+
+- Apollo gets `AUTH_JWT_JWKS_URL=http://<fullname>-egateway-jwks:3002/.well-known/composio-jwks.json`
+  and `AUTH_JWT_ISSUER` (default `https://<admin host>`). Apollo fetches the JWKS without
+  filtering private addresses, so the in-cluster Service works and the keys need no public
+  route. The `-egateway-jwks` Service also routes to admin pods that are not Ready yet, so
+  Apollo can verify tokens while admin starts.
+- Leave `apollo.auth.jwt.enabled` false: Apollo trusts a single JWKS URL, and the chart
+  refuses to render both.
+- Per org, enter `composio-jwt:<project_id>:<org_member_id>` in the onboarding API key field.
+  `POST /api/v3.1/self_hosted/bootstrap` returns both ids (`project_id`, `org_member_id`).
+  The org member must belong to the project's org, or Apollo answers 401.
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out composio-jwt.pem
+kubectl create secret generic egateway-secrets ... --from-file=COMPOSIO_JWT_PRIVATE_KEY=composio-jwt.pem
+```
+
+```yaml
+egateway:
+  secretRef: egateway-secrets
+  composioAuth:
+    mode: jwt
+    jwt:
+      keyId: egw-2026-11
+```
+
+To rotate the key, store the new PEM, set a new `keyId`, and put the old public JWK (from
+`/.well-known/composio-jwks.json` before the change) in `jwt.previousPublicJwks` as a JSON
+array until tokens signed with it have expired.
+
+Known limits of `jwt` mode, from Apollo's code:
+
+- Apollo inserts a new project service API key row for every tool execution authenticated
+  with a project JWT, because its execution engine still needs a key. On a busy gateway that
+  table grows with every tool call.
+- `POST /api/v3/tools/execute/proxy` refuses JWT callers. The gateway does not call it today.
+- If admin is down when Apollo's 5-minute JWKS cache expires, Apollo rejects the gateway's
+  calls with 401 until admin is back. Run two or more admin replicas in `jwt` mode.
+
 ### Creating the first organization
 
 Run the CLI bundled in the admin image once the pods are ready. It needs the Composio key
@@ -111,7 +158,33 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
 - The `COMPOSIO_SEARCH_TOOLS` MCP tool needs Apollo search, which is off by default
   (`apollo.search.enabled`). Without it the tool returns an error; tools called by slug still work.
 - FusionAuth uses its database as the search engine (no OpenSearch needed). Its kickstart
-  only runs on an empty database: it creates the API key and sets the tenant issuer. Org
-  tenants and applications are provisioned by the admin at runtime.
+  only runs on an empty database. It creates the API key, generates an RS256 signing key
+  (`egateway.fusionauth.jwtSigningKeyId`) and makes it the default tenant's JWT key, and sets
+  the tenant issuer. Org tenants and applications are provisioned by the admin at runtime
+  and copy the default tenant's JWT keys.
+- The RS256 key is required. A fresh FusionAuth only has HMAC keys, which
+  `/.well-known/jwks.json` does not publish, so admin and proxy could not validate any login
+  token. If FusionAuth was first started by an older chart version, generate an RS256 key
+  and set it as `jwtConfiguration.accessTokenKeyId` and `idTokenKeyId` on the default tenant
+  and on every org tenant (`POST /api/key/generate/<id>`, then `PATCH /api/tenant/<id>`).
+- Without a FusionAuth license, SSO works when sign-in starts from the gateway or an MCP
+  client (SP-initiated SAML): users are created on first login, linked by email, and pick up
+  pending team assignments. Two features need a license:
+  - IdP-initiated SAML (launching from an Okta or Entra app tile). The chart sets
+    `FUSIONAUTH_SAML_IDP_INITIATED_ENABLED` to `egateway.fusionauth.license.enabled`, so SAML
+    providers are created with it off on an unlicensed install. The "IdP-initiated ACS URL"
+    shown during SSO setup does not accept logins in that case.
+  - SCIM provisioning, which uses FusionAuth Entity Management; without a license those calls
+    fail with `[notLicensed]`.
+
+  To license FusionAuth, add `FUSIONAUTH_LICENSE_ID` to the secret and set
+  `egateway.fusionauth.license.enabled: true` before the first install. On an existing
+  FusionAuth, activate the license in its admin UI (Reactor) and then set the value, so the
+  gateway turns IdP-initiated SAML on for providers it saves afterwards.
+- FusionAuth calls the admin's webhooks at `https://<admin host>/api/fusionauth/...`, so
+  the FusionAuth pod must resolve the admin host and trust its TLS certificate.
+- The FusionAuth image is pinned by digest. For air-gapped installs, mirror it and set
+  `egateway.fusionauth.image.imageName`; the pod uses the same image pull secrets as the
+  other gateway components.
 - Set `egateway.fusionauth.enabled: false` to use an existing FusionAuth instance, and pass
   its URLs through `egateway.admin.extraEnv` / `egateway.proxy.extraEnv`.
