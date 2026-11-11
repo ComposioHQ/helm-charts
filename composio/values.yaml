@@ -1549,7 +1549,33 @@ egateway:
     image:
       repository: fusionauth/fusionauth-app
       tag: "1.67.0"
+      # -- Image digest pinned with the tag. Clear it to pull by tag only.
+      digest: "sha256:a4faa8ff7813b772f89ff979602acf3522d84d341da14127dba42b7ca42ef804"
       pullPolicy: IfNotPresent
+      # -- Full image reference (optional, overrides repository/tag/digest), e.g. a private mirror
+      imageName: ""
+    # -- ID of the RS256 key the kickstart generates and makes the default tenant's JWT
+    # signing key. Org tenants created by admin inherit it, and it is what
+    # /.well-known/jwks.json publishes for admin and proxy to validate tokens.
+    jwtSigningKeyId: "6c1e2a5f-3b7d-4e0a-9f41-8d2c7b5e9a13"
+    license:
+      # -- Activate a FusionAuth license on first boot. Needed for Entity Management,
+      # which SCIM provisioning uses. Only applied by the kickstart on an empty database.
+      enabled: false
+      # -- Key in the eGateway secret that holds the FusionAuth license ID
+      secretKey: FUSIONAUTH_LICENSE_ID
+    # -- Pod security context for FusionAuth (the image runs as fusionauth, uid 1001)
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
+    # -- Container security context for FusionAuth
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
     # -- Node selector for FusionAuth pods
     nodeSelector: {}
     # -- Affinity rules for FusionAuth pods

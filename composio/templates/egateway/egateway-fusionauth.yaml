@@ -14,10 +14,20 @@ metadata:
     app.kubernetes.io/component: egateway-fusionauth
 data:
   # Runs once on a fresh FusionAuth database. Creates the API key admin/proxy
-  # use (from the FUSIONAUTH_API_KEY secret) and sets the default tenant issuer.
-  # Org tenants and applications are provisioned at runtime by admin.
+  # use (from the FUSIONAUTH_API_KEY secret), generates an RS256 signing key and
+  # makes it the default tenant's JWT key, and sets the default tenant issuer.
+  # Org tenants and applications are provisioned at runtime by admin; new tenants
+  # copy the default tenant's JWT keys. A fresh FusionAuth only has HMAC keys, which
+  # /.well-known/jwks.json does not publish, so without the RS256 key admin and proxy
+  # cannot validate any login token.
   kickstart.json: |
     {
+      "variables": {
+        "jwtSigningKeyId": {{ $fa.jwtSigningKeyId | quote }}
+      },
+      {{- if $fa.license.enabled }}
+      "licenseId": "#{ENV.FUSIONAUTH_LICENSE_ID}",
+      {{- end }}
       "apiKeys": [
         {
           "key": "#{ENV.FUSIONAUTH_API_KEY}",
@@ -27,11 +37,26 @@ data:
       ],
       "requests": [
         {
+          "method": "POST",
+          "url": "/api/key/generate/#{jwtSigningKeyId}",
+          "body": {
+            "key": {
+              "algorithm": "RS256",
+              "name": "Composio eGateway JWT signing key",
+              "length": 2048
+            }
+          }
+        },
+        {
           "method": "PATCH",
           "url": "/api/tenant/#{FUSIONAUTH_TENANT_ID}",
           "body": {
             "tenant": {
-              "issuer": {{ include "egateway.authHost" . | quote }}
+              "issuer": {{ include "egateway.authHost" . | quote }},
+              "jwtConfiguration": {
+                "accessTokenKeyId": "#{jwtSigningKeyId}",
+                "idTokenKeyId": "#{jwtSigningKeyId}"
+              }
             }
           }
         }
@@ -70,10 +95,25 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- include "egateway.imagePullSecrets" . | nindent 6 }}
+      {{- with $fa.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: fusionauth
+          {{- if $fa.image.imageName }}
+          image: {{ $fa.image.imageName | quote }}
+          {{- else if $fa.image.digest }}
+          image: {{ printf "%s:%s@%s" $fa.image.repository $fa.image.tag $fa.image.digest | quote }}
+          {{- else }}
           image: {{ printf "%s:%s" $fa.image.repository $fa.image.tag | quote }}
+          {{- end }}
           imagePullPolicy: {{ $fa.image.pullPolicy }}
+          {{- with $fa.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 9011
@@ -99,6 +139,13 @@ spec:
                 secretKeyRef:
                   name: {{ $secret }}
                   key: FUSIONAUTH_API_KEY
+            {{- if $fa.license.enabled }}
+            - name: FUSIONAUTH_LICENSE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: {{ $fa.license.secretKey }}
+            {{- end }}
             - name: FUSIONAUTH_APP_SILENT_MODE
               value: "true"
             - name: FUSIONAUTH_APP_URL

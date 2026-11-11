@@ -66,6 +66,16 @@ spec:
                   name: {{ $secret }}
                   key: {{ $key }}
             {{- end }}
+            # Encrypts tool-call audit payloads at rest. Required by current admin
+            # images in production and must differ from
+            # COMPOSIO_API_KEY_ENCRYPTION_SECRET. Optional here so older images,
+            # which do not read it, still start without the key.
+            - name: ANALYTICS_PAYLOAD_ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: ANALYTICS_PAYLOAD_ENCRYPTION_SECRET
+                  optional: true
             {{- with .Values.egateway.admin.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

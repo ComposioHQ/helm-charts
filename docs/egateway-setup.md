@@ -45,6 +45,8 @@ Add these keys to the core secret (`secret.name`), or to a dedicated secret set 
 | `CRON_SECRET` | Random token used by the CronJobs |
 | `FUSIONAUTH_DATABASE_PASSWORD` | Password of the Postgres user for `fusionauthdb` |
 | `COMPOSIO_JWT_PRIVATE_KEY` | Only with `egateway.composioAuth.mode: jwt`: PEM RSA private key, 2048 bits or more |
+| `FUSIONAUTH_LICENSE_ID` | Optional. FusionAuth license ID, read when `egateway.fusionauth.license.enabled` is `true` |
+| `ANALYTICS_PAYLOAD_ENCRYPTION_SECRET` | Random string, at least 16 characters, different from `COMPOSIO_API_KEY_ENCRYPTION_SECRET`. Encrypts audit payloads; required by admin images built from composio-enterprise#1970 onward |
 
 ### Example values
 ```yaml
@@ -156,7 +158,33 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
 - The `COMPOSIO_SEARCH_TOOLS` MCP tool needs Apollo search, which is off by default
   (`apollo.search.enabled`). Without it the tool returns an error; tools called by slug still work.
 - FusionAuth uses its database as the search engine (no OpenSearch needed). Its kickstart
-  only runs on an empty database: it creates the API key and sets the tenant issuer. Org
-  tenants and applications are provisioned by the admin at runtime.
+  only runs on an empty database. It creates the API key, generates an RS256 signing key
+  (`egateway.fusionauth.jwtSigningKeyId`) and makes it the default tenant's JWT key, and sets
+  the tenant issuer. Org tenants and applications are provisioned by the admin at runtime
+  and copy the default tenant's JWT keys.
+- The RS256 key is required. A fresh FusionAuth only has HMAC keys, which
+  `/.well-known/jwks.json` does not publish, so admin and proxy could not validate any login
+  token. If FusionAuth was first started by an older chart version, generate an RS256 key
+  and set it as `jwtConfiguration.accessTokenKeyId` and `idTokenKeyId` on the default tenant
+  and on every org tenant (`POST /api/key/generate/<id>`, then `PATCH /api/tenant/<id>`).
+- Without a FusionAuth license, SSO works when sign-in starts from the gateway or an MCP
+  client (SP-initiated SAML): users are created on first login, linked by email, and pick up
+  pending team assignments. Two features need a license:
+  - IdP-initiated SAML (launching from an Okta or Entra app tile). The chart sets
+    `FUSIONAUTH_SAML_IDP_INITIATED_ENABLED` to `egateway.fusionauth.license.enabled`, so SAML
+    providers are created with it off on an unlicensed install. The "IdP-initiated ACS URL"
+    shown during SSO setup does not accept logins in that case.
+  - SCIM provisioning, which uses FusionAuth Entity Management; without a license those calls
+    fail with `[notLicensed]`.
+
+  To license FusionAuth, add `FUSIONAUTH_LICENSE_ID` to the secret and set
+  `egateway.fusionauth.license.enabled: true` before the first install. On an existing
+  FusionAuth, activate the license in its admin UI (Reactor) and then set the value, so the
+  gateway turns IdP-initiated SAML on for providers it saves afterwards.
+- FusionAuth calls the admin's webhooks at `https://<admin host>/api/fusionauth/...`, so
+  the FusionAuth pod must resolve the admin host and trust its TLS certificate.
+- The FusionAuth image is pinned by digest. For air-gapped installs, mirror it and set
+  `egateway.fusionauth.image.imageName`; the pod uses the same image pull secrets as the
+  other gateway components.
 - Set `egateway.fusionauth.enabled: false` to use an existing FusionAuth instance, and pass
   its URLs through `egateway.admin.extraEnv` / `egateway.proxy.extraEnv`.

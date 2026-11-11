@@ -33,6 +33,10 @@ data:
   # Server-to-server calls use the Service, so admin readiness does not depend on
   # public DNS, Ingress or TLS. Browsers keep using FUSIONAUTH_URL.
   FUSIONAUTH_INTERNAL_URL: {{ printf "http://%s:9011" (include "egateway.fusionauthServiceName" .) | quote }}
+  # Unlicensed FusionAuth rejects IdP-initiated SAML (IdP app-tile launches), so
+  # it is only on when the bundled FusionAuth has a license. SSO started from
+  # the gateway works either way.
+  FUSIONAUTH_SAML_IDP_INITIATED_ENABLED: {{ .Values.egateway.fusionauth.license.enabled | toString | quote }}
   {{- end }}
   FUSIONAUTH_ISSUER: {{ include "egateway.authHost" . | quote }}
   FUSIONAUTH_JWKS_URL: {{ printf "http://%s:9011/.well-known/jwks.json" (include "egateway.fusionauthServiceName" .) | quote }}

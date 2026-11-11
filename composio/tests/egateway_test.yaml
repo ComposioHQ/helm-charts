@@ -158,6 +158,138 @@ tests:
             name: DATABASE_URL
             value: jdbc:postgresql://pg.internal:5432/fusionauthdb
 
+  - it: should make an RS256 key the default tenant's JWT signing key
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      global.domain: example.com
+    asserts:
+      - matchRegex:
+          path: data["kickstart.json"]
+          pattern: '"url": "/api/key/generate/#\{jwtSigningKeyId\}"'
+      - matchRegex:
+          path: data["kickstart.json"]
+          pattern: '"algorithm": "RS256"'
+      - matchRegex:
+          path: data["kickstart.json"]
+          pattern: '"accessTokenKeyId": "#\{jwtSigningKeyId\}"'
+      - matchRegex:
+          path: data["kickstart.json"]
+          pattern: '"issuer": "auth.example.com"'
+      - notMatchRegex:
+          path: data["kickstart.json"]
+          pattern: licenseId
+
+  - it: should activate a FusionAuth license from the secret when enabled
+    templates:
+      - egateway/egateway-fusionauth.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.license.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["kickstart.json"]
+          pattern: '"licenseId": "#\{ENV.FUSIONAUTH_LICENSE_ID\}"'
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FUSIONAUTH_LICENSE_ID
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: FUSIONAUTH_LICENSE_ID
+        documentIndex: 1
+
+  - it: should turn IdP-initiated SAML off for an unlicensed bundled FusionAuth
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+    asserts:
+      - equal:
+          path: data.FUSIONAUTH_SAML_IDP_INITIATED_ENABLED
+          value: "false"
+
+  - it: should turn IdP-initiated SAML on when the bundled FusionAuth is licensed
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.license.enabled: true
+    asserts:
+      - equal:
+          path: data.FUSIONAUTH_SAML_IDP_INITIATED_ENABLED
+          value: "true"
+
+  - it: should leave IdP-initiated SAML to the app default for an external FusionAuth
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.enabled: false
+    asserts:
+      - notExists:
+          path: data.FUSIONAUTH_SAML_IDP_INITIATED_ENABLED
+
+  - it: should give admin the audit payload encryption secret as an optional key
+    template: egateway/egateway-admin.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANALYTICS_PAYLOAD_ENCRYPTION_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: ANALYTICS_PAYLOAD_ENCRYPTION_SECRET
+                optional: true
+
+  - it: should pin the FusionAuth image by digest and allow a mirror override
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 1
+    set:
+      egateway.enabled: true
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^fusionauth/fusionauth-app:1\.67\.0@sha256:[0-9a-f]{64}$'
+
+  - it: should use the FusionAuth imageName override
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 1
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.image.imageName: registry.internal/fusionauth-app:1.67.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.internal/fusionauth-app:1.67.0
+
+  - it: should run FusionAuth as non-root with image pull secrets
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 1
+    set:
+      egateway.enabled: true
+      replicated.enabled: false
+      global.imagePullSecrets:
+        - name: regcred
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value:
+            - name: regcred
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1001
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+
   - it: should route admin, proxy and auth hosts through the ingress
     template: egateway/egateway-ingress.yaml
     set:
