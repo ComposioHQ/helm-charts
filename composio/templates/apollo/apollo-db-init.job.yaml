@@ -70,9 +70,14 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.apollo.dbInit.databaseSecret.name }}
+                  name: {{ .Values.apollo.dbInit.databaseSecret.name | quote }}
+                  key: {{ required "apollo.dbInit.databaseSecret.key is required" .Values.apollo.dbInit.databaseSecret.key | quote }}
+                  {{- else }}
                   name: {{ $coreSecret }}
                   key: POSTGRES_URL
                   optional: true
+                  {{- end }}
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

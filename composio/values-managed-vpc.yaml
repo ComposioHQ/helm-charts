@@ -8,6 +8,14 @@ namespace:
 replicated:
   enabled: true
   existingImagePullSecret: composio-runner-registry
+  # Explicit informers prevent the SDK from discovering workloads via Helm Secrets.
+  minimalRBAC: true
+  statusInformers:
+    - deployment/composio-apollo
+    - deployment/composio-thermos
+    - deployment/composio-mercury
+    - deployment/composio-frontend
+    - deployment/composio-toolkit-registry
 databaseMigration:
   enabled: false
 externalRedis:

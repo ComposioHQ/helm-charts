@@ -99,6 +99,38 @@ tests:
                 key: POSTGRES_URL
                 optional: true
 
+  - it: uses a required dedicated migration secret when configured
+    set:
+      apollo.dbInit.databaseSecret.name: apollo-migrations
+      apollo.dbInit.databaseSecret.key: MIGRATION_URL
+      secret.name: runtime-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: apollo-migrations
+                key: MIGRATION_URL
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: runtime-secret
+                key: ENCRYPTION_KEY
+                optional: true
+
+  - it: rejects an empty migration secret key
+    set:
+      apollo.dbInit.databaseSecret.name: apollo-migrations
+      apollo.dbInit.databaseSecret.key: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: apollo.dbInit.databaseSecret.key is required
+
   - it: should have encryption key from core secret
     set:
       apollo.dbInit.enabled: true
