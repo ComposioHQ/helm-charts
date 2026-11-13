@@ -52,6 +52,7 @@
                     <a href="#gke" class="troubleshoot-nav-link">GKE Specific</a>
                     <a href="#resources" class="troubleshoot-nav-link">Resources</a>
                     <a href="#debugging" class="troubleshoot-nav-link">Debug Tools</a>
+                    <a href="debugging/auth-refresh.html" class="troubleshoot-nav-link">Auth Refresh</a>
                 </div>
 
                 <div id="common" class="troubleshoot-section">
@@ -414,6 +415,14 @@ kubectl describe pvc &lt;pvc-name&gt; -n composio</code></pre>
 
                 <div id="debugging" class="troubleshoot-section">
                     <h2><i class="fas fa-bug"></i> Debugging Tools & Commands</h2>
+
+                    <div class="issue-card">
+                        <h3><i class="fas fa-key"></i> Auth refresh failures</h3>
+                        <p>Connections that keep expiring, tool calls returning 401, or tokens that never refresh:
+                        see the <a href="debugging/auth-refresh.html">auth refresh debugging guide</a>. It covers
+                        enabling <code>ENABLE_DEBUG_LOGS</code>, the GKE and EKS log queries to run, reading
+                        connection state through the API, and the self-hosted specifics.</p>
+                    </div>
 
                     <div class="debug-tools">
                         <h3><i class="fas fa-terminal"></i> Essential Debug Commands</h3>
