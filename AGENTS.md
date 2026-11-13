@@ -18,15 +18,15 @@ Helm charts for deploying the **Composio platform** — a multi-service backend 
 ```
 helm-charts/
 ├── composio/                  # The main Helm chart (only chart in the repo)
-│   ├── Chart.yaml             # name=composio, version=0.1.110, appVersion=0.1.110
+│   ├── Chart.yaml             # name=composio, version=0.2.13, appVersion=0.2.13
 │   ├── Chart.lock             # Locked subchart versions
 │   ├── values.yaml            # ~1.4k lines, full default config
 │   ├── README.md              # Chart-level README
 │   ├── run-tests.sh           # helm-unittest runner (auto-installs plugin)
-│   ├── templates/             # 36 K8s template files across 8 service dirs
-│   ├── tests/                 # 19 helm-unittest test files
-│   ├── charts/                # Bundled subcharts (redis, temporal, replicated)
-│   └── tmp-redis/             # Scratch/dev artifacts (not user-facing)
+│   ├── scripts/               # lint_pod_scheduling.py (enforced by CI)
+│   ├── templates/             # 38 K8s template files across 9 subdirectories
+│   ├── tests/                 # 21 helm-unittest suites + test-values.yaml
+│   └── charts/                # Bundled subcharts (temporal, replicated)
 ├── docs/                      # GitHub Pages site (CNAME, _config.yml, .html, .md)
 │   ├── architecture/          # Architecture diagram + python source
 │   ├── monitoring/alerts/     # Datadog alert setup
@@ -68,8 +68,11 @@ The chart deploys a microservices stack. Service-to-service ports below are the 
 | Mercury   | Python (Lambda-style) | 8080 | Executes tool code against third-party APIs                 |
 | Frontend  | TS (Next.js)     | 3000 | Web UI                                                      |
 | Temporal  | (subchart)       | 7233 | Workflow engine for trigger processing & auth-token refresh |
-| Redis     | (in-chart Valkey)   | 6379 | Redis-compatible caching layer                             |
-| Weaviate  | (in-chart)       | —    | Optional vector DB; usually disabled in prod                |
+| Toolkit Registry | (Postgres image) | 5432 | Read-only toolkit catalog DB queried by Thermos      |
+| Weaviate  | (in-chart)       | 8080 / 50051 | Vector DB; `weaviate.enabled` defaults to `true`    |
+
+Redis and Postgres are **not** deployed by this chart — both must be supplied externally
+(`externalRedis.*`, and a Postgres the init/migration jobs run against).
 
 `docs/architecture/composio_architecture.png` shows the full picture. Source code for each service lives in separate repos (hermes for Apollo+Thermos, mercury, etc.) — this repo only ships the K8s packaging.
 
@@ -116,7 +119,7 @@ templates/
 
 ## Values.yaml: top-level keys
 
-`composio/values.yaml` is the single source of truth (~1392 lines). Top-level blocks, in roughly the order they appear:
+`composio/values.yaml` is the single source of truth (~1384 lines). Top-level blocks, in roughly the order they appear:
 
 - `features.*` — feature toggles (currently `temporal`).
 - `secret.name` — name of the external Secret holding all platform credentials.
@@ -125,8 +128,7 @@ templates/
 - `global.{environment,domain,registry,imagePullSecrets,disableK8SecretCheck}` — applied to every deployment.
 - `databaseMigration.*` — one-shot Postgres init job (creates `apollo`, `thermos`, `mercury`, `temporal` databases).
 - `externalSecrets.ecr.*` — values used to render the ECR auth Secret at install time (`--set externalSecrets.ecr.token=...`).
-- `externalRedis.*` — production Redis (incl. Sentinel options); set `externalRedis.enabled: true` and `redis.enabled: false` for prod.
-- `redis.*` — embedded single-node Valkey cache (dev only).
+- `externalRedis.*` — the **only** Redis configuration. This chart ships no Redis of its own; point `externalRedis.enabled: true` at an externally managed instance (plain URL, or Sentinel via `externalRedis.sentinel.*`).
 - `apollo.*`, `thermos.*`, `mercury.*`, `frontend.*`, `weaviate.*` — per-service config (image, replicas, resources, ingress, service account, env, probes, PDB).
 - `temporal.*` — passthrough to the Temporal subchart when `features.temporal: true`.
 - `otel.*` — OpenTelemetry collector config.
@@ -137,7 +139,7 @@ Always-true conventions:
 - Image references are rendered via `{{ include "chart.registry" . }}/{{ .Values.<svc>.image.repository }}:{{ .Values.<svc>.image.tag }}`.
 - Resource names use `{{ .Release.Name }}-<service>` (e.g. `composio-apollo`).
 - Sensitive values come from `secret.name` (default `composio-composio-secrets`) via `valueFrom.secretKeyRef`. Never hardcode secrets.
-- Conditional rendering: optional services and feature blocks are gated by `{{- if .Values.<thing>.enabled }}` (e.g. `weaviate.enabled`, `redis.enabled`, `mercury.enabled`, `frontend.enabled`, `thermosMiscWorkers.enabled`, `databaseMigration.enabled`). The core services `apollo` and `thermos` do **not** have a top-level `enabled` field — their main templates render unconditionally and there is no supported way to disable them via values.
+- Conditional rendering: optional services and feature blocks are gated by `{{- if .Values.<thing>.enabled }}` (e.g. `weaviate.enabled`, `mercury.enabled`, `frontend.enabled`, `thermosMiscWorkers.enabled`, `databaseMigration.enabled`). The core services `apollo` and `thermos` do **not** have a top-level `enabled` field — their main templates render unconditionally and there is no supported way to disable them via values.
 - Single-tenant caps are Apollo config, not chart-global config. When adding or
   changing self-hosted tenant limit behavior, wire it through
   `apollo.singleTenant.*` values and render only Apollo env vars.
@@ -252,8 +254,8 @@ Key invariants enforced by CI:
 
 The chart is published two ways:
 
-1. **GitHub Pages Helm repo** — packaged `.tgz` files land in `helm-release/` and `index.yaml` is regenerated. Hosted at `https://composiohq.github.io/helm-charts/`. Older PR `helm-release.yaml` automation is referenced in `claude.md`; verify the live workflow before relying on it.
-2. **Replicated** — `manifests/composio.yaml` is a KOTS `HelmChart` resource that pins `spec.chart.chartVersion` (currently `0.1.110`). KOTS resolves the chart by `name` + `chartVersion`; the manifest does **not** reference a specific `.tgz` filename. The `manifests/composio-*.tgz` you see committed alongside it (e.g. `composio-0.1.40.tgz`) is a historical/seed artifact and is not regenerated on every chart bump — the actual chart artifact for a Replicated release is produced by the release pipeline (`nighty-release.yml` → Replicated registry).
+1. **GitHub Pages Helm repo** — packaged `.tgz` files land in `helm-release/` and `index.yaml` is regenerated. Hosted at `https://composiohq.github.io/helm-charts/`. **Currently stale**: `index.yaml` was last generated 2025-12-22 and still advertises only `1.1.0` / `0.1.0` (with a long-removed bitnami `redis` dependency). There is no live workflow regenerating it — treat this channel as unmaintained until one exists.
+2. **Replicated** — `manifests/composio.yaml` is a KOTS `HelmChart` resource that pins `spec.chart.chartVersion` (currently `0.2.13`, in sync with `Chart.yaml`). KOTS resolves the chart by `name` + `chartVersion`; the manifest does **not** reference a specific `.tgz` filename. The `manifests/composio-*.tgz` you see committed alongside it (e.g. `composio-0.1.40.tgz`) is a historical/seed artifact and is not regenerated on every chart bump — the actual chart artifact for a Replicated release is produced by the release pipeline (`nighty-release.yml` → Replicated registry).
 
 Versions to bump when cutting a release:
 
@@ -309,11 +311,10 @@ git add Chart.yaml Chart.lock charts/
 
 ## Gotchas worth remembering
 
-- **Versions in `claude.md` may drift.** It still references chart `0.1.33` while `Chart.yaml` is `0.1.110`. Trust `Chart.yaml`.
+- **`Chart.yaml` is the only trustworthy version.** This file and `claude.md` both duplicate it and have drifted before; when they disagree, `Chart.yaml` wins.
 - **`overwrite-values.yaml` ≠ `composio/values.yaml`.** The root file is a documented production override example, not the chart's defaults.
-- **`composio/tmp-redis/`** is dev scratch; don't add tests or docs that depend on it.
 - **`archive/`** holds older `example-values.yaml` and `secret-setup.sh` — useful as historical reference but not the canonical entrypoint.
-- **Embedded Redis (`redis.enabled: true`)** is dev-only. Production must use `externalRedis.enabled: true` (Sentinel optional).
+- **The chart ships no Redis.** There is no `redis.*` values block and no in-chart Valkey — earlier revisions bundled the bitnami subchart, and only `index.yaml` still shows that history. Redis must be external via `externalRedis.enabled: true` (Sentinel optional). Postgres is external too; the chart only ships init/migration jobs.
 - **`features.temporal: true` requires `temporal.server.enabled: true`** plus a SQL persistence config (see `overwrite-values.yaml`).
 - **Knative mode pulls in CRDs** from `templates/knative/knative-crds.yaml`. Cluster must allow CRD installs.
 - **Weaviate is opt-out**: most production overrides set `weaviate.enabled: false`.
