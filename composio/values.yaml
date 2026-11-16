@@ -1410,7 +1410,8 @@ egateway:
   # Required keys: EGATEWAY_POSTGRES_URL, EGATEWAY_REDIS_URL,
   # COMPOSIO_API_KEY_ENCRYPTION_SECRET, SAML_AUTHN_PROXY_HMAC_SECRET,
   # FUSIONAUTH_API_KEY, FUSIONAUTH_WEBHOOK_SECRET, INTERNAL_SERVICE_TOKEN,
-  # CRON_SECRET, and FUSIONAUTH_DATABASE_PASSWORD when fusionauth.enabled.
+  # CRON_SECRET, FUSIONAUTH_DATABASE_PASSWORD when fusionauth.enabled, and
+  # COMPOSIO_JWT_PRIVATE_KEY when composioAuth.mode is jwt.
   secretRef: ""
   # Public hostnames. Default to <name>.<global.domain>.
   hosts:
@@ -1422,6 +1423,24 @@ egateway:
     auth: ""
   # -- Composio backend URL. Defaults to the in-cluster Apollo service.
   composioBaseUrl: ""
+  composioAuth:
+    # -- How the gateway authenticates to Composio (Apollo): `api_key` (each org
+    # stores an `ak_` project key, entered during onboarding) or `jwt` (an org
+    # stores `composio-jwt:<project_id>:<org_member_id>` and the gateway signs
+    # short-lived RS256 project JWTs). `jwt` also points Apollo's
+    # AUTH_JWT_JWKS_URL / AUTH_JWT_ISSUER at the gateway, so it cannot be
+    # combined with `apollo.auth.jwt.enabled`. Requires the secret key
+    # COMPOSIO_JWT_PRIVATE_KEY (PEM RSA, 2048 bits or more).
+    mode: api_key
+    jwt:
+      # -- Key id (`kid`) of COMPOSIO_JWT_PRIVATE_KEY. Required in jwt mode; change it when rotating keys.
+      keyId: ""
+      # -- Token issuer (default: https://<admin host>)
+      issuer: ""
+      # -- Token lifetime in seconds (600-3600)
+      ttlSeconds: 900
+      # -- JSON array of retired public JWKs to keep publishing during a key rotation
+      previousPublicJwks: ""
   # -- Pod security context for admin, proxy and migrate (the images run as uid 1001)
   podSecurityContext:
     runAsNonRoot: true
@@ -1530,7 +1549,33 @@ egateway:
     image:
       repository: fusionauth/fusionauth-app
       tag: "1.67.0"
+      # -- Image digest pinned with the tag. Clear it to pull by tag only.
+      digest: "sha256:a4faa8ff7813b772f89ff979602acf3522d84d341da14127dba42b7ca42ef804"
       pullPolicy: IfNotPresent
+      # -- Full image reference (optional, overrides repository/tag/digest), e.g. a private mirror
+      imageName: ""
+    # -- ID of the RS256 key the kickstart generates and makes the default tenant's JWT
+    # signing key. Org tenants created by admin inherit it, and it is what
+    # /.well-known/jwks.json publishes for admin and proxy to validate tokens.
+    jwtSigningKeyId: "6c1e2a5f-3b7d-4e0a-9f41-8d2c7b5e9a13"
+    license:
+      # -- Activate a FusionAuth license on first boot. Needed for Entity Management,
+      # which SCIM provisioning uses. Only applied by the kickstart on an empty database.
+      enabled: false
+      # -- Key in the eGateway secret that holds the FusionAuth license ID
+      secretKey: FUSIONAUTH_LICENSE_ID
+    # -- Pod security context for FusionAuth (the image runs as fusionauth, uid 1001)
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
+    # -- Container security context for FusionAuth
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
     # -- Node selector for FusionAuth pods
     nodeSelector: {}
     # -- Affinity rules for FusionAuth pods
