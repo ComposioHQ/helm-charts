@@ -35,6 +35,8 @@ spec:
                 - sh
                 - -c
                 - 'curl -fsS --max-time 590 -H "Authorization: Bearer ${CRON_SECRET}" "{{ $adminUrl }}{{ $job.path }}"'
+              resources:
+                {{- toYaml $.Values.egateway.cronJobs.resources | nindent 16 }}
               env:
                 - name: CRON_SECRET
                   valueFrom:

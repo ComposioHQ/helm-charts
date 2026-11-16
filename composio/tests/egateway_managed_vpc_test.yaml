@@ -1,0 +1,76 @@
+suite: eGateway port-forward and Fargate compatibility
+templates:
+  - egateway/egateway-configmap.yaml
+  - egateway/egateway-admin.yaml
+  - egateway/egateway-proxy.yaml
+  - egateway/egateway-migrate-job.yaml
+  - egateway/egateway-cronjobs.yaml
+  - egateway/egateway-fusionauth.yaml
+tests:
+  - it: uses explicit localhost origins for port forwards and hostname-only issuer
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      egateway.publicUrls: {admin: 'http://localhost:3002', proxy: 'http://localhost:3001', auth: 'http://localhost:9011'}
+    asserts:
+      - equal: {path: "data.AUTH_PUBLIC_URL", value: 'http://localhost:3002'}
+      - equal: {path: "data.PROXY_PUBLIC_URL", value: 'http://localhost:3001'}
+      - equal: {path: "data.FUSIONAUTH_URL", value: 'http://localhost:9011'}
+      - equal: {path: "data.FUSIONAUTH_ISSUER", value: localhost}
+      - equal: {path: "data.FUSIONAUTH_ADMIN_REDIRECT_URL", value: 'http://localhost:3002/api/auth/callback'}
+  - it: gives migrations resources and a separate TLS connection reference
+    template: egateway/egateway-migrate-job.yaml
+    set:
+      egateway.enabled: true
+      egateway.secretRef: composio-egateway
+      egateway.migrate.databaseSecretKey: EGATEWAY_MIGRATION_POSTGRES_URL
+      databaseTls.enabled: true
+      databaseTls.configMap: composio-rds-ca
+      databaseTls.mountPath: /etc/composio/database-tls
+    asserts:
+      - equal: {path: "spec.template.spec.containers[0].resources.requests.cpu", value: 250m}
+      - equal: {path: "spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.key", value: EGATEWAY_MIGRATION_POSTGRES_URL}
+      - equal: {path: "spec.template.spec.containers[0].volumeMounts[0].readOnly", value: true}
+      - equal: {path: "spec.template.spec.volumes[0].configMap.name", value: composio-rds-ca}
+  - it: gives scheduled requests Fargate resources
+    template: egateway/egateway-cronjobs.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+    asserts:
+      - equal: {path: "spec.jobTemplate.spec.template.spec.containers[0].resources.requests.memory", value: 64Mi}
+      - equal: {path: "spec.jobTemplate.spec.template.spec.containers[0].resources.requests.cpu", value: 100m}
+  - it: reads FusionAuth JDBC TLS settings from the dedicated secret
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 1
+    set:
+      egateway.enabled: true
+      egateway.secretRef: composio-egateway
+      egateway.fusionauth.database.urlSecretKey: FUSIONAUTH_DATABASE_URL
+      databaseTls.enabled: true
+      databaseTls.configMap: composio-rds-ca
+      databaseTls.mountPath: /etc/composio/database-tls
+    asserts:
+      - equal: {path: "spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name", value: composio-egateway}
+      - equal: {path: "spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.key", value: FUSIONAUTH_DATABASE_URL}
+      - equal: {path: "spec.template.spec.containers[0].volumeMounts[0].readOnly", value: true}
+  - it: mounts the trusted database CA in admin
+    template: egateway/egateway-admin.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      databaseTls.enabled: true
+      databaseTls.configMap: composio-rds-ca
+      databaseTls.mountPath: /etc/composio/database-tls
+    asserts:
+      - equal: {path: "spec.template.spec.volumes[0].configMap.name", value: composio-rds-ca}
+  - it: mounts the trusted database CA in proxy
+    template: egateway/egateway-proxy.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      databaseTls.enabled: true
+      databaseTls.configMap: composio-rds-ca
+      databaseTls.mountPath: /etc/composio/database-tls
+    asserts:
+      - equal: {path: "spec.template.spec.volumes[0].configMap.name", value: composio-rds-ca}

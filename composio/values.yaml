@@ -1421,6 +1421,11 @@ egateway:
     proxy: ""
     # -- FusionAuth hostname (default: auth.<global.domain>)
     auth: ""
+  # -- Public origins. Empty values use HTTPS and hosts above. HTTP is allowed only on localhost/127.0.0.1 for port-forward testing.
+  publicUrls:
+    admin: ""
+    proxy: ""
+    auth: ""
   # -- Composio backend URL. Defaults to the in-cluster Apollo service.
   composioBaseUrl: ""
   composioAuth:
@@ -1507,6 +1512,12 @@ egateway:
     # -- Tolerations for proxy pods
     tolerations: []
   migrate:
+    # -- Secret key holding the migration connection URL; may differ from the runtime URL for client-specific TLS options.
+    databaseSecretKey: EGATEWAY_POSTGRES_URL
+    # -- Requests are required for Fargate scheduling.
+    resources:
+      requests: {cpu: 250m, memory: 512Mi}
+      limits: {cpu: 500m, memory: 1Gi}
     # -- Run Prisma migrations as a pre-install/pre-upgrade hook
     enabled: true
     image:
@@ -1516,6 +1527,10 @@ egateway:
       pullPolicy: Always
       imageName: ""
   cronJobs:
+    # -- Resources for each scheduled HTTP request.
+    resources:
+      requests: {cpu: 100m, memory: 64Mi}
+      limits: {cpu: 250m, memory: 128Mi}
     # -- Run the admin's scheduled jobs (replaces Vercel crons in apps/admin/vercel.json)
     enabled: true
     image: "curlimages/curl:8.13.0@sha256:d43bdb28bae0be0998f3be83199bfb2b81e0a30b034b6d7586ce7e05de34c3fd"
@@ -1583,6 +1598,8 @@ egateway:
     # -- Tolerations for FusionAuth pods
     tolerations: []
     database:
+      # -- Optional key in egateway.secretRef containing the JDBC URL (including verified TLS settings).
+      urlSecretKey: ""
       # -- Postgres database created by databaseMigration for FusionAuth
       name: fusionauthdb
       # -- Postgres host (defaults to databaseMigration.host)
