@@ -188,3 +188,35 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
   other gateway components.
 - Set `egateway.fusionauth.enabled: false` to use an existing FusionAuth instance, and pass
   its URLs through `egateway.admin.extraEnv` / `egateway.proxy.extraEnv`.
+
+### Managed VPC and local port-forwards
+
+The Managed VPC runner prepares the gateway databases and dedicated secret; keep
+`databaseMigration.enabled: false` in that flow. It supplies `egateway.secretRef`,
+FusionAuth's JDBC URL secret key, a separate Prisma migration URL key, and the
+shared RDS CA ConfigMap. Admin, proxy, migration and FusionAuth pods mount that CA.
+Migration and scheduled-job CPU/memory requests allow Fargate scheduling.
+
+For initial local testing, leave `egateway.ingress.enabled: false` and configure:
+
+```yaml
+egateway:
+  enabled: true
+  publicUrls:
+    admin: http://localhost:3002
+    proxy: http://localhost:3001
+    auth: http://localhost:9011
+  proxy:
+    allowedHosts: [localhost, composio-egateway-proxy]
+```
+
+Forward the corresponding Services to ports 3002, 3001 and 9011. Empty
+`publicUrls` retain the existing HTTPS hostname defaults. Explicit overrides must
+be HTTPS origins, or HTTP localhost/127.0.0.1 origins with a port. Use the same
+hostname in the browser as in configuration. FusionAuth's issuer remains a
+hostname without a port.
+
+Local forwarding does not provide inbound IdP/webhook connectivity or email
+delivery. In particular, FusionAuth webhook destinations currently derive from
+the public admin redirect origin; a localhost destination is not reachable from
+FusionAuth's pod. Qualify those integrations separately before customer use.

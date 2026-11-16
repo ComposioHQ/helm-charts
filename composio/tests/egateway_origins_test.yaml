@@ -1,0 +1,12 @@
+suite: eGateway rejects insecure public origins
+templates:
+  - egateway/egateway-configmap.yaml
+tests:
+  - it: rejects insecure nonlocal public URLs
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      egateway.publicUrls.admin: http://customer.example.com:3002
+    asserts:
+      - failedTemplate:
+          errorMessage: egateway.publicUrls must be HTTPS origins or HTTP localhost/127.0.0.1 origins with a port

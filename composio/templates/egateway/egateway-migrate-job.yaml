@@ -24,6 +24,10 @@ spec:
       restartPolicy: Never
       {{- include "egateway.imagePullSecrets" . | nindent 6 }}
       {{- include "egateway.podSecurityContext" . | nindent 6 }}
+      {{- if .Values.databaseTls.enabled }}
+      volumes:
+        {{- include "composio.databaseTlsVolume" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: migrate
           image: {{ include "composio.imageReference" (dict "image" .Values.egateway.migrate.image "context" .) | quote }}
@@ -31,10 +35,16 @@ spec:
           {{- include "egateway.containerSecurityContext" . | nindent 10 }}
           # Same as the image's default command (packages/db/Dockerfile).
           command: ["bun", "run", "--filter", "@repo/db", "db:migrate"]
+          {{- if .Values.databaseTls.enabled }}
+          volumeMounts:
+            {{- include "composio.databaseTlsMount" . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.egateway.migrate.resources | nindent 12 }}
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ include "egateway.secretName" . }}
-                  key: EGATEWAY_POSTGRES_URL
+                  key: {{ .Values.egateway.migrate.databaseSecretKey }}
 {{- end }}

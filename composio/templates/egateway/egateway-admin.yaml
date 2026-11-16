@@ -36,6 +36,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.databaseTls.enabled }}
+      volumes:
+        {{- include "composio.databaseTlsVolume" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: admin
           image: {{ include "composio.imageReference" (dict "image" .Values.egateway.admin.image "context" .) | quote }}
@@ -47,6 +51,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "composio.fullname" . }}-egateway-config
+          {{- if .Values.databaseTls.enabled }}
+          volumeMounts:
+            {{- include "composio.databaseTlsMount" . | nindent 12 }}
+          {{- end }}
           env:
             - name: PORT
               value: "3002"

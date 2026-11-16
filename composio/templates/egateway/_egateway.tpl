@@ -108,3 +108,16 @@ securityContext:
   {{- toYaml . | nindent 2 }}
 {{- end }}
 {{- end -}}
+
+{{/* Explicit origins for port-forward testing; production keeps HTTPS host defaults. */}}
+{{- define "egateway.publicUrl" -}}
+{{- $url := index .context.Values.egateway.publicUrls .name | default (printf "https://%s" (include (printf "egateway.%sHost" .name) .context)) | trimSuffix "/" -}}
+{{- if not (regexMatch "^(https://[a-zA-Z0-9.-]+(:[0-9]+)?|http://(localhost|127[.]0[.]0[.]1):[0-9]+)$" $url) -}}
+{{- fail "egateway.publicUrls must be HTTPS origins or HTTP localhost/127.0.0.1 origins with a port" -}}
+{{- end -}}
+{{- $url -}}
+{{- end -}}
+
+{{- define "egateway.authIssuer" -}}
+{{- (urlParse (include "egateway.publicUrl" (dict "name" "auth" "context" .))).host | splitList ":" | first -}}
+{{- end -}}

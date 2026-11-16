@@ -25,10 +25,10 @@ data:
   SENTRY_ENABLED: "false"
   DATADOG_ENABLED: "false"
   RESEND_ENABLED: "false"
-  AUTH_PUBLIC_URL: {{ printf "https://%s" (include "egateway.adminHost" .) | quote }}
-  NEXTAUTH_URL: {{ printf "https://%s" (include "egateway.adminHost" .) | quote }}
-  PROXY_PUBLIC_URL: {{ printf "https://%s" (include "egateway.proxyHost" .) | quote }}
-  FUSIONAUTH_URL: {{ printf "https://%s" (include "egateway.authHost" .) | quote }}
+  AUTH_PUBLIC_URL: {{ include "egateway.publicUrl" (dict "name" "admin" "context" .) | quote }}
+  NEXTAUTH_URL: {{ include "egateway.publicUrl" (dict "name" "admin" "context" .) | quote }}
+  PROXY_PUBLIC_URL: {{ include "egateway.publicUrl" (dict "name" "proxy" "context" .) | quote }}
+  FUSIONAUTH_URL: {{ include "egateway.publicUrl" (dict "name" "auth" "context" .) | quote }}
   {{- if .Values.egateway.fusionauth.enabled }}
   # Server-to-server calls use the Service, so admin readiness does not depend on
   # public DNS, Ingress or TLS. Browsers keep using FUSIONAUTH_URL.
@@ -38,9 +38,9 @@ data:
   # the gateway works either way.
   FUSIONAUTH_SAML_IDP_INITIATED_ENABLED: {{ .Values.egateway.fusionauth.license.enabled | toString | quote }}
   {{- end }}
-  FUSIONAUTH_ISSUER: {{ include "egateway.authHost" . | quote }}
+  FUSIONAUTH_ISSUER: {{ include "egateway.authIssuer" . | quote }}
   FUSIONAUTH_JWKS_URL: {{ printf "http://%s:9011/.well-known/jwks.json" (include "egateway.fusionauthServiceName" .) | quote }}
-  FUSIONAUTH_ADMIN_REDIRECT_URL: {{ printf "https://%s/api/auth/callback" (include "egateway.adminHost" .) | quote }}
+  FUSIONAUTH_ADMIN_REDIRECT_URL: {{ printf "%s/api/auth/callback" (include "egateway.publicUrl" (dict "name" "admin" "context" .)) | quote }}
   COMPOSIO_BASE_URL: {{ include "egateway.composioBaseUrl" . | quote }}
   COMPOSIO_AUTH_MODE: {{ $authMode | quote }}
   {{- if include "egateway.composioJwtEnabled" . }}

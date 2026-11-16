@@ -52,7 +52,7 @@ data:
           "url": "/api/tenant/#{FUSIONAUTH_TENANT_ID}",
           "body": {
             "tenant": {
-              "issuer": {{ include "egateway.authHost" . | quote }},
+              "issuer": {{ include "egateway.authIssuer" . | quote }},
               "jwtConfiguration": {
                 "accessTokenKeyId": "#{jwtSigningKeyId}",
                 "idTokenKeyId": "#{jwtSigningKeyId}"
@@ -119,7 +119,14 @@ spec:
               containerPort: 9011
           env:
             - name: DATABASE_URL
+              {{- if $fa.database.urlSecretKey }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: {{ $fa.database.urlSecretKey }}
+              {{- else }}
               value: {{ printf "jdbc:postgresql://%s:%v/%s" $dbHost $dbPort $fa.database.name | quote }}
+              {{- end }}
             - name: DATABASE_USERNAME
               value: {{ $dbUser | quote }}
             - name: DATABASE_ROOT_USERNAME
@@ -155,6 +162,7 @@ spec:
             - name: FUSIONAUTH_APP_KICKSTART_FILE
               value: /usr/local/fusionauth/kickstart/kickstart.json
           volumeMounts:
+            {{- include "composio.databaseTlsMount" . | nindent 12 }}
             - name: kickstart
               mountPath: /usr/local/fusionauth/kickstart
               readOnly: true
@@ -174,6 +182,7 @@ spec:
           resources:
             {{- toYaml $fa.resources | nindent 12 }}
       volumes:
+        {{- include "composio.databaseTlsVolume" . | nindent 8 }}
         - name: kickstart
           configMap:
             name: {{ include "egateway.fusionauthServiceName" . }}-kickstart
