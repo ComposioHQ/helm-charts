@@ -27,6 +27,7 @@ tests:
       - equal: {path: "spec.template.spec.containers[0].resources.requests.memory", value: 4Gi}
       - notExists: {path: "spec.template.spec.containers[0].volumeMounts"}
       - notExists: {path: spec.template.spec.volumes}
+      - equal: {path: spec.template.spec.automountServiceAccountToken, value: false}
   - it: exposes the database only through a cluster service
     template: weaviate/weaviate.yaml
     documentIndex: 1

@@ -17,11 +17,13 @@ keeps the vector database and indexes inside the customer environment, while que
 embedding/reranking still calls the configured OpenAI service. Voyage and
 Turbopuffer credentials are not required at runtime for this profile.
 
-The bundled indexes are replaceable release data. Keep persistence disabled on
-Fargate and do not mount an empty volume over `/var/lib/weaviate`: doing so hides
-the preloaded data. Application credentials and customer data remain in their
-existing stores. The service is internal to the cluster; no public ingress or AWS
-role is created for it.
+The bundled indexes are replaceable release data. Managed VPC Weaviate runs as a
+standalone service without volumes or container mounts, and automatic Kubernetes
+service-account token mounting is disabled. The runner rejects mounted storage
+in the rendered pod, including init and ephemeral containers, regardless of path
+spelling. Application credentials and customer data remain in their existing
+stores. The service is internal to the cluster; no public ingress or AWS role is
+created for it.
 
 Deployment must verify both collections contain objects after Weaviate becomes
 ready, then test `COMPOSIO_SEARCH_TOOLS` through the customer API. Readiness of the

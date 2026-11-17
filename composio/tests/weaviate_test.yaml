@@ -24,6 +24,9 @@ tests:
       - equal:
           path: metadata.labels["app.kubernetes.io/component"]
           value: weaviate
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
 
   - it: should not set serviceAccountName when SA is disabled
     set:

@@ -3,9 +3,11 @@
 weaviate:
   enabled: true
   replicaCount: 1
-  # A volume mounted over this path would hide the image's preloaded indexes.
+  # Standalone catalog data comes from the release image; mounts are unsupported.
   persistence:
     enabled: false
+  volumeMounts: []
+  volumes: []
   resources:
     requests: {cpu: "1", memory: 4Gi}
     limits: {cpu: "1", memory: 4Gi}
