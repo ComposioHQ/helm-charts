@@ -19,7 +19,7 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 0
-      activeDeadlineSeconds: 600
+      activeDeadlineSeconds: 900
       template:
         metadata:
           labels:
@@ -34,7 +34,10 @@ spec:
               command:
                 - sh
                 - -c
-                - 'curl -fsS --max-time 590 -H "Authorization: Bearer ${CRON_SECRET}" "{{ $adminUrl }}{{ $job.path }}"'
+                - |
+                  # Retry only the readiness probe; invoke the scheduled operation once.
+                  curl -fsS --connect-timeout 2 --max-time 5 --retry 58 --retry-connrefused --retry-delay 5 --retry-max-time 300 "{{ $adminUrl }}/api/health" >/dev/null || exit 1
+                  exec curl -fsS --max-time 590 -H "Authorization: Bearer ${CRON_SECRET}" "{{ $adminUrl }}{{ $job.path }}"
               resources:
                 {{- toYaml $.Values.egateway.cronJobs.resources | nindent 16 }}
               env:
