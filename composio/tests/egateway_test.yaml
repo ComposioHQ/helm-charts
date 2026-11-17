@@ -135,6 +135,23 @@ tests:
       - hasDocuments:
           count: 0
 
+  - it: should wait for admin readiness before invoking a scheduled operation once
+    template: egateway/egateway-cronjobs.yaml
+    set:
+      egateway.enabled: true
+      egateway.cronJobs.jobs:
+        - {name: provisioning-queue, path: /api/internal/provisioning-queue, schedule: "* * * * *"}
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+          value: 900
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].command[2]
+          value: |
+            # Retry only the readiness probe; invoke the scheduled operation once.
+            curl -fsS --connect-timeout 2 --max-time 5 --retry 58 --retry-connrefused --retry-delay 5 --retry-max-time 300 "http://RELEASE-NAME-composio-egateway-admin:3002/api/health" >/dev/null || exit 1
+            exec curl -fsS --max-time 590 -H "Authorization: Bearer ${CRON_SECRET}" "http://RELEASE-NAME-composio-egateway-admin:3002/api/internal/provisioning-queue"
+
   - it: should skip bundled FusionAuth when disabled
     template: egateway/egateway-fusionauth.yaml
     set:
