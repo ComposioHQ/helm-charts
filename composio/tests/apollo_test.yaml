@@ -5,6 +5,7 @@ templates:
 tests:
   - it: runtime still uses the core secret when migration credentials are separate
     template: apollo/apollo.yaml
+    documentIndex: 0
     set:
       global.disableK8SecretCheck: true
       secret.name: runtime-secret
@@ -12,7 +13,6 @@ tests:
       apollo.dbInit.databaseSecret.key: MIGRATION_URL
     asserts:
       - contains:
-          documentIndex: 0
           path: spec.template.spec.containers[0].env
           content:
             name: DATABASE_URL
