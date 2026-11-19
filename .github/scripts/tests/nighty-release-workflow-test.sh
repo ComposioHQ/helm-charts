@@ -80,6 +80,15 @@ assert_contains "selected tag mode" \
 assert_contains "selected promotion" \
   '--promote "${{ needs.release-config.outputs.channel_name }}"'
 
+assert_eq "CVE scan uses dispatched chart commit" \
+  "$(yq -r '.jobs.cve-scan.with.chart_ref' "${WORKFLOW}")" \
+  '${{ github.sha }}'
+assert_eq "release packaging uses dispatched chart commit" \
+  "$(yq -r '.jobs.replicated-release.steps[] | select(.name == "Checkout code") | .with.ref' "${WORKFLOW}")" \
+  '${{ github.sha }}'
+assert_contains "release PR targets dispatched branch" \
+  'const base = context.ref.replace(/^refs\/heads\//, "");'
+
 assert_eq "seed channel name output removed" \
   "$(yq -r '.jobs.release-config.outputs.seed_channel_name // "absent"' "${WORKFLOW}")" \
   absent

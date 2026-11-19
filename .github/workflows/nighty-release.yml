@@ -360,7 +360,7 @@ jobs:
     uses: ./.github/workflows/grype-cve-scan.yml
     with:
       release_tag: ${{ needs.retag-latest-images.outputs.release_tag }}
-      chart_ref: release-stable
+      chart_ref: ${{ github.sha }}
       scan_name: ${{ needs.release-config.outputs.release_type }}
       artifact_prefix: ${{ needs.release-config.outputs.release_type }}-grype-cve-reports
       fail_on_high_critical: false
@@ -385,7 +385,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
-          ref: release-stable
+          ref: ${{ github.sha }}
 
       - name: Set branch name
         id: branch
@@ -573,7 +573,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const base = context.payload.repository.default_branch;
+            const base = context.ref.replace(/^refs\/heads\//, "");
             const head = "${{ needs.replicated-release.outputs.branch_name }}";
             const releaseTag = "${{ needs.retag-latest-images.outputs.release_tag }}";
             const version = "${{ needs.replicated-release.outputs.version }}";
