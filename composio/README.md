@@ -8,10 +8,11 @@ A Helm chart for Composio
 
 Use `apollo.dbInit.env` to append Kubernetes environment-variable entries to the
 Apollo database migration Job. Entries support `value` and `valueFrom`, including
-Secret references. The default is an empty list. This configuration applies only
-to the DB-init container, independently of `apollo.env`.
+Secret references. This configuration applies only to the DB-init container,
+independently of `apollo.env`.
 
-For temporary mitigation of CVE-2026-114938 on an affected Java runtime, supply:
+This release enables the following temporary mitigation of CVE-2026-114938 by
+default:
 
 ```yaml
 apollo:
@@ -21,9 +22,10 @@ apollo:
         value: "-XX:-UseBASE64Intrinsics"
 ```
 
-Merge any existing `JAVA_TOOL_OPTIONS` flags into the same value. Apply this
-override before the Helm install or upgrade that creates the migration Job;
-it takes effect when that Job starts its JVM. Verify the JVM reports
+When overriding `apollo.dbInit.env`, retain this entry and merge any existing
+`JAVA_TOOL_OPTIONS` flags into the same value. The mitigation takes effect when
+the Helm install or upgrade creates the migration Job and starts its JVM.
+Verify the JVM reports
 `UseBASE64Intrinsics = false` and the migrations complete successfully.
 
 The flag disables the vulnerable Base64 intrinsic, as described in
@@ -57,7 +59,7 @@ the permanent fix.
 | apollo.database.urlSecret.key | string | `"url"` | Key name in the secret |
 | apollo.database.urlSecret.name | string | `"composio-composio-secrets"` | Secret name containing database URL |
 | apollo.dbInit.enabled | bool | `true` | Enable database initialization |
-| apollo.dbInit.env | list | `[]` | Additional Kubernetes env entries for the Apollo DB-init container (supports value and valueFrom). |
+| apollo.dbInit.env | list | `[{"name":"JAVA_TOOL_OPTIONS","value":"-XX:-UseBASE64Intrinsics"}]` | Additional Kubernetes env entries for the Apollo DB-init container (supports value and valueFrom). |
 | apollo.dbInit.image.pullPolicy | string | `"Always"` | Image pull policy |
 | apollo.dbInit.image.repository | string | `"composio-self-host/apollo-db-init"` | Database init image repository |
 | apollo.dbInit.image.tag | string | `"release-20251209_00"` | Database init image tag |

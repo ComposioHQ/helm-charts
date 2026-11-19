@@ -164,7 +164,10 @@ apollo:
     # -- Enable database initialization
     enabled: true
     # -- Additional Kubernetes env entries for the Apollo DB-init container (supports value and valueFrom).
-    env: []
+    # Disable the vulnerable Base64 intrinsic until the Java runtime is patched (CVE-2026-114938).
+    env:
+      - name: JAVA_TOOL_OPTIONS
+        value: "-XX:-UseBASE64Intrinsics"
     # Database init container image configuration
     image:
       # -- Database init image repository (used when imageName is not set)

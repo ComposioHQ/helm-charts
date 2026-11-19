@@ -22,7 +22,20 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: should leave the default apollo db init environment unchanged
+  - it: should mitigate CVE-2026-114938 by default in apollo db init
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].env
+          count: 7
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: JAVA_TOOL_OPTIONS
+            value: "-XX:-UseBASE64Intrinsics"
+
+  - it: should support an explicitly empty apollo db init environment override
+    set:
+      apollo.dbInit.env: []
     asserts:
       - lengthEqual:
           path: spec.template.spec.containers[0].env
