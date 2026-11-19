@@ -24,6 +24,7 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: weaviate
     spec:
+      automountServiceAccountToken: false
       {{- if .Values.weaviate.serviceAccount.enabled }}
       serviceAccountName: {{ .Values.weaviate.serviceAccount.name }}
       {{- end }}

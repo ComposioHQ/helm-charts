@@ -1,0 +1,43 @@
+suite: Managed VPC Weaviate search
+templates:
+  - apollo/apollo-configmap.yaml
+  - weaviate/weaviate.yaml
+values:
+  - ../values-managed-vpc.yaml
+  - ../values-managed-vpc-weaviate.yaml
+tests:
+  - it: selects the preloaded OpenAI tool and plan indexes
+    template: apollo/apollo-configmap.yaml
+    asserts:
+      - equal: {path: data.UNIFIED_SEARCH_ENABLED, value: "true"}
+      - equal: {path: data.VECTOR_STORE_PROVIDER, value: weaviate}
+      - equal: {path: data.UNIFIED_VECTOR_STORE_PROVIDER, value: weaviate}
+      - equal: {path: data.UNIFIED_EMBEDDINGS_PROVIDER, value: openai}
+      - equal: {path: data.UNIFIED_EMBEDDINGS_MODEL, value: text-embedding-3-large}
+      - equal: {path: data.UNIFIED_EMBEDDINGS_DIMENSIONS, value: "1024"}
+      - equal: {path: data.UNIFIED_VECTOR_STORE_INDEX_TOOL, value: ToolDataOpenai}
+      - equal: {path: data.UNIFIED_VECTOR_STORE_INDEX_PLAN, value: UsecasePlansOpenai}
+      - equal: {path: data.WEAVIATE_URL, value: "http://RELEASE-NAME-weaviate:8080"}
+  - it: schedules Weaviate on Fargate without hiding its bundled indexes
+    template: weaviate/weaviate.yaml
+    documentIndex: 0
+    asserts:
+      - hasDocuments: {count: 2}
+      - equal: {path: "spec.template.spec.containers[0].resources.requests.cpu", value: "1"}
+      - equal: {path: "spec.template.spec.containers[0].resources.requests.memory", value: 4Gi}
+      - notExists: {path: "spec.template.spec.containers[0].volumeMounts"}
+      - notExists: {path: spec.template.spec.volumes}
+      - equal: {path: spec.template.spec.automountServiceAccountToken, value: false}
+  - it: exposes the database only through a cluster service
+    template: weaviate/weaviate.yaml
+    documentIndex: 1
+    asserts:
+      - isKind: {of: Service}
+      - equal: {path: spec.type, value: ClusterIP}
+      - equal: {path: "spec.ports[1].port", value: 50051}
+  - it: permits disabling the optional database
+    template: weaviate/weaviate.yaml
+    set:
+      weaviate.enabled: false
+    asserts:
+      - hasDocuments: {count: 0}

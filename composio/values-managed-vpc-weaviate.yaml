@@ -1,0 +1,32 @@
+# Optional search overlay; apply after values-managed-vpc.yaml.
+# The release image contains these OpenAI-embedded tool and plan collections.
+weaviate:
+  enabled: true
+  replicaCount: 1
+  # Standalone catalog data comes from the release image; mounts are unsupported.
+  persistence:
+    enabled: false
+  volumeMounts: []
+  volumes: []
+  resources:
+    requests: {cpu: "1", memory: 4Gi}
+    limits: {cpu: "1", memory: 4Gi}
+apollo:
+  search:
+    enabled: true
+    vectorStoreProvider: weaviate
+    embeddings:
+      provider: openai
+      model: text-embedding-3-large
+      dimensions: 1024
+    unified:
+      enabled: true
+      vectorStoreProvider: weaviate
+      embeddings:
+        provider: openai
+        model: text-embedding-3-large
+        dimensions: 1024
+      indexTool: ToolDataOpenai
+      indexPlan: UsecasePlansOpenai
+    weaviate:
+      collection: ToolDataOpenai
