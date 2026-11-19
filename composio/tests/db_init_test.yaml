@@ -15,9 +15,73 @@ tests:
   - it: should not create apollo db init job when disabled
     set:
       apollo.dbInit.enabled: false
+      apollo.dbInit.env:
+        - name: JAVA_TOOL_OPTIONS
+          value: "-XX:-UseBASE64Intrinsics"
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: should leave the default apollo db init environment unchanged
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].env
+          count: 6
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: JAVA_TOOL_OPTIONS
+            value: "-XX:-UseBASE64Intrinsics"
+
+  - it: should append custom environment variables without replacing built-in variables
+    set:
+      secret.name: migration-secret
+      apollo.dbInit.env:
+        - name: JAVA_TOOL_OPTIONS
+          value: "-Xmx256m -XX:-UseBASE64Intrinsics"
+        - name: LIQUIBASE_LOG_LEVEL
+          value: "INFO"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: JAVA_TOOL_OPTIONS
+            value: "-Xmx256m -XX:-UseBASE64Intrinsics"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LIQUIBASE_LOG_LEVEL
+            value: "INFO"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: migration-secret
+                key: POSTGRES_URL
+                optional: true
+      - lengthEqual:
+          path: spec.template.spec.containers[0].env
+          count: 8
+
+  - it: should support secret references in custom apollo db init environment variables
+    set:
+      apollo.dbInit.env:
+        - name: JAVA_TOOL_OPTIONS
+          valueFrom:
+            secretKeyRef:
+              name: migration-jvm-options
+              key: JAVA_TOOL_OPTIONS
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: JAVA_TOOL_OPTIONS
+            valueFrom:
+              secretKeyRef:
+                name: migration-jvm-options
+                key: JAVA_TOOL_OPTIONS
 
   - it: should have helm hook annotations
     set:

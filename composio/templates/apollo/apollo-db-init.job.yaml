@@ -87,6 +87,9 @@ spec:
               value: "true"
             - name: SELF_HOSTED
               value: "true"
+            {{- with .Values.apollo.dbInit.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: apollo-secrets
               mountPath: {{ .Values.apollo.secretsDir | quote }}
