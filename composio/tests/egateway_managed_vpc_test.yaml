@@ -6,7 +6,45 @@ templates:
   - egateway/egateway-migrate-job.yaml
   - egateway/egateway-cronjobs.yaml
   - egateway/egateway-fusionauth.yaml
+  - egateway/egateway-opensearch.yaml
 tests:
+  - it: keeps bundled search storage out of the Managed VPC profile
+    values:
+      - ../values-managed-vpc.yaml
+    set:
+      egateway.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: SEARCH_TYPE, value: database}
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - hasDocuments: {count: 0}
+        template: egateway/egateway-opensearch.yaml
+  - it: uses the runner-provided external search secret without bundled storage
+    values:
+      - ../values-managed-vpc.yaml
+    set:
+      egateway.enabled: true
+      egateway.secretRef: composio-egateway
+      egateway.fusionauth.search.engine: elasticsearch
+      egateway.fusionauth.search.serversSecretKey: FUSIONAUTH_SEARCH_SERVERS
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: SEARCH_TYPE, value: elasticsearch}
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SEARCH_SERVERS
+            valueFrom:
+              secretKeyRef: {name: composio-egateway, key: FUSIONAUTH_SEARCH_SERVERS}
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - hasDocuments: {count: 0}
+        template: egateway/egateway-opensearch.yaml
   - it: uses explicit localhost origins for port forwards and hostname-only issuer
     template: egateway/egateway-configmap.yaml
     set:
