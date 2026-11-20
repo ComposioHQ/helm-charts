@@ -6,6 +6,7 @@ templates:
   - egateway/egateway-migrate-job.yaml
   - egateway/egateway-cronjobs.yaml
   - egateway/egateway-fusionauth.yaml
+  - egateway/egateway-opensearch.yaml
   - egateway/egateway-ingress.yaml
 tests:
   - it: should render nothing when egateway is disabled
@@ -540,3 +541,197 @@ tests:
           content:
             name: FUSIONAUTH_URL
             value: http://RELEASE-NAME-composio-egateway-fusionauth:9011
+
+  - it: should default FusionAuth to the bundled OpenSearch
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 1
+    set:
+      egateway.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SEARCH_TYPE
+            value: elasticsearch
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SEARCH_SERVERS
+            value: http://RELEASE-NAME-composio-egateway-opensearch:9200
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-opensearch
+      - equal:
+          path: spec.template.spec.containers[0].lifecycle.postStart.exec.command
+          value: ["sh", "/usr/local/fusionauth/kickstart/reindex-if-empty.sh"]
+
+  - it: should ship the reindex-if-empty script with the search engine
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["reindex-if-empty.sh"]
+          pattern: for index in fusionauth_user fusionauth_entity
+
+  - it: should skip the reindex hook when disabled
+    template: egateway/egateway-fusionauth.yaml
+    documentIndex: 1
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.reindexIfEmpty: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].lifecycle
+
+  - it: should use database search without OpenSearch when selected
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.engine: database
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SEARCH_TYPE
+            value: database
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - notExists:
+          path: spec.template.spec.containers[0].lifecycle
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - notExists:
+          path: data["reindex-if-empty.sh"]
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 0
+      - hasDocuments:
+          count: 0
+        template: egateway/egateway-opensearch.yaml
+
+  - it: should skip OpenSearch when bundled FusionAuth is disabled
+    template: egateway/egateway-opensearch.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should deploy a pinned, persistent single-node OpenSearch locked to FusionAuth
+    template: egateway/egateway-opensearch.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.opensearch.persistence.storageClass: gp3
+    asserts:
+      - hasDocuments:
+          count: 3
+      - isKind:
+          of: StatefulSet
+        documentIndex: 0
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^opensearchproject/opensearch:2\.11\.0@sha256:[0-9a-f]{64}$
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: discovery.type
+            value: single-node
+        documentIndex: 0
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.storageClassName
+          value: gp3
+        documentIndex: 0
+      - equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels["app.kubernetes.io/component"]
+          value: egateway-fusionauth
+        documentIndex: 2
+
+  - it: should use an OpenSearch image override
+    template: egateway/egateway-opensearch.yaml
+    documentIndex: 0
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.opensearch.image.imageName: mirror.example.com/opensearch:2.11.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: mirror.example.com/opensearch:2.11.0
+
+  - it: should use emptyDir and skip the NetworkPolicy when configured
+    template: egateway/egateway-opensearch.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.opensearch.persistence.enabled: false
+      egateway.fusionauth.search.opensearch.networkPolicy.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 2
+      - notExists:
+          path: spec.volumeClaimTemplates
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.volumes[0].emptyDir
+          value: {}
+        documentIndex: 0
+
+  - it: should read external search servers from the eGateway secret
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.serversSecretKey: FUSIONAUTH_SEARCH_SERVERS
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SEARCH_SERVERS
+            valueFrom:
+              secretKeyRef:
+                name: composio-composio-secrets
+                key: FUSIONAUTH_SEARCH_SERVERS
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - exists:
+          path: spec.template.spec.containers[0].lifecycle.postStart
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - hasDocuments:
+          count: 0
+        template: egateway/egateway-opensearch.yaml
+
+  - it: should use plain external search servers without bundling OpenSearch
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.servers: https://search.internal:443
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SEARCH_SERVERS
+            value: https://search.internal:443
+        template: egateway/egateway-fusionauth.yaml
+        documentIndex: 1
+      - hasDocuments:
+          count: 0
+        template: egateway/egateway-opensearch.yaml
+
+  - it: should reject an unknown search engine
+    template: egateway/egateway-fusionauth.yaml
+    set:
+      egateway.enabled: true
+      egateway.fusionauth.search.engine: opensearch
+    asserts:
+      - failedTemplate:
+          errorMessage: egateway.fusionauth.search.engine must be "database" or "elasticsearch", got "opensearch"

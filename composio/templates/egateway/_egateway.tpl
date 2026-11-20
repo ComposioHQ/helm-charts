@@ -27,6 +27,23 @@
 {{- printf "%s-egateway-fusionauth" (include "composio.fullname" .) -}}
 {{- end -}}
 
+{{- define "egateway.opensearchServiceName" -}}
+{{- printf "%s-egateway-opensearch" (include "composio.fullname" .) -}}
+{{- end -}}
+
+{{/* True when FusionAuth should use the bundled OpenSearch. */}}
+{{- define "egateway.bundledOpensearch" -}}
+{{- $s := .Values.egateway.fusionauth.search -}}
+{{- if and .Values.egateway.enabled .Values.egateway.fusionauth.enabled (eq $s.engine "elasticsearch") (not $s.servers) (not $s.serversSecretKey) -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/* FusionAuth SEARCH_SERVERS: explicit servers, else the bundled OpenSearch. */}}
+{{- define "egateway.searchServers" -}}
+{{- .Values.egateway.fusionauth.search.servers | default (printf "http://%s:9200" (include "egateway.opensearchServiceName" .)) -}}
+{{- end -}}
+
 {{- define "egateway.jwksServiceName" -}}
 {{- printf "%s-egateway-jwks" (include "composio.fullname" .) -}}
 {{- end -}}

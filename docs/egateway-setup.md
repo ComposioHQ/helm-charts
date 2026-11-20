@@ -9,6 +9,7 @@ rest of the Composio stack:
 | `egateway-admin` | 3002 | Admin dashboard (Next.js) |
 | `egateway-proxy` | 3001 | MCP proxy that AI clients connect to |
 | `egateway-fusionauth` | 9011 | Bundled FusionAuth identity provider |
+| `egateway-opensearch` | 9200 | FusionAuth user search (single-node OpenSearch StatefulSet; omitted with external servers or `database` search) |
 | `egateway-migrate` | — | Prisma migrations (pre-install/pre-upgrade hook) |
 | `egw-*` CronJobs | — | Scheduled admin jobs (formerly Vercel crons) |
 
@@ -46,6 +47,7 @@ Add these keys to the core secret (`secret.name`), or to a dedicated secret set 
 | `FUSIONAUTH_DATABASE_PASSWORD` | Password of the Postgres user for `fusionauthdb` |
 | `COMPOSIO_JWT_PRIVATE_KEY` | Only with `egateway.composioAuth.mode: jwt`: PEM RSA private key, 2048 bits or more |
 | `FUSIONAUTH_LICENSE_ID` | Optional. FusionAuth license ID, read when `egateway.fusionauth.license.enabled` is `true` |
+| `FUSIONAUTH_SEARCH_SERVERS` | Optional. External search URL(s), read when `egateway.fusionauth.search.serversSecretKey` names this key, e.g. `https://user:pass@search.example.com:443` |
 | `ANALYTICS_PAYLOAD_ENCRYPTION_SECRET` | Random string, at least 16 characters, different from `COMPOSIO_API_KEY_ENCRYPTION_SECRET`. Encrypts audit payloads; required by admin images built from composio-enterprise#1970 onward |
 
 ### Example values
@@ -186,6 +188,19 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
 - The FusionAuth image is pinned by digest. For air-gapped installs, mirror it and set
   `egateway.fusionauth.image.imageName`; the pod uses the same image pull secrets as the
   other gateway components.
+- FusionAuth needs a search engine for the admin People page: org-admin roles, name/email
+  search and team counts send Elasticsearch queries, which FusionAuth's `database` engine
+  rejects ("Org-admin status is temporarily unavailable"). By default the chart deploys a
+  single-node OpenSearch on a 10Gi PVC (`egateway.fusionauth.search.opensearch`), reachable
+  only from FusionAuth through a NetworkPolicy. To use a managed domain instead (required
+  on Fargate, which has no EBS volumes), set `egateway.fusionauth.search.servers`, or
+  `serversSecretKey` when the URL holds credentials. FusionAuth supports basic
+  authentication, not AWS SigV4, so an AWS domain needs fine-grained access control with a
+  master user. `engine: database` keeps the old behaviour without extra infrastructure.
+- A new or wiped search index is empty, so searches succeed with zero results. On each start
+  the FusionAuth pod checks the user index and, if empty, rebuilds the user and entity
+  indexes from Postgres (`egateway.fusionauth.search.reindexIfEmpty`). Rebuild by hand with
+  `POST /api/system/reindex` (`{"index": "fusionauth_user"}`, then `fusionauth_entity`).
 - Set `egateway.fusionauth.enabled: false` to use an existing FusionAuth instance, and pass
   its URLs through `egateway.admin.extraEnv` / `egateway.proxy.extraEnv`.
 
