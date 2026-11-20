@@ -197,6 +197,10 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
   `serversSecretKey` when the URL holds credentials. FusionAuth supports basic
   authentication, not AWS SigV4, so an AWS domain needs fine-grained access control with a
   master user. `engine: database` keeps the old behaviour without extra infrastructure.
+  The Managed VPC Fargate profile selects `database` until the deployment runner
+  configures an external domain. With that profile, external search requires
+  `engine: elasticsearch` and either `servers` or `serversSecretKey`; bundled
+  persistent search storage is not supported on Fargate.
 - A new or wiped search index is empty, so searches succeed with zero results. On each start
   the FusionAuth pod checks the user index and, if empty, rebuilds the user and entity
   indexes from Postgres (`egateway.fusionauth.search.reindexIfEmpty`). Rebuild by hand with

@@ -30,6 +30,11 @@ minio:
   enabled: false
 weaviate:
   enabled: false
+egateway:
+  fusionauth:
+    search:
+      # The runner selects external search when installation.search is configured.
+      engine: database
 features:
   temporal: false
 thermosMiscWorkers:
