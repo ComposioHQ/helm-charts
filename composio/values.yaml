@@ -1615,6 +1615,68 @@ egateway:
       limits:
         memory: "2Gi"
         cpu: "1"
+    # FusionAuth user search engine.
+    # The admin People page (org-admin roles, name/email search, team counts)
+    # sends Elasticsearch JSON queries to /api/user/search. The "database"
+    # engine rejects those with SearchByQueryUnsupportedException (HTTP 400), so
+    # those features stay degraded on it. FusionAuth Cloud runs on OpenSearch.
+    search:
+      # -- Search engine: "elasticsearch" (Elasticsearch or OpenSearch; the
+      # bundled OpenSearch unless servers/serversSecretKey is set) or "database"
+      # (no extra infra, but the People page loses org-admin roles, search and counts)
+      engine: elasticsearch
+      # -- Search server URL(s) for engine=elasticsearch, comma-separated, e.g. an
+      # AWS OpenSearch Service endpoint. Leave empty to use the bundled OpenSearch.
+      # Put URLs with credentials (https://user:pass@host:443) in serversSecretKey.
+      servers: ""
+      # -- Key in egateway.secretRef holding the search server URL(s). Overrides
+      # servers; use it when the URL carries credentials
+      serversSecretKey: ""
+      # -- On pod start, rebuild the search index when it is empty. Switching
+      # engine leaves the new index empty, and searches then succeed with zero
+      # results (the People page shows no org admins).
+      reindexIfEmpty: true
+      # Bundled single-node OpenSearch, used when engine=elasticsearch and no
+      # servers are set. It holds a rebuildable copy of user records (Postgres
+      # stays the source of truth), so losing it costs only a reindex. It needs a
+      # persistent volume; on Fargate point servers at a managed domain instead.
+      opensearch:
+        image:
+          repository: opensearchproject/opensearch
+          # -- Version tested against FusionAuth 1.67 in composio-enterprise CI
+          tag: "2.11.0"
+          # -- Image digest pinned with the tag. Clear it to pull by tag only.
+          digest: "sha256:2f49c399988df5c9a3b25a05ec78ea75ac4b39ae76e1d2609f94a653224bb24b"
+          pullPolicy: IfNotPresent
+          # -- Full image reference (optional, overrides repository/tag/digest), e.g. a private mirror
+          imageName: ""
+        # -- JVM heap. Keep at roughly half of the memory limit
+        javaOpts: "-Xms512m -Xmx512m"
+        persistence:
+          # -- Persist the index on a PVC (otherwise emptyDir, reindexed on restart)
+          enabled: true
+          # -- Size of persistent volume
+          size: "10Gi"
+          # -- Storage class name (empty for default)
+          storageClass: ""
+        # -- Restrict OpenSearch ingress to FusionAuth pods. OpenSearch runs
+        # without authentication, so keep this on unless your CNI ignores
+        # NetworkPolicy and you isolate it another way
+        networkPolicy:
+          enabled: true
+        # -- Container security context for OpenSearch (the image runs as uid 1000)
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
 
 # Managed database certificate verification for workloads and migration hooks.
 databaseTls:

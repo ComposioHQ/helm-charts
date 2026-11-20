@@ -1,0 +1,151 @@
+{{- if include "egateway.bundledOpensearch" . }}
+{{- $os := .Values.egateway.fusionauth.search.opensearch }}
+{{- $name := include "egateway.opensearchServiceName" . }}
+# Single-node OpenSearch backing FusionAuth user search. It holds a rebuildable
+# copy of user records (Postgres stays the source of truth); FusionAuth's
+# reindex-if-empty hook repopulates it if the volume is lost.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-opensearch
+spec:
+  serviceName: {{ $name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: egateway-opensearch
+  template:
+    metadata:
+      labels:
+        {{- include "composio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: egateway-opensearch
+    spec:
+      {{- include "egateway.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: opensearch
+          {{- if $os.image.imageName }}
+          image: {{ $os.image.imageName | quote }}
+          {{- else if $os.image.digest }}
+          image: {{ printf "%s:%s@%s" $os.image.repository $os.image.tag $os.image.digest | quote }}
+          {{- else }}
+          image: {{ printf "%s:%s" $os.image.repository $os.image.tag | quote }}
+          {{- end }}
+          imagePullPolicy: {{ $os.image.pullPolicy }}
+          {{- with $os.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 9200
+          env:
+            - name: cluster.name
+              value: fusionauth
+            - name: discovery.type
+              value: single-node
+            # In-cluster only and restricted by the NetworkPolicy below.
+            - name: plugins.security.disabled
+              value: "true"
+            - name: DISABLE_INSTALL_DEMO_CONFIG
+              value: "true"
+            # Avoids requiring vm.max_map_count=262144 on the nodes.
+            - name: node.store.allow_mmap
+              value: "false"
+            - name: OPENSEARCH_JAVA_OPTS
+              value: {{ $os.javaOpts | quote }}
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            {{- toYaml $os.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/opensearch/data
+      {{- if not $os.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if $os.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "composio.selectorLabels" . | nindent 10 }}
+          app.kubernetes.io/component: egateway-opensearch
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ $os.persistence.size }}
+        {{- if $os.persistence.storageClass }}
+        storageClassName: {{ $os.persistence.storageClass }}
+        {{- end }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-opensearch
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
+  selector:
+    {{- include "composio.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-opensearch
+{{- if $os.networkPolicy.enabled }}
+---
+# OpenSearch runs without authentication: only FusionAuth may reach it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "composio.namespace" . }}
+  labels:
+    {{- include "composio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: egateway-opensearch
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "composio.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: egateway-opensearch
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "composio.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: egateway-fusionauth
+      ports:
+        - port: 9200
+          protocol: TCP
+{{- end }}
+{{- end }}

@@ -4,6 +4,12 @@
 {{- $dbPort := $fa.database.port | default .Values.databaseMigration.port }}
 {{- $dbUser := $fa.database.user | default .Values.databaseMigration.user }}
 {{- $secret := include "egateway.secretName" . }}
+{{- $search := $fa.search }}
+{{- if not (has $search.engine (list "database" "elasticsearch")) }}
+{{- fail (printf "egateway.fusionauth.search.engine must be \"database\" or \"elasticsearch\", got %q" $search.engine) }}
+{{- end }}
+{{- $useSearchEngine := eq $search.engine "elasticsearch" }}
+{{- $reindex := and $useSearchEngine $search.reindexIfEmpty }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -62,6 +68,34 @@ data:
         }
       ]
     }
+  {{- if $reindex }}
+  # postStart hook (search engine only). A new or wiped index is empty, and
+  # searches against it succeed with zero results, so the People page would
+  # show no org admins. When the user index is empty, rebuild the user and
+  # entity indexes from Postgres. Always exits 0: a failing postStart hook
+  # kills the container.
+  reindex-if-empty.sh: |
+    FA=http://localhost:9011
+    i=0
+    until curl -sf -o /dev/null "$FA/api/status"; do
+      i=$((i+1)); [ "$i" -ge 120 ] && exit 0; sleep 5
+    done
+    total=$(curl -sf -H "Authorization: $FUSIONAUTH_API_KEY" \
+      "$FA/api/user/search?queryString=*&numberOfResults=1&accurateTotal=true" \
+      | grep -o '"total":[0-9]*' | cut -d: -f2)
+    [ "$total" = "0" ] || exit 0
+    echo "FusionAuth search index is empty; reindexing users and entities" > /proc/1/fd/1
+    for index in fusionauth_user fusionauth_entity; do
+      i=0
+      # One reindex at a time: FusionAuth answers 400 while another runs.
+      until [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+          -H "Authorization: $FUSIONAUTH_API_KEY" -H 'Content-Type: application/json' \
+          -d "{\"index\":\"$index\"}" "$FA/api/system/reindex")" = "202" ]; do
+        i=$((i+1)); [ "$i" -ge 60 ] && break; sleep 5
+      done
+    done
+    exit 0
+  {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -99,6 +133,20 @@ spec:
       {{- with $fa.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if include "egateway.bundledOpensearch" . }}
+      initContainers:
+        # FusionAuth needs the search engine reachable at startup.
+        - name: wait-for-opensearch
+          image: {{ .Values.egateway.cronJobs.image | quote }}
+          {{- with $fa.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          command:
+            - sh
+            - -c
+            - until curl -sf -o /dev/null {{ include "egateway.searchServers" . }}/_cluster/health; do echo waiting for opensearch; sleep 5; done
       {{- end }}
       containers:
         - name: fusionauth
@@ -158,9 +206,25 @@ spec:
             - name: FUSIONAUTH_APP_URL
               value: "http://localhost:9011"
             - name: SEARCH_TYPE
-              value: "database"
+              value: {{ $search.engine | quote }}
+            {{- if and $useSearchEngine $search.serversSecretKey }}
+            - name: SEARCH_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: {{ $search.serversSecretKey }}
+            {{- else if $useSearchEngine }}
+            - name: SEARCH_SERVERS
+              value: {{ include "egateway.searchServers" . | quote }}
+            {{- end }}
             - name: FUSIONAUTH_APP_KICKSTART_FILE
               value: /usr/local/fusionauth/kickstart/kickstart.json
+          {{- if $reindex }}
+          lifecycle:
+            postStart:
+              exec:
+                command: ["sh", "/usr/local/fusionauth/kickstart/reindex-if-empty.sh"]
+          {{- end }}
           volumeMounts:
             {{- include "composio.databaseTlsMount" . | nindent 12 }}
             - name: kickstart
