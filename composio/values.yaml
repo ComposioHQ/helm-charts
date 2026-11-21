@@ -1428,6 +1428,11 @@ egateway:
     auth: ""
   # -- Composio backend URL. Defaults to the in-cluster Apollo service.
   composioBaseUrl: ""
+  # -- How the admin dashboard starts a connected account: `initiate` (calls
+  # Composio's initiate API and redirects users straight to the provider) or
+  # `link` (Composio's hosted Connect page, which needs the Composio frontend).
+  # `initiate` needs an auth config per toolkit; OAuth toolkits only.
+  connectFlow: initiate
   composioAuth:
     # -- How the gateway authenticates to Composio (Apollo): `api_key` (each org
     # stores an `ak_` project key, entered during onboarding) or `jwt` (an org

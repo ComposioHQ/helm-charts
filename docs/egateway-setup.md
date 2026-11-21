@@ -147,6 +147,11 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
 - Admin and proxy run with `SENTRY_ENABLED`, `DATADOG_ENABLED` and `RESEND_ENABLED` set to
   `false`, so those SaaS integrations are off and their settings are not required. Without Resend, invite
   and password-reset emails are not sent.
+- Connected accounts use Composio's initiate API (`egateway.connectFlow: initiate`, the
+  default): users go straight to the provider's consent screen instead of Composio's hosted
+  Connect page, which self-hosted installs don't run. Every toolkit members connect needs an
+  auth config (org or team) with your own OAuth app; API-key toolkits can't be connected
+  this way yet.
 - The proxy only accepts requests for hosts in `ALLOWED_HOSTS` and will not start without
   it. The chart sets it to the proxy host and the proxy Service name; override with
   `egateway.proxy.allowedHosts`.
