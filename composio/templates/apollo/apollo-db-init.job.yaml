@@ -94,6 +94,9 @@ spec:
               value: "true"
             - name: SELF_HOSTED
               value: "true"
+            {{- with .Values.apollo.dbInit.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             {{- include "composio.databaseTlsMount" . | nindent 12 }}
             - name: apollo-secrets

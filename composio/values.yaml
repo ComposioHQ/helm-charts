@@ -165,6 +165,8 @@ apollo:
   dbInit:
     # -- Enable database initialization
     enabled: true
+    # -- Additional Kubernetes env entries for the Apollo DB-init container (supports value and valueFrom).
+    env: []
     databaseSecret:
       # -- Existing Secret containing migration-only credentials. Empty retains the core-secret fallback.
       name: ""
