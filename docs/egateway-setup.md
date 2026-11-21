@@ -15,7 +15,7 @@ rest of the Composio stack:
 
 The gateway talks to the in-cluster Composio backend (`<release>-apollo:9900`) by default.
 
-> **Images:** the chart pins `composio-self-host/egateway-{admin,proxy,migrate}` to `e19746e698b6d38238bc97c7d460bc313536ce16`
+> **Images:** the chart pins `composio-self-host/egateway-{admin,proxy,migrate}` to `f7e51a7863a176fa667262878dcf040dae7af469`
 > (from composio-enterprise#1970, not yet merged). Later images come from
 > `publish-self-host-images.yml` in composio-enterprise. They are built from
 > `apps/admin/Dockerfile`, `apps/proxy/Dockerfile` and `packages/db/Dockerfile`, and all
@@ -147,6 +147,11 @@ kubectl -n <namespace> exec deploy/<release>-composio-egateway-admin -- \
 - Admin and proxy run with `SENTRY_ENABLED`, `DATADOG_ENABLED` and `RESEND_ENABLED` set to
   `false`, so those SaaS integrations are off and their settings are not required. Without Resend, invite
   and password-reset emails are not sent.
+- Connected accounts use Composio's initiate API (`egateway.connectFlow: initiate`, the
+  default): users go straight to the provider's consent screen instead of Composio's hosted
+  Connect page, which self-hosted installs don't run. Every toolkit members connect needs an
+  auth config (org or team) with your own OAuth app; API-key toolkits can't be connected
+  this way yet.
 - The proxy only accepts requests for hosts in `ALLOWED_HOSTS` and will not start without
   it. The chart sets it to the proxy host and the proxy Service name; override with
   `egateway.proxy.allowedHosts`.

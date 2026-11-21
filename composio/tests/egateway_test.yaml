@@ -36,6 +36,9 @@ tests:
           path: data.COMPOSIO_BASE_URL
           value: http://RELEASE-NAME-apollo:9900
       - equal:
+          path: data.COMPOSIO_CONNECT_FLOW
+          value: initiate
+      - equal:
           path: data.AUTH_PUBLIC_URL
           value: https://egateway.customer.example.com
       - equal:
@@ -61,6 +64,26 @@ tests:
       - equal:
           path: data.COMPOSIO_BASE_URL
           value: https://composio.acme.io
+
+  - it: should allow the link connect flow
+    template: egateway/egateway-configmap.yaml
+    set:
+      egateway.enabled: true
+      egateway.connectFlow: link
+    asserts:
+      - equal:
+          path: data.COMPOSIO_CONNECT_FLOW
+          value: link
+
+  - it: should reject an unknown connect flow
+    # The ConfigMap validation surfaces through the proxy's checksum include.
+    template: egateway/egateway-proxy.yaml
+    set:
+      egateway.enabled: true
+      egateway.connectFlow: hosted
+    asserts:
+      - failedTemplate:
+          errorMessage: 'egateway.connectFlow must be initiate or link, got "hosted"'
 
   - it: should read admin secrets from the core secret by default
     template: egateway/egateway-admin.yaml
