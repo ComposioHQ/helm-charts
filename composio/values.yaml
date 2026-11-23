@@ -1428,6 +1428,11 @@ egateway:
     auth: ""
   # -- Composio backend URL. Defaults to the in-cluster Apollo service.
   composioBaseUrl: ""
+  # -- How the admin dashboard starts a connected account: `initiate` (calls
+  # Composio's initiate API and redirects users straight to the provider) or
+  # `link` (Composio's hosted Connect page, which needs the Composio frontend).
+  # `initiate` needs an auth config per toolkit; OAuth toolkits only.
+  connectFlow: initiate
   composioAuth:
     # -- How the gateway authenticates to Composio (Apollo): `api_key` (each org
     # stores an `ak_` project key, entered during onboarding) or `jwt` (an org
@@ -1466,7 +1471,7 @@ egateway:
     image:
       # -- Admin image repository
       repository: composio-self-host/egateway-admin
-      tag: "e19746e698b6d38238bc97c7d460bc313536ce16"
+      tag: "8e227823e8ff45c9100f3665c9ea6f37952ab7db"
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)
       imageName: ""
@@ -1490,7 +1495,7 @@ egateway:
     image:
       # -- Proxy image repository
       repository: composio-self-host/egateway-proxy
-      tag: "e19746e698b6d38238bc97c7d460bc313536ce16"
+      tag: "8e227823e8ff45c9100f3665c9ea6f37952ab7db"
       pullPolicy: Always
       imageName: ""
     resources:
@@ -1523,7 +1528,7 @@ egateway:
     image:
       # -- Migrate image repository
       repository: composio-self-host/egateway-migrate
-      tag: "e19746e698b6d38238bc97c7d460bc313536ce16"
+      tag: "8e227823e8ff45c9100f3665c9ea6f37952ab7db"
       pullPolicy: Always
       imageName: ""
   cronJobs:

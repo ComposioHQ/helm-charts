@@ -3,6 +3,10 @@
 {{- if not (has $authMode (list "api_key" "jwt")) }}
 {{- fail (printf "egateway.composioAuth.mode must be api_key or jwt, got %q" $authMode) }}
 {{- end }}
+{{- $connectFlow := .Values.egateway.connectFlow | default "initiate" }}
+{{- if not (has $connectFlow (list "initiate" "link")) }}
+{{- fail (printf "egateway.connectFlow must be initiate or link, got %q" $connectFlow) }}
+{{- end }}
 {{- if include "egateway.composioJwtEnabled" . }}
 {{- if not .Values.egateway.composioAuth.jwt.keyId }}
 {{- fail "egateway.composioAuth.jwt.keyId is required when egateway.composioAuth.mode is jwt" }}
@@ -43,6 +47,9 @@ data:
   FUSIONAUTH_ADMIN_REDIRECT_URL: {{ printf "%s/api/auth/callback" (include "egateway.publicUrl" (dict "name" "admin" "context" .)) | quote }}
   COMPOSIO_BASE_URL: {{ include "egateway.composioBaseUrl" . | quote }}
   COMPOSIO_AUTH_MODE: {{ $authMode | quote }}
+  # `initiate` sends users straight to the provider; `link` needs Composio's
+  # hosted Connect page, which self-hosted installs don't run.
+  COMPOSIO_CONNECT_FLOW: {{ $connectFlow | quote }}
   {{- if include "egateway.composioJwtEnabled" . }}
   COMPOSIO_JWT_KEY_ID: {{ .Values.egateway.composioAuth.jwt.keyId | quote }}
   COMPOSIO_JWT_ISSUER: {{ include "egateway.composioJwtIssuer" . | quote }}
