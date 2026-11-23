@@ -59,9 +59,7 @@ concurrency:
   group: nighty-release-${{ github.event.inputs.release_type || 'standard' }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 env:
   AWS_REGION: us-east-1
@@ -73,6 +71,8 @@ env:
 jobs:
   release-config:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       release_type: ${{ steps.config.outputs.release_type }}
       channel_name: ${{ steps.config.outputs.channel_name }}
@@ -221,6 +221,9 @@ jobs:
       - name: Resolve latest digest and retag
         id: retag
         shell: bash
+        env:
+          NEW_TAG: ${{ steps.calculate_release_tag.outputs.release_tag }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
         run: |
           set -euo pipefail
 
@@ -229,8 +232,7 @@ jobs:
             exit 1
           fi
 
-          NEW_TAG="${{ steps.calculate_release_tag.outputs.release_tag }}"
-          echo "Using release tag from latest Replicated ${{ needs.release-config.outputs.channel_name }} calculation: ${NEW_TAG}"
+          echo "Using release tag from latest Replicated ${RELEASE_CHANNEL_NAME} calculation: ${NEW_TAG}"
           echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
 
           resolve_source_tag() {
@@ -256,7 +258,8 @@ jobs:
 
           results='[]'
 
-          for repo in ${IMAGE_REPOS}; do
+          read -r -a image_repos <<< "${IMAGE_REPOS}"
+          for repo in "${image_repos[@]}"; do
             SOURCE_TAG="$(resolve_source_tag "${repo}")"
             echo "Resolving composio-self-host/${repo} from tag: ${SOURCE_TAG} → will publish tag: ${NEW_TAG}"
 
@@ -346,9 +349,12 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Print outputs
+        env:
+          RELEASE_TAG: ${{ steps.retag.outputs.release_tag }}
+          RETAGGED_IMAGES: ${{ steps.retag.outputs.retagged_images }}
         run: |
-          echo "release_tag: ${{ steps.retag.outputs.release_tag }}"
-          echo "retagged_images: ${{ steps.retag.outputs.retagged_images }}"
+          echo "release_tag: ${RELEASE_TAG}"
+          echo "retagged_images: ${RETAGGED_IMAGES}"
 
   cve-scan:
     needs:
@@ -388,13 +394,18 @@ jobs:
           ref: release-stable
 
       - name: Set branch name
+        env:
+          BRANCH_PREFIX: ${{ needs.release-config.outputs.branch_prefix }}
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
         id: branch
         run: |
-          echo "branch_name=${{ needs.release-config.outputs.branch_prefix }}-${{ needs.retag-latest-images.outputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          echo "branch_name=${BRANCH_PREFIX}-${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Create release branch
+        env:
+          BRANCH_NAME: ${{ steps.branch.outputs.branch_name }}
         run: |
-          git checkout -B "${{ steps.branch.outputs.branch_name }}"
+          git checkout -B "${BRANCH_NAME}"
 
       - name: Install yq
         uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d
@@ -438,17 +449,19 @@ jobs:
           helm template composio ./composio
 
       - name: Update Chart.yaml versions
+        env:
+          NEW_VERSION: ${{ needs.retag-latest-images.outputs.new_version }}
         run: |
           cd ./composio
-          export NEW_VERSION="${{ needs.retag-latest-images.outputs.new_version }}"
           yq eval -i '.appVersion = strenv(NEW_VERSION)' ./Chart.yaml
           yq eval -i '.version = strenv(NEW_VERSION)' ./Chart.yaml
           echo "Updated Chart.yaml"
 
       - name: Update manifest versions
+        env:
+          NEW_VERSION: ${{ needs.retag-latest-images.outputs.new_version }}
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
         run: |
-          export NEW_VERSION="${{ needs.retag-latest-images.outputs.new_version }}"
-          export RELEASE_TAG="${{ needs.retag-latest-images.outputs.release_tag }}"
 
           cd ./composio
           yq eval -i '.apollo.image.tag = strenv(RELEASE_TAG)' ./values.yaml
@@ -469,12 +482,15 @@ jobs:
           echo "Updated manifest files and composio values"
 
       - name: Commit release updates
+        env:
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
+          BRANCH_NAME: ${{ steps.branch.outputs.branch_name }}
         run: |
           set -euo pipefail
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
           git add composio/Chart.yaml composio/values.yaml manifests/k8s-app.yaml manifests/composio.yaml
-          git commit --signoff -m "chore: ${{ needs.release-config.outputs.channel_name }} release ${{ steps.branch.outputs.branch_name }}"
+          git commit --signoff -m "chore: ${RELEASE_CHANNEL_NAME} release ${BRANCH_NAME}"
 
       - name: Clean old packages
         run: |
@@ -482,6 +498,9 @@ jobs:
           rm -f ./manifests/*.tgz
 
       - name: Package and create Replicated release
+        env:
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
+          NEW_VERSION: ${{ needs.retag-latest-images.outputs.new_version }}
         run: |
           set -euo pipefail
           echo "Packaging Helm chart..."
@@ -489,14 +508,16 @@ jobs:
           echo "Creating Replicated release..."
           replicated release create \
           --yaml-dir manifests \
-          --promote "${{ needs.release-config.outputs.channel_name }}" \
-          --version "${{ needs.retag-latest-images.outputs.new_version }}"
+          --promote "${RELEASE_CHANNEL_NAME}" \
+          --version "${NEW_VERSION}"
 
       - name: Push release branch
+        env:
+          BRANCH_NAME: ${{ steps.branch.outputs.branch_name }}
         if: success()
         run: |
           set -euo pipefail
-          git push --force-with-lease origin "${{ steps.branch.outputs.branch_name }}"
+          git push --force-with-lease origin "${BRANCH_NAME}"
 
   create-nightly-release-pr:
     if: ${{ always() && needs.replicated-release.result == 'success' }}
@@ -566,6 +587,13 @@ jobs:
           echo "expires_at=${expires_at}" >> "${GITHUB_OUTPUT}"
 
       - name: Create release PR
+        env:
+          RELEASE_BRANCH: ${{ needs.replicated-release.outputs.branch_name }}
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
+          RELEASE_VERSION: ${{ needs.replicated-release.outputs.version }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
+          CVE_SCAN_RESULT_JSON: ${{ toJSON(needs.cve-scan.outputs.scan_result) }}
+          CVE_FAILURE_SUMMARY_JSON: ${{ toJSON(needs.cve-scan.outputs.failure_summary) }}
         id: create_pr
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -574,12 +602,12 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const base = context.payload.repository.default_branch;
-            const head = "${{ needs.replicated-release.outputs.branch_name }}";
-            const releaseTag = "${{ needs.retag-latest-images.outputs.release_tag }}";
-            const version = "${{ needs.replicated-release.outputs.version }}";
-            const channelName = "${{ needs.release-config.outputs.channel_name }}";
-            const cveScanResult = ${{ toJSON(needs.cve-scan.outputs.scan_result) }};
-            const cveFailureSummary = ${{ toJSON(needs.cve-scan.outputs.failure_summary) }};
+            const head = process.env.RELEASE_BRANCH;
+            const releaseTag = process.env.RELEASE_TAG;
+            const version = process.env.RELEASE_VERSION;
+            const channelName = process.env.RELEASE_CHANNEL_NAME;
+            const cveScanResult = JSON.parse(process.env.CVE_SCAN_RESULT_JSON);
+            const cveFailureSummary = JSON.parse(process.env.CVE_FAILURE_SUMMARY_JSON);
             const cveLine = cveScanResult === "success"
               ? "Grype CVE scan completed cleanly"
               : cveScanResult
@@ -635,6 +663,12 @@ jobs:
             core.setOutput("pr_number", String(pr.number));
 
       - name: Ensure GitHub release exists
+        env:
+          RELEASE_TAG: ${{ needs.retag-latest-images.outputs.release_tag }}
+          NIGHTLY_HEAD_SHA: ${{ steps.nightly_head.outputs.sha }}
+          RELEASE_VERSION: ${{ needs.replicated-release.outputs.version }}
+          PR_URL: ${{ steps.create_pr.outputs.pr_url }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
         id: github_release
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -642,11 +676,11 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const tag_name = "${{ needs.retag-latest-images.outputs.release_tag }}";
-            const target_commitish = "${{ steps.nightly_head.outputs.sha }}";
-            const version = "${{ needs.replicated-release.outputs.version }}";
-            const prUrl = "${{ steps.create_pr.outputs.pr_url }}";
-            const channelName = "${{ needs.release-config.outputs.channel_name }}";
+            const tag_name = process.env.RELEASE_TAG;
+            const target_commitish = process.env.NIGHTLY_HEAD_SHA;
+            const version = process.env.RELEASE_VERSION;
+            const prUrl = process.env.PR_URL;
+            const channelName = process.env.RELEASE_CHANNEL_NAME;
             const body = [
               `${channelName} image tag **\`${tag_name}\`** (Helm / Replicated appVersion **${version}**).`,
               "",
@@ -705,6 +739,8 @@ jobs:
           path: downloaded-cve-reports
 
       - name: Attach CVE baseline to GitHub release
+        env:
+          RELEASE_ID: ${{ steps.github_release.outputs.release_id }}
         if: ${{ steps.github_release.outputs.release_id != '' && hashFiles('downloaded-cve-reports/finding-details.json') != '' }}
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -713,7 +749,7 @@ jobs:
             const fs = require("fs");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const release_id = Number("${{ steps.github_release.outputs.release_id }}");
+            const release_id = Number(process.env.RELEASE_ID);
             const name = "release-cve-baseline.json";
             const data = fs.readFileSync("downloaded-cve-reports/finding-details.json");
 
@@ -749,6 +785,8 @@ jobs:
             }
 
       - name: Publish GitHub release
+        env:
+          RELEASE_ID: ${{ steps.github_release.outputs.release_id }}
         if: ${{ steps.github_release.outputs.release_id != '' }}
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
@@ -756,7 +794,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const release_id = Number("${{ steps.github_release.outputs.release_id }}");
+            const release_id = Number(process.env.RELEASE_ID);
 
             await github.rest.repos.updateRelease({
               owner,
@@ -838,11 +876,14 @@ jobs:
           bash .github/scripts/run-onprem-test-harness.sh
 
       - name: Fail if any onprem-testbed harness failed
+        env:
+          FRESH_OUTCOME: ${{ steps.fresh.outcome }}
+          UPGRADE_OUTCOME: ${{ steps.upgrade.outcome }}
         if: ${{ steps.fresh.outcome != 'success' || steps.upgrade.outcome != 'success' }}
         shell: bash
         run: |
-          echo "Fresh-install harness outcome: ${{ steps.fresh.outcome }}" >&2
-          echo "Upgrade harness outcome: ${{ steps.upgrade.outcome }}" >&2
+          echo "Fresh-install harness outcome: ${FRESH_OUTCOME}" >&2
+          echo "Upgrade harness outcome: ${UPGRADE_OUTCOME}" >&2
           exit 1
 
   notify-nightly-report:
