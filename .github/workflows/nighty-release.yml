@@ -221,6 +221,9 @@ jobs:
       - name: Resolve latest digest and retag
         id: retag
         shell: bash
+        env:
+          NEW_TAG: ${{ steps.calculate_release_tag.outputs.release_tag }}
+          RELEASE_CHANNEL_NAME: ${{ needs.release-config.outputs.channel_name }}
         run: |
           set -euo pipefail
 
@@ -229,8 +232,7 @@ jobs:
             exit 1
           fi
 
-          NEW_TAG="${{ steps.calculate_release_tag.outputs.release_tag }}"
-          echo "Using release tag from latest Replicated ${{ needs.release-config.outputs.channel_name }} calculation: ${NEW_TAG}"
+          echo "Using release tag from latest Replicated ${RELEASE_CHANNEL_NAME} calculation: ${NEW_TAG}"
           echo "release_tag=${NEW_TAG}" >> "${GITHUB_OUTPUT}"
 
           resolve_source_tag() {
@@ -256,7 +258,8 @@ jobs:
 
           results='[]'
 
-          for repo in ${IMAGE_REPOS}; do
+          read -r -a image_repos <<< "${IMAGE_REPOS}"
+          for repo in "${image_repos[@]}"; do
             SOURCE_TAG="$(resolve_source_tag "${repo}")"
             echo "Resolving composio-self-host/${repo} from tag: ${SOURCE_TAG} → will publish tag: ${NEW_TAG}"
 
