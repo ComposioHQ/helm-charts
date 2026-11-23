@@ -170,7 +170,7 @@ apollo:
       # -- Database init image repository (used when imageName is not set)
       repository: composio-self-host/apollo-db-init
       # -- Database init image tag
-      tag: "r20260701_02-p20261102_05"
+      tag: "89644eea12fd3a27286a54c594c723dd872fc50d"
       # -- Image pull policy
       pullPolicy: Always
       # -- Full image name (optional, overrides repository:tag if set)

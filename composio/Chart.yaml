@@ -2,8 +2,8 @@ apiVersion: v2
 name: composio
 description: A Helm chart for Composio
 type: application
-version: "0.2.87-glean.40"
-appVersion: "0.2.87-glean.40"
+version: "0.2.87-glean.45"
+appVersion: "0.2.87-glean.45"
 dependencies:
   - name: temporal
     alias: temporal
