@@ -2,17 +2,10 @@
 
 set -euo pipefail
 
-release_type="${RELEASE_TYPE:-standard}"
+release_type="${RELEASE_TYPE:-}"
 version_prefix=""
 
 case "${release_type}" in
-  standard)
-    channel_name="Nightly"
-    channel_id="397k1WtPrJ1J56bhb70SfeKGcxL"
-    chart_oci_ref="oci://registry.composio.io/composio-rodent/nightly/composio"
-    tag_calculation_mode="standard"
-    branch_prefix="nightly"
-    ;;
   glean)
     channel_name="Glean-Stable"
     channel_id="3GwShNBOwcf13Bs7i5pfn3N8TDh"
