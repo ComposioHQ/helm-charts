@@ -18,9 +18,18 @@ suite: test postgres preflight secret checks
 templates:
   - preflight-checks/preflight-db-connection.yaml
 tests:
+  - it: should not create postgres preflight when database migration is disabled
+    set:
+      databaseMigration.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
   - it: should disable Kubernetes secret checks in postgres preflight
     set:
       databaseMigration.enabled: true
+      databaseMigration.hostSecret.key: PG_HOST
+      databaseMigration.userSecret.key: PG_USER
       global.disableK8SecretCheck: true
     asserts:
       - matchRegex:
@@ -29,6 +38,84 @@ tests:
       - matchRegex:
           path: stringData["preflight.yaml"]
           pattern: '(?s)analyzers:\s*\[\]'
+
+  - it: should use literal host and user when secret keys are empty
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.host: postgres.internal
+      databaseMigration.user: migration-user
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGHOST\s+value: "postgres.internal"'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGUSER\s+value: "migration-user"'
+      - notMatchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'PostgreSQL (host|user) secret present'
+
+  - it: should prefer secret keys and check their presence for host and user
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.host: unused-host
+      databaseMigration.user: unused-user
+      databaseMigration.hostSecret.key: PG_HOST
+      databaseMigration.userSecret.key: PG_USER
+      secret.name: postgres-credentials
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGHOST\s+valueFrom:\s+secretKeyRef:\s+name: "postgres-credentials"\s+key: "PG_HOST"\s+optional: true'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGUSER\s+valueFrom:\s+secretKeyRef:\s+name: "postgres-credentials"\s+key: "PG_USER"\s+optional: true'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'key: "PG_HOST"\s+includeValue: false'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'key: "PG_USER"\s+includeValue: false'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'checkName: "PostgreSQL host secret present"\s+secretName: "postgres-credentials"\s+namespace: "NAMESPACE"\s+key: "PG_HOST"'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'checkName: "PostgreSQL user secret present"\s+secretName: "postgres-credentials"\s+namespace: "NAMESPACE"\s+key: "PG_USER"'
+      - notMatchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'unused-host|unused-user'
+
+  - it: should allow a secret host with a literal user
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.hostSecret.key: PG_HOST
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGHOST\s+valueFrom:\s+secretKeyRef:'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGUSER\s+value: "postgres"'
+      - notMatchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'PostgreSQL user secret present'
+
+  - it: should allow a secret user with a literal host
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.host: postgres.internal
+      databaseMigration.userSecret.key: PG_USER
+    asserts:
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGHOST\s+value: "postgres.internal"'
+      - matchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'name: PGUSER\s+valueFrom:\s+secretKeyRef:'
+      - notMatchRegex:
+          path: stringData["preflight.yaml"]
+          pattern: 'PostgreSQL host secret present'
 
   - it: should escape database migration values in postgres preflight messages
     set:

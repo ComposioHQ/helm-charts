@@ -21,6 +21,16 @@ stringData:
             namespace: "{{ .Release.Namespace }}"
             key: "{{ .Values.databaseMigration.password.key }}"
             includeValue: false
+        {{- range $field := list "host" "user" }}
+        {{- $key := index $.Values.databaseMigration (printf "%sSecret" $field) "key" }}
+        {{- if $key }}
+        - secret:
+            name: {{ $.Values.secret.name | quote }}
+            namespace: {{ $.Release.Namespace | quote }}
+            key: {{ $key | quote }}
+            includeValue: false
+        {{- end }}
+        {{- end }}
         # --- Validate PostgreSQL connection by real connection test ---
         - runPod:
             collectorName: "validate-postgres-connection"
@@ -33,11 +43,27 @@ stringData:
                   image: postgres:15-alpine
                   env:
                     - name: PGHOST
+                      {{- if .Values.databaseMigration.hostSecret.key }}
+                      valueFrom:
+                        secretKeyRef:
+                          name: {{ .Values.secret.name | quote }}
+                          key: {{ .Values.databaseMigration.hostSecret.key | quote }}
+                          optional: true
+                      {{- else }}
                       value: {{ .Values.databaseMigration.host | quote }}
+                      {{- end }}
                     - name: PGPORT
                       value: {{ .Values.databaseMigration.port | quote }}
                     - name: PGUSER
+                      {{- if .Values.databaseMigration.userSecret.key }}
+                      valueFrom:
+                        secretKeyRef:
+                          name: {{ .Values.secret.name | quote }}
+                          key: {{ .Values.databaseMigration.userSecret.key | quote }}
+                          optional: true
+                      {{- else }}
                       value: {{ .Values.databaseMigration.user | quote }}
+                      {{- end }}
                     - name: PGPASSWORD
                       valueFrom:
                         secretKeyRef:
@@ -89,6 +115,21 @@ stringData:
                   message: {{ printf "Missing PostgreSQL password Secret %s or key %s." .Values.secret.name .Values.databaseMigration.password.key | quote }}
               - pass:
                   message: {{ printf "Found PostgreSQL password Secret %s (key %s)." .Values.secret.name .Values.databaseMigration.password.key | quote }}
+        {{- range $field := list "host" "user" }}
+        {{- $key := index $.Values.databaseMigration (printf "%sSecret" $field) "key" }}
+        {{- if $key }}
+        - secret:
+            checkName: {{ printf "PostgreSQL %s secret present" $field | quote }}
+            secretName: {{ $.Values.secret.name | quote }}
+            namespace: {{ $.Release.Namespace | quote }}
+            key: {{ $key | quote }}
+            outcomes:
+              - warn:
+                  message: {{ printf "Missing PostgreSQL %s Secret %s or key %s." $field $.Values.secret.name $key | quote }}
+              - pass:
+                  message: {{ printf "Found PostgreSQL %s Secret %s (key %s)." $field $.Values.secret.name $key | quote }}
+        {{- end }}
+        {{- end }}
         - textAnalyze:
             checkName: "PostgreSQL connection is valid"
             fileName: "/validate-postgres-connection.log"
@@ -96,16 +137,32 @@ stringData:
             outcomes:
               - pass:
                   when: "Result == OK"
+                  {{- if .Values.databaseMigration.hostSecret.key }}
+                  message: "PostgreSQL connection successful."
+                  {{- else }}
                   message: {{ printf "PostgreSQL connection successful to %s:%s." .Values.databaseMigration.host .Values.databaseMigration.port | quote }}
+                  {{- end }}
               - fail:
                   when: "Result == AUTH_FAILED"
+                  {{- if .Values.databaseMigration.userSecret.key }}
+                  message: {{ printf "PostgreSQL authentication failed. Check username in Secret %s (key %s) and password in Secret %s." .Values.secret.name .Values.databaseMigration.userSecret.key .Values.secret.name | quote }}
+                  {{- else }}
                   message: {{ printf "PostgreSQL authentication failed. Check username (%s) and password in secret %s." .Values.databaseMigration.user .Values.secret.name | quote }}
+                  {{- end }}
               - fail:
                   when: "Result == CONNECTION_FAILED"
+                  {{- if .Values.databaseMigration.hostSecret.key }}
+                  message: {{ printf "Cannot connect to PostgreSQL. Check host in Secret %s (key %s), port %s, and network connectivity." .Values.secret.name .Values.databaseMigration.hostSecret.key .Values.databaseMigration.port | quote }}
+                  {{- else }}
                   message: {{ printf "Cannot connect to PostgreSQL at %s:%s. Check host, port, and network connectivity." .Values.databaseMigration.host .Values.databaseMigration.port | quote }}
+                  {{- end }}
               - fail:
                   when: "Result == USER_NOT_FOUND"
+                  {{- if .Values.databaseMigration.userSecret.key }}
+                  message: {{ printf "PostgreSQL user configured in Secret %s (key %s) does not exist on the database server." .Values.secret.name .Values.databaseMigration.userSecret.key | quote }}
+                  {{- else }}
                   message: {{ printf "PostgreSQL user '%s' does not exist on the database server." .Values.databaseMigration.user | quote }}
+                  {{- end }}
               - fail:
                   when: "Result == DB_NOT_FOUND"
                   message: "PostgreSQL database 'postgres' does not exist. This is unusual and may indicate server misconfiguration."
