@@ -14,7 +14,9 @@ metadata:
     release: {{ .Release.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
+  {{- if not .Values.apollo.autoscaling.enabled }}
   replicas: {{ .Values.apollo.replicaCount }}
+  {{- end }}
   strategy:
     type: RollingUpdate
     rollingUpdate:

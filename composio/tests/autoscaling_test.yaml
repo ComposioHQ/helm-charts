@@ -1,0 +1,241 @@
+suite: regular Deployment horizontal pod autoscaling
+templates:
+  - autoscaling.yaml
+tests:
+  - it: keeps autoscaling opt-in
+    asserts:
+      - hasDocuments: {count: 0}
+
+  - it: keeps gateway autoscaling opt-in when the gateway is enabled
+    set:
+      egateway.enabled: true
+    asserts:
+      - hasDocuments: {count: 0}
+
+  - it: targets the regular Mercury Deployment with CPU and memory metrics
+    set:
+      mercury.autoscaling.enabled: true
+      mercury.autoscaling.minReplicas: 3
+      mercury.autoscaling.maxReplicas: 12
+      mercury.autoscaling.targetCPUUtilizationPercentage: 65
+      mercury.autoscaling.targetMemoryUtilizationPercentage: 85
+    asserts:
+      - hasDocuments: {count: 1}
+      - isAPIVersion: {of: autoscaling/v2}
+      - isKind: {of: HorizontalPodAutoscaler}
+      - equal: {path: metadata.name, value: RELEASE-NAME-composio-mercury}
+      - equal:
+          path: spec.scaleTargetRef
+          value: {apiVersion: apps/v1, kind: Deployment, name: RELEASE-NAME-composio-mercury}
+      - equal: {path: spec.minReplicas, value: 3}
+      - equal: {path: spec.maxReplicas, value: 12}
+      - equal:
+          path: spec.metrics
+          value:
+            - type: Resource
+              resource: {name: cpu, target: {type: Utilization, averageUtilization: 65}}
+            - type: Resource
+              resource: {name: memory, target: {type: Utilization, averageUtilization: 85}}
+
+  - it: does not create an HPA for Knative Mercury
+    set:
+      mercury.useKnative: true
+      mercury.autoscaling.enabled: true
+    asserts:
+      - hasDocuments: {count: 0}
+
+  - it: does not create an HPA for disabled Mercury
+    set:
+      mercury.enabled: false
+      mercury.autoscaling.enabled: true
+    asserts:
+      - hasDocuments: {count: 0}
+
+  - it: targets the registry's existing release-based Deployment name
+    release: {name: customer, namespace: customer-runtime}
+    set:
+      fullnameOverride: custom-platform
+      toolkitRegistry.autoscaling.enabled: true
+    asserts:
+      - hasDocuments: {count: 1}
+      - equal: {path: metadata.name, value: customer-toolkit-registry}
+      - equal: {path: metadata.namespace, value: customer-runtime}
+      - equal: {path: spec.scaleTargetRef.name, value: customer-toolkit-registry}
+      - equal: {path: spec.minReplicas, value: 2}
+      - equal: {path: spec.maxReplicas, value: 10}
+
+  - it: targets gateway admin independently with its overridden Deployment name
+    release: {namespace: customer-runtime}
+    set:
+      fullnameOverride: custom-platform
+      egateway.enabled: true
+      egateway.admin.autoscaling.enabled: true
+    asserts:
+      - hasDocuments: {count: 1}
+      - equal: {path: metadata.name, value: custom-platform-egateway-admin}
+      - equal: {path: metadata.namespace, value: customer-runtime}
+      - equal: {path: spec.scaleTargetRef.name, value: custom-platform-egateway-admin}
+
+  - it: targets gateway proxy independently with its overridden Deployment name
+    set:
+      fullnameOverride: custom-platform
+      egateway.enabled: true
+      egateway.proxy.autoscaling.enabled: true
+    asserts:
+      - hasDocuments: {count: 1}
+      - equal: {path: metadata.name, value: custom-platform-egateway-proxy}
+      - equal: {path: spec.scaleTargetRef.name, value: custom-platform-egateway-proxy}
+
+  - it: does not create gateway HPAs when the gateway is disabled
+    set:
+      egateway.enabled: false
+      egateway.admin.autoscaling.enabled: true
+      egateway.proxy.autoscaling.enabled: true
+    asserts:
+      - hasDocuments: {count: 0}
+
+  - it: allows disabling the memory metric for cached workloads
+    set:
+      toolkitRegistry.autoscaling.enabled: true
+      toolkitRegistry.autoscaling.targetMemoryUtilizationPercentage: null
+    asserts:
+      - lengthEqual: {path: spec.metrics, count: 1}
+      - equal: {path: 'spec.metrics[0].resource.name', value: cpu}
+
+  - it: allows memory-only autoscaling
+    set:
+      egateway.enabled: true
+      egateway.proxy.autoscaling.enabled: true
+      egateway.proxy.autoscaling.targetCPUUtilizationPercentage: null
+    asserts:
+      - lengthEqual: {path: spec.metrics, count: 1}
+      - equal: {path: 'spec.metrics[0].resource.name', value: memory}
+
+  - it: rejects an enabled HPA without a metric
+    set:
+      mercury.autoscaling.enabled: true
+      mercury.autoscaling.targetCPUUtilizationPercentage: null
+      mercury.autoscaling.targetMemoryUtilizationPercentage: null
+    asserts:
+      - failedTemplate:
+          errorMessage: mercury autoscaling requires a CPU or memory utilization target
+
+  - it: honors custom scaling policies including a zero stabilization window
+    set:
+      mercury.autoscaling.enabled: true
+      mercury.autoscaling.scaleDownStabilizationWindowSeconds: 600
+      mercury.autoscaling.scaleDownPercent: 20
+      mercury.autoscaling.scaleDownPeriodSeconds: 120
+      mercury.autoscaling.scaleUpStabilizationWindowSeconds: 0
+      mercury.autoscaling.scaleUpPercent: 50
+      mercury.autoscaling.scaleUpPeriodSeconds: 30
+      mercury.autoscaling.scaleUpPods: 2
+    asserts:
+      - equal:
+          path: spec.behavior
+          value:
+            scaleDown:
+              stabilizationWindowSeconds: 600
+              policies: [{type: Percent, value: 20, periodSeconds: 120}]
+            scaleUp:
+              stabilizationWindowSeconds: 0
+              policies:
+                - {type: Percent, value: 50, periodSeconds: 30}
+                - {type: Pods, value: 2, periodSeconds: 30}
+              selectPolicy: Max
+
+---
+suite: HPA ownership of Deployment replicas
+templates:
+  - apollo/apollo.yaml
+  - apollo/apollo-configmap.yaml
+  - thermos/thermos.yaml
+  - thermos/thermos-config.yaml
+  - thermos/toolkit-registry.yaml
+  - mercury/mercury.yaml
+  - mercury/mercury-configmap.yaml
+  - egateway/egateway-admin.yaml
+  - egateway/egateway-proxy.yaml
+  - egateway/egateway-configmap.yaml
+set:
+  apollo.autoscaling.enabled: true
+  thermos.autoscaling.enabled: true
+  toolkitRegistry.autoscaling.enabled: true
+  mercury.autoscaling.enabled: true
+  egateway.enabled: true
+  egateway.admin.autoscaling.enabled: true
+  egateway.proxy.autoscaling.enabled: true
+tests:
+  - it: lets the HPA own Apollo replicas across Helm upgrades
+    template: apollo/apollo.yaml
+    documentIndex: 0
+    asserts:
+      - isKind: {of: Deployment}
+      - notExists: {path: spec.replicas}
+  - it: lets the HPA own Thermos replicas across Helm upgrades
+    template: thermos/thermos.yaml
+    documentIndex: 0
+    asserts:
+      - isKind: {of: Deployment}
+      - notExists: {path: spec.replicas}
+  - it: lets the HPA own registry replicas across Helm upgrades
+    template: thermos/toolkit-registry.yaml
+    documentIndex: 0
+    asserts:
+      - isKind: {of: Deployment}
+      - notExists: {path: spec.replicas}
+  - it: lets the HPA own Mercury replicas across Helm upgrades
+    template: mercury/mercury.yaml
+    documentIndex: 0
+    asserts:
+      - isKind: {of: Deployment}
+      - notExists: {path: spec.replicas}
+  - it: lets the HPA own gateway admin replicas across Helm upgrades
+    template: egateway/egateway-admin.yaml
+    documentIndex: 0
+    asserts:
+      - isKind: {of: Deployment}
+      - notExists: {path: spec.replicas}
+  - it: lets the HPA own gateway proxy replicas across Helm upgrades
+    template: egateway/egateway-proxy.yaml
+    documentIndex: 0
+    asserts:
+      - isKind: {of: Deployment}
+      - notExists: {path: spec.replicas}
+
+---
+suite: HPA-off deployments preserve fixed replicas
+templates:
+  - mercury/mercury.yaml
+  - mercury/mercury-configmap.yaml
+  - egateway/egateway-admin.yaml
+  - egateway/egateway-proxy.yaml
+  - egateway/egateway-configmap.yaml
+  - thermos/toolkit-registry.yaml
+set:
+  egateway.enabled: true
+tests:
+  - it: preserves fixed registry replicas
+    template: thermos/toolkit-registry.yaml
+    documentIndex: 0
+    set: {toolkitRegistry.replicaCount: 3}
+    asserts:
+      - equal: {path: spec.replicas, value: 3}
+  - it: preserves fixed Mercury replicas
+    template: mercury/mercury.yaml
+    documentIndex: 0
+    set: {mercury.replicaCount: 3}
+    asserts:
+      - equal: {path: spec.replicas, value: 3}
+  - it: preserves fixed admin replicas
+    template: egateway/egateway-admin.yaml
+    documentIndex: 0
+    set: {egateway.admin.replicaCount: 3}
+    asserts:
+      - equal: {path: spec.replicas, value: 3}
+  - it: preserves fixed proxy replicas
+    template: egateway/egateway-proxy.yaml
+    documentIndex: 0
+    set: {egateway.proxy.replicaCount: 3}
+    asserts:
+      - equal: {path: spec.replicas, value: 3}

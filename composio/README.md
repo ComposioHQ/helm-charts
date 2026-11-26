@@ -1,6 +1,6 @@
 # composio
 
-![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.0](https://img.shields.io/badge/AppVersion-1.1.0-informational?style=flat-square)
+![Version: 0.2.14](https://img.shields.io/badge/Version-0.2.14-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.2.14](https://img.shields.io/badge/AppVersion-0.2.14-informational?style=flat-square)
 
 A Helm chart for Composio
 
@@ -11,6 +11,9 @@ A Helm chart for Composio
 | file://./charts/temporal | temporal(temporal) | 0.68.1 |
 
 ## Values
+
+For regular Kubernetes pod autoscaling, see the [HPA configuration guide](../docs/pod-autoscaling.md)
+and the optional [autoscaling values profile](values-autoscaling.yaml).
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|

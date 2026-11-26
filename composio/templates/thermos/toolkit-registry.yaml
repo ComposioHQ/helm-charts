@@ -7,7 +7,9 @@ metadata:
     release: {{ .Release.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
+  {{- if not ((.Values.toolkitRegistry.autoscaling | default dict).enabled) }}
   replicas: {{ .Values.toolkitRegistry.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       app: toolkit-registry

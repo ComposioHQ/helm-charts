@@ -1,0 +1,64 @@
+{{- $workloads := list
+  (dict "component" "mercury" "name" (printf "%s-mercury" (include "composio.fullname" .)) "enabled" (and .Values.mercury.enabled (not .Values.mercury.useKnative)) "autoscaling" .Values.mercury.autoscaling)
+  (dict "component" "toolkit-registry" "name" (printf "%s-toolkit-registry" .Release.Name) "enabled" true "autoscaling" .Values.toolkitRegistry.autoscaling)
+  (dict "component" "egateway-admin" "name" (include "egateway.adminServiceName" .) "enabled" .Values.egateway.enabled "autoscaling" .Values.egateway.admin.autoscaling)
+  (dict "component" "egateway-proxy" "name" (include "egateway.proxyServiceName" .) "enabled" .Values.egateway.enabled "autoscaling" .Values.egateway.proxy.autoscaling)
+}}
+{{- range $workload := $workloads }}
+{{- $autoscaling := $workload.autoscaling | default dict }}
+{{- if and $workload.enabled $autoscaling.enabled }}
+{{- if not (or $autoscaling.targetCPUUtilizationPercentage $autoscaling.targetMemoryUtilizationPercentage) }}
+{{- fail (printf "%s autoscaling requires a CPU or memory utilization target" $workload.component) }}
+{{- end }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $workload.name }}
+  namespace: {{ include "composio.namespace" $ }}
+  labels:
+    {{- include "composio.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $workload.component }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $workload.name }}
+  minReplicas: {{ $autoscaling.minReplicas }}
+  maxReplicas: {{ $autoscaling.maxReplicas }}
+  metrics:
+    {{- if $autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if $autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ $autoscaling.scaleDownStabilizationWindowSeconds }}
+      policies:
+        - type: Percent
+          value: {{ $autoscaling.scaleDownPercent }}
+          periodSeconds: {{ $autoscaling.scaleDownPeriodSeconds }}
+    scaleUp:
+      stabilizationWindowSeconds: {{ $autoscaling.scaleUpStabilizationWindowSeconds }}
+      policies:
+        - type: Percent
+          value: {{ $autoscaling.scaleUpPercent }}
+          periodSeconds: {{ $autoscaling.scaleUpPeriodSeconds }}
+        - type: Pods
+          value: {{ $autoscaling.scaleUpPods }}
+          periodSeconds: {{ $autoscaling.scaleUpPeriodSeconds }}
+      selectPolicy: Max
+{{- end }}
+{{- end }}
