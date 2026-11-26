@@ -7,7 +7,9 @@ metadata:
     release: {{ .Release.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
+  {{- if not .Values.thermos.autoscaling.enabled }}
   replicas: {{ .Values.thermos.replicaCount }}
+  {{- end }}
   strategy:
     type: RollingUpdate
     rollingUpdate:

@@ -9,7 +9,9 @@ metadata:
     {{- include "composio.labels" . | nindent 4 }}
     app.kubernetes.io/component: mercury
 spec:
+  {{- if not ((.Values.mercury.autoscaling | default dict).enabled) }}
   replicas: {{ .Values.mercury.replicaCount | default 1 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "composio.selectorLabels" . | nindent 6 }}

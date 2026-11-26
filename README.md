@@ -28,6 +28,9 @@ Visit the Composio Enterprise portal to get your Helm chart:
    - **Composio Frontend** - Configure the Composio frontend. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/frontend-setup.md)
    - **SMTP Setup** - Configure SMTP for email functionality. [View Guide](https://github.com/ComposioHQ/helm-charts/blob/release-stable/docs/smtp-setup.md)
 
+5. **Pod Autoscaling** - Configure regular Kubernetes HPA for Apollo, Thermos,
+   Mercury, toolkit registry and eGateway. [View Guide](docs/pod-autoscaling.md)
+
 
 ## Managed VPC image releases
 

@@ -451,6 +451,31 @@ thermos:
 toolkitRegistry:
   # -- Number of toolkit registry pod replicas
   replicaCount: 2
+  autoscaling:
+    # -- Enable HPA for the read-only toolkit registry Deployment.
+    enabled: false
+    # -- Minimum number of registry replicas.
+    minReplicas: 2
+    # -- Maximum number of registry replicas.
+    maxReplicas: 10
+    # -- Target CPU utilization as a percentage of requests; null disables this metric.
+    targetCPUUtilizationPercentage: 70
+    # -- Target memory utilization as a percentage of requests; null disables this metric.
+    targetMemoryUtilizationPercentage: 80
+    # -- Stabilization window for scale down (seconds).
+    scaleDownStabilizationWindowSeconds: 300
+    # -- Maximum percentage of replicas removed per scale down period.
+    scaleDownPercent: 10
+    # -- Scale down period (seconds).
+    scaleDownPeriodSeconds: 60
+    # -- Stabilization window for scale up (seconds).
+    scaleUpStabilizationWindowSeconds: 60
+    # -- Maximum percentage of replicas added per scale up period.
+    scaleUpPercent: 100
+    # -- Scale up period (seconds).
+    scaleUpPeriodSeconds: 15
+    # -- Maximum number of replicas added per scale up period; the larger scale up policy wins.
+    scaleUpPods: 4
   image:
     # -- Toolkit registry image repository (used when imageName is not set)
     repository: composio-self-host/thermos-toolkit-registry
@@ -1128,13 +1153,37 @@ mercury:
     type: ClusterIP
     # -- Service port
     port: 8080
-  # Knative autoscaling configuration
+  # Deployment HPA settings and existing Knative autoscaling settings.
   autoscaling:
-    # -- Minimum number of replicas
+    # -- Enable HPA for Mercury's regular Deployment; ignored when useKnative is true.
+    enabled: false
+    # -- Minimum number of Deployment replicas.
+    minReplicas: 2
+    # -- Maximum number of Deployment replicas.
+    maxReplicas: 10
+    # -- Target CPU utilization as a percentage of requests; null disables this metric.
+    targetCPUUtilizationPercentage: 70
+    # -- Target memory utilization as a percentage of requests; null disables this metric.
+    targetMemoryUtilizationPercentage: 80
+    # -- Stabilization window for scale down (seconds).
+    scaleDownStabilizationWindowSeconds: 300
+    # -- Maximum percentage of replicas removed per scale down period.
+    scaleDownPercent: 10
+    # -- Scale down period (seconds).
+    scaleDownPeriodSeconds: 60
+    # -- Stabilization window for scale up (seconds).
+    scaleUpStabilizationWindowSeconds: 60
+    # -- Maximum percentage of replicas added per scale up period.
+    scaleUpPercent: 100
+    # -- Scale up period (seconds).
+    scaleUpPeriodSeconds: 15
+    # -- Maximum number of replicas added per scale up period; the larger scale up policy wins.
+    scaleUpPods: 4
+    # -- Minimum number of Knative replicas.
     minScale: 1
-    # -- Maximum number of replicas
+    # -- Maximum number of Knative replicas.
     maxScale: 10
-    # -- Target metric value for autoscaling
+    # -- Knative autoscaling target.
     target: 80
   # -- Container concurrency (0 = unlimited)
   containerConcurrency: 0
@@ -1468,6 +1517,31 @@ egateway:
     name: egatewaydb
   admin:
     replicaCount: 1
+    autoscaling:
+      # -- Enable HPA for the eGateway admin Deployment.
+      enabled: false
+      # -- Minimum number of admin replicas.
+      minReplicas: 2
+      # -- Maximum number of admin replicas.
+      maxReplicas: 10
+      # -- Target CPU utilization as a percentage of requests; null disables this metric.
+      targetCPUUtilizationPercentage: 70
+      # -- Target memory utilization as a percentage of requests; null disables this metric.
+      targetMemoryUtilizationPercentage: 80
+      # -- Stabilization window for scale down (seconds).
+      scaleDownStabilizationWindowSeconds: 300
+      # -- Maximum percentage of replicas removed per scale down period.
+      scaleDownPercent: 10
+      # -- Scale down period (seconds).
+      scaleDownPeriodSeconds: 60
+      # -- Stabilization window for scale up (seconds).
+      scaleUpStabilizationWindowSeconds: 60
+      # -- Maximum percentage of replicas added per scale up period.
+      scaleUpPercent: 100
+      # -- Scale up period (seconds).
+      scaleUpPeriodSeconds: 15
+      # -- Maximum number of replicas added per scale up period; the larger scale up policy wins.
+      scaleUpPods: 4
     image:
       # -- Admin image repository
       repository: composio-self-host/egateway-admin
@@ -1492,6 +1566,31 @@ egateway:
     tolerations: []
   proxy:
     replicaCount: 1
+    autoscaling:
+      # -- Enable HPA for the eGateway proxy Deployment.
+      enabled: false
+      # -- Minimum number of proxy replicas.
+      minReplicas: 2
+      # -- Maximum number of proxy replicas.
+      maxReplicas: 10
+      # -- Target CPU utilization as a percentage of requests; null disables this metric.
+      targetCPUUtilizationPercentage: 70
+      # -- Target memory utilization as a percentage of requests; null disables this metric.
+      targetMemoryUtilizationPercentage: 80
+      # -- Stabilization window for scale down (seconds).
+      scaleDownStabilizationWindowSeconds: 300
+      # -- Maximum percentage of replicas removed per scale down period.
+      scaleDownPercent: 10
+      # -- Scale down period (seconds).
+      scaleDownPeriodSeconds: 60
+      # -- Stabilization window for scale up (seconds).
+      scaleUpStabilizationWindowSeconds: 60
+      # -- Maximum percentage of replicas added per scale up period.
+      scaleUpPercent: 100
+      # -- Scale up period (seconds).
+      scaleUpPeriodSeconds: 15
+      # -- Maximum number of replicas added per scale up period; the larger scale up policy wins.
+      scaleUpPods: 4
     image:
       # -- Proxy image repository
       repository: composio-self-host/egateway-proxy
