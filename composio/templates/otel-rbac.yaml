@@ -1,0 +1,28 @@
+{{- if and .Values.otel.enabled .Values.otel.collector.enabled .Values.otel.collector.podDiscovery }}
+{{- if not .Values.otel.collector.serviceAccountName }}
+{{- fail "otel.collector.podDiscovery requires an existing serviceAccountName" }}
+{{- end }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-otel-pod-discovery
+  namespace: {{ include "composio.namespace" . }}
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-otel-pod-discovery
+  namespace: {{ include "composio.namespace" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.otel.collector.serviceAccountName }}
+    namespace: {{ include "composio.namespace" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-otel-pod-discovery
+{{- end }}

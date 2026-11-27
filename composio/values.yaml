@@ -867,6 +867,8 @@ otel:
   environment: "development"
   # Service-specific OpenTelemetry configurations
   apollo:
+    # -- Enable the separate direct Datadog trace export leg.
+    directDatadogTraces: false
     # -- Apollo service name
     serviceName: "apollo"
     # -- Apollo service version
@@ -984,6 +986,16 @@ otel:
         # -- Service account annotations (for Workload Identity)
         annotations:
           iam.gke.io/gcp-service-account: "otel-collector@self-host-kubernetes.iam.gserviceaccount.com"
+    # -- Complete collector configuration; replaces config instead of merging exporter maps.
+    configOverride: null
+    # -- Additional collector environment variables.
+    extraEnv: []
+    # -- Additional collector volumes (use existing Secret references for credentials).
+    extraVolumes: []
+    # -- Additional collector volume mounts.
+    extraVolumeMounts: []
+    # -- Allow the collector to discover pods in the release namespace for scraping.
+    podDiscovery: false
     # Collector pipeline configuration
     config:
       # Exporters configuration

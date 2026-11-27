@@ -47,6 +47,6 @@ data:
   OTEL_EXPORTER_OTLP_HEADERS: {{ .Values.otel.exporter.otlp.headers | default "" | quote }}
   OTEL_TRACES_EXPORTER: "otlp"
   OTEL_METRICS_EXPORTER: "otlp"
-  OTEL_LOGS_EXPORTER: "otlp"
+  OTEL_LOGS_EXPORTER: {{ ternary "otlp" "none" .Values.otel.logs.enabled | quote }}
   OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.thermos.serviceName | default "thermos" }},service.version={{ .Values.otel.thermos.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
   {{- end }}

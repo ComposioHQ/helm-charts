@@ -220,7 +220,7 @@ tests:
           value: "otlp"
       - equal:
           path: data.OTEL_LOGS_EXPORTER
-          value: "otlp"
+          value: "none"
 
   - it: should configure Weaviate when enabled
     set:

@@ -1,0 +1,23 @@
+suite: Apollo collector export wiring
+templates:
+  - apollo/apollo-configmap.yaml
+tests:
+  - it: wires the collector tracing flag and preserves a disabled metrics setting
+    set:
+      otel.enabled: true
+      otel.metrics.enabled: false
+      otel.environment: managed-test
+      otel.exporter.otlp.tracesEndpoint: http://collector:4318/v1/traces
+    asserts:
+      - equal:
+          path: data.ENABLE_OTEL_COLLECTOR_TRACES
+          value: "true"
+      - equal:
+          path: data.OTEL_COLLECTOR_TRACES_ENDPOINT
+          value: http://collector:4318/v1/traces
+      - equal:
+          path: data.ENABLE_OTEL_METRICS
+          value: "false"
+      - equal:
+          path: data.OTEL_LOGS_EXPORTER
+          value: none

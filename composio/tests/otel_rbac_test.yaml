@@ -1,0 +1,23 @@
+suite: collector pod discovery permissions
+templates:
+  - otel-rbac.yaml
+tests:
+  - it: does not grant discovery when disabled
+    asserts:
+      - hasDocuments: {count: 0}
+  - it: grants only namespaced pod discovery to the existing collector identity
+    set:
+      otel.enabled: true
+      otel.collector.podDiscovery: true
+      otel.collector.serviceAccountName: composio-otel-collector
+      namespace.name: composio
+    documentSelector:
+      path: kind
+      value: Role
+    asserts:
+      - equal:
+          path: rules
+          value: [{apiGroups: [""], resources: [pods], verbs: [get, list, watch]}]
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE

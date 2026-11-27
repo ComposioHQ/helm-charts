@@ -25,20 +25,7 @@ metadata:
     app.kubernetes.io/component: otel-collector
 data:
   otel-collector-config.yaml: |
-    receivers:
-      {{- toYaml .Values.otel.collector.config.receivers | nindent 6 }}
-
-    processors:
-      {{- toYaml .Values.otel.collector.config.processors | nindent 6 }}
-
-    exporters:
-      {{- toYaml .Values.otel.collector.config.exporters | nindent 6 }}
-
-    extensions:
-      {{- toYaml .Values.otel.collector.config.extensions | nindent 6 }}
-
-    service:
-      {{- toYaml .Values.otel.collector.config.service | nindent 6 }}
+    {{- toYaml (.Values.otel.collector.configOverride | default .Values.otel.collector.config) | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -65,7 +52,7 @@ spec:
         {{- include "composio.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: otel-collector
       annotations:
-        checksum/config: {{ toYaml .Values.otel.collector.config | sha256sum }}
+        checksum/config: {{ toYaml (.Values.otel.collector.configOverride | default .Values.otel.collector.config) | sha256sum }}
     spec:
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -135,11 +122,17 @@ spec:
           env:
             - name: GOMEMLIMIT
               value: "1024MiB"
+            {{- with .Values.otel.collector.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.otel.collector.resources | nindent 12 }}
           volumeMounts:
             - name: otel-collector-config-vol
               mountPath: /etc/otelcol-contrib
+          {{- with .Values.otel.collector.extraVolumeMounts }}
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
       volumes:
         - name: otel-collector-config-vol
           configMap:
@@ -147,6 +140,9 @@ spec:
             items:
               - key: otel-collector-config.yaml
                 path: otel-collector-config.yaml
+      {{- with .Values.otel.collector.extraVolumes }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

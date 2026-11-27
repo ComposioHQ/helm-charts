@@ -503,3 +503,24 @@ kubectl logs -n kube-system -l app=gke-ingress
 # Check firewall rules
 gcloud compute firewall-rules list --filter="name~composio"
 ```
+
+
+## AWS managed-VPC collector
+
+Managed-VPC releases keep `otel.enabled: false` until the customer opts in through
+`installation.kubernetes.observability`. The compatible deployment runner supplies
+the AWS pipeline and a pre-created IRSA service account; the published profile pins
+the collector image by digest. This requires the matching bootstrap permissions.
+
+`otel.collector.configOverride` replaces the complete collector configuration,
+including exporters and connectors. Use this when switching from the default
+pipeline to AWS; merging exporter maps can retain unwanted destinations. Existing
+configuration remains under `otel.collector.config` when no replacement is given.
+The collector accepts `extraEnv`, `extraVolumes` and `extraVolumeMounts` for regional
+settings and existing credential Secrets. `podDiscovery: true` grants only
+namespaced pod reads to `serviceAccountName` for per-pod metrics scraping.
+
+Apollo's collector-tracing flags are wired explicitly. Its separate direct Datadog
+leg defaults off and can be enabled with `otel.apollo.directDatadogTraces`. Metrics
+and OTel log export honor their own enable flags; managed Fargate installs collect
+stdout/stderr through the Fargate log router instead of the OTel logs exporter.
