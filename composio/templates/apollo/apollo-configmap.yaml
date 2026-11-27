@@ -59,6 +59,10 @@ data:
   {{ end }}
   NEXT_PUBLIC_DISABLE_SOCIAL_LOGIN: {{ .Values.apollo.nextPublicDisableSocialLogin | quote }}
   {{- if .Values.otel.enabled }}
+  ENABLE_OTEL_COLLECTOR_TRACES: {{ .Values.otel.traces.enabled | toString | quote }}
+  OTEL_COLLECTOR_TRACES_ENDPOINT: {{ .Values.otel.exporter.otlp.tracesEndpoint | default (printf "http://%s-otel-collector:4318/v1/traces" .Release.Name) | quote }}
+  ENABLE_DIRECT_DATADOG_TRACES: {{ .Values.otel.apollo.directDatadogTraces | toString | quote }}
+  OTEL_RESOURCE_ATTRIBUTES_ENVIRONMENT: {{ .Values.otel.environment | quote }}
   OTEL_ENABLED: {{ .Values.otel.enabled | quote }}
   OTEL_SERVICE_NAME: {{ .Values.otel.apollo.serviceName | default "apollo" | quote }}
   OTEL_SERVICE_VERSION: {{ .Values.otel.apollo.serviceVersion | default "1.0.0" | quote }}
@@ -68,8 +72,8 @@ data:
   OTEL_EXPORTER_OTLP_INSECURE: {{ .Values.otel.exporter.otlp.insecure | default "true" | quote }}
   OTEL_TRACES_EXPORTER: "otlp"
   OTEL_METRICS_EXPORTER: "otlp"
-  OTEL_LOGS_EXPORTER: "otlp"
-  ENABLE_OTEL_METRICS: {{ .Values.otel.metrics.enabled | default "true" | quote }}
+  OTEL_LOGS_EXPORTER: {{ ternary "otlp" "none" .Values.otel.logs.enabled | quote }}
+  ENABLE_OTEL_METRICS: {{ .Values.otel.metrics.enabled | toString | quote }}
   OTEL_METRICS_ENDPOINT: {{ .Values.otel.apollo.metricsEndpoint | default (printf "http://%s-otel-collector:4318/v1/metrics" .Release.Name) | quote }}
   OTEL_RESOURCE_ATTRIBUTES: "service.name={{ .Values.otel.apollo.serviceName | default "apollo" }},service.version={{ .Values.otel.apollo.serviceVersion | default "1.0.0" }},deployment.environment={{ .Values.otel.environment | default .Values.global.environment | default "development" }}"
   {{- end }}

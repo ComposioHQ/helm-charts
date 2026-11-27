@@ -41,6 +41,9 @@ thermosMiscWorkers:
   enabled: false
 otel:
   enabled: false
+  collector:
+    image:
+      imageName: otel/opentelemetry-collector-contrib@sha256:3e18fe04181de50bdd72e23ad4a4d6214b54351e63d496f1c58127cc4541ad7f
 aws:
   s3:
     useAwsEndpoints: true

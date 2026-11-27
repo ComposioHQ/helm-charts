@@ -131,3 +131,45 @@ tests:
       - equal:
           path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
           value: kubernetes.io/arch
+
+  - it: replaces the legacy exporter configuration and mounts existing scrape credentials
+    set:
+      otel.enabled: true
+      otel.collector.serviceAccountName: composio-otel-collector
+      otel.collector.configOverride:
+        receivers: {otlp: {protocols: {grpc: {endpoint: "0.0.0.0:4317"}}}}
+        exporters: {awsxray: {region: eu-west-1}}
+        service: {pipelines: {traces: {receivers: [otlp], exporters: [awsxray]}}}
+      otel.collector.extraEnv: [{name: AWS_REGION, value: eu-west-1}]
+      otel.collector.extraVolumes: [{name: metrics, secret: {secretName: existing-metrics}}]
+      otel.collector.extraVolumeMounts: [{name: metrics, mountPath: /metrics, readOnly: true}]
+    documentSelector:
+      path: kind
+      value: ConfigMap
+    asserts:
+      - matchRegex:
+          path: data["otel-collector-config.yaml"]
+          pattern: 'awsxray:'
+      - notMatchRegex:
+          path: data["otel-collector-config.yaml"]
+          pattern: 'googlecloud:|debug:'
+
+  - it: injects regional AWS configuration and a read-only secret volume
+    set:
+      otel.enabled: true
+      otel.collector.extraEnv: [{name: AWS_REGION, value: eu-west-1}]
+      otel.collector.extraVolumes: [{name: metrics, secret: {secretName: existing-metrics}}]
+      otel.collector.extraVolumeMounts: [{name: metrics, mountPath: /metrics, readOnly: true}]
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AWS_REGION, value: eu-west-1}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: metrics, secret: {secretName: existing-metrics}}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: {name: metrics, mountPath: /metrics, readOnly: true}
