@@ -47,16 +47,14 @@ assert_config() {
   rm -rf "${tmp_dir}"
 }
 
-assert_config "" standard Nightly 397k1WtPrJ1J56bhb70SfeKGcxL \
-  oci://registry.composio.io/composio-rodent/nightly/composio standard nightly ""
-assert_config standard standard Nightly 397k1WtPrJ1J56bhb70SfeKGcxL \
-  oci://registry.composio.io/composio-rodent/nightly/composio standard nightly ""
 assert_config glean glean Glean-Stable 3GwShNBOwcf13Bs7i5pfn3N8TDh \
   oci://registry.composio.io/composio-rodent/glean-stable/composio glean glean \
   0.2.87-glean
 
-if RELEASE_TYPE=unsupported bash "${SCRIPT}" >/dev/null 2>&1; then
-  fail "unsupported release type should fail"
-fi
+for retired in "" standard Nightly select-channel unsupported; do
+  if RELEASE_TYPE="${retired}" bash "${SCRIPT}" >/dev/null 2>&1; then
+    fail "unexpected publisher route for '${retired}'"
+  fi
+done
 
 echo "resolve-release-config tests passed"

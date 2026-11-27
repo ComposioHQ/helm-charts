@@ -58,12 +58,13 @@ assert_step_before() {
 assert_eq "release input type" \
   "$(yq -r '.on.workflow_dispatch.inputs.release_type.type' "${WORKFLOW}")" choice
 assert_eq "release input default" \
-  "$(yq -r '.on.workflow_dispatch.inputs.release_type.default' "${WORKFLOW}")" standard
+  "$(yq -r '.on.workflow_dispatch.inputs.release_type.default' "${WORKFLOW}")" select-channel
+assert_eq "Nightly schedule is owned by Janus" "$(yq -r '.on | has("schedule")' "${WORKFLOW}")" false
 assert_eq "release input options" \
   "$(yq -o=json -I=0 '.on.workflow_dispatch.inputs.release_type.options' "${WORKFLOW}")" \
-  '["standard","glean"]'
+  '["select-channel","glean"]'
 assert_contains "release type concurrency group" \
-  "group: nighty-release-\${{ github.event.inputs.release_type || 'standard' }}"
+  'group: nighty-release-${{ inputs.release_type }}'
 assert_eq "release concurrency cancellation" \
   "$(yq -r '.concurrency.cancel-in-progress' "${WORKFLOW}")" false
 

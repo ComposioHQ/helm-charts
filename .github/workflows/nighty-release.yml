@@ -1,18 +1,15 @@
-name: nighty-release
+name: Glean release
 
 on:
-  schedule:
-    # 00:00 IST is 18:30 UTC (previous day)
-    - cron: "30 18 * * *"
   workflow_dispatch:
     inputs:
       release_type:
-        description: "Release path and Replicated channel."
+        description: "Select Glean explicitly. Janus publishes the shared Nightly channel."
         required: true
         type: choice
-        default: standard
+        default: select-channel
         options:
-          - standard
+          - select-channel
           - glean
       apollo_image_tag:
         description: "ECR source tag for apollo (default latest). Resolved image is retagged to the calculated release tag."
@@ -56,7 +53,7 @@ on:
         default: "latest"
 
 concurrency:
-  group: nighty-release-${{ github.event.inputs.release_type || 'standard' }}
+  group: nighty-release-${{ inputs.release_type }}
   cancel-in-progress: false
 
 permissions:
@@ -89,10 +86,11 @@ jobs:
         id: config
         shell: bash
         env:
-          RELEASE_TYPE: ${{ github.event.inputs.release_type || 'standard' }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
         run: bash ./.github/scripts/resolve-release-config.sh
 
   nightly-secrets:
+    if: inputs.release_type == 'glean'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -136,7 +134,7 @@ jobs:
       new_version: ${{ steps.calculate_version.outputs.new }}
     env:
       IMAGE_REPOS: "apollo frontend apollo-db-init thermos thermos-db-init mercury weaviate thermos-toolkit-registry"
-      # Per-repo ECR source tags (manual runs only; empty on schedule). Empty = use "latest".
+      # Each empty source tag selects latest.
       SOURCE_TAG_APOLLO: ${{ github.event.inputs.apollo_image_tag || '' }}
       SOURCE_TAG_APOLLO_DB_INIT: ${{ github.event.inputs.apollo_db_init_image_tag || '' }}
       SOURCE_TAG_THERMOS: ${{ github.event.inputs.thermos_image_tag || '' }}
@@ -846,7 +844,7 @@ jobs:
           exit 1
 
   notify-nightly-report:
-    if: always()
+    if: always() && inputs.release_type == 'glean'
     runs-on: ubuntu-latest
     needs:
       - release-config
