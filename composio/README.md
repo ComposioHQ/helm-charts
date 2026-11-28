@@ -10,6 +10,29 @@ A Helm chart for Composio
 |------------|------|---------|
 | file://./charts/temporal | temporal(temporal) | 0.68.1 |
 
+## PostgreSQL initialization credentials
+
+The PostgreSQL init Job and database preflight check can read the host and user
+from the same existing Secret as the password:
+
+```yaml
+secret:
+  name: postgres-credentials
+databaseMigration:
+  enabled: true
+  port: "5432"
+  hostSecret:
+    key: PG_HOST
+  userSecret:
+    key: PG_USER
+  password:
+    key: PG_PASSWORD
+```
+
+Non-empty `hostSecret.key` and `userSecret.key` override `databaseMigration.host`
+and `databaseMigration.user`, respectively. With empty keys, the literal values
+are used. The resolved user also receives database ownership and grants.
+
 ## Values
 
 For regular Kubernetes pod autoscaling, see the [HPA configuration guide](../docs/pod-autoscaling.md)
@@ -75,6 +98,10 @@ and the optional [autoscaling values profile](values-autoscaling.yaml).
 | aws.region | string | `"us-east-1"` | AWS region |
 | aws.s3.lambdaBucketName | string | `"tools"` | S3 bucket name for Lambda functions |
 | cassandra.enabled | bool | `false` | Enable Cassandra |
+| databaseMigration.host | string | `"<DATABASE_HOST>"` | PostgreSQL host used unless hostSecret.key is set. |
+| databaseMigration.hostSecret.key | string | `""` | Key in secret.name for PGHOST; overrides databaseMigration.host when non-empty. |
+| databaseMigration.user | string | `"postgres"` | PostgreSQL user used unless userSecret.key is set. |
+| databaseMigration.userSecret.key | string | `""` | Key in secret.name for PGUSER; overrides databaseMigration.user when non-empty. Also used for database ownership and grants. |
 | dbInit.job.activeDeadlineSeconds | int | `2400` | Maximum time for job execution (seconds) |
 | dbInit.job.backoffLimit | int | `3` | Maximum number of retries for failed jobs |
 | dbInit.job.restartPolicy | string | `"OnFailure"` | Job restart policy |

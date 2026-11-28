@@ -1,5 +1,4 @@
 {{- if .Values.databaseMigration.enabled }}
-{{- $databaseMigrationUser := printf "\"%s\"" (replace "\"" "\"\"" .Values.databaseMigration.user) }}
 {{- $workerDbEnabled := eq (include "composio.thermosWorkerDbEnabled" .) "true" }}
 {{- $workerDbDatabaseName := include "composio.thermosWorkerDbDatabaseName" . }}
 {{- $workerDbDatabase := printf "\"%s\"" (replace "\"" "\"\"" $workerDbDatabaseName) }}
@@ -31,11 +30,27 @@ spec:
         - name: POSTGRES_INIT_SECRETS_DIR
           value: {{ .Values.databaseMigration.secretsDir | quote }}
         - name: PGHOST
+          {{- if .Values.databaseMigration.hostSecret.key }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secret.name | quote }}
+              key: {{ .Values.databaseMigration.hostSecret.key | quote }}
+              optional: true
+          {{- else }}
           value: {{ .Values.databaseMigration.host | quote }}
+          {{- end }}
         - name: PGPORT
           value: {{ default "5432" .Values.databaseMigration.port | quote }}
         - name: PGUSER
+          {{- if .Values.databaseMigration.userSecret.key }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secret.name | quote }}
+              key: {{ .Values.databaseMigration.userSecret.key | quote }}
+              optional: true
+          {{- else }}
           value: {{ .Values.databaseMigration.user | quote }}
+          {{- end }}
         - name: PGPASSWORD
           valueFrom:
             secretKeyRef:
@@ -52,7 +67,8 @@ spec:
           if [ -f "$secrets_dir/PGPASSWORD" ]; then
             export PGPASSWORD="$(cat "$secrets_dir/PGPASSWORD")"
           fi
-          cat <<'EOF' | psql
+          # Let psql quote the runtime username as a SQL identifier.
+          cat <<'EOF' | psql --set=databaseMigrationUser="$PGUSER"
 
 
           -- Create databases
@@ -73,64 +89,64 @@ spec:
           {{- end }}
 
           -- Alter Database
-          ALTER DATABASE composiodb OWNER TO {{ $databaseMigrationUser }};
+          ALTER DATABASE composiodb OWNER TO :"databaseMigrationUser";
           {{- if eq (include "composio.temporalEnabled" .) "true" }}
-          ALTER DATABASE temporal OWNER TO {{ $databaseMigrationUser }};
-          ALTER DATABASE temporal_visibility OWNER TO {{ $databaseMigrationUser }};
+          ALTER DATABASE temporal OWNER TO :"databaseMigrationUser";
+          ALTER DATABASE temporal_visibility OWNER TO :"databaseMigrationUser";
           {{- end }}
-          ALTER DATABASE thermosdb OWNER TO {{ $databaseMigrationUser }};
+          ALTER DATABASE thermosdb OWNER TO :"databaseMigrationUser";
           {{- if .Values.egateway.enabled }}
-          ALTER DATABASE {{ .Values.egateway.database.name }} OWNER TO {{ $databaseMigrationUser }};
+          ALTER DATABASE {{ .Values.egateway.database.name }} OWNER TO :"databaseMigrationUser";
           {{- if .Values.egateway.fusionauth.enabled }}
-          ALTER DATABASE {{ .Values.egateway.fusionauth.database.name }} OWNER TO {{ $databaseMigrationUser }};
+          ALTER DATABASE {{ .Values.egateway.fusionauth.database.name }} OWNER TO :"databaseMigrationUser";
           {{- end }}
           {{- end }}
           {{- if $workerDbEnabled }}
-          ALTER DATABASE {{ $workerDbDatabase }} OWNER TO {{ $databaseMigrationUser }};
+          ALTER DATABASE {{ $workerDbDatabase }} OWNER TO :"databaseMigrationUser";
           {{- end }}
 
           -- Grant privileges on thermosdb
           \c thermosdb
-          GRANT ALL PRIVILEGES ON DATABASE thermosdb TO {{ $databaseMigrationUser }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON DATABASE thermosdb TO :"databaseMigrationUser";
+          GRANT ALL PRIVILEGES ON SCHEMA public TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO :"databaseMigrationUser";
 
           {{- if $workerDbEnabled }}
           -- Grant privileges on Thermos worker DB
           \c {{ $workerDbDatabase }}
-          GRANT ALL PRIVILEGES ON DATABASE {{ $workerDbDatabase }} TO {{ $databaseMigrationUser }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON DATABASE {{ $workerDbDatabase }} TO :"databaseMigrationUser";
+          GRANT ALL PRIVILEGES ON SCHEMA public TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO :"databaseMigrationUser";
           {{- end }}
 
           -- Grant privileges on composiodb
           \c composiodb
-          GRANT ALL PRIVILEGES ON DATABASE composiodb TO {{ $databaseMigrationUser }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON DATABASE composiodb TO :"databaseMigrationUser";
+          GRANT ALL PRIVILEGES ON SCHEMA public TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO :"databaseMigrationUser";
 
           {{- if eq (include "composio.temporalEnabled" .) "true" }}
           -- Grant privileges on temporal
           \c temporal
-          GRANT ALL PRIVILEGES ON DATABASE temporal TO {{ $databaseMigrationUser }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON DATABASE temporal TO :"databaseMigrationUser";
+          GRANT ALL PRIVILEGES ON SCHEMA public TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO :"databaseMigrationUser";
 
           -- Grant privileges on temporal_visibility
           \c temporal_visibility
-          GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO {{ $databaseMigrationUser }};
-          GRANT ALL PRIVILEGES ON SCHEMA public TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {{ $databaseMigrationUser }};
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {{ $databaseMigrationUser }};
+          GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO :"databaseMigrationUser";
+          GRANT ALL PRIVILEGES ON SCHEMA public TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO :"databaseMigrationUser";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO :"databaseMigrationUser";
           {{- end }}
 
           -- Grant database creation privilege

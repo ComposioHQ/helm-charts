@@ -475,6 +475,99 @@ tests:
       - hasDocuments:
           count: 0
 
+  - it: should use literal host and user when secret keys are empty
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.host: postgres.internal
+      databaseMigration.user: migration-user
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[1]
+          value:
+            name: PGHOST
+            value: postgres.internal
+      - equal:
+          path: spec.template.spec.containers[0].env[3]
+          value:
+            name: PGUSER
+            value: migration-user
+
+  - it: should prefer secret keys over literal host and user
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.host: unused-host
+      databaseMigration.user: unused-user
+      databaseMigration.hostSecret.key: PG_HOST
+      databaseMigration.userSecret.key: PG_USER
+      databaseMigration.password.key: PG_PASSWORD
+      secret.name: postgres-credentials
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[1]
+          value:
+            name: PGHOST
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: PG_HOST
+                optional: true
+      - equal:
+          path: spec.template.spec.containers[0].env[3]
+          value:
+            name: PGUSER
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: PG_USER
+                optional: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: PG_PASSWORD
+                optional: true
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'psql --set=databaseMigrationUser="\$PGUSER"'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'ALTER DATABASE composiodb OWNER TO :"databaseMigrationUser";'
+      - notMatchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'unused-user'
+
+  - it: should allow a secret host with a literal user
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.hostSecret.key: PG_HOST
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.key
+          value: PG_HOST
+      - equal:
+          path: spec.template.spec.containers[0].env[3]
+          value:
+            name: PGUSER
+            value: postgres
+
+  - it: should allow a secret user with a literal host
+    set:
+      databaseMigration.enabled: true
+      databaseMigration.host: postgres.internal
+      databaseMigration.userSecret.key: PG_USER
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[1]
+          value:
+            name: PGHOST
+            value: postgres.internal
+      - equal:
+          path: spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.key
+          value: PG_USER
+
   - it: should have helm hook annotations with correct weight
     set:
       databaseMigration.enabled: true
@@ -589,20 +682,26 @@ tests:
           path: spec.template.spec.containers[0].args[2]
           pattern: 'CREATE DATABASE composiodb;'
 
-  - it: should quote database migration user as a SQL identifier
+  - it: should pass database migration user at runtime as a quoted SQL identifier
     set:
       databaseMigration.enabled: true
-      databaseMigration.user: user-name
+      databaseMigration.user: 'user-"name'
     asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[3].value
+          value: 'user-"name'
       - matchRegex:
           path: spec.template.spec.containers[0].args[2]
-          pattern: 'ALTER DATABASE composiodb OWNER TO "user-name";'
+          pattern: 'psql --set=databaseMigrationUser="\$PGUSER"'
       - matchRegex:
           path: spec.template.spec.containers[0].args[2]
-          pattern: 'GRANT ALL PRIVILEGES ON DATABASE thermosdb TO "user-name";'
+          pattern: 'ALTER DATABASE composiodb OWNER TO :"databaseMigrationUser";'
       - matchRegex:
           path: spec.template.spec.containers[0].args[2]
-          pattern: 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO "user-name";'
+          pattern: 'GRANT ALL PRIVILEGES ON DATABASE thermosdb TO :"databaseMigrationUser";'
+      - matchRegex:
+          path: spec.template.spec.containers[0].args[2]
+          pattern: 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO :"databaseMigrationUser";'
 
   - it: should run before db-init jobs (lower hook weight)
     set:

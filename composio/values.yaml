@@ -41,9 +41,17 @@ global:
 databaseMigration:
   image: "postgres:15-alpine"
   enabled: false
+  # -- PostgreSQL host used unless hostSecret.key is set.
   host: "<DATABASE_HOST>"
+  hostSecret:
+    # -- Key in secret.name for PGHOST; overrides databaseMigration.host when non-empty.
+    key: ""
   port: "<DATABASE_PORT>"
+  # -- PostgreSQL user used unless userSecret.key is set.
   user: "postgres"
+  userSecret:
+    # -- Key in secret.name for PGUSER; overrides databaseMigration.user when non-empty. Also used for database ownership and grants.
+    key: ""
   secretsDir: "/etc/secrets/postgres-init"
   # -- Additional init containers for the postgres init job. Mount `postgres-init-secrets` to populate `.Values.databaseMigration.secretsDir`.
   additionalInitContainers: []
